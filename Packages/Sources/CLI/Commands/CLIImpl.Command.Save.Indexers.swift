@@ -310,54 +310,47 @@ extension CLIImpl.Command.Save {
                 ]
             )
 
-            // #933: strategy assembly inlined at the composition root.
-            // Pre-#933 the `Search.makeDefaultStrategies(...)` factory in
-            // SearchStrategies named the production list as a static
-            // helper on the `Search` namespace, a Service Locator
-            // surface per `gof-di-rules.md` Rule 1. Post-#933 the 6
-            // strategy concretes are assembled inline here: the
-            // composition root is the SOLE production assembly point.
-            // Conditional appends mirror the pre-#933 factory's
-            // optional-directory pattern (no behavioural change).
-            // Adding a new source's strategy = one `strategies.append(...)`
-            // here; no edits to SearchStrategies.
-            var strategies: [any Search.SourceIndexingStrategy] = [
-                Search.AppleDocsStrategy(
-                    docsDirectory: input.docsDirectory,
-                    markdownStrategy: input.markdownStrategy,
-                    logger: Cupertino.Context.composition.logging.recording,
-                    importLogSink: importLogSink
-                ),
-            ]
-            if let dir = input.evolutionDirectory {
-                strategies.append(Search.SwiftEvolutionStrategy(
-                    evolutionDirectory: dir,
-                    logger: Cupertino.Context.composition.logging.recording
-                ))
-            }
-            if let dir = input.swiftOrgDirectory {
-                strategies.append(Search.SwiftOrgStrategy(
-                    swiftOrgDirectory: dir,
-                    markdownStrategy: input.markdownStrategy,
-                    logger: Cupertino.Context.composition.logging.recording
-                ))
-            }
-            if let dir = input.archiveDirectory {
-                strategies.append(Search.AppleArchiveStrategy(
-                    archiveDirectory: dir,
-                    logger: Cupertino.Context.composition.logging.recording
-                ))
-            }
-            if let dir = input.higDirectory {
-                strategies.append(Search.HIGStrategy(
-                    higDirectory: dir,
-                    logger: Cupertino.Context.composition.logging.recording
-                ))
-            }
-            strategies.append(Search.SampleCodeStrategy(
-                sampleCatalogProvider: input.sampleCatalogProvider,
-                logger: Cupertino.Context.composition.logging.recording
-            ))
+            // Post-#1029 (Phase 1I.c.1 of epic #1007): strategies-list
+            // assembly derived from the per-source registry, filtered
+            // to search.db destinations. Pre-#1029 this was an inline
+            // 6-strategy literal with conditional appends keyed on the
+            // optional `input.<X>Directory` fields. Post-#1029 the
+            // assembly delegates to each provider's `makeStrategy(env:)`;
+            // the per-source target's conformer knows which env fields
+            // it consumes. The bridge between the old per-field
+            // `DocsIndexingInput` and the registry-driven assembly is
+            // `resolveSourceDirectory(for:input:)`, which maps each
+            // provider's source-id to the matching optional input
+            // field. compactMap drops sources whose CLI input is nil
+            // (mirrors the pre-#1029 conditional-append shape).
+            //
+            // SwiftBookSource is a view-source: its `makeStrategy`
+            // returns a noop (real emission runs in SwiftOrgStrategy).
+            // SampleCodeStrategy ignores `env.sourceDirectory` (uses
+            // `env.sampleCatalogProvider` instead). Both receive a
+            // sentinel URL from the helper so compactMap includes them.
+            //
+            // Adding a new source post-#1029: one `.register(<X>Source())`
+            // line in `CLIImpl.SourceRegistry.swift`; if the new source
+            // needs a per-source CLI input directory, add a case to the
+            // helper. (The `DocsIndexingInput`-redesign-to-sourceID-keyed-dict
+            // follow-up dissolves the switch entirely; out of scope here.)
+            let logger = Cupertino.Context.composition.logging.recording
+            let strategies: [any Search.SourceIndexingStrategy] = productionRegistry.allEnabled
+                .filter { $0.destinationDB == .search }
+                .compactMap { provider -> (any Search.SourceIndexingStrategy)? in
+                    guard let sourceDir = Self.resolveSourceDirectory(for: provider, input: input) else {
+                        return nil
+                    }
+                    let env = Search.IndexEnvironment(
+                        sourceDirectory: sourceDir,
+                        logger: logger,
+                        markdownStrategy: input.markdownStrategy,
+                        importLogSink: importLogSink,
+                        sampleCatalogProvider: input.sampleCatalogProvider
+                    )
+                    return provider.makeStrategy(env: env)
+                }
             let builder = Search.IndexBuilder(
                 searchIndex: searchIndex,
                 strategies: strategies,
@@ -391,6 +384,64 @@ extension CLIImpl.Command.Save {
                 frameworkCount: frameworks.count,
                 breakdown: totalBreakdown
             )
+        }
+
+        // MARK: - Phase 1I.c.1 source-directory resolution helper
+
+        /// Bridge between the per-field `Search.DocsIndexingInput`
+        /// (docsDirectory / evolutionDirectory / swiftOrgDirectory /
+        /// archiveDirectory / higDirectory) and the post-#1029
+        /// registry-driven strategies-list assembly. Maps each
+        /// provider's source-id to the matching optional input
+        /// directory. Returns `nil` when the CLI input did not supply
+        /// a directory for the source, which causes the compactMap
+        /// at the call site to skip that source's strategy (mirrors
+        /// the pre-#1029 conditional-append shape).
+        ///
+        /// The switch is intentional bridge code: it pairs the legacy
+        /// per-field input struct shape with the registry-driven
+        /// dispatch. When `Search.DocsIndexingInput` is redesigned to
+        /// a sourceID-keyed dict (separate follow-up), this switch
+        /// dissolves entirely.
+        ///
+        /// SwiftBookSource and SampleCodeSource receive a sentinel
+        /// `/dev/null` URL: SwiftBookSource's `makeStrategy` is a
+        /// no-op (real emission runs in SwiftOrgStrategy);
+        /// SampleCodeStrategy ignores `env.sourceDirectory` and uses
+        /// `env.sampleCatalogProvider` instead. Both strategies
+        /// must still appear in the strategies list so the dispatch
+        /// stays uniform.
+        static func resolveSourceDirectory(
+            for provider: any Search.SourceProvider,
+            input: Search.DocsIndexingInput
+        ) -> URL? {
+            switch provider.definition.id {
+            case Shared.Constants.SourcePrefix.appleDocs:
+                return input.docsDirectory
+            case Shared.Constants.SourcePrefix.swiftEvolution:
+                return input.evolutionDirectory
+            case Shared.Constants.SourcePrefix.swiftOrg:
+                return input.swiftOrgDirectory
+            case Shared.Constants.SourcePrefix.swiftBook:
+                // SwiftBookSource.makeStrategy is a noop (real emission
+                // runs in SwiftOrgStrategy via URL-prefix tagging);
+                // sourceDirectory is unused. Return any non-nil URL so
+                // compactMap includes it.
+                return input.swiftOrgDirectory ?? URL(fileURLWithPath: "/dev/null")
+            case Shared.Constants.SourcePrefix.appleArchive:
+                return input.archiveDirectory
+            case Shared.Constants.SourcePrefix.hig:
+                return input.higDirectory
+            case Shared.Constants.SourcePrefix.samples:
+                // SampleCodeStrategy uses env.sampleCatalogProvider, not
+                // env.sourceDirectory. Sentinel URL so the strategy is
+                // included in the list.
+                return URL(fileURLWithPath: "/dev/null")
+            default:
+                // Unknown source-id (e.g. a future view-source that
+                // doesn't need a directory): skip.
+                return nil
+            }
         }
     }
 
