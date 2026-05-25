@@ -46,10 +46,12 @@ extension CLIImpl {
         registry.register(SwiftOrgSource())
         registry.register(SwiftBookSource())
         registry.register(PackagesSource())
-        // #1007 Phase 1A-1H complete: registry carries all 8 sources.
-        // Phase 1I.b + 1I.c (the remaining epic steps) dissolve the
-        // inline indexer dict + strategies-list assembly + the FetchType
-        // enum at `CLI/SupportingTypes.swift`; wire the destinationDB-aware
+        // #1007 Phase 1A-1I.b complete: registry carries all 8 sources;
+        // sourceLookup derived from the registry (1I.a, #1025); indexer
+        // dict derived from the registry filtered by `destinationDB ==
+        // .search` (1I.b, #1027). Phase 1I.c (final epic step) dissolves
+        // the strategies-list assembly + `FetchType` enum at
+        // `CLI/SupportingTypes.swift`; wires the destinationDB-aware
         // composition root that groups providers by destination DB.
         return registry
     }
