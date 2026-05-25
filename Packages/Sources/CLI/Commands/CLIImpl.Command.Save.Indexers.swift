@@ -249,22 +249,24 @@ extension CLIImpl.Command.Save {
             // surface on producer namespaces). The 7 indexer concretes
             // referenced below all live in SearchSQLite today; the
             // protocol-move-to-SearchModels follow-up will let new
-            // indexers live in their own packages.
+            // Post-#1027 (Phase 1I.b of epic #1007): indexer dict
+            // derived from the per-source registry, filtered to
+            // search.db destinations. PackagesSource self-excludes
+            // (destinationDB == .packages); packages live in packages.db
+            // via the dedicated Indexer.PackagesService (#789), not
+            // search.db's IndexBuilder. The 7 search.db indexers come
+            // from their per-source target's makeIndexer() factory.
+            let productionRegistry = CLIImpl.makeProductionSourceRegistry()
             let searchIndex = try await Search.Index(
                 dbPath: input.searchDBPath,
                 logger: Cupertino.Context.composition.logging.recording,
-                indexers: [
-                    Shared.Constants.SourcePrefix.appleDocs: Search.AppleDocsIndexer(),
-                    Shared.Constants.SourcePrefix.hig: Search.HIGIndexer(),
-                    Shared.Constants.SourcePrefix.swiftEvolution: Search.SwiftEvolutionIndexer(),
-                    Shared.Constants.SourcePrefix.samples: Search.SampleCodeIndexer(),
-                    Shared.Constants.SourcePrefix.appleArchive: Search.AppleArchiveIndexer(),
-                    Shared.Constants.SourcePrefix.swiftBook: Search.SwiftBookIndexer(),
-                    Shared.Constants.SourcePrefix.swiftOrg: Search.SwiftOrgIndexer(),
-                    // #789: "packages" indexer removed; packages live in packages.db
-                ],
+                indexers: productionRegistry.allEnabled
+                    .filter { $0.destinationDB == .search }
+                    .reduce(into: [:]) { dict, provider in
+                        dict[provider.definition.id] = provider.makeIndexer()
+                    },
                 sourceLookup: Search.SourceLookup(
-                    definitions: CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition)
+                    definitions: productionRegistry.allEnabled.map(\.definition)
                 )
             )
 
