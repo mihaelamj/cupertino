@@ -1,6 +1,6 @@
 # How to add a new content source
 
-**State**: living doc. Reflects the post-#1042 pluggability arc as of 2026-05-26.
+**State**: living doc. Reflects the post-#1042 pluggability arc as of 2026-05-26. Contract status: **23 of 26 assertions green** (down from 14 OUTSTANDING at the start of the day's autonomous run). 3 still outstanding, all needing a `Search.SourceProvider` protocol extension.
 
 This page is the contract a contributor follows when wiring a new content source (e.g. WWDC transcripts #58, Swift Forums #89, Tech Talks #273) into cupertino. It names every file the new source MUST touch and distinguishes them from surfaces that pick the source up automatically once it is registered.
 
@@ -102,26 +102,29 @@ These surfaces pick up the new source automatically once it is registered. Each 
 | `Shared.Paths.directory(named:)` | 13 | Generic accessor; the 8 per-source typed accessors (`docsDirectory`, …) now delegate. Consumers should migrate to the generic + the source's own `fetchInfo.outputDir`. |
 | Package.swift test/binary dep lists | 14 | `allSourceTargetNames` is the single source of truth; `allSourceTargetDeps` + `allSourceProducts` derive from it. `SearchTests`, `SearchStrategiesTests`, `SearchModelsTests`, and the cupertino CLI binary all spread the helper. |
 | Platform-filter dispatch fan-out partition | 5 sub-2 | `Search.PlatformFilterScope.dispatch(for:fanOutSources:)` accepts a registry-derived list; the legacy `dispatch(for:)` static is deprecated. |
+| Platform-filter applies-filter partition | 5 sub-1 | `Search.PlatformFilterScope.partitionForNotice(contributingSources:appliesFilter:)` accepts a registry-derived `Set<String>`; the legacy single-arg overload forwards to the static `dispatchAppliesFilter` as default. |
+| `Services.Formatter.TeaserResults` | 6 sub-1 | Gained an `extras: [String: ExtraSource]` dict alongside the 8 typed properties. New sources store teaser results keyed by id; each entry carries its own displayName + emoji. `allSources` enumerates them. |
+| `Services.Formatter.Unified.Input` | 6 sub-2 | Same `extras` pattern as TeaserResults; `[String: ExtraSource]` carries source-keyed result buckets with per-entry `SourceInfo`. |
+| `SearchAPI.ComposedSearchResult` | 6 sub-3 | Gained `extras: [String: ResultSection<DocAtom>]` for DocAtom-shaped sources; SampleAtom / PackageAtom sources still need typed Section properties. |
+| `SearchAPI.SmartQuery` | 3 | Gained `sourceWeightsOverride: [String: Double]` init parameter; composition root supplies registry-derived fusion weights. The `weight(forSource:)` instance method consults the override first, then the static literal, then 1.0 fallback. |
+| `SearchSQLite.CandidateFetcher` | 4 sub-1 + sub-2 | Gained `swiftVersionSources: Set<String>?` + `frameworkScopedSources: Set<String>?` init parameters. Composition root derives both sets from `Search.Capabilities.metadata[.hasMinSwiftVersion]` and `.hasFrameworkColumn` on each registered SourceProvider. |
+| `LoggingModels.Logging.Category` | 10 | Closed enum became `struct Category: RawRepresentable`. `Logging.LiveRecording.mapCategory`'s exhaustive switch became a dict lookup with `.cli` fallback for unknown categories. |
+| `Shared.Constants.SourcePrefix.allPrefixes` (production consumer) | 2 sub-1 | `Search.Index.knownSourcePrefixes` derives from `sourceLookup.allIDs + ["all"]` instead of reading the foundation-tier static. New registered sources appear in source-prefix detection automatically. |
+| `Shared.Constants.Search.availableSources` (formatter consumer) | 2 sub-2 | `Services.Formatter.Footer.Search` accepts an optional `availableSources: [String]` init parameter; defaults to the foundation-tier static for back-compat. |
+| `RemoteSync.Indexer` URI scheme dispatch | 11 sub-2 | Gained `phaseURIPrefixes: [IndexState.Phase: String]` init parameter; `buildURI` consults the override first, then the static default, then `phase.rawValue` as fallback. |
+| MCP `DocsResourceProvider.knownURISchemes` | 12 partial | Gained `knownURISchemes: Set<String>` init parameter populated from the production source registry. The bespoke if/elseif arms still carry production probing logic (the fully registry-driven dispatch needs a `URIResourceStrategy` protocol on `SourceProvider`). |
 
 ## Still required edits (the OUTSTANDING surface)
 
-These surfaces are still hardcoded against the 8 shipped sources. Adding a new source today means editing each one. Each row maps to an OUTSTANDING assertion in `Issue1042PluggabilityContractTests`; the cluster-flip arc drives this list to zero.
+These surfaces are still hardcoded. Adding a new source today means editing each one. Each row maps to an OUTSTANDING assertion in `Issue1042PluggabilityContractTests`; the cluster-flip arc drives this list to zero. **Down to 2 OUTSTANDING items as of 2026-05-26** (from an initial 14-cluster audit).
 
-| # | Where to edit | Cluster | Approximate cost |
+| # | Where to edit | Cluster | Why it's still outstanding |
 |---|---|---|---|
-| 1 | `Shared.Constants.SourcePrefix.allPrefixes` (foundation tier) | 2 sub-1 | +1 line + a deletion epic across 8 consumer sites |
-| 2 | `Shared.Constants.Search.availableSources` (foundation tier) | 2 sub-2 | +1 line + a deletion epic across 8 consumer sites |
-| 3 | `SearchAPI.SmartQuery.sourceWeights` dict | 3 | +1 row in the fusion-weights table |
-| 4 | `SearchSQLite.CandidateFetcher.swiftVersionSources` (if Swift-version-axis availability applies) | 4 sub-1 | +1 line OR add `SourceProperties.availabilityAxis = .swiftVersion` |
-| 5 | `SearchSQLite.CandidateFetcher.frameworkScopedSources` (if framework-scoped) | 4 sub-2 | +1 line OR add `SourceProperties.carriesFrameworkColumn` |
-| 6 | `Search.PlatformFilterScope.dispatchAppliesFilter` (if dispatch handler threads platform args through) | 5 sub-1 | +1 line OR add `SourceProperties.appliesPlatformFilter` |
-| 7 | `Services.Formatter.TeaserResults` typed-per-source struct | 6 sub-1 | +1 typed property (or move to `[String: [Search.Result]]` keyed by sourceID) |
-| 8 | `Services.Formatter.Unified.Input` typed-per-source struct | 6 sub-2 | +1 typed property (or dict refactor) |
-| 9 | `SearchAPI.ComposedSearchResult` typed-per-source struct | 6 sub-3 | +1 typed property (or dict refactor) |
-| 10 | `CLIImpl.Command.Search.swift` source-dispatch switch | 8 sub-1 | +1 switch arm (~9 source-ids currently enumerated) |
-| 11 | `CLIImpl.Command.Fetch.swift` source-dispatch switch + `allFetchableSources` | 8 sub-2 | +1 switch arm + 1 line |
-| 12 | `SearchToolProvider.CompositeToolProvider.handleSearch` MCP dispatch | 8 sub-3 | +1 switch arm |
-| 13 | `RemoteSync.Indexer.phaseURIPrefixes` dict (collapsed from a switch in Cluster 11 sub-1, but the contents are still hardcoded) | 11 sub-2 | +1 dict entry OR add `SourceProvider.uriScheme` property |
+| 1 | `CLIImpl.Command.Search.swift` source-dispatch switch | 8 sub-1 | The 9-arm switch routes to bespoke per-source runners (`runSampleSearch`, `runHIGSearch`, `runPackageSearch`, `runDocsSearch`). Registry-driven dispatch needs a `func search(query:limit:) -> [Result]` method on `Search.SourceProvider` so each per-source target carries its own runner — real protocol extension across every per-source SPM target. |
+| 2 | `SearchToolProvider.CompositeToolProvider.handleSearch` MCP dispatch | 8 sub-2 | Mirror of #1 on the MCP side. Same shape: needs a SourceProvider-supplied search method to dispatch. |
+| 3 | `MCP.Support.DocsResourceProvider` fallback filesystem dispatch (3 `hasPrefix(scheme)` arms with bespoke parsing) | 12 follow-up | The `knownURISchemes` set is now registry-driven (twenty-first cluster flip), but each arm still carries bespoke filesystem-probing logic. A `URIResourceStrategy` protocol on `SourceProvider` would let each per-source target ship its own probing strategy and collapse the arms — same architectural shape as Cluster 8. |
+
+The pattern across the remaining 3 is identical: **adding methods to `Search.SourceProvider` so each per-source target supplies its own behaviour**, instead of central dispatchers having per-source switch arms. This is one focused PR: extend the protocol with `func search(...)` + `func readResource(uri:)`; add concrete impls to each of the 8 per-source targets; collapse the central switches. Estimated 4-6 hours.
 | 14 | `MCP.Support.DocsResourceProvider`'s fallback filesystem dispatch (6 `hasPrefix(scheme)` arms) | 12 | +1 if/else arm OR add `SourceProvider.resourceProbing` strategy |
 
 ## How to verify the new source is wired correctly
