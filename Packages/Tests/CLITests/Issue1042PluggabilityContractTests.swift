@@ -280,14 +280,20 @@ struct Issue1042PluggabilityContractTests {
         #expect(Bool(false), "see disabled note")
     }
 
-    @Test(
-        "Search.FetchInfo.DefaultOutputDirKey is registry-driven",
-        .disabled(
-            "OUTSTANDING — Cluster 9: SearchModels/Search.FetchInfo.swift L83-92 closed `enum DefaultOutputDirKey: String`. Refactor: String value carrying the directory name."
-        )
-    )
+    @Test("Search.FetchInfo.DefaultOutputDirKey is a rawValue-String struct, not a closed enum")
     func defaultOutputDirKeyIsRegistryDriven() {
-        #expect(Bool(false), "see disabled note")
+        // STATUS: PASSES (post-Cluster-9 sub-1). The closed enum became
+        // a RawRepresentable struct; arbitrary directory keys can be
+        // constructed at call sites. The 8 shipped keys still exist as
+        // `static let` constants for discoverability + back-compat.
+        // The CLI's resolveDirectory(forKey:paths:) delegates to
+        // paths.directory(named:) using the rawValue verbatim
+        // (post-Cluster-13).
+        let fakeKey = Search.FetchInfo.DefaultOutputDirKey(rawValue: "wwdc-transcripts")
+        #expect(fakeKey.rawValue == "wwdc-transcripts")
+        // Existing keys still accessible.
+        #expect(Search.FetchInfo.DefaultOutputDirKey.docs.rawValue == "docs")
+        #expect(Search.FetchInfo.DefaultOutputDirKey.allKnownCases.count == 8)
     }
 
     @Test(

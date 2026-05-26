@@ -334,13 +334,19 @@ struct PluggabilityInvariantTests {
         )
     }
 
-    @Test("Closed-set seam: Search.FetchInfo.DefaultOutputDirKey is a closed enum without an .other / .custom escape hatch (#933 candidate)")
-    func closedSetDefaultOutputDirKey() {
-        // The fake reuses .docs to dodge this seam. A real new source
-        // needing its own output directory must edit the enum + the
-        // CLIImpl.Command.Fetch resolveDirectory switch + Shared.Paths.
-        // CaseIterable lets us count without parsing source.
-        let count = Search.FetchInfo.DefaultOutputDirKey.allCases.count
-        #expect(count == 8, "8 closed cases as of branch state; a new source needing its own directory must extend this enum (Independence Day #933)")
+    @Test("Open-set seam (post-#1042 Cluster 9): Search.FetchInfo.DefaultOutputDirKey is a rawValue-String struct; arbitrary keys resolve via Shared.Paths.directory(named:)")
+    func openSetDefaultOutputDirKey() {
+        // Post-Cluster-9 the closed enum became a RawRepresentable
+        // struct. A new source declares `static let mySourceDir =
+        // Self(rawValue: "my-source")` (or just constructs one at
+        // call-time); resolveDirectory delegates to
+        // paths.directory(named: key.rawValue). No more enum case +
+        // switch arm + per-source Shared.Paths accessor.
+        let custom = Search.FetchInfo.DefaultOutputDirKey(rawValue: "wwdc-transcripts")
+        #expect(custom.rawValue == "wwdc-transcripts")
+        // The 8 shipped keys still exist as static lets for
+        // discoverability + back-compat.
+        #expect(Search.FetchInfo.DefaultOutputDirKey.allKnownCases.count == 8)
+        #expect(Search.FetchInfo.DefaultOutputDirKey.allKnownCases.contains(.docs))
     }
 }

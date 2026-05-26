@@ -348,16 +348,13 @@ extension CLIImpl.Command {
         /// namespace because `Search` resolves to
         /// `CLIImpl.Command.Search` inside `extension CLIImpl.Command`.
         private static func resolveDirectory(forKey key: SearchModels.Search.FetchInfo.DefaultOutputDirKey, paths: Shared.Paths) -> URL {
-            switch key {
-            case .docs: return paths.docsDirectory
-            case .swiftOrg: return paths.swiftOrgDirectory
-            case .swiftEvolution: return paths.swiftEvolutionDirectory
-            case .packages: return paths.packagesDirectory
-            case .sampleCode: return paths.sampleCodeDirectory
-            case .archive: return paths.archiveDirectory
-            case .hig: return paths.higDirectory
-            case .baseDirectory: return paths.baseDirectory
+            // #1042 Cluster 9+13: the key's rawValue IS the dirname.
+            // `.baseDirectory` is the only edge case — it points at the
+            // base itself, not a sub-directory under it.
+            if key == .baseDirectory {
+                return paths.baseDirectory
             }
+            return paths.directory(named: key.rawValue)
         }
 
         private mutating func runAllFetches() async throws {
