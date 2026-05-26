@@ -113,28 +113,40 @@ extension Services.Formatter.Footer {
 // MARK: - Convenience Constructors
 
 extension Services.Formatter.Footer.Search {
-    /// Create footer for unified search (all sources)
-    public static func unified(showSemanticTip: Bool = true, showPlatformTip: Bool = true) -> Services.Formatter.Footer.Search {
+    /// Create footer for unified search (all sources).
+    /// #1042 audit + wiring batch 5: `availableSources` parameter for
+    /// the registry-derived "narrow with --source: …" tip. When nil,
+    /// the footer falls back to `Shared.Constants.Search.availableSources`.
+    public static func unified(
+        showSemanticTip: Bool = true,
+        showPlatformTip: Bool = true,
+        availableSources: [String]? = nil
+    ) -> Services.Formatter.Footer.Search {
         Services.Formatter.Footer.Search(
             currentSource: nil,
             teasers: nil,
             showSemanticTip: showSemanticTip,
-            showPlatformTip: showPlatformTip
+            showPlatformTip: showPlatformTip,
+            availableSources: availableSources
         )
     }
 
-    /// Create footer for single-source search
+    /// Create footer for single-source search.
+    /// #1042 audit + wiring batch 5: same `availableSources`
+    /// composition-root injection point as `unified(...)`.
     public static func singleSource(
         _ source: String,
         teasers: Services.Formatter.TeaserResults? = nil,
         showSemanticTip: Bool = true,
-        showPlatformTip: Bool = true
+        showPlatformTip: Bool = true,
+        availableSources: [String]? = nil
     ) -> Services.Formatter.Footer.Search {
         Services.Formatter.Footer.Search(
             currentSource: source,
             teasers: teasers,
             showSemanticTip: showSemanticTip,
-            showPlatformTip: showPlatformTip
+            showPlatformTip: showPlatformTip,
+            availableSources: availableSources
         )
     }
 
