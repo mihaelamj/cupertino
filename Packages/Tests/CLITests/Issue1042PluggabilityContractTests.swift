@@ -4,6 +4,7 @@
 @testable import CLI
 import Foundation
 import LoggingModels
+import RemoteSyncModels
 import SearchAPI
 import SearchModels
 import Services
@@ -328,14 +329,24 @@ struct Issue1042PluggabilityContractTests {
         #expect(Services.ReadService.Source.allKnownCases.count == 3)
     }
 
-    @Test(
-        "RemoteSync.IndexState.Phase is registry-driven",
-        .disabled(
-            "OUTSTANDING — Cluster 11: RemoteSyncModels/RemoteSync.IndexState.swift L37-43 closed enum has per-source cases. Refactor: String-keyed phase carrying source-id."
-        )
-    )
+    @Test("RemoteSync.IndexState.Phase is a rawValue-String struct, not a closed enum")
     func remoteSyncPhaseIsRegistryDriven() {
-        #expect(Bool(false), "see disabled note")
+        // STATUS: PASSES (post-Cluster-11 sub-1). The closed enum
+        // became a RawRepresentable struct (Codable preserved so
+        // existing on-disk index-state.json files keep loading). The
+        // 5 production phases stay as `static let` constants; the
+        // 3 mapping switches in `RemoteSync.Indexer` (phasePath /
+        // phaseSource / buildURI) became dict lookups. Adding a new
+        // phase is a `static let` declaration + 3 new dict entries.
+        // Cluster 11 sub-2 (URI scheme derivation from SourceProvider)
+        // remains outstanding — the dict approach is more open than a
+        // switch, but the scheme strings are still hardcoded in
+        // RemoteSync.Indexer rather than read from registry providers.
+        let custom = RemoteSync.IndexState.Phase(rawValue: "wwdc")
+        #expect(custom.rawValue == "wwdc")
+        // Existing phases still discoverable.
+        #expect(RemoteSync.IndexState.Phase.docs.rawValue == "docs")
+        #expect(RemoteSync.IndexState.Phase.allKnownCases.count == 5)
     }
 
     // MARK: - Cluster 12: hardcoded URI schemes (MCP resource provider + RemoteSync.buildURI + Crawler emitters)

@@ -1264,7 +1264,9 @@ let targets: [Target] = {
         // Issue1042PluggabilityContractTests can assert against
         // Services.ReadService.Source (Cluster 9 sub-3). The same
         // pattern is used in Issue1039ReadHigRoundtripTests.
-        dependencies: ["CLI", "Diagnostics", "Distribution", "DistributionModels", "Services", "ServicesModels"]
+        // RemoteSyncModels added so the contract test can reference
+        // RemoteSync.IndexState.Phase (Cluster 11 sub-1).
+        dependencies: ["CLI", "Diagnostics", "Distribution", "DistributionModels", "Services", "ServicesModels", "RemoteSyncModels"]
     )
     let mockAIAgentTestsTarget = Target.testTarget(
         name: "MockAIAgentTests",

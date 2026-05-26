@@ -33,13 +33,33 @@ extension RemoteSync {
         /// Total files in current framework
         public let filesTotal: Int
 
-        /// Indexing phases in order
-        public enum Phase: String, Codable, Sendable, CaseIterable {
-            case docs
-            case evolution
-            case archive
-            case swiftOrg
-            case packages
+        /// Indexing phase the `cupertino save` arc is currently in.
+        /// Post-#1042 Cluster 11 sub-1 this is a rawValue-String struct,
+        /// not a closed enum: each phase historically maps 1:1 to a
+        /// content source, so adding a new source (e.g. WWDC
+        /// transcripts) is now a `static let` declaration with no
+        /// switch arm + no new enum case.
+        public struct Phase: RawRepresentable, Codable, Sendable, Equatable, Hashable {
+            public let rawValue: String
+            public init(rawValue: String) {
+                self.rawValue = rawValue
+            }
+
+            public static let docs = Phase(rawValue: "docs")
+            public static let evolution = Phase(rawValue: "evolution")
+            public static let archive = Phase(rawValue: "archive")
+            public static let swiftOrg = Phase(rawValue: "swiftOrg")
+            public static let packages = Phase(rawValue: "packages")
+
+            /// The 5 phases shipped at v1.2.0. The `allCases` alias
+            /// keeps pre-Cluster-11 `IndexState.Phase.allCases` callsites
+            /// (`RemoteSync.Indexer` enumerates them at start to pin
+            /// progress totals) compiling.
+            public static let allKnownCases: [Phase] = [
+                .docs, .evolution, .archive, .swiftOrg, .packages,
+            ]
+
+            public static let allCases: [Phase] = allKnownCases
         }
 
         // MARK: - Initialization
