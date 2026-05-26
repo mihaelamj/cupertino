@@ -147,6 +147,51 @@ extension CLIImpl.Command.Search {
         let disabledReasonsBySource: [String: String]
     }
 
+    /// Pure URL-resolution helper extracted from `openDocsFetchers` so
+    /// the per-source vs. override mapping can be unit-tested without
+    /// touching SQLite. Returns one entry per docs source whose
+    /// `SourceProvider` exists in `providerByID`; sources without a
+    /// registered provider are dropped (caller logs separately).
+    ///
+    /// - Parameters:
+    ///   - override: when non-nil, every docs source-id maps to this
+    ///     single URL (legacy `--search-db` back-compat path; the
+    ///     openedByPath cache in `openDocsFetchers` collapses the six
+    ///     entries to one Index open).
+    ///   - providerByID: source-id → registered `SourceProvider`.
+    ///     Built from `CLIImpl.makeProductionSourceRegistry()`'s
+    ///     `allEnabled` list.
+    ///   - baseDirectory: cupertino's base directory (resolved at the
+    ///     composition root via `Shared.Paths.live().baseDirectory`).
+    ///   - sources: docs-source prefixes to resolve. Defaults to
+    ///     `docsSources` (the production list).
+    static func urlsByDocsSourceID(
+        override: URL?,
+        providerByID: [String: any Search.SourceProvider],
+        baseDirectory: URL,
+        sources: [(prefix: String, includeArchive: Bool)]? = nil
+    ) -> [String: URL] {
+        let effective = sources ?? docsSources
+        var result: [String: URL] = [:]
+        for source in effective {
+            if let override {
+                result[source.prefix] = override
+            } else if let provider = providerByID[source.prefix] {
+                result[source.prefix] = baseDirectory.appendingPathComponent(provider.destinationDB.filename)
+            }
+        }
+        return result
+    }
+
+    /// The lookup key the smart-report path uses to find the apple-docs
+    /// `SearchModule.Index` for framework-name validation. Pulled into a
+    /// static constant so tests can pin the contract (`runUnifiedSearch`
+    /// reads `plan.docsIndexes[Search.frameworkValidationSourceID]`;
+    /// swapping the constant to a DB id like "apple-documentation" by
+    /// mistake would silently skip every `--framework` check, and a
+    /// test that asserts the constant catches the regression).
+    static let frameworkValidationSourceID: String = Shared.Constants.SourcePrefix.appleDocs
+
     private static func openDocsFetchers(
         override: String?,
         skip: Bool,
@@ -174,22 +219,31 @@ extension CLIImpl.Command.Search {
         // each source resolves to its own per-source DB.
         let overrideURL = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
 
+        // Pure URL resolution: per-source filename via the registry,
+        // or the override URL applied uniformly. Tested directly in
+        // `CLISearchUrlResolutionTests`.
+        let urlsBySource = urlsByDocsSourceID(
+            override: overrideURL,
+            providerByID: providerByID,
+            baseDirectory: baseDirectory
+        )
+
         var indexes: [String: SearchModule.Index] = [:]
         var disabledReasons: [String: String] = [:]
 
         // Cache opens by URL path so the override path opens a single
         // Index reused across all 6 source-prefixes; per-source path
-        // opens one Index per file (one per source).
+        // opens one Index per file (one per source). `missingPaths`
+        // dedups the file-missing warning so an override pointing at
+        // a non-existent file emits one diagnostic instead of six
+        // (the override path collapses every source-prefix to the
+        // same URL).
         var openedByPath: [String: SearchModule.Index] = [:]
         var failedByPath: [String: String] = [:]
+        var missingPaths: Set<String> = []
 
         for source in docsSources {
-            let url: URL
-            if let overrideURL {
-                url = overrideURL
-            } else if let provider = providerByID[source.prefix] {
-                url = baseDirectory.appendingPathComponent(provider.destinationDB.filename)
-            } else {
+            guard let url = urlsBySource[source.prefix] else {
                 // Unknown source-id (shouldn't happen for built-in
                 // sources; defensive log + skip).
                 Cupertino.Context.composition.logging.recording.warning(
@@ -215,12 +269,17 @@ extension CLIImpl.Command.Search {
                 continue
             }
 
+            if missingPaths.contains(url.path) {
+                continue
+            }
+
             guard FileManager.default.fileExists(atPath: url.path) else {
                 // #654 -- file-missing diagnostic goes to stderr so
                 // `--format json` stdout stays pure for `jq` consumers.
                 Cupertino.Context.composition.logging.recording.warning(
                     "ℹ️  \(url.lastPathComponent) not found at \(url.path) -- skipping \(source.prefix)."
                 )
+                missingPaths.insert(url.path)
                 continue
             }
 

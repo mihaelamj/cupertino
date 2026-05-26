@@ -145,7 +145,14 @@ extension CLIImpl.Command {
 
         @Option(
             name: .long,
-            help: "Path to search database (search.db)"
+            help: """
+            Override the path used for every docs source's database. Legacy debug \
+            knob: post-#1037 each docs source resolves to its own per-source DB \
+            (apple-documentation.db / hig.db / apple-archive.db / swift-evolution.db / \
+            swift-org.db / swift-book.db); passing this opens the single file for \
+            every source-prefix the fan-out queries. Mostly useful for tests + the \
+            migration window from a legacy monolithic search.db.
+            """
         )
         var searchDb: String?
 
@@ -274,7 +281,7 @@ extension CLIImpl.Command {
             // `apple-documentation.db`; resolve through that source-id.
             if let framework,
                !framework.trimmingCharacters(in: .whitespaces).isEmpty,
-               let appleDocsIndex = plan.docsIndexes[Shared.Constants.SourcePrefix.appleDocs] {
+               let appleDocsIndex = plan.docsIndexes[Self.frameworkValidationSourceID] {
                 let resolved = await (try? appleDocsIndex.resolveFrameworkIdentifier(framework))
                     ?? framework.lowercased().replacingOccurrences(of: " ", with: "")
                 let exists = await (try? appleDocsIndex.frameworkExistsInCorpus(resolved)) ?? false

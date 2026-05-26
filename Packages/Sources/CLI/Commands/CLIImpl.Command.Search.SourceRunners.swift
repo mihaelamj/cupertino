@@ -72,8 +72,23 @@ extension CLIImpl.Command.Search {
             ))
         }
 
+        // Teaser fetch: cross-source surface comes from apple-docs by
+        // convention. Pre-#1037 the per-source runners passed their
+        // own `searchDBURL`; post-#1037 each per-source DB only
+        // contains its own source's rows, so a teaser fetch filtered
+        // by source='apple-docs' against (say) apple-archive.db
+        // returned zero results and silently dropped the cross-source
+        // block. Pin at apple-documentation.db explicitly so the
+        // surface survives the per-source split. Fan-out across every
+        // docs DB is a follow-up (would need a TeaserService refactor
+        // to take a per-source index map, not a single Index handle).
+        let teaserSearchDBURL = resolveDocsDBURL(
+            for: Shared.Constants.SourcePrefix.appleDocs
+        ) ?? Shared.Paths.live().baseDirectory.appendingPathComponent(
+            Shared.Models.DatabaseDescriptor.appleDocumentation.filename
+        )
         let teasers = try await Services.ServiceContainer.withTeaserService(
-            searchDB: searchDBURL,
+            searchDB: teaserSearchDBURL,
             samplesDB: resolveSampleDbPath(),
             searchDatabaseFactory: searchDatabaseFactory,
             sampleDatabaseFactory: sampleDatabaseFactory
@@ -259,8 +274,18 @@ extension CLIImpl.Command.Search {
             ))
         }
 
+        // Teaser fetch: cross-source surface comes from apple-docs by
+        // convention (same rationale as runDocsSearch above). Querying
+        // hig.db for `source = 'apple-docs'` etc. would return zero
+        // rows post-#1037 since each per-source DB only carries its
+        // own source's content.
+        let teaserSearchDBURL = resolveDocsDBURL(
+            for: Shared.Constants.SourcePrefix.appleDocs
+        ) ?? Shared.Paths.live().baseDirectory.appendingPathComponent(
+            Shared.Models.DatabaseDescriptor.appleDocumentation.filename
+        )
         let teasers = try await Services.ServiceContainer.withTeaserService(
-            searchDB: searchDBURL,
+            searchDB: teaserSearchDBURL,
             samplesDB: resolveSampleDbPath(),
             searchDatabaseFactory: searchDatabaseFactory,
             sampleDatabaseFactory: sampleDatabaseFactory
