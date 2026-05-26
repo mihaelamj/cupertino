@@ -234,20 +234,64 @@ struct Issue1042PluggabilityContractTests {
         #expect(sources.contains(where: { $0.sourcePrefix == ContractFakeSourceProvider.fakeID }))
     }
 
-    @Test(
-        "ServicesModels.Services.Formatter.Unified.Input accepts any registered source's results",
-        .disabled("OUTSTANDING — Cluster 6: ServicesModels/Services.Formatter.Unified.Input.swift is typed-per-source. Refactor: [String: [Search.Result]] dict.")
-    )
+    @Test("ServicesModels.Services.Formatter.Unified.Input accepts any registered source via the `extras` dict")
     func unifiedInputAcceptsFakeSource() {
-        #expect(Bool(false), "see disabled note")
+        // STATUS: PASSES (post-Cluster-6 sub-2). Unified.Input gained
+        // an `extras: [String: ExtraSource]` dict alongside the 8
+        // typed-per-source properties. Each `ExtraSource` carries its
+        // own SourceInfo + results, so the formatter doesn't need a
+        // Prefix.infoX lookup. allSources iterates typed first, then
+        // extras (sorted by key for stable output order).
+        let fakeResult = Search.Result(
+            uri: "pluggability-contract-fake://example",
+            source: ContractFakeSourceProvider.fakeID,
+            framework: "",
+            title: "Fake unified-input title",
+            summary: "",
+            filePath: "",
+            wordCount: 0,
+            rank: 0
+        )
+        let fakeInfo = Shared.Constants.SourcePrefix.SourceInfo(
+            key: ContractFakeSourceProvider.fakeID,
+            name: "Pluggability Contract Fake",
+            emoji: "🧪"
+        )
+        let input = Services.Formatter.Unified.Input(
+            extras: [
+                ContractFakeSourceProvider.fakeID: .init(info: fakeInfo, results: [fakeResult]),
+            ]
+        )
+        #expect(input.totalCount == 1)
+        #expect(input.allSources.contains(where: { $0.info.key == ContractFakeSourceProvider.fakeID }))
     }
 
-    @Test(
-        "SearchAPI.ComposedSearchResult accepts any registered source",
-        .disabled("OUTSTANDING — Cluster 6: SearchAPI/Search.ComposableResult.swift is typed-per-source struct + builder. Refactor: [String: ComposedSection] dict.")
-    )
+    @Test("SearchAPI.ComposedSearchResult accepts any registered source via the `extras` dict")
     func composedSearchResultAcceptsFakeSource() {
-        #expect(Bool(false), "see disabled note")
+        // STATUS: PASSES (post-Cluster-6 sub-3). ComposedSearchResult
+        // gained an `extras: [String: ResultSection<DocAtom>]` dict
+        // alongside the 7 typed Section properties (primary, sample,
+        // hig, evolution, archive, swiftOrg, swiftBook, package). A
+        // new source whose atoms are DocAtom-shaped stores its
+        // section here keyed by source id; allSections enumerates
+        // these alongside the typed sections, totalResults sums them.
+        let fakeAtom = Search.DocAtom(
+            source: Search.Source(rawValue: ContractFakeSourceProvider.fakeID),
+            title: "Fake composed-result title",
+            summary: "",
+            uri: "pluggability-contract-fake://example",
+            score: 0.5
+        )
+        let fakeSection = Search.ResultSection<Search.DocAtom>(
+            source: Search.Source(rawValue: ContractFakeSourceProvider.fakeID),
+            atoms: [fakeAtom]
+        )
+        let composed = Search.ComposedSearchResult(
+            query: "test",
+            extras: [ContractFakeSourceProvider.fakeID: fakeSection]
+        )
+        #expect(composed.totalResults == 1)
+        #expect(composed.allSections.contains(where: { $0.rawValue == ContractFakeSourceProvider.fakeID }))
     }
 
     // MARK: - Cluster 7: MCP search-tool schema enum
