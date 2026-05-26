@@ -605,7 +605,20 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         // path-dependent fact so the helper knows whether to treat all
         // contributing sources as unfiltered (fan-out) or partition
         // them per `dispatchAppliesFilter` (single-source).
-        let dispatchDecision = Search.PlatformFilterScope.dispatch(for: source)
+        // #1042 Cluster 5 sub-1: thread the registry-derived
+        // fan-out source list through PlatformFilterScope.dispatch.
+        // `searchToolSourceEnumValues` (sans `"all"` + the
+        // appleSampleCode alias) is the production fan-out set
+        // assembled by the Serve composition root from
+        // makeProductionSourceRegistry().allEnabled. When the init was
+        // called without the list (legacy two-arg path), fall back to
+        // the historical 8-element literal.
+        let fanOutSources = !searchToolSourceEnumValues.isEmpty
+            ? searchToolSourceEnumValues.filter { id in
+                id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
+            }
+            : Search.PlatformFilterScope.allFanOutSources
+        let dispatchDecision = Search.PlatformFilterScope.dispatch(for: source, fanOutSources: fanOutSources)
         let notice = Search.PlatformFilterScope.partialNoticeMarkdown(
             platformDescriptions: Self.platformDescriptions(platform: platform, minSwift: minSwift),
             dispatch: dispatchDecision.kind,

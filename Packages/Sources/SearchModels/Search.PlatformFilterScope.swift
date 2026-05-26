@@ -135,16 +135,21 @@ extension Search {
         /// the result set. Used by the notice helper to decide what to
         /// say.
         ///
-        /// - `nil`, `"all"`, empty string → `.fanOut` over all 8 sources
+        /// - `nil`, `"all"`, empty string → `.fanOut` over the supplied
+        ///   `fanOutSources` (pre-#1042 Cluster 5 this defaulted to the
+        ///   8-element hardcoded `allFanOutSources` literal; post-fix
+        ///   the registry-aware caller supplies its own list derived
+        ///   from `Search.SourceLookup`)
         /// - `appleSampleCode` alias → `.singleSource(samples)` (canonicalised)
         /// - any known specific source → `.singleSource(source)`
         /// - unknown source → `.singleSource(source)` returned verbatim
         ///   (the tool throws later; the notice would be moot)
         public static func dispatch(
-            for source: String?
+            for source: String?,
+            fanOutSources: [String]
         ) -> (kind: Dispatch, sources: [String]) {
             guard let source, !source.isEmpty, source != "all" else {
-                return (.fanOut, allFanOutSources)
+                return (.fanOut, fanOutSources)
             }
             // Canonicalise sample-code alias to its prefix.
             if source == Shared.Constants.SourcePrefix.appleSampleCode {
@@ -154,6 +159,16 @@ extension Search {
                 )
             }
             return (.singleSource(source), [source])
+        }
+
+        /// Back-compat overload used by callers that haven't migrated
+        /// to the registry-aware `fanOutSources:` parameter. Defaults
+        /// to the v1.2.0 hardcoded `allFanOutSources` literal.
+        @available(*, deprecated, message: "Pass `fanOutSources:` explicitly; derive from Search.SourceLookup at composition time.")
+        public static func dispatch(
+            for source: String?
+        ) -> (kind: Dispatch, sources: [String]) {
+            dispatch(for: source, fanOutSources: allFanOutSources)
         }
 
         /// Deprecated alias used during the critic-pass rename. Returns

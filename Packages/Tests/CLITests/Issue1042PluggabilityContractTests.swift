@@ -176,12 +176,25 @@ struct Issue1042PluggabilityContractTests {
         #expect(Bool(false), "see disabled note")
     }
 
-    @Test(
-        "PlatformFilterScope.allFanOutSources is registry-derived",
-        .disabled("OUTSTANDING — Cluster 5: SearchModels/Search.PlatformFilterScope.swift L104-113 hardcodes 8 source-ids.")
-    )
+    @Test("PlatformFilterScope.dispatch(for:fanOutSources:) accepts a registry-derived list (legacy static-list overload deprecated)")
     func allFanOutSourcesIncludesFakeSource() {
-        #expect(Bool(false), "see disabled note")
+        // STATUS: PASSES (post-Cluster-5 sub-2). The legacy
+        // `PlatformFilterScope.dispatch(for:)` static (which always
+        // used the hardcoded 8-element `allFanOutSources` literal) is
+        // deprecated in favour of `dispatch(for:fanOutSources:)`.
+        // CompositeToolProvider's notice-decision call site now
+        // supplies `searchToolSourceEnumValues` (the post-Cluster-7
+        // registry-derived list, sans `"all"` + the appleSampleCode
+        // alias). A new registered source automatically extends the
+        // fan-out partition without editing PlatformFilterScope.
+        let registry = registryWithFake()
+        let fanOut = registry.allEnabled.map(\.definition.id)
+        let decision = Search.PlatformFilterScope.dispatch(for: nil, fanOutSources: fanOut)
+        if case .fanOut = decision.kind {
+            #expect(decision.sources.contains(ContractFakeSourceProvider.fakeID))
+        } else {
+            Issue.record("nil source should produce .fanOut dispatch")
+        }
     }
 
     // MARK: - Cluster 6: TeaserResults typed-per-source struct
