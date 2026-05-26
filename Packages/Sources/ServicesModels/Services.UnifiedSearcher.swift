@@ -43,8 +43,47 @@ extension Services {
             minWatchOS: String?,
             minVisionOS: String?,
             minSwift: String?,
-            appleImports: String?
+            appleImports: String?,
+            availableSources: [String]?
         ) async -> Services.Formatter.Unified.Input
+    }
+}
+
+// MARK: - Backward-compatible default (pre-`availableSources`)
+
+extension Services.UnifiedSearcher {
+    /// #1042 Cluster 2 wiring: registry-supplied source-id list for the
+    /// formatter's "Searched ALL sources" header + footer tip. Pre-fix
+    /// the conformer always built the list from the foundation-tier
+    /// static. Default nil here keeps existing callers compiling; the
+    /// composition root (MCP `CompositeToolProvider.handleSearchAll`)
+    /// supplies a registry-derived list to make the new source visible
+    /// in the formatter output.
+    public func searchAll(
+        query: String,
+        framework: String?,
+        limit: Int,
+        minIOS: String?,
+        minMacOS: String?,
+        minTvOS: String?,
+        minWatchOS: String?,
+        minVisionOS: String?,
+        minSwift: String?,
+        appleImports: String?
+    ) async -> Services.Formatter.Unified.Input {
+        await searchAll(
+            query: query,
+            framework: framework,
+            limit: limit,
+            minIOS: minIOS,
+            minMacOS: minMacOS,
+            minTvOS: minTvOS,
+            minWatchOS: minWatchOS,
+            minVisionOS: minVisionOS,
+            minSwift: minSwift,
+            appleImports: appleImports,
+            availableSources: nil
+        )
     }
 }
 

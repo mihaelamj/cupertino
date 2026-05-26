@@ -70,8 +70,11 @@ extension Services.Formatter.Unified {
                 output += "\n"
             }
 
-            // Standard tips (using shared constants for consistency with MCP)
-            let sources = Shared.Constants.Search.availableSources.joined(separator: ", ")
+            // Standard tips (using shared constants for consistency with MCP).
+            // #1042 Cluster 2 wiring: registry-supplied list wins; static
+            // is the back-compat fallback.
+            let sources = (input.availableSources ?? Shared.Constants.Search.availableSources)
+                .joined(separator: ", ")
             output += "_To narrow results, use source parameter: \(sources)_\n\n"
             output += Shared.Constants.Search.tipSemanticSearch + "\n\n"
             output += Shared.Constants.Search.tipPlatformFilters + "\n"

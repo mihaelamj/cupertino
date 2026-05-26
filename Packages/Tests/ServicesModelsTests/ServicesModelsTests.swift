@@ -383,8 +383,10 @@ struct ServicesProtocolWitnessTests {
     private struct StubUnified: Services.UnifiedSearcher {
         /// `#837` PR-2: the protocol gained an `appleImports` arg so the
         /// MCP `--apple-imports` filter applies on the fan-out path.
-        /// Stub ignores all args and returns an empty input — pure
-        /// conformance witness.
+        /// `#1042` Cluster 2: also gained `availableSources` so the
+        /// composition root can thread the registry-derived list to
+        /// the formatter. Stub ignores all args and returns an empty
+        /// input — pure conformance witness.
         func searchAll(
             query: String,
             framework: String?,
@@ -395,7 +397,8 @@ struct ServicesProtocolWitnessTests {
             minWatchOS: String?,
             minVisionOS: String?,
             minSwift: String?,
-            appleImports: String?
+            appleImports: String?,
+            availableSources: [String]?
         ) async -> Services.Formatter.Unified.Input {
             Services.Formatter.Unified.Input(limit: limit)
         }

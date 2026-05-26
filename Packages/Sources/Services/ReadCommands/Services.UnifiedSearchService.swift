@@ -65,7 +65,8 @@ extension Services {
             minWatchOS: String? = nil,
             minVisionOS: String? = nil,
             minSwift: String? = nil,
-            appleImports: String? = nil
+            appleImports: String? = nil,
+            availableSources: [String]? = nil
         ) async -> Services.Formatter.Unified.Input {
             async let docs = searchSource(
                 query: query,
@@ -199,6 +200,7 @@ extension Services {
                 swiftOrgResults: swiftOrg.results,
                 swiftBookResults: swiftBook.results,
                 packagesResults: packages.results,
+                availableSources: availableSources,
                 limit: limit,
                 degradedSources: degraded
             )

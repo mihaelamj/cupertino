@@ -1029,6 +1029,15 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         //
         // `#837` PR-2 expansion: `appleImports` is threaded into the
         // packages bucket only. The other 7 sources ignore it.
+        // #1042 Cluster 2 wiring (Services path): thread the registry-
+        // derived source-id list through to the formatter input so a
+        // registered new source appears in the "Searched ALL sources"
+        // header + the footer tip.
+        let unifiedAvailableSources: [String]? = searchToolSourceEnumValues.isEmpty
+            ? nil
+            : searchToolSourceEnumValues.filter { id in
+                id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
+            }
         let rawInput = await unifiedService.searchAll(
             query: query,
             framework: framework,
@@ -1039,7 +1048,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             minWatchOS: minWatchOS,
             minVisionOS: minVisionOS,
             minSwift: minSwift,
-            appleImports: appleImports
+            appleImports: appleImports,
+            availableSources: unifiedAvailableSources
         )
 
         // #648 (open-time path) — main's post-#642 retest found that the
@@ -1061,7 +1071,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         // the open-time path with no formatter changes.
         let input = Self.injectOpenTimeDegradation(
             into: rawInput,
-            disabledReason: searchIndexDisabledReason
+            disabledReason: searchIndexDisabledReason,
+            searchToolSourceEnumValues: searchToolSourceEnumValues
         )
 
         // Use shared formatter (identical to CLI --format markdown output)
@@ -1083,7 +1094,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     /// entries) without standing up the full `handleSearchAll` pipeline.
     static func injectOpenTimeDegradation(
         into input: Services.Formatter.Unified.Input,
-        disabledReason: String?
+        disabledReason: String?,
+        searchToolSourceEnumValues: [String] = []
     ) -> Services.Formatter.Unified.Input {
         guard let disabledReason else { return input }
 
@@ -1110,6 +1122,16 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             .filter { !existing.contains($0) }
             .map { Search.DegradedSource(name: $0, reason: disabledReason) }
 
+        // #1042 Cluster 2 wiring (MCP path): thread the registry-derived
+        // source-id list through to the formatter so a registered new
+        // source appears in the "Searched ALL sources" header + the
+        // footer tip. Strip the "all" + appleSampleCode alias tokens
+        // the schema enum carries but the formatter doesn't display.
+        let formatterAvailableSources: [String]? = searchToolSourceEnumValues.isEmpty
+            ? nil
+            : searchToolSourceEnumValues.filter { id in
+                id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
+            }
         return Services.Formatter.Unified.Input(
             docResults: input.docResults,
             archiveResults: input.archiveResults,
@@ -1119,6 +1141,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             swiftOrgResults: input.swiftOrgResults,
             swiftBookResults: input.swiftBookResults,
             packagesResults: input.packagesResults,
+            availableSources: formatterAvailableSources,
             limit: input.limit,
             degradedSources: input.degradedSources + synthesised
         )

@@ -35,6 +35,18 @@ extension Services.Formatter.Unified {
             }
         }
 
+        /// #1042 Cluster 2 wiring: composition-root-supplied list of
+        /// source IDs for the formatter's footer tip ("_To narrow
+        /// results, use `source` parameter: …_") + the "Searched ALL
+        /// sources" header. When nil, formatters fall back to
+        /// `Shared.Constants.Search.availableSources` (the historical
+        /// foundation-tier static). Registry-aware composition roots
+        /// supply the list from
+        /// `makeProductionSourceRegistry().allEnabled.map(\.definition.id)`,
+        /// so a new registered source shows up in both the header and
+        /// the tip automatically.
+        public let availableSources: [String]?
+
         public let limit: Int // The limit used per source, for teaser calculation
         /// Per-source configuration errors (#640). Empty on the happy
         /// path; populated when a source returned 0 because it failed
@@ -56,6 +68,7 @@ extension Services.Formatter.Unified {
             swiftBookResults: [Search.Result] = [],
             packagesResults: [Search.Result] = [],
             extras: [String: ExtraSource] = [:],
+            availableSources: [String]? = nil,
             limit: Int = 10,
             degradedSources: [Search.DegradedSource] = []
         ) {
@@ -68,6 +81,7 @@ extension Services.Formatter.Unified {
             self.swiftBookResults = swiftBookResults
             self.packagesResults = packagesResults
             self.extras = extras
+            self.availableSources = availableSources
             self.limit = limit
             self.degradedSources = degradedSources
         }

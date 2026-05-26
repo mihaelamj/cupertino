@@ -63,12 +63,16 @@ extension Services.Formatter.Unified {
             // searched set when degradedSources is non-empty, and keeps
             // the original "ALL sources" wording on the happy path so
             // existing clients don't have to special-case anything.
+            // #1042 Cluster 2 wiring: registry-supplied list wins; fall
+            // back to the foundation-tier static when the caller didn't
+            // thread it through.
+            let availableSourcesList = input.availableSources ?? Shared.Constants.Search.availableSources
             let degradedNames = Set(input.degradedSources.map(\.name))
             if degradedNames.isEmpty {
-                let allSources = Shared.Constants.Search.availableSources.joined(separator: ", ")
+                let allSources = availableSourcesList.joined(separator: ", ")
                 output += "_Searched ALL sources: \(allSources)_\n\n"
             } else {
-                let actuallySearched = Shared.Constants.Search.availableSources
+                let actuallySearched = availableSourcesList
                     .filter { !degradedNames.contains($0) }
                 let label = actuallySearched.isEmpty ? "(none)" : actuallySearched.joined(separator: ", ")
                 output += "_Searched: \(label)_\n\n"
@@ -105,8 +109,8 @@ extension Services.Formatter.Unified {
                 output += "\n"
             }
 
-            // Standard tips
-            let sources = Shared.Constants.Search.availableSources.joined(separator: ", ")
+            // Standard tips — registry-supplied list wins.
+            let sources = availableSourcesList.joined(separator: ", ")
             output += "_To narrow results, use `source` parameter: \(sources)_\n\n"
             output += Shared.Constants.Search.tipSemanticSearch + "\n\n"
             output += Shared.Constants.Search.tipPlatformFilters + "\n"
