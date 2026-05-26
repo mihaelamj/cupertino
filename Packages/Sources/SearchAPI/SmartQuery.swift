@@ -72,9 +72,33 @@ extension Search {
         private let fetchers: [any CandidateFetcher]
         private let rrfK: Double
 
-        public init(fetchers: [any CandidateFetcher], rrfK: Double = Self.defaultRRFK) {
+        /// #1042 Cluster 3 pluggability anchor: instance-level override
+        /// for the RRF fusion weights table. Composition roots that
+        /// know the registered source set can supply a registry-derived
+        /// dict (e.g. derived from `Search.SourceProperties.searchQuality`)
+        /// at init time. When nil / empty, the historical
+        /// `Self.sourceWeights` static literal is used as default.
+        private let sourceWeightsOverride: [String: Double]
+
+        public init(
+            fetchers: [any CandidateFetcher],
+            rrfK: Double = Self.defaultRRFK,
+            sourceWeightsOverride: [String: Double] = [:]
+        ) {
             self.fetchers = fetchers
             self.rrfK = rrfK
+            self.sourceWeightsOverride = sourceWeightsOverride
+        }
+
+        /// Look up the fusion weight for a source: caller-supplied
+        /// override wins, then the static literal, then 1.0 fallback.
+        /// Public so test surfaces can mirror the lookup at the
+        /// candidate.source granularity.
+        public func weight(forSource sourceID: String) -> Double {
+            if let override = sourceWeightsOverride[sourceID] {
+                return override
+            }
+            return Self.sourceWeights[sourceID] ?? 1.0
         }
 
         /// Returns true when `query` looks like a single Swift identifier:
@@ -193,7 +217,7 @@ extension Search {
                 let batch = contribution.candidates
                 for (rank, candidate) in batch.enumerated() {
                     let key = "\(candidate.source)\u{1F}\(candidate.identifier)"
-                    let weight = Self.sourceWeights[candidate.source] ?? 1.0
+                    let weight = weight(forSource: candidate.source)
                     let increment = weight / (rrfK + Double(rank + 1))
                     if let existing = fused[key] {
                         fused[key] = (existing.candidate, existing.score + increment)

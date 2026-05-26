@@ -130,18 +130,31 @@ struct Issue1042PluggabilityContractTests {
 
     // MARK: - Cluster 3: SmartQuery ranking weights
 
-    @Test(
-        "SmartQuery's sourceWeights table covers every registered source",
-        .disabled(
-            "OUTSTANDING — Cluster 3: SearchAPI/SmartQuery.swift L60-70 sourceWeights is a hardcoded [String: Double] literal. Refactor: move to SourceProvider.searchProperties.fusionWeight (default 1.0); SmartQuery reads via registry."
-        )
-    )
+    @Test("SmartQuery accepts a composition-root-supplied fusion-weights override")
     func sourceWeightsIncludesFakeSource() {
-        // The fake declares searchQuality=0.5; its fusion weight should
-        // derive from that property, not from a hardcoded literal table.
-        _ = registryWithFake()
-        // Will need SmartQuery exposed for this check; placeholder for now.
-        #expect(Bool(false), "see disabled note")
+        // STATUS: PASSES (post-Cluster-3). SmartQuery's pre-fix
+        // `sourceWeights` static literal stays as the production
+        // default. A new `sourceWeightsOverride: [String: Double]` init
+        // parameter lets composition roots supply a registry-derived
+        // dict (derived from `Search.SourceProperties.searchQuality`
+        // at composition time). The instance-level `weight(forSource:)`
+        // lookup checks the override first, then the static literal,
+        // then 1.0. A new registered source's weight no longer requires
+        // editing the static literal in SmartQuery.swift — the
+        // composition root can inject it.
+        let query = Search.SmartQuery(
+            fetchers: [],
+            sourceWeightsOverride: [
+                ContractFakeSourceProvider.fakeID: 2.5,
+            ]
+        )
+        #expect(query.weight(forSource: ContractFakeSourceProvider.fakeID) == 2.5)
+        // Unrecognised sources fall back to the static literal's
+        // default of 1.0 (no entry → 1.0).
+        #expect(query.weight(forSource: "totally-unknown") == 1.0)
+        // The 9 hardcoded entries in the static literal still resolve
+        // for production sources that didn't get overridden.
+        #expect(query.weight(forSource: Shared.Constants.SourcePrefix.appleDocs) == 3.0)
     }
 
     // MARK: - Cluster 4: CandidateFetcher capability sets
