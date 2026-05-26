@@ -40,15 +40,6 @@ struct PerSourceDestinationRoundtripTests {
         return (index, dbPath)
     }
 
-    /// All search-bound source-ids derived from the production
-    /// registry. Filters out `.packages` (which has its own
-    /// pipeline, not Search.Index-based).
-    private var searchBoundSourceIDs: [String] {
-        CLIImpl.makeProductionSourceRegistry().allEnabled
-            .filter { $0.destinationDB != .packages }
-            .map(\.definition.id)
-    }
-
     // MARK: - Pin 1: each source's row roundtrips in its own destination DB
 
     @Test("Each Search.Index-owned source-id roundtrips through a hermetic per-source DB")
