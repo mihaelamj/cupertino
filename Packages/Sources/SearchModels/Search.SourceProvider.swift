@@ -147,6 +147,18 @@ extension Search {
         /// below returns nil. The CLI distinguishes "no strategy"
         /// from "unknown source-id" so the user gets a useful error.
         func makeFetchStrategy() -> (any Search.SourceFetchStrategy)?
+
+        /// 2026-05-26 audit #1055: per-source read strategy. Pre-fix
+        /// `Services.ReadService.readFrom` had a 3-arm bucket dispatch
+        /// over `Source` (`.docs / .samples / .packages`). Adding a
+        /// source with a new backend required a new arm. Post-fix the
+        /// provider returns its own `Search.SourceReadStrategy` and
+        /// `Services.ReadService` iterates the registry. The default
+        /// extension below returns nil; per-source targets override
+        /// (6 docs-tier sources return `Search.DocsReadStrategy`,
+        /// `SampleCodeSource` returns `SamplesReadStrategy`,
+        /// `PackagesSource` returns `PackagesReadStrategy`).
+        func makeReadStrategy() -> (any Search.SourceReadStrategy)?
     }
 
     /// Which dispatcher runner a source uses for `cupertino search` /
