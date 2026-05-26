@@ -34,6 +34,17 @@ extension Indexer {
             /// fallback switch handles the 5 historical sources.
             public let directoryByKey: [String: URL?]
 
+            /// #1059: source-ids the caller has selected for this save
+            /// (via `--source X --source Y` or `--all`). `nil` means
+            /// "no narrowing — probe every docs-tier optional source"
+            /// (legacy callers + `--all` path). Non-nil narrows the
+            /// optional-source presence checks in `run` to just the
+            /// sources in scope so a user running `cupertino save
+            /// --source apple-docs` doesn't see `ℹ️  Swift Evolution
+            /// directory not found…` info-line spam for the 3 other
+            /// docs-tier sources they didn't ask for.
+            public let selectedSourceIDs: Set<String>?
+
             public init(
                 baseDir: URL,
                 docsDir: URL? = nil,
@@ -43,7 +54,8 @@ extension Indexer {
                 higDir: URL? = nil,
                 searchDB: URL? = nil,
                 clear: Bool = false,
-                directoryByKey: [String: URL?] = [:]
+                directoryByKey: [String: URL?] = [:],
+                selectedSourceIDs: Set<String>? = nil
             ) {
                 self.baseDir = baseDir
                 self.docsDir = docsDir
@@ -54,6 +66,7 @@ extension Indexer {
                 self.searchDB = searchDB
                 self.clear = clear
                 self.directoryByKey = directoryByKey
+                self.selectedSourceIDs = selectedSourceIDs
             }
         }
 

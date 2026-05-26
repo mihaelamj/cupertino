@@ -150,7 +150,10 @@ extension CLIImpl.Command.Save {
             higDir: nil,
             searchDB: resolvedSearchDB,
             clear: clear,
-            directoryByKey: saveDirectoryByKey
+            directoryByKey: saveDirectoryByKey,
+            // #1059: thread the selection through so DocsService gates
+            // its optional-dir presence-check info lines by source-id.
+            selectedSourceIDs: selectedSourceIDs
         )
 
         // Path-DI composition sub-root (#535): catalog actor takes
