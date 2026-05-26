@@ -61,35 +61,16 @@ extension Logging {
 
         // MARK: - Category
 
-        /// Log categories for filtering
-        public enum Category: String, Sendable {
-            case crawler
-            case mcp
-            case search
-            case cli
-            case transport
-            case evolution
-            case samples
-            case packages
-            case archive
-            case hig
-
-            /// Get the os.Logger for this category
-            var osLogger: os.Logger {
-                switch self {
-                case .crawler: return Logging.Logger.crawler
-                case .mcp: return Logging.Logger.mcp
-                case .search: return Logging.Logger.search
-                case .cli: return Logging.Logger.cli
-                case .transport: return Logging.Logger.transport
-                case .evolution: return Logging.Logger.evolution
-                case .samples: return Logging.Logger.samples
-                case .packages: return Logging.Logger.packageDownloader
-                case .archive: return Logging.Logger.archive
-                case .hig: return Logging.Logger.hig
-                }
-            }
-        }
+        /// 2026-05-26 post-#1056 pluggability follow-up: the previous
+        /// shape was a closed `enum Category: String` that duplicated
+        /// `LoggingModels.Logging.Category` (the post-Cluster-10
+        /// RawRepresentable struct). The duplicate carried a 10-arm
+        /// `osLogger` switch + `LiveRecording.categoryMap` mirrored
+        /// the rawValues again, so adding a new source-tier category
+        /// meant editing 4 sites. Post-fix everything routes through
+        /// the foundation-tier struct + `Logging.Logger.osLogger(for:)`
+        /// dict lookup; the inner enum is gone.
+        public typealias Category = LoggingModels.Logging.Category
 
         // MARK: - Configuration
 
@@ -373,7 +354,15 @@ extension Logging {
         }
 
         private func logToOSLog(_ message: String, level: Level, category: Category) {
-            let logger = category.osLogger
+            // `LoggingModels.Logging.Category.packages.rawValue == "packages"`
+            // but the production os.Logger channel is registered under
+            // `"package-downloader"` (historical naming, kept for
+            // compatibility with existing `log show --predicate
+            // 'category == "package-downloader"'` filter strings).
+            // Route the one renamed category here; everything else
+            // resolves directly via rawValue.
+            let channelRawValue = category.rawValue == "packages" ? "package-downloader" : category.rawValue
+            let logger = Logging.Logger.osLogger(for: channelRawValue)
             switch level {
             case .debug:
                 logger.debug("\(message, privacy: .public)")

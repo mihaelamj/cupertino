@@ -7,17 +7,15 @@ import TestSupport
 
 @Test("Logger subsystem and categories are configured correctly")
 func loggerConfiguration() {
-    // Verify loggers are accessible and initialized
-    // Just accessing them is sufficient - they're static lets so they always exist
-    _ = Logging.Logger.crawler
-    _ = Logging.Logger.mcp
-    _ = Logging.Logger.search
-    _ = Logging.Logger.cli
-    _ = Logging.Logger.transport
-    _ = Logging.Logger.evolution
-    _ = Logging.Logger.samples
-
-    // Test passes if we can access all loggers without error
+    // 2026-05-26 post-#1056: the previous shape was a closed set of
+    // `public static let <category>` os.Logger instances on
+    // `Logging.Logger`. Post-fix the source of truth is a dict
+    // keyed by category rawValue; this test pins that every shipped
+    // category resolves via the dict.
+    for category in Logging.Unified.Category.allKnownCases {
+        let raw = category.rawValue == "packages" ? "package-downloader" : category.rawValue
+        _ = Logging.Logger.osLogger(for: raw)
+    }
     #expect(Bool(true))
 }
 

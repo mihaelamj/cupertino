@@ -5,44 +5,57 @@ import SharedConstants
 
 // MARK: - Logger Infrastructure
 
-/// Centralized logging infrastructure for Cupertino using os.log
-/// Provides subsystem-level organization and severity-based filtering
+/// Centralized logging infrastructure for Cupertino using os.log.
+/// Provides subsystem-level organization and severity-based filtering.
+///
+/// 2026-05-26 post-#1056 pluggability follow-up: the previous shape
+/// declared 10 hardcoded `public static let <category>` os.Logger
+/// instances plus a closed `Logging.Unified.Category` enum + a
+/// 10-arm switch + a 10-entry `LiveRecording.categoryMap` dict —
+/// 4 edit-points per new source-tier category. Post-fix the source
+/// of truth is a single dict keyed by category rawValue; the public
+/// API is `Logging.Logger.osLogger(for:)` and consumers reach for
+/// it via `LoggingModels.Logging.Category` raw values. Adding a
+/// new source's category is one rawValue declaration in
+/// `LoggingModels.Logging.Category` (post-#1042 Cluster 10 the
+/// struct accepts arbitrary rawValues); unknown categories
+/// fall through to `.cli`.
 extension Logging {
     public enum Logger {
-        // MARK: - Subsystems
+        /// Main subsystem identifier (`com.cupertino.cli` by default).
+        public static let subsystem = Shared.Constants.Logging.subsystem
 
-        /// Main subsystem identifier
-        private static let subsystem = Shared.Constants.Logging.subsystem
+        /// One os.Logger per shipped category. The composition root
+        /// can override entries at construction time via
+        /// `Logging.Unified(...,osLoggers:)` for callers that want a
+        /// custom subsystem per category (e.g. a test harness that
+        /// re-routes to its own subsystem to keep `log show` slices
+        /// separable from the production binary's traffic).
+        public static let osLoggers: [String: os.Logger] = {
+            let categories = [
+                "crawler", "mcp", "search", "cli", "transport",
+                "evolution", "samples", "package-downloader", "archive", "hig",
+            ]
+            var dict: [String: os.Logger] = [:]
+            for category in categories {
+                dict[category] = os.Logger(subsystem: subsystem, category: category)
+            }
+            return dict
+        }()
 
-        /// Logger for crawler operations
-        public static let crawler = os.Logger(subsystem: subsystem, category: "crawler")
-
-        /// Logger for MCP server operations
-        public static let mcp = os.Logger(subsystem: subsystem, category: "mcp")
-
-        /// Logger for search index operations
-        public static let search = os.Logger(subsystem: subsystem, category: "search")
-
-        /// Logger for CLI operations
-        public static let cli = os.Logger(subsystem: subsystem, category: "cli")
-
-        /// Logger for transport layer (stdio, JSON-RPC)
-        public static let transport = os.Logger(subsystem: subsystem, category: "transport")
-
-        /// Logger for Swift Evolution operations
-        public static let evolution = os.Logger(subsystem: subsystem, category: "evolution")
-
-        /// Logger for sample code downloads
-        public static let samples = os.Logger(subsystem: subsystem, category: "samples")
-
-        /// Logger for package documentation downloads
-        public static let packageDownloader = os.Logger(subsystem: subsystem, category: "package-downloader")
-
-        /// Logger for Apple archive documentation operations
-        public static let archive = os.Logger(subsystem: subsystem, category: "archive")
-
-        /// Logger for Human Interface Guidelines operations
-        public static let hig = os.Logger(subsystem: subsystem, category: "hig")
+        /// Look up the os.Logger for `category`. Unknown categories
+        /// (a future source registering its own rawValue outside the
+        /// 10 shipped) fall through to the `.cli` bucket — the safe
+        /// default for "general CLI output" instead of crashing.
+        ///
+        /// Internal categories that don't have a direct
+        /// `LoggingModels.Logging.Category.<X>` rawValue alias (e.g.
+        /// `.packages` → `"packages"` resolves to the
+        /// `package-downloader` subsystem channel) are routed via
+        /// the `LiveRecording`-side rawValue map.
+        public static func osLogger(for categoryRawValue: String) -> os.Logger {
+            osLoggers[categoryRawValue] ?? osLoggers["cli"] ?? os.Logger(subsystem: subsystem, category: "cli")
+        }
     }
 }
 
