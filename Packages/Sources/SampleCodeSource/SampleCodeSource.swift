@@ -79,4 +79,12 @@ public struct SampleCodeSource: Search.SourceProvider {
     public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? {
         SampleCodeFetchStrategy()
     }
+
+    /// 2026-05-26 audit #1055: per-source read strategy. Returns nil
+    /// when the identifier doesn't match a sample project / file so
+    /// `Services.ReadService`'s auto-source flow can try other
+    /// sources.
+    public func makeReadStrategy() -> (any Search.SourceReadStrategy)? {
+        SamplesReadStrategy()
+    }
 }

@@ -73,6 +73,13 @@ public struct PackagesSource: Search.SourceProvider {
     public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? {
         PackagesFetchStrategy()
     }
+
+    /// 2026-05-26 audit #1055: per-source read strategy. Reads
+    /// `<owner>/<repo>/<relpath>` identifiers; returns nil otherwise
+    /// so `Services.ReadService`'s auto-source flow can continue.
+    public func makeReadStrategy() -> (any Search.SourceReadStrategy)? {
+        PackagesReadStrategy()
+    }
 }
 
 // MARK: - View-source no-op concretes
