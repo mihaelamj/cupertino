@@ -95,19 +95,27 @@ extension Logging {
             }
         }
 
+        // #1042 Cluster 10: post-LoggingModels Category enum→struct
+        // conversion, this mapping is a dict lookup keyed by the
+        // LoggingModels.Logging.Category raw value. Unknown categories
+        // (a future source registering its own category outside the 10
+        // shipped) fall through to the `.cli` bucket — the safe default
+        // for "general CLI output" rather than crashing in a switch.
+        private static let categoryMap: [LoggingModels.Logging.Category: Logging.Unified.Category] = [
+            .crawler: .crawler,
+            .mcp: .mcp,
+            .search: .search,
+            .cli: .cli,
+            .transport: .transport,
+            .evolution: .evolution,
+            .samples: .samples,
+            .packages: .packages,
+            .archive: .archive,
+            .hig: .hig,
+        ]
+
         private func mapCategory(_ category: LoggingModels.Logging.Category) -> Logging.Unified.Category {
-            switch category {
-            case .crawler: return .crawler
-            case .mcp: return .mcp
-            case .search: return .search
-            case .cli: return .cli
-            case .transport: return .transport
-            case .evolution: return .evolution
-            case .samples: return .samples
-            case .packages: return .packages
-            case .archive: return .archive
-            case .hig: return .hig
-            }
+            Self.categoryMap[category] ?? .cli
         }
     }
 }

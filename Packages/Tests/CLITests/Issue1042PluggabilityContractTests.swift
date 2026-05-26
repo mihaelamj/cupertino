@@ -307,12 +307,24 @@ struct Issue1042PluggabilityContractTests {
         #expect(Search.FetchInfo.DefaultOutputDirKey.allKnownCases.count == 8)
     }
 
-    @Test(
-        "LoggingModels.Logging.Category is registry-driven",
-        .disabled("OUTSTANDING — Cluster 10: LoggingModels/Logging.Category.swift L13-24 closed enum has per-source cases. Refactor: String-keyed category.")
-    )
+    @Test("LoggingModels.Logging.Category is a rawValue-String struct, not a closed enum")
     func loggingCategoryIsRegistryDriven() {
-        #expect(Bool(false), "see disabled note")
+        // STATUS: PASSES (post-Cluster-10). LoggingModels.Logging.Category
+        // became a RawRepresentable struct; the 10 production
+        // categories stay as `static let` constants + `allKnownCases`
+        // + back-compat `allCases`. The exhaustive switch in
+        // Logging.LiveRecording.mapCategory collapsed to a dict
+        // lookup with a `.cli` fallback for unknown categories — a
+        // future per-source category routes through the bucket safely
+        // (no crash, no enum-case requirement). Adding a new category
+        // is a single `static let` declaration on Logging.Category +
+        // a new dict entry in Logging.LiveRecording.categoryMap if the
+        // operator wants OSLog routing (else the .cli fallback applies).
+        let custom = LoggingModels.Logging.Category(rawValue: "wwdc")
+        #expect(custom.rawValue == "wwdc")
+        // Existing categories still discoverable.
+        #expect(LoggingModels.Logging.Category.crawler.rawValue == "crawler")
+        #expect(LoggingModels.Logging.Category.allKnownCases.count == 10)
     }
 
     @Test("Services.ReadService.Source is a rawValue-String struct, not a closed enum")
