@@ -277,23 +277,38 @@ extension CLIImpl.Command {
         /// `--source all` iteration. Mirrors pre-#1031
         /// `FetchType.allTypes` (which was `webCrawlTypes` +
         /// `directFetchTypes` covering 9 cases including BOTH `.code`
-        /// and `.samples`). Includes the 8 fetchable registry sources
-        /// + `availability` maintenance token + `apple-sample-code`
-        /// legacy bundle. `swift-book` view-source is NOT in this list:
-        /// its pages are co-crawled by SwiftOrgStrategy via URL-prefix
-        /// tagging, so iterating `swift-org` already covers them; a
-        /// separate `swift-book` leg would double-fetch.
-        private static let allFetchableSources: [String] = [
-            Shared.Constants.SourcePrefix.appleDocs,
-            Shared.Constants.SourcePrefix.swiftOrg,
-            Shared.Constants.SourcePrefix.swiftEvolution,
-            Shared.Constants.SourcePrefix.packages,
-            Shared.Constants.SourcePrefix.appleSampleCode,
-            Shared.Constants.SourcePrefix.samples,
-            Shared.Constants.SourcePrefix.appleArchive,
-            Shared.Constants.SourcePrefix.hig,
-            "availability",
-        ]
+        /// and `.samples`). #1042 Cluster 8 sub-3: derived from
+        /// the production source registry at call time. Every
+        /// `Search.SourceProvider` with a non-nil `fetchInfo` ships a
+        /// fetch leg; we add the `availability` maintenance token + the
+        /// `apple-sample-code` legacy alias on top. `swift-book`
+        /// view-source remains opted-out (its pages are co-crawled by
+        /// SwiftOrgStrategy via URL-prefix tagging; a separate
+        /// `swift-book` leg would double-fetch) — encoded by checking
+        /// each provider's `fetchInfo != nil`, since SwiftBookSource
+        /// declares `fetchInfo == nil`.
+        ///
+        /// Static helper because `runAllFetches` is called on `self`
+        /// but iterates source-ids without needing instance state.
+        private static func allFetchableSources() -> [String] {
+            let registry = CLIImpl.makeProductionSourceRegistry()
+            var ids = registry.allEnabled
+                .filter { $0.fetchInfo != nil }
+                .map(\.definition.id)
+            // appleSampleCode is the legacy alias for samples; the
+            // dispatch in `fetch --source apple-sample-code` canonicalises
+            // to `samples`. Listing both here preserves the pre-#1042
+            // dual-keyed behaviour for the `--source all` enumerator.
+            if !ids.contains(Shared.Constants.SourcePrefix.appleSampleCode) {
+                ids.append(Shared.Constants.SourcePrefix.appleSampleCode)
+            }
+            // `availability` is a non-source maintenance token (refreshes
+            // the bundled SDK availability data file). Not registered as
+            // a SourceProvider; threaded through the fetch surface as a
+            // sibling leg.
+            ids.append("availability")
+            return ids
+        }
 
         /// Lookup the user-facing display name for a source-id. For
         /// registered providers, reads from the registry's FetchInfo;
@@ -362,7 +377,7 @@ extension CLIImpl.Command {
             let baseCommand = self
 
             try await withThrowingTaskGroup(of: (String, Result<Void, Error>).self) { group in
-                for sourceID in Self.allFetchableSources {
+                for sourceID in Self.allFetchableSources() {
                     group.addTask {
                         await Self.fetchSingleSource(sourceID, baseCommand: baseCommand)
                     }

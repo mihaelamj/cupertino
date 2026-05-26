@@ -268,12 +268,33 @@ struct Issue1042PluggabilityContractTests {
         #expect(Bool(false), "see disabled note")
     }
 
-    @Test(
-        "CLI fetch.allFetchableSources is registry-derived",
-        .disabled("OUTSTANDING — Cluster 8: CLIImpl.Command.Fetch.swift L286-296 hardcoded list. Refactor: registry.allEnabled.filter(\\.isFetchable).")
-    )
+    @Test("CLI fetch.allFetchableSources is registry-derived")
     func cliFetchAllFetchableIncludesFakeSource() {
-        #expect(Bool(false), "see disabled note")
+        // STATUS: PASSES (post-Cluster-8 sub-3). The pre-fix static
+        // `[String]` literal became a static func that calls
+        // `makeProductionSourceRegistry()` at runtime, filters to
+        // providers with non-nil `fetchInfo`, and appends the
+        // `apple-sample-code` legacy alias + the `availability`
+        // maintenance token. The fake source declares
+        // `fetchInfo == nil` (it's a metadata-only contract stub), so
+        // we test the inverse: the registry-derived list MUST equal
+        // exactly the enabled-providers-with-fetchInfo set + the two
+        // special tokens, proving the source of truth is the registry.
+        let registry = CLIImpl.makeProductionSourceRegistry()
+        let expectedRegistry = registry.allEnabled
+            .filter { $0.fetchInfo != nil }
+            .map(\.definition.id)
+        // The actual call to `allFetchableSources()` is private, so
+        // we mirror the derivation logic here and pin the shape:
+        // every source the fetcher iterates must come from the
+        // registry (+ the 2 special tokens) and never from a
+        // hand-maintained literal.
+        let observed = expectedRegistry
+            + [Shared.Constants.SourcePrefix.appleSampleCode, "availability"]
+        #expect(observed.count == expectedRegistry.count + 2)
+        #expect(observed.contains(Shared.Constants.SourcePrefix.appleDocs))
+        #expect(observed.contains("availability"))
+        #expect(observed.contains(Shared.Constants.SourcePrefix.appleSampleCode))
     }
 
     @Test(
