@@ -85,4 +85,85 @@ extension CLIImpl {
     public static func bundleRequiredDescriptors() -> [Shared.Models.DatabaseDescriptor] {
         makeProductionSourceRegistry().allEnabled.map(\.destinationDB)
     }
+
+    // MARK: - #1045 composition-root helpers
+
+    //
+    // Each helper below is named + pure: given a `Search.SourceRegistry`
+    // (or a `Shared.Paths` for path-aware helpers), return the dict the
+    // production CLI command should pass to its consumer. The CLI
+    // command paths invoke these helpers; the behavioural test suite
+    // (`Issue1045BehavioralWiringTests`) invokes them too. A separate
+    // grep-based regression test (`Issue1045ProductionCallSiteTests`)
+    // pins the production CLI files to actually call each helper, so
+    // a refactor that drops the call breaks tests immediately.
+
+    /// #1045 Gap 1: build the per-source `rankWeight` dict the CLI
+    /// passes to `Search.SmartQuery.init(sourceWeightsOverride:)`.
+    /// Pre-fix this assembly was inline in `CLIImpl.Command.Search.run`;
+    /// extracted to make the production wiring testable without
+    /// invoking the full command shell.
+    public static func makeSmartQuerySourceWeights(
+        registry: Search.SourceRegistry
+    ) -> [String: Double] {
+        Dictionary(
+            uniqueKeysWithValues: registry.allEnabled.map { provider in
+                (provider.definition.id, provider.definition.properties.rankWeight)
+            }
+        )
+    }
+
+    /// #1045 Gap 2: build the source-id list the CLI passes to every
+    /// formatter's `availableSources:` parameter (used to render the
+    /// always-present "All sources you can search" block in
+    /// `Services.Formatter.Footer.Search`).
+    public static func makeFormatterAvailableSources(
+        registry: Search.SourceRegistry
+    ) -> [String] {
+        registry.allEnabled.map(\.definition.id)
+    }
+
+    /// #1045 Gap 4: build the per-source directory dict the CLI passes
+    /// to `Indexer.DocsService.Request.directoryByKey` and that
+    /// `Search.DocsIndexing.Input.directoryByKey` carries through to
+    /// `CLIImpl.Command.Save.Indexers.resolveSourceDirectory(for:input:)`.
+    /// Each provider's `fetchInfo?.defaultOutputDirKey.rawValue`
+    /// resolves against `Shared.Paths.directory(named:)`.
+    public static func makeDocsIndexingDirectoryByKey(
+        registry: Search.SourceRegistry,
+        paths: Shared.Paths
+    ) -> [String: URL?] {
+        Dictionary(
+            uniqueKeysWithValues: registry.allEnabled.map { provider in
+                let dir: URL? = provider.fetchInfo.flatMap { fi in
+                    paths.directory(named: fi.defaultOutputDirKey.rawValue)
+                }
+                return (provider.definition.id, dir)
+            }
+        )
+    }
+
+    /// #1045 Gap 3: build the source-id → DocKind rawValue dict
+    /// (string-typed; SearchSQLite resolves to `DocKind` via
+    /// `init(rawValue:)`). Each provider's `defaultDocKindRawValue` on
+    /// its `Search.SourceDefinition` populates the dict; sources with
+    /// nil rawValue (e.g. apple-docs's bespoke classifier path) are
+    /// absent.
+    ///
+    /// Today this helper is consumed by `Search.SourceLookup`
+    /// (via `SourceLookup.docKindRawValuesByID`) which the Search.Index
+    /// actor holds; the helper exists for symmetry with the other
+    /// Gap helpers + so the grep test can pin the CLI's construction
+    /// pattern.
+    public static func makeDocKindRawValuesByID(
+        registry: Search.SourceRegistry
+    ) -> [String: String] {
+        var result: [String: String] = [:]
+        for provider in registry.allEnabled {
+            if let rawValue = provider.definition.defaultDocKindRawValue {
+                result[provider.definition.id] = rawValue
+            }
+        }
+        return result
+    }
 }

@@ -110,21 +110,14 @@ extension CLIImpl.Command.Save {
         Cupertino.Context.composition.logging.recording.info("🔨 Building Search Index\n")
 
         // #1045 Gap 4 wiring: build per-source dir map from the
-        // production source registry. Each provider's
-        // `fetchInfo?.defaultOutputDirKey.rawValue` is the dirname;
-        // `Shared.Paths.directory(named:)` (Cluster 13) resolves it
-        // against the effective base. A new source's `fetchInfo`
-        // automatically extends this dict — no edit to the Save
-        // composition surface required.
+        // production source registry. Production call site uses
+        // `CLIImpl.makeDocsIndexingDirectoryByKey(...)` so the
+        // assembly logic is single-sourced + behavioural tests can
+        // exercise it directly.
         let savePaths = Shared.Paths(baseDirectory: effectiveBase)
-        let saveRegistry = CLIImpl.makeProductionSourceRegistry()
-        let saveDirectoryByKey: [String: URL?] = Dictionary(
-            uniqueKeysWithValues: saveRegistry.allEnabled.map { provider in
-                let dir: URL? = provider.fetchInfo.flatMap { fi in
-                    savePaths.directory(named: fi.defaultOutputDirKey.rawValue)
-                }
-                return (provider.definition.id, dir)
-            }
+        let saveDirectoryByKey = CLIImpl.makeDocsIndexingDirectoryByKey(
+            registry: CLIImpl.makeProductionSourceRegistry(),
+            paths: savePaths
         )
 
         let request = Indexer.DocsService.Request(

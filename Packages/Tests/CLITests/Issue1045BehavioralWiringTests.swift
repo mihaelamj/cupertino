@@ -92,22 +92,18 @@ struct Issue1045BehavioralWiringTests {
 
     // MARK: - Gap 1 — SmartQuery rankWeight wiring
 
-    @Test("Gap 1 — registered provider's rankWeight reaches SmartQuery.weight(forSource:)")
+    @Test("Gap 1 — `CLIImpl.makeSmartQuerySourceWeights` produces the dict SmartQuery consumes")
     func gap1_rankWeightThreadsToSmartQuery() {
-        // STATUS: behavioural. Fake declares rankWeight=2.7. The
-        // production composition root in CLIImpl.Command.Search.run
-        // (commit 31728e04) builds a [String: Double] dict from
-        // registry.allEnabled.map(\.definition.properties.rankWeight)
-        // and passes it via SmartQuery.init(sourceWeightsOverride:).
-        // We mirror that wiring in-test and assert the fake's weight
-        // round-trips.
+        // STATUS: behavioural. The production CLI path
+        // (CLIImpl.Command.Search.run) calls
+        // `CLIImpl.makeSmartQuerySourceWeights(registry:)` — the same
+        // helper we call here. The grep test
+        // (Issue1045ProductionCallSiteTests) pins the CLI source file
+        // to keep calling the helper; this test pins the helper's
+        // behaviour. Together they cover the wiring end-to-end.
         let fake = GapWiringFake(rankWeight: 2.7)
         let registry = registryWith(fake)
-        let weights: [String: Double] = Dictionary(
-            uniqueKeysWithValues: registry.allEnabled.map { provider in
-                (provider.definition.id, provider.definition.properties.rankWeight)
-            }
-        )
+        let weights = CLIImpl.makeSmartQuerySourceWeights(registry: registry)
         let query = Search.SmartQuery(fetchers: [], sourceWeightsOverride: weights)
         #expect(query.weight(forSource: GapWiringFake.fakeID) == 2.7)
         // Sanity: the override doesn't break the existing production
@@ -127,8 +123,7 @@ struct Issue1045BehavioralWiringTests {
         // source-id resolves to the matching DocKind via init(rawValue:).
         let fake = GapWiringFake(defaultDocKindRawValue: "evolutionProposal")
         let registry = registryWith(fake)
-        let lookup = Search.SourceLookup(definitions: registry.allEnabled.map(\.definition))
-        let docKindMap = lookup.docKindRawValuesByID
+        let docKindMap = CLIImpl.makeDocKindRawValuesByID(registry: registry)
         #expect(docKindMap[GapWiringFake.fakeID] == "evolutionProposal")
         let resolved = Search.Classify.kind(
             source: GapWiringFake.fakeID,
@@ -154,8 +149,7 @@ struct Issue1045BehavioralWiringTests {
         // sources with non-nil rawValues.
         let fake = GapWiringFake(defaultDocKindRawValue: nil)
         let registry = registryWith(fake)
-        let lookup = Search.SourceLookup(definitions: registry.allEnabled.map(\.definition))
-        let docKindMap = lookup.docKindRawValuesByID
+        let docKindMap = CLIImpl.makeDocKindRawValuesByID(registry: registry)
         #expect(docKindMap[GapWiringFake.fakeID] == nil)
         let resolved = Search.Classify.kind(
             source: GapWiringFake.fakeID,
@@ -199,13 +193,9 @@ struct Issue1045BehavioralWiringTests {
         let fake = GapWiringFake(fetchInfo: fakeFetchInfo)
         let registry = registryWith(fake)
         let savePaths = Shared.Paths(baseDirectory: URL(fileURLWithPath: "/tmp/issue-1045-behavioural"))
-        let dict: [String: URL?] = Dictionary(
-            uniqueKeysWithValues: registry.allEnabled.map { provider in
-                let dir: URL? = provider.fetchInfo.flatMap { fi in
-                    savePaths.directory(named: fi.defaultOutputDirKey.rawValue)
-                }
-                return (provider.definition.id, dir)
-            }
+        let dict = CLIImpl.makeDocsIndexingDirectoryByKey(
+            registry: registry,
+            paths: savePaths
         )
         let expected = savePaths.directory(named: "behavioural-fake-dir")
         #expect(dict[GapWiringFake.fakeID] == expected)
@@ -232,7 +222,7 @@ struct Issue1045BehavioralWiringTests {
         // the fake's id appears in the "All sources you can search" block.
         let fake = GapWiringFake()
         let registry = registryWith(fake)
-        let registeredSources = registry.allEnabled.map(\.definition.id)
+        let registeredSources = CLIImpl.makeFormatterAvailableSources(registry: registry)
         let footer = Services.Formatter.Footer.Search.unified(
             availableSources: registeredSources
         )

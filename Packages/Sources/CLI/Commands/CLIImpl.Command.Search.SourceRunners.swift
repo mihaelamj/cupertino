@@ -103,7 +103,11 @@ extension CLIImpl.Command.Search {
 
         // #1045 Gap 2 wiring: registry-derived source-id list for the
         // formatter's footer tips. Threaded through all 3 formatters.
-        let registeredSources = CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition.id)
+        // Production call site uses `CLIImpl.makeFormatterAvailableSources(...)`
+        // so the assembly logic is single-sourced.
+        let registeredSources = CLIImpl.makeFormatterAvailableSources(
+            registry: CLIImpl.makeProductionSourceRegistry()
+        )
 
         switch format {
         case .text:
@@ -193,7 +197,9 @@ extension CLIImpl.Command.Search {
         }
 
         // #1045 Gap 2 wiring: registry-derived source-id list.
-        let samplesRegisteredSources = CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition.id)
+        let samplesRegisteredSources = CLIImpl.makeFormatterAvailableSources(
+            registry: CLIImpl.makeProductionSourceRegistry()
+        )
 
         switch format {
         case .text:
@@ -320,9 +326,10 @@ extension CLIImpl.Command.Search {
         let higQuery = Services.HIGQuery(text: query, platform: nil, category: nil)
 
         // #1045 Gap 2 wiring: registry-derived source-id list for the
-        // footer's "narrow with --source" tip. Threaded through HIG.Text
-        // and HIG.Markdown so a registered new source appears in the tip.
-        let higAvailableSources = CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition.id)
+        // footer's "narrow with --source" tip.
+        let higAvailableSources = CLIImpl.makeFormatterAvailableSources(
+            registry: CLIImpl.makeProductionSourceRegistry()
+        )
 
         switch format {
         case .text:

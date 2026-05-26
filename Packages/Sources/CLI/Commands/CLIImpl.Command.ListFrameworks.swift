@@ -104,7 +104,9 @@ extension CLIImpl.Command {
             // Output results using formatters.
             // #1045 Gap 2 wiring: registry-derived source-id list for
             // the footer's "all sources" discovery block.
-            let frameworksRegisteredSources = CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition.id)
+            let frameworksRegisteredSources = CLIImpl.makeFormatterAvailableSources(
+                registry: CLIImpl.makeProductionSourceRegistry()
+            )
             switch format {
             case .text:
                 let formatter = Services.Formatter.Frameworks.Text(
