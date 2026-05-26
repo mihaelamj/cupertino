@@ -212,6 +212,23 @@ extension CLIImpl.Command.Search {
         )
         let baseDirectory = Shared.Paths.live().baseDirectory
 
+        // #1042 Cluster 4 wiring: derive the CandidateFetcher capability
+        // sets from each registered provider's `Search.Capabilities`
+        // metadata, instead of letting the fetchers fall back to the
+        // 5-source hardcoded defaults. A new registered source's
+        // `hasMinSwiftVersion` / `hasFrameworkColumn` flags now reach
+        // the availability + framework filtering paths automatically.
+        let swiftVersionSourceIDs: Set<String> = Set(
+            registry.allEnabled
+                .filter { $0.capabilities.metadata[.hasMinSwiftVersion] == true }
+                .map(\.definition.id)
+        )
+        let frameworkScopedSourceIDs: Set<String> = Set(
+            registry.allEnabled
+                .filter { $0.capabilities.metadata[.hasFrameworkColumn] == true }
+                .map(\.definition.id)
+        )
+
         // Honour the legacy `--search-db` override for back-compat:
         // when set, every docs source points at that single DB. Useful
         // for tests + the migration window when a user hasn't re-run
@@ -258,7 +275,9 @@ extension CLIImpl.Command.Search {
                     source: source.prefix,
                     includeArchive: source.includeArchive,
                     availability: availability,
-                    framework: framework
+                    framework: framework,
+                    swiftVersionSources: swiftVersionSourceIDs,
+                    frameworkScopedSources: frameworkScopedSourceIDs
                 ))
                 indexes[source.prefix] = existing
                 continue
@@ -296,7 +315,9 @@ extension CLIImpl.Command.Search {
                     source: source.prefix,
                     includeArchive: source.includeArchive,
                     availability: availability,
-                    framework: framework
+                    framework: framework,
+                    swiftVersionSources: swiftVersionSourceIDs,
+                    frameworkScopedSources: frameworkScopedSourceIDs
                 ))
                 indexes[source.prefix] = index
                 openedByPath[url.path] = index

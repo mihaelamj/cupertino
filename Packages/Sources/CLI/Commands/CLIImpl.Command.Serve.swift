@@ -203,12 +203,22 @@ extension CLIImpl.Command {
             } else {
                 markdownLookup = nil
             }
+            // #1042 Cluster 12 wiring: derive the resource provider's
+            // knownURISchemes from the production source registry. Each
+            // registered source's `definition.id` is the canonical URI
+            // scheme prefix it claims. Adding a new source (one
+            // `.register(<X>Source())` line in
+            // `CLIImpl.makeProductionSourceRegistry`) automatically
+            // extends the set the resource provider treats as known.
+            let resourceProviderRegistry = CLIImpl.makeProductionSourceRegistry()
+            let resourceProviderKnownSchemes = Set(resourceProviderRegistry.allEnabled.map(\.definition.id))
             let resourceProvider = MCP.Support.DocsResourceProvider(
                 configuration: config,
                 evolutionDirectory: evolutionURL,
                 archiveDirectory: archiveURL,
                 markdownLookup: markdownLookup,
-                logger: Cupertino.Context.composition.logging.recording
+                logger: Cupertino.Context.composition.logging.recording,
+                knownURISchemes: resourceProviderKnownSchemes
             )
             await server.registerResourceProvider(resourceProvider)
 

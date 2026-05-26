@@ -669,11 +669,35 @@ extension CLIImpl.Command.Save {
             ?? effectiveBase.appendingPathComponent(Shared.Constants.FileName.searchDatabase)
         let stateFileURL = effectiveBase.appendingPathComponent("remote-save-state.json")
 
+        // #1042 Cluster 11 sub-2 wiring: derive the phase→URI-scheme
+        // dispatch map from the production source registry. Each
+        // shipped phase (docs/evolution/archive/swiftOrg/packages)
+        // maps 1:1 to a SourceProvider whose `definition.id` IS the
+        // canonical URI scheme. Composition root assembles the dict
+        // explicitly so the mapping is auditable; a new phase added
+        // for a new source extends this dict in one place.
         let fetcher = RemoteSync.GitHubFetcher()
+        let saveRegistry = CLIImpl.makeProductionSourceRegistry()
+        let saveProviderByID: [String: any Search.SourceProvider] = Dictionary(
+            uniqueKeysWithValues: saveRegistry.allEnabled.map { ($0.definition.id, $0) }
+        )
+        let phaseURIPrefixes: [RemoteSync.IndexState.Phase: String] = [
+            .docs: saveProviderByID[Shared.Constants.SourcePrefix.appleDocs]?.definition.id
+                ?? Shared.Constants.SourcePrefix.appleDocs,
+            .evolution: saveProviderByID[Shared.Constants.SourcePrefix.swiftEvolution]?.definition.id
+                ?? Shared.Constants.SourcePrefix.swiftEvolution,
+            .archive: saveProviderByID[Shared.Constants.SourcePrefix.appleArchive]?.definition.id
+                ?? Shared.Constants.SourcePrefix.appleArchive,
+            .swiftOrg: saveProviderByID[Shared.Constants.SourcePrefix.swiftOrg]?.definition.id
+                ?? Shared.Constants.SourcePrefix.swiftOrg,
+            .packages: saveProviderByID[Shared.Constants.SourcePrefix.packages]?.definition.id
+                ?? Shared.Constants.SourcePrefix.packages,
+        ]
         let indexer = RemoteSync.Indexer(
             fetcher: fetcher,
             stateFileURL: stateFileURL,
-            appVersion: Shared.Constants.App.version
+            appVersion: Shared.Constants.App.version,
+            phaseURIPrefixes: phaseURIPrefixes
         )
 
         if await indexer.hasResumableState() {
