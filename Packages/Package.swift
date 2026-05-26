@@ -4,6 +4,35 @@ import PackageDescription
 
 // -------------------------------------------------------------
 
+// MARK: - Per-source target enumeration (#1042 Cluster 14 pluggability anchor)
+
+// Single source-of-truth list of the 8 per-source SPM target names.
+// Adding a new source means appending its target name here ONCE; the
+// `.singleTargetLibrary` product list + every test-target dependency
+// array that ships the full source set is derived from this list.
+// Before #1042 the same 8 names were enumerated 4 times across this
+// file (singleTargetLibrary block + SearchTests + SearchStrategiesTests
+// + cupertinoMacOSBinary); the per-source DB split epic's contract test
+// asserts this list is helper-based now (`Issue1042PluggabilityContractTests`
+// Cluster 14).
+
+let allSourceTargetNames: [String] = [
+    "AppleDocsSource",
+    "HIGSource",
+    "SampleCodeSource",
+    "SwiftEvolutionSource",
+    "SwiftOrgSource",
+    "SwiftBookSource",
+    "PackagesSource",
+    "AppleArchiveSource",
+]
+
+let allSourceTargetDeps: [Target.Dependency] = allSourceTargetNames.map { .target(name: $0) }
+
+let allSourceProducts: [Product] = allSourceTargetNames.map { .singleTargetLibrary($0) }
+
+// -------------------------------------------------------------
+
 // MARK: Products
 
 // -------------------------------------------------------------
@@ -31,14 +60,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("SearchSchema"),
     .singleTargetLibrary("SearchSQLite"),
     .singleTargetLibrary("SearchStrategyHelpers"),
-    .singleTargetLibrary("AppleDocsSource"),
-    .singleTargetLibrary("HIGSource"),
-    .singleTargetLibrary("SampleCodeSource"),
-    .singleTargetLibrary("SwiftEvolutionSource"),
-    .singleTargetLibrary("SwiftOrgSource"),
-    .singleTargetLibrary("SwiftBookSource"),
-    .singleTargetLibrary("PackagesSource"),
-    .singleTargetLibrary("AppleArchiveSource"),
+    // .singleTargetLibrary("<X>Source") rows live in allSourceProducts (#1042 Cluster 14).
     .singleTargetLibrary("SampleIndex"),
     .singleTargetLibrary("SampleIndexSQLite"),
     .singleTargetLibrary("Services"),
@@ -80,7 +102,11 @@ let macOSOnlyProducts: [Product] = [
 let macOSOnlyProducts: [Product] = []
 #endif
 
+#if os(macOS)
+let allProducts = baseProducts + macOSOnlyProducts + allSourceProducts
+#else
 let allProducts = baseProducts + macOSOnlyProducts
+#endif
 
 // -------------------------------------------------------------
 
@@ -472,15 +498,8 @@ let targets: [Target] = {
             "SearchModels",
             "SharedConstants",
             "TestSupport",
-            "HIGSource",
-            "SampleCodeSource",
-            "AppleArchiveSource",
-            "SwiftEvolutionSource",
-            "SwiftOrgSource",
-            "SwiftBookSource",
-            "PackagesSource",
             "LoggingModels",
-        ]
+        ] + allSourceTargetDeps
     )
 
     // ---------- SampleIndexModels (#408 partial: value types + Reader protocol lifted out of
@@ -562,14 +581,7 @@ let targets: [Target] = {
         dependencies: [
             "SearchAPI",
             "SearchSQLite",
-            "AppleDocsSource",
-            "HIGSource",
-            "SampleCodeSource",
-            "SwiftEvolutionSource",
-            "SwiftOrgSource",
-            "SwiftBookSource",
-            "PackagesSource",
-            "AppleArchiveSource",
+        ] + allSourceTargetDeps + [
             "AppleConstraintsPass",
             "SearchModels",
             "SharedConstants",
@@ -615,15 +627,7 @@ let targets: [Target] = {
     // but depends only on the 6 sibling targets now.
     let searchStrategiesTestsTarget = Target.testTarget(
         name: "SearchStrategiesTests",
-        dependencies: [
-            "AppleDocsSource",
-            "HIGSource",
-            "SampleCodeSource",
-            "SwiftEvolutionSource",
-            "SwiftOrgSource",
-            "SwiftBookSource",
-            "PackagesSource",
-            "AppleArchiveSource",
+        dependencies: allSourceTargetDeps + [
             "AppleConstraintsPass",
             "SearchModels",
             "SearchSQLite",
@@ -1085,14 +1089,7 @@ let targets: [Target] = {
             "Cleanup",
             "SearchAPI",
             "SearchSQLite",
-            "AppleDocsSource",
-            "HIGSource",
-            "SampleCodeSource",
-            "SwiftEvolutionSource",
-            "SwiftOrgSource",
-            "SwiftBookSource",
-            "PackagesSource",
-            "AppleArchiveSource",
+        ] + allSourceTargetDeps + [
             "AppleConstraintsPass",
             "HierarchyPass",
             "PackagesAppleConstraintsPass",

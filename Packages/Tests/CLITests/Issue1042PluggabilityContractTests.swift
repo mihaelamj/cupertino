@@ -344,15 +344,56 @@ struct Issue1042PluggabilityContractTests {
 
     // MARK: - Cluster 14: Package.swift mass dependency lists
 
-    @Test(
-        "Package.swift test targets declare source-target deps via a shared helper, not 8 repeated lists",
-        .disabled(
-            // swiftlint:disable:next line_length
-            "OUTSTANDING — Cluster 14: Packages/Package.swift has 6 distinct test-target dependency lists enumerating the same 8 *Source targets. Refactor: declare `allSourceTargetDeps` once."
+    @Test("Package.swift test/binary targets declare source-target deps via the allSourceTargetDeps helper, not 8 repeated lists")
+    func packageSwiftSourceTargetDepsAreHelperBased() throws {
+        // STATUS: PASSES. Fixed by extracting `allSourceTargetNames`,
+        // `allSourceTargetDeps`, `allSourceProducts` at the top of
+        // Packages/Package.swift; SearchTests + SearchStrategiesTests
+        // + the cupertino CLI binary target now spread the helper into
+        // their `dependencies:` arrays instead of repeating the 8
+        // `<X>Source` literals. Verified by reading the file from this
+        // test process and asserting:
+        //   1. the helper is declared, and
+        //   2. there is no `dependencies: [.., "AppleDocsSource",
+        //      "HIGSource", ..]` block (the pre-refactor shape).
+        // This is the structural contract; the helper itself is the
+        // pluggability anchor.
+        // Walk up from this source file until we find Package.swift.
+        // `#filePath` is the absolute path; #file may be relativized by
+        // SwiftPM's build settings.
+        var dir = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        var candidate = dir.appendingPathComponent("Package.swift")
+        while !FileManager.default.fileExists(atPath: candidate.path), dir.path != "/" {
+            dir = dir.deletingLastPathComponent()
+            candidate = dir.appendingPathComponent("Package.swift")
+        }
+        let url = candidate
+        let body = try String(contentsOf: url, encoding: .utf8)
+        #expect(body.contains("let allSourceTargetDeps:"), "Package.swift must declare the per-source dependency helper")
+        #expect(body.contains("let allSourceTargetNames:"), "Package.swift must declare the per-source name list")
+        #expect(body.contains("let allSourceProducts:"), "Package.swift must declare the per-source product helper")
+        // Detect the pre-refactor smell: lines where multiple per-source
+        // target names sit adjacent inside a dependencies array. After
+        // the helper refactor, AppleDocsSource + HIGSource never appear
+        // within 3 lines of each other (the allSourceTargetNames
+        // declaration is the only place they're co-located, and the
+        // helper expands into a single Target.Dependency value).
+        let lines = body.components(separatedBy: "\n")
+        var coLocatedBlocks = 0
+        for idx in lines.indices where lines[idx].contains("\"AppleDocsSource\"") {
+            // window: 4 lines forward
+            let window = max(0, idx - 1)..<min(lines.count, idx + 4)
+            let neighborhood = lines[window].joined(separator: "\n")
+            let coLocated = neighborhood.contains("\"HIGSource\"")
+                && neighborhood.contains("\"SampleCodeSource\"")
+            if coLocated, !neighborhood.contains("allSourceTargetNames") {
+                coLocatedBlocks += 1
+            }
+        }
+        #expect(
+            coLocatedBlocks == 0,
+            "Pluggability gap: \(coLocatedBlocks) dependencies-array block(s) enumerate the 8 *Source targets directly; use allSourceTargetDeps instead"
         )
-    )
-    func packageSwiftSourceTargetDepsAreHelperBased() {
-        #expect(Bool(false), "see disabled note")
     }
 
     // MARK: - Coverage gate
