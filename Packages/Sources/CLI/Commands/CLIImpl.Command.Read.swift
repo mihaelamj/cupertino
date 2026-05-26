@@ -25,9 +25,13 @@ extension CLIImpl.Command {
 
         @Argument(
             help: """
-            Identifier. Docs URIs (\"apple-docs://swiftui/...\") look up search.db; \
-            sample IDs and `<projectId>/<path>` look up samples.db; \
-            `<owner>/<repo>/<path>` is read from the on-disk packages tree.
+            Identifier. Post-#1037 every docs source owns its own SQLite \
+            file: docs URIs route by scheme (`apple-docs://swiftui/...` -> \
+            apple-documentation.db; `hig://buttons/...` -> hig.db; \
+            same shape for apple-archive / swift-evolution / swift-org / \
+            swift-book). Sample IDs and `<projectId>/<path>` look up \
+            apple-sample-code.db; `<owner>/<repo>/<path>` is read from \
+            the on-disk packages tree.
             """
         )
         var identifier: String
@@ -50,7 +54,13 @@ extension CLIImpl.Command {
 
         @Option(
             name: .long,
-            help: "Path to search database (search.db)"
+            help: """
+            Override the docs database path. Post-#1037 each docs source \
+            owns its own file (apple-documentation.db, hig.db, ...); when \
+            this flag is set, EVERY docs source-id routes to the override \
+            URL (legacy single-DB debug semantic). Mostly useful for tests \
+            + custom-database workflows.
+            """
         )
         var searchDb: String?
 
@@ -107,16 +117,31 @@ extension CLIImpl.Command {
             // source owns its own SQLite file. ReadService falls back
             // to `searchDB` (above) when the URI's scheme isn't in the
             // map, preserving back-compat for tests + the migration
-            // window. `--search-db` override (when set) shadows the
-            // map entry for apple-docs by feeding into searchDBURL,
-            // matching the legacy debug semantic.
-            let docsDBURLs: [String: URL] = CLIImpl.makeProductionSourceRegistry()
-                .allEnabled
-                .filter { $0.destinationDB != .packages && $0.destinationDB != .appleSampleCode }
-                .reduce(into: [:]) { dict, provider in
-                    dict[provider.definition.id] = paths.baseDirectory
-                        .appendingPathComponent(provider.destinationDB.filename)
-                }
+            // window.
+            //
+            // `--search-db` override (when set): every docs source-id
+            // maps to the override URL, so the legacy single-DB debug
+            // workflow ("redirect every read to /tmp/my.db") still
+            // works post-per-source-split. Without this branch the
+            // map would shadow the override silently (the helper
+            // checks the map first).
+            let docsDBURLs: [String: URL]
+            if let override = searchDb.map({ URL(fileURLWithPath: $0).expandingTildeInPath }) {
+                docsDBURLs = CLIImpl.makeProductionSourceRegistry()
+                    .allEnabled
+                    .filter { $0.destinationDB != .packages && $0.destinationDB != .appleSampleCode }
+                    .reduce(into: [:]) { dict, provider in
+                        dict[provider.definition.id] = override
+                    }
+            } else {
+                docsDBURLs = CLIImpl.makeProductionSourceRegistry()
+                    .allEnabled
+                    .filter { $0.destinationDB != .packages && $0.destinationDB != .appleSampleCode }
+                    .reduce(into: [:]) { dict, provider in
+                        dict[provider.definition.id] = paths.baseDirectory
+                            .appendingPathComponent(provider.destinationDB.filename)
+                    }
+            }
 
             let result: Services.ReadService.Result
             do {
@@ -130,11 +155,12 @@ extension CLIImpl.Command {
                     searchDatabaseFactory: searchDatabaseFactory,
                     sampleDatabaseFactory: sampleDatabaseFactory,
                     packageFileLookup: LivePackageFileLookupStrategy(),
-                    docsDBURLs: docsDBURLs
+                    docsDBURLs: docsDBURLs,
+                    explicitDocsSourceID: source
                 )
             } catch Services.ReadService.ReadError.docsNotFound(let id) {
                 CLIImpl.printUserFacingDiagnostic(
-                    "Document not found in search.db: \(id)",
+                    "Document not found in any docs database: \(id)",
                     recording: Cupertino.Context.composition.logging.recording
                 )
                 throw ExitCode.failure

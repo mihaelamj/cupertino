@@ -128,7 +128,8 @@ extension Services {
             searchDatabaseFactory: any Search.DatabaseFactory,
             sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
             packageFileLookup: any PackageFileLookupStrategy,
-            docsDBURLs: [String: URL]? = nil
+            docsDBURLs: [String: URL]? = nil,
+            explicitDocsSourceID: String? = nil
         ) async throws -> Result {
             // #587: accept canonical Apple Developer web URLs by
             // converting them to the lossless `apple-docs://...` URI
@@ -139,12 +140,19 @@ extension Services {
             // for transport symmetry.
             let identifier = Self.normalizeIdentifier(rawIdentifier)
 
-            // #1039: resolve the docs DB URL once, route by URI scheme
-            // when the per-source map is populated. Falls back to
-            // `searchDB` for callers that haven't migrated yet, and
-            // for URI schemes not in the map.
+            // #1039: resolve the docs DB URL once. Per-source routing
+            // happens via either (a) the raw `--source <id>` value
+            // (`explicitDocsSourceID`) for non-URI identifiers or
+            // (b) the URI's scheme for URI identifiers. Falls back to
+            // `searchDB` for callers that haven't migrated yet and
+            // for URI schemes not in the map. The raw source-id is
+            // threaded separately from `explicit: Source?` because
+            // that enum is narrowed to `.docs / .samples / .packages`
+            // and loses the original "hig" / "apple-docs" / etc.
+            // disambiguation.
             let resolvedDocsDB = resolveDocsDBURL(
                 identifier: identifier,
+                explicitSourceID: explicitDocsSourceID,
                 fallback: searchDB,
                 docsDBURLs: docsDBURLs
             )
@@ -210,20 +218,34 @@ extension Services {
             )
         }
 
-        /// #1039: extract the URI's scheme (e.g. "hig" from
-        /// "hig://buttons/standard-button") and look it up in the
-        /// per-source docs DB map. Returns the matched URL when both
-        /// the map is populated AND the scheme is present; falls back
-        /// to `fallback` (the legacy `searchDB` URL) otherwise.
+        /// #1039: resolve the docs DB URL for a read. Per-source DB
+        /// lookup happens in two ways:
         ///
-        /// Made public-static so tests can pin the resolution logic
-        /// without standing up the full read pipeline.
+        /// 1. **Explicit source disambiguator** (`--source <id>` on the
+        ///    CLI): when `explicitSourceID` matches a key in the map,
+        ///    return that URL. Covers the `cupertino read swiftui-foo
+        ///    --source hig` shape where the identifier has no URI
+        ///    scheme.
+        ///
+        /// 2. **URI scheme extraction**: when the identifier carries
+        ///    a `<scheme>://...` shape, extract the scheme and look it
+        ///    up in the map. Covers `cupertino read hig://...`.
+        ///
+        /// Falls back to `fallback` (the legacy `searchDB` URL) when
+        /// neither path resolves. Made `public static` so tests can
+        /// pin the resolution logic without standing up the full read
+        /// pipeline. Round-14/16 critic + this commit's round-17
+        /// findings #1 and #3 closed by this signature.
         public static func resolveDocsDBURL(
             identifier: String,
+            explicitSourceID: String? = nil,
             fallback: URL,
             docsDBURLs: [String: URL]?
         ) -> URL {
             guard let docsDBURLs, !docsDBURLs.isEmpty else { return fallback }
+            if let explicitSourceID, let url = docsDBURLs[explicitSourceID] {
+                return url
+            }
             guard let schemeEnd = identifier.range(of: "://") else { return fallback }
             let scheme = String(identifier[..<schemeEnd.lowerBound])
             return docsDBURLs[scheme] ?? fallback

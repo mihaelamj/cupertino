@@ -10,7 +10,7 @@ cupertino read <identifier> [--source <name>] [options]
 
 ## Description
 
-`cupertino read` is a unified front door that resolves an identifier to a full document across all three local databases, `search.db` (docs), `apple-sample-code.db` (sample-code projects + files), and `packages.db` (package source files). Behaviour mirrors what every fan-out result in `cupertino search` emits:
+`cupertino read` is a unified front door that resolves an identifier to a full document across all local databases. Post-#1037 docs live in per-source files (`apple-documentation.db`, `hig.db`, `apple-archive.db`, `swift-evolution.db`, `swift-org.db`, `swift-book.db`); sample code lives in `apple-sample-code.db`; packages in `packages.db`. The read command routes by URI scheme (`apple-docs://...` -> `apple-documentation.db`; `hig://...` -> `hig.db`; same shape for the other 4 docs sources) or, for non-URI identifiers, by the `--source` disambiguator. Behaviour mirrors what every fan-out result in `cupertino search` emits:
 
 ```
 ▶ Read full: cupertino read <identifier> --source <name>
@@ -67,10 +67,10 @@ Output format. Honoured by docs reads only; samples + packages return their stor
 
 ### --search-db
 
-Path to the search database (`search.db`).
+Override the docs database path. Post-#1037 each docs source owns its own SQLite file (`apple-documentation.db`, `hig.db`, etc.). When this flag is set, EVERY docs source-id routes to the override URL (legacy single-DB debug semantic, useful for tests + custom-database workflows).
 
 **Type:** String  
-**Default:** `~/.cupertino/search.db`
+**Default:** `~/.cupertino/apple-documentation.db` for `apple-docs`, `~/.cupertino/hig.db` for `hig`, etc.; resolved through the production source registry.
 
 ### --sample-db
 
@@ -159,13 +159,13 @@ Return their stored UTF-8 content as-is, README markdown for sample projects, fi
 
 ## Error handling
 
-### Document not found in search.db
+### Document not found in any docs database
 
 ```
-Error: Document not found in search.db: apple-docs://invalid/path
+Error: Document not found in any docs database: apple-docs://invalid/path
 ```
 
-**Solutions:** check spelling; run `cupertino search` to find valid URIs; ensure the doc is indexed (`cupertino save --source apple-docs`).
+**Solutions:** check spelling; run `cupertino search` to find valid URIs; ensure the doc is indexed (`cupertino save --source apple-docs`). Note that post-#1037 each docs source has its own DB, so a missing `hig://` URI means `hig.db` doesn't carry that row, not that `search.db` is unfound.
 
 ### Not found in apple-sample-code.db
 
