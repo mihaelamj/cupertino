@@ -1,6 +1,17 @@
 import Foundation
 
-// MARK: - Search.DocsIndexingRunner
+// MARK: - Search.DocsIndexing.Runner
+
+/// Sub-namespace grouping the three DocsIndexing-related types
+/// (Runner protocol + Input value type + Outcome value type). Post-#1042
+/// type-name deepening: pre-rename `Search.DocsIndexingRunner` /
+/// `Search.DocsIndexingInput` / `Search.DocsIndexingOutcome` sat at
+/// the same nesting level under `extension Search`; the deeper form
+/// makes the family obvious to readers. Back-compat typealiases at
+/// the bottom keep pre-rename call-sites compiling.
+extension Search {
+    public enum DocsIndexing {}
+}
 
 /// Runner for a complete `search.db` documentation indexing pass:
 /// open the index, build the strategy array, walk every on-disk
@@ -16,22 +27,14 @@ import Foundation
 /// `save` command) supplies a `LiveDocsIndexingRunner` backed by the
 /// standard `Search.Index` + `Search.IndexBuilder` wiring.
 ///
-/// This replaces the previous
-/// `Search.DocsIndexingRun = @Sendable (DocsIndexingInput, callback) async throws -> Outcome`
-/// closure typealias. The protocol form names the contract at the
-/// constructor site (`docsIndexingRunner:`), makes captured-state
-/// surface explicit on the conforming type's stored properties, and
-/// produces one-line test mocks instead of multi-arg async closures.
-///
 /// Progress reporting goes through the typed `Search.IndexingProgressReporting`
-/// Observer protocol (GoF p. 293) — the previous design carve-out for
-/// "genuine (processed, total) callback" closures is reversed per the
-/// standing cupertino rule "no closures, they ate magic." The Indexer
-/// orchestrator (`Indexer.DocsService.run`) bridges its closure-shaped
-/// `handler:` parameter to a `Search.IndexingProgressReporting` conformer
-/// before invoking this method.
-public extension Search {
-    protocol DocsIndexingRunner: Sendable {
+/// Observer protocol (GoF p. 293); per the standing cupertino rule
+/// "no closures, they ate magic." The Indexer orchestrator
+/// (`Indexer.DocsService.run`) bridges its closure-shaped `handler:`
+/// parameter to a `Search.IndexingProgressReporting` conformer before
+/// invoking this method.
+extension Search.DocsIndexing {
+    public protocol Runner: Sendable {
         /// Run one full indexing pass and return its outcome.
         ///
         /// - Parameters:
@@ -40,22 +43,18 @@ public extension Search {
         ///   - progress: Observer receiving `(processed, total)` reports
         ///     as the indexer makes progress. Pass a Noop conformer to
         ///     opt out of progress reports.
-        /// - Returns: The aggregated `DocsIndexingOutcome`.
+        /// - Returns: The aggregated `Outcome`.
         func run(
-            input: DocsIndexingInput,
+            input: Input,
             progress: any Search.IndexingProgressReporting
-        ) async throws -> DocsIndexingOutcome
+        ) async throws -> Outcome
     }
-}
 
-// MARK: - Search.DocsIndexingInput
-
-/// Parameter bundle for `Search.DocsIndexingRunner.run`. Carries
-/// every URL the indexer needs to find the source corpus + the two
-/// strategy / provider conformers the indexer threads down into its
-/// strategy implementations.
-public extension Search {
-    struct DocsIndexingInput: Sendable {
+    /// Parameter bundle for `Search.DocsIndexing.Runner.run`. Carries
+    /// every URL the indexer needs to find the source corpus + the two
+    /// strategy / provider conformers the indexer threads down into its
+    /// strategy implementations.
+    public struct Input: Sendable {
         public let searchDBPath: URL
         public let docsDirectory: URL
         public let evolutionDirectory: URL?
@@ -64,7 +63,7 @@ public extension Search {
         public let higDirectory: URL?
         public let clearExisting: Bool
         public let markdownStrategy: any Search.MarkdownToStructuredPageStrategy
-        public let sampleCatalogProvider: any Search.SampleCatalogProvider
+        public let sampleCatalogProvider: any Search.SampleCatalog.Provider
 
         public init(
             searchDBPath: URL,
@@ -75,7 +74,7 @@ public extension Search {
             higDirectory: URL?,
             clearExisting: Bool,
             markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
-            sampleCatalogProvider: any Search.SampleCatalogProvider
+            sampleCatalogProvider: any Search.SampleCatalog.Provider
         ) {
             self.searchDBPath = searchDBPath
             self.docsDirectory = docsDirectory
@@ -88,30 +87,33 @@ public extension Search {
             self.sampleCatalogProvider = sampleCatalogProvider
         }
     }
-}
 
-// MARK: - Search.DocsIndexingOutcome
-
-/// Statistics emitted by a completed `Search.DocsIndexingRunner` run.
-/// The Indexer translates this into its public
-/// `Indexer.DocsService.Outcome` event payload.
-public extension Search {
-    struct DocsIndexingOutcome: Sendable {
+    /// Statistics emitted by a completed `Search.DocsIndexing.Runner`
+    /// run. The Indexer translates this into its public
+    /// `Indexer.DocsService.Outcome` event payload.
+    public struct Outcome: Sendable {
         public let documentCount: Int
         public let frameworkCount: Int
         /// #588 import-diligence aggregated breakdown over every
         /// strategy that ran. Zero for legacy callers; populated by
         /// the apple-docs strategy post-#588.
-        public let breakdown: ImportDiligenceBreakdown
+        public let breakdown: Search.ImportDiligenceBreakdown
 
         public init(
             documentCount: Int,
             frameworkCount: Int,
-            breakdown: ImportDiligenceBreakdown = .zero
+            breakdown: Search.ImportDiligenceBreakdown = .zero
         ) {
             self.documentCount = documentCount
             self.frameworkCount = frameworkCount
             self.breakdown = breakdown
         }
     }
+}
+
+/// Back-compat aliases for pre-#1042 consumers.
+extension Search {
+    public typealias DocsIndexingRunner = DocsIndexing.Runner
+    public typealias DocsIndexingInput = DocsIndexing.Input
+    public typealias DocsIndexingOutcome = DocsIndexing.Outcome
 }

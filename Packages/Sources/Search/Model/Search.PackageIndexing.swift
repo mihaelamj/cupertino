@@ -1,13 +1,18 @@
 import Foundation
 
-// MARK: - Search.PackageIndexingRunner
+// MARK: - Search.PackageIndexing.Runner
+
+/// Sub-namespace grouping the PackageIndexing-related types (Runner +
+/// Outcome). Post-#1042 type-name deepening; back-compat typealiases
+/// preserve `Search.PackageIndexingRunner` / `Search.PackageIndexingOutcome`.
+extension Search {
+    public enum PackageIndexing {}
+}
 
 /// Runner for a complete `packages.db` indexing pass: open the index,
 /// walk the on-disk package tree, write every package row, summarise
 /// the resulting database, and disconnect. GoF Strategy pattern
-/// (Gamma et al, 1994): a family of algorithms (production
-/// `Search.PackageIndex` + `Search.PackageIndexer` pipeline, test
-/// fixture stubs) interchangeable behind a named protocol.
+/// (Gamma et al, 1994).
 ///
 /// `Indexer.PackagesService` accepts a conformer at run-time so the
 /// Indexer SPM target keeps its dependency graph free of the concrete
@@ -15,23 +20,10 @@ import Foundation
 /// command) supplies a `LivePackageIndexingRunner` that wraps the
 /// standard `Search.PackageIndex` + `Search.PackageIndexer` wiring.
 ///
-/// This replaces the previous
-/// `Search.PackageIndexingRun = @Sendable (URL, URL, callback) async throws -> Outcome`
-/// closure typealias. The protocol form names the contract at the
-/// constructor site (`packageIndexingRunner:`), makes captured-state
-/// surface explicit on the conforming type's stored properties, and
-/// produces one-line test mocks instead of multi-arg async closures.
-///
 /// Progress reporting goes through the typed
-/// `Search.PackageIndexingProgressReporting` Observer protocol (GoF p. 293)
-/// — the previous design carve-out for "genuine (name, done, total)
-/// callback" closures is reversed per the standing cupertino rule
-/// "no closures, they ate magic." The Indexer orchestrator
-/// (`Indexer.PackagesService.run`) bridges its closure-shaped `handler:`
-/// parameter to a `PackageIndexingProgressReporting` conformer before
-/// invoking this method.
-public extension Search {
-    protocol PackageIndexingRunner: Sendable {
+/// `Search.PackageIndexingProgressReporting` Observer protocol (GoF p. 293).
+extension Search.PackageIndexing {
+    public protocol Runner: Sendable {
         /// Run one full indexing pass and return its outcome.
         ///
         /// - Parameters:
@@ -41,24 +33,20 @@ public extension Search {
         ///   - progress: Observer receiving `(packageName, processed, total)`
         ///     reports for each package handled. Pass a Noop conformer
         ///     to opt out of progress reports.
-        /// - Returns: The aggregated `PackageIndexingOutcome`.
+        /// - Returns: The aggregated `Outcome`.
         func run(
             packagesRoot: URL,
             packagesDB: URL,
             progress: any Search.PackageIndexingProgressReporting
-        ) async throws -> PackageIndexingOutcome
+        ) async throws -> Outcome
     }
-}
 
-// MARK: - Search.PackageIndexingOutcome
-
-/// Statistics emitted by a `Search.PackageIndexingRunner` run.
-///
-/// The Indexer translates this into its public
-/// `Indexer.PackagesService.Outcome` event payload (which keeps the
-/// same eight numeric fields).
-public extension Search {
-    struct PackageIndexingOutcome: Sendable {
+    /// Statistics emitted by a `Search.PackageIndexing.Runner` run.
+    ///
+    /// The Indexer translates this into its public
+    /// `Indexer.PackagesService.Outcome` event payload (which keeps the
+    /// same eight numeric fields).
+    public struct Outcome: Sendable {
         public let packagesIndexed: Int
         public let packagesFailed: Int
         public let totalFiles: Int
@@ -88,4 +76,10 @@ public extension Search {
             self.totalBytesInDB = totalBytesInDB
         }
     }
+}
+
+/// Back-compat aliases for pre-#1042 consumers.
+extension Search {
+    public typealias PackageIndexingRunner = PackageIndexing.Runner
+    public typealias PackageIndexingOutcome = PackageIndexing.Outcome
 }
