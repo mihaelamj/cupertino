@@ -1261,7 +1261,9 @@ let targets: [Target] = {
         // conformance checks on the 3 CLI conformers.
         // Distribution added by the per-source-db-split epic so
         // ConstantsAuditTests can pin PerSourceDBSplitMigrator.legacyRenameSuffix.
-        dependencies: ["CLI", "Distribution", "DistributionModels"]
+        // Diagnostics added so PerSourceDestinationRoundtripTests can read
+        // the per-DB PRAGMA user_version stamp via Diagnostics.Probes.
+        dependencies: ["CLI", "Diagnostics", "Distribution", "DistributionModels"]
     )
     let mockAIAgentTestsTarget = Target.testTarget(
         name: "MockAIAgentTests",
