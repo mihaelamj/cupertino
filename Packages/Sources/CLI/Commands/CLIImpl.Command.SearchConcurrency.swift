@@ -71,11 +71,10 @@ extension CLIImpl.Command {
                 throw ExitCode.failure
             }
 
-            let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-                ?? Shared.Paths.live().searchDatabase
+            let searchDBURL = CLIImpl.resolveAppleDocsDBURL(override: searchDb)
             guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
                 CLIImpl.printUserFacingDiagnostic(
-                    "❌ search.db not found at \(searchDBURL.path). Run `cupertino setup` first.",
+                    "❌ \(searchDBURL.lastPathComponent) not found at \(searchDBURL.path). Run `cupertino setup` first.",
                     recording: recording
                 )
                 throw ExitCode.failure

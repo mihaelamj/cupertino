@@ -5,6 +5,7 @@ import LoggingModels
 import Services
 import ServicesModels
 import SharedConstants
+
 // MARK: - List Frameworks Command
 
 /// CLI command for listing available frameworks - mirrors MCP tool functionality.
@@ -31,14 +32,16 @@ extension CLIImpl.Command {
         mutating func run() async throws {
             // GoF Factory Method (1994 p. 107): construct the concrete
             // Creator at the command's composition sub-root. Stateless
-            // structs need no singleton handle — per GoF p. 127, the
+            // structs need no singleton handle -- per GoF p. 127, the
             // Singleton pattern is reserved for "exactly one instance"
             // semantics that stateless empty structs don't require.
             let searchDatabaseFactory: any SearchModule.DatabaseFactory = LiveSearchDatabaseFactory()
 
-            // Path-DI composition sub-root (#535).
-            let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-                ?? Shared.Paths.live().searchDatabase
+            // Path-DI composition sub-root (#535). Post-#1037
+            // `apple-documentation.db` carries the framework data
+            // (Apple-framework partitioning is apple-docs-specific);
+            // route through the shared resolver.
+            let searchDBURL = CLIImpl.resolveAppleDocsDBURL(override: searchDb)
 
             // Use Services.ServiceContainer for managed lifecycle
             let (frameworks, totalDocs) = try await Services.ServiceContainer.withDocsService(searchDB: searchDBURL, searchDatabaseFactory: searchDatabaseFactory) { service in
