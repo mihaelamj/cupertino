@@ -100,6 +100,24 @@ extension CLIImpl.Command {
             let packagesDBURL = packagesDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
                 ?? paths.packagesDatabase
 
+            // #1039: build the per-source docs DB map so a URI like
+            // `hig://buttons/standard-button` routes to hig.db
+            // (post-#1037 per-source DB world). Pre-#1037 every docs
+            // URI resolved through one search.db; post-#1037 each docs
+            // source owns its own SQLite file. ReadService falls back
+            // to `searchDB` (above) when the URI's scheme isn't in the
+            // map, preserving back-compat for tests + the migration
+            // window. `--search-db` override (when set) shadows the
+            // map entry for apple-docs by feeding into searchDBURL,
+            // matching the legacy debug semantic.
+            let docsDBURLs: [String: URL] = CLIImpl.makeProductionSourceRegistry()
+                .allEnabled
+                .filter { $0.destinationDB != .packages && $0.destinationDB != .appleSampleCode }
+                .reduce(into: [:]) { dict, provider in
+                    dict[provider.definition.id] = paths.baseDirectory
+                        .appendingPathComponent(provider.destinationDB.filename)
+                }
+
             let result: Services.ReadService.Result
             do {
                 result = try await Services.ReadService.read(
@@ -111,7 +129,8 @@ extension CLIImpl.Command {
                     packagesDB: packagesDBURL,
                     searchDatabaseFactory: searchDatabaseFactory,
                     sampleDatabaseFactory: sampleDatabaseFactory,
-                    packageFileLookup: LivePackageFileLookupStrategy()
+                    packageFileLookup: LivePackageFileLookupStrategy(),
+                    docsDBURLs: docsDBURLs
                 )
             } catch Services.ReadService.ReadError.docsNotFound(let id) {
                 CLIImpl.printUserFacingDiagnostic(

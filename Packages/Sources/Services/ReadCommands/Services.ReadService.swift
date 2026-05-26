@@ -11,7 +11,7 @@ import SharedConstants
 /// identifier shape (URI vs. slugified ID vs. owner/repo path).
 ///
 /// All three backends are DB-backed (search.db / samples.db / packages.db)
-/// — no file-system reads. That keeps `cupertino setup`-only installs
+/// -- no file-system reads. That keeps `cupertino setup`-only installs
 /// working: the user never has to run `cupertino fetch` if they're happy
 /// with the bundled corpus.
 ///
@@ -105,8 +105,19 @@ extension Services {
         /// must resolve the URLs at their composition root and supply them
         /// here. Pre-#535 these were `URL?` with internal fallbacks to
         /// `Shared.Constants.default*` / `Sample.Index.defaultDatabasePath`
-        /// (a Service Locator shape — Seemann 2011 ch. 5); strict DI gives
+        /// (a Service Locator shape per Seemann 2011 ch. 5); strict DI gives
         /// the caller responsibility for path resolution.
+        ///
+        /// `docsDBURLs` (post-#1039) is the per-source docs DB map:
+        /// `[sourceID: URL]` keyed by `SourceProvider.definition.id`
+        /// (e.g. `apple-docs` -> `apple-documentation.db`, `hig` ->
+        /// `hig.db`). When non-nil AND the URI's scheme matches a key,
+        /// the docs read routes to the matching per-source DB. When
+        /// nil OR the URI's scheme isn't in the map, falls back to
+        /// `searchDB` (the legacy monolithic search.db path; required
+        /// for the pre-#1037 migration window + tests that pin the
+        /// old shape). Defaulted nil so existing callers keep working
+        /// without changes.
         public static func read(
             identifier rawIdentifier: String,
             explicit: Source?,
@@ -116,7 +127,8 @@ extension Services {
             packagesDB: URL,
             searchDatabaseFactory: any Search.DatabaseFactory,
             sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
-            packageFileLookup: any PackageFileLookupStrategy
+            packageFileLookup: any PackageFileLookupStrategy,
+            docsDBURLs: [String: URL]? = nil
         ) async throws -> Result {
             // #587: accept canonical Apple Developer web URLs by
             // converting them to the lossless `apple-docs://...` URI
@@ -127,12 +139,22 @@ extension Services {
             // for transport symmetry.
             let identifier = Self.normalizeIdentifier(rawIdentifier)
 
+            // #1039: resolve the docs DB URL once, route by URI scheme
+            // when the per-source map is populated. Falls back to
+            // `searchDB` for callers that haven't migrated yet, and
+            // for URI schemes not in the map.
+            let resolvedDocsDB = resolveDocsDBURL(
+                identifier: identifier,
+                fallback: searchDB,
+                docsDBURLs: docsDBURLs
+            )
+
             if let explicit {
                 return try await readFrom(
                     source: explicit,
                     identifier: identifier,
                     format: format,
-                    searchDB: searchDB,
+                    searchDB: resolvedDocsDB,
                     samplesDB: samplesDB,
                     packagesDB: packagesDB,
                     allowFallback: false,
@@ -147,7 +169,7 @@ extension Services {
                     source: .docs,
                     identifier: identifier,
                     format: format,
-                    searchDB: searchDB,
+                    searchDB: resolvedDocsDB,
                     samplesDB: samplesDB,
                     packagesDB: packagesDB,
                     allowFallback: false,
@@ -162,7 +184,7 @@ extension Services {
                     source: .samples,
                     identifier: identifier,
                     format: format,
-                    searchDB: searchDB,
+                    searchDB: resolvedDocsDB,
                     samplesDB: samplesDB,
                     packagesDB: packagesDB,
                     allowFallback: true,
@@ -178,7 +200,7 @@ extension Services {
                 source: .packages,
                 identifier: identifier,
                 format: format,
-                searchDB: searchDB,
+                searchDB: resolvedDocsDB,
                 samplesDB: samplesDB,
                 packagesDB: packagesDB,
                 allowFallback: false,
@@ -186,6 +208,25 @@ extension Services {
                 sampleDatabaseFactory: sampleDatabaseFactory,
                 packageFileLookup: packageFileLookup
             )
+        }
+
+        /// #1039: extract the URI's scheme (e.g. "hig" from
+        /// "hig://buttons/standard-button") and look it up in the
+        /// per-source docs DB map. Returns the matched URL when both
+        /// the map is populated AND the scheme is present; falls back
+        /// to `fallback` (the legacy `searchDB` URL) otherwise.
+        ///
+        /// Made public-static so tests can pin the resolution logic
+        /// without standing up the full read pipeline.
+        public static func resolveDocsDBURL(
+            identifier: String,
+            fallback: URL,
+            docsDBURLs: [String: URL]?
+        ) -> URL {
+            guard let docsDBURLs, !docsDBURLs.isEmpty else { return fallback }
+            guard let schemeEnd = identifier.range(of: "://") else { return fallback }
+            let scheme = String(identifier[..<schemeEnd.lowerBound])
+            return docsDBURLs[scheme] ?? fallback
         }
 
         // MARK: - Identifier normalisation (#587)
@@ -338,7 +379,7 @@ extension Services {
             packageFileLookup: any PackageFileLookupStrategy
         ) async throws -> Result {
             // Identifier shape: `<owner>/<repo>/<relpath>`. Anything else is
-            // not a valid package identifier — auto-source mode bails here.
+            // not a valid package identifier -- auto-source mode bails here.
             let parts = identifier.split(separator: "/", maxSplits: 2, omittingEmptySubsequences: true)
             guard parts.count == 3 else {
                 throw ReadError.packagesIdentifierInvalid(identifier: identifier)
