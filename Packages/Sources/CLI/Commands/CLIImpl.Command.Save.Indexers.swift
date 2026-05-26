@@ -608,11 +608,18 @@ extension CLIImpl.Command.Save {
         // selected source-ids. For `--all` we list every registered
         // source's destination DB; for `--source <id>` we list only
         // that one. Both cases print the actual file the save wrote.
+        //
+        // Mirror the docs runner's own scope (line ~323 in this file):
+        // `groupedByDestinationDB(excluding: [.packages])`. Packages have
+        // their own separate `runPackagesIndexer` pipeline that writes
+        // packages.db; the docs summary must not claim authorship of
+        // that file even when `--all` puts "packages" in `selectedSourceIDs`.
         let registry = CLIImpl.makeProductionSourceRegistry()
         let dbFilenames: [String] = Array(
             Set(
                 registry.allEnabled
                     .filter { selectedSourceIDs.contains($0.definition.id) }
+                    .filter { $0.destinationDB != .packages }
                     .map(\.destinationDB.filename)
             )
         ).sorted()
