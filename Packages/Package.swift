@@ -1266,7 +1266,13 @@ let targets: [Target] = {
         // pattern is used in Issue1039ReadHigRoundtripTests.
         // RemoteSyncModels added so the contract test can reference
         // RemoteSync.IndexState.Phase (Cluster 11 sub-1).
-        dependencies: ["CLI", "Diagnostics", "Distribution", "DistributionModels", "Services", "ServicesModels", "RemoteSyncModels"]
+        // SearchSQLite added so the contract test can reference
+        // Search.DocsSourceCandidateFetcher.defaultSwiftVersionSources +
+        // defaultFrameworkScopedSources (Cluster 4 sub-1 + sub-2).
+        dependencies: [
+            "CLI", "Diagnostics", "Distribution", "DistributionModels",
+            "Services", "ServicesModels", "RemoteSyncModels", "SearchSQLite",
+        ]
     )
     let mockAIAgentTestsTarget = Target.testTarget(
         name: "MockAIAgentTests",

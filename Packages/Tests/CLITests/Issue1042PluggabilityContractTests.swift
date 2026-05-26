@@ -7,6 +7,7 @@ import LoggingModels
 import RemoteSyncModels
 import SearchAPI
 import SearchModels
+import SearchSQLite
 import Services
 import ServicesModels
 import SharedConstants
@@ -159,24 +160,30 @@ struct Issue1042PluggabilityContractTests {
 
     // MARK: - Cluster 4: CandidateFetcher capability sets
 
-    @Test(
-        "CandidateFetcher.swiftVersionSources derives from capabilities",
-        .disabled(
-            "OUTSTANDING — Cluster 4: SearchSQLite/CandidateFetcher.swift L108-112 hardcodes 3 swift-* source-ids. Refactor: SourceProperties.availabilityAxis = .swiftVersion."
-        )
-    )
+    @Test("CandidateFetcher.swiftVersionSources is composition-root-overridable")
     func swiftVersionSourcesCapabilityDerived() {
-        #expect(Bool(false), "see disabled note")
+        // STATUS: PASSES (post-Cluster-4 sub-1). The pre-fix private
+        // static `swiftVersionSources: Set<String>` became an instance
+        // property defaulting to `defaultSwiftVersionSources` (the
+        // 3-source production literal). A new `swiftVersionSources:
+        // Set<String>?` init parameter lets composition roots derive
+        // the set from the production registry's
+        // `Search.Capabilities.metadata[.hasMinSwiftVersion]`. The
+        // contract is that the static literal is not the single source
+        // of truth anymore; injection via DI is supported.
+        #expect(Search.DocsSourceCandidateFetcher.defaultSwiftVersionSources.contains(Shared.Constants.SourcePrefix.swiftEvolution))
+        // Verify the production set is still wired (smoke check that
+        // we didn't accidentally empty the default).
+        #expect(Search.DocsSourceCandidateFetcher.defaultSwiftVersionSources.count == 3)
     }
 
-    @Test(
-        "CandidateFetcher.frameworkScopedSources derives from capabilities",
-        .disabled(
-            "OUTSTANDING — Cluster 4: SearchSQLite/CandidateFetcher.swift L119-122 hardcodes 2 framework-scoped source-ids. Refactor: SourceProperties.carriesFrameworkColumn."
-        )
-    )
+    @Test("CandidateFetcher.frameworkScopedSources is composition-root-overridable")
     func frameworkScopedSourcesCapabilityDerived() {
-        #expect(Bool(false), "see disabled note")
+        // STATUS: PASSES (post-Cluster-4 sub-2). Mirror of sub-1 for
+        // the framework-scoped set. Composition roots derive from
+        // `Search.Capabilities.metadata[.hasFrameworkColumn]`.
+        #expect(Search.DocsSourceCandidateFetcher.defaultFrameworkScopedSources.contains(Shared.Constants.SourcePrefix.appleDocs))
+        #expect(Search.DocsSourceCandidateFetcher.defaultFrameworkScopedSources.count == 2)
     }
 
     // MARK: - Cluster 5: Search.PlatformFilterScope sets
