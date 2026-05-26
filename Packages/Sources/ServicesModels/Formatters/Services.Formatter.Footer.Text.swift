@@ -23,6 +23,15 @@ extension Services.Formatter.Footer {
                 case .sourceTip, .semanticTip, .platformTip:
                     output += stripMarkdown(item.content) + "\n\n"
 
+                case .allSourcesDiscovery:
+                    // #1045 Gap 2: rendered as plain prefixed line at
+                    // the bottom of the footer.
+                    if let emoji = item.emoji {
+                        output += "\(emoji)  " + stripMarkdown(item.content) + "\n\n"
+                    } else {
+                        output += stripMarkdown(item.content) + "\n\n"
+                    }
+
                 case .custom:
                     if let title = item.title {
                         output += "\(title): "

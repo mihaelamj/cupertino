@@ -101,16 +101,25 @@ extension CLIImpl.Command {
                 totalDocs += perDB.1
             }
 
-            // Output results using formatters
+            // Output results using formatters.
+            // #1045 Gap 2 wiring: registry-derived source-id list for
+            // the footer's "all sources" discovery block.
+            let frameworksRegisteredSources = CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition.id)
             switch format {
             case .text:
-                let formatter = Services.Formatter.Frameworks.Text(totalDocs: totalDocs)
+                let formatter = Services.Formatter.Frameworks.Text(
+                    totalDocs: totalDocs,
+                    availableSources: frameworksRegisteredSources
+                )
                 Cupertino.Context.composition.logging.recording.output(formatter.format(frameworks))
             case .json:
                 let formatter = Services.Formatter.Frameworks.JSON()
                 Cupertino.Context.composition.logging.recording.output(formatter.format(frameworks))
             case .markdown:
-                let formatter = Services.Formatter.Frameworks.Markdown(totalDocs: totalDocs)
+                let formatter = Services.Formatter.Frameworks.Markdown(
+                    totalDocs: totalDocs,
+                    availableSources: frameworksRegisteredSources
+                )
                 Cupertino.Context.composition.logging.recording.output(formatter.format(frameworks))
             }
         }

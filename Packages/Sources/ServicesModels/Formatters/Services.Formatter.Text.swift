@@ -11,6 +11,8 @@ extension Services.Formatter {
         private let source: String?
         private let config: Services.Formatter.Config
         private let teasers: TeaserResults?
+        /// #1045 Gap 2: registry-derived source-id list for footer tips.
+        private let availableSources: [String]?
 
         public init(
             query: String,
@@ -23,12 +25,14 @@ extension Services.Formatter {
                 showSeparators: true,
                 emptyMessage: "_No results found. Try broader search terms._"
             ),
-            teasers: TeaserResults? = nil
+            teasers: TeaserResults? = nil,
+            availableSources: [String]? = nil
         ) {
             self.query = query
             self.source = source
             self.config = config
             self.teasers = teasers
+            self.availableSources = availableSources
         }
 
         public func format(_ results: [Search.Result]) -> String {
@@ -81,7 +85,11 @@ extension Services.Formatter {
 
             // Footer: teasers, tips, and guidance
             let searchedSource = source ?? Shared.Constants.SourcePrefix.appleDocs
-            let footer = Services.Formatter.Footer.Search.singleSource(searchedSource, teasers: teasers)
+            let footer = Services.Formatter.Footer.Search.singleSource(
+                searchedSource,
+                teasers: teasers,
+                availableSources: availableSources
+            )
             output += footer.formatText()
 
             return output

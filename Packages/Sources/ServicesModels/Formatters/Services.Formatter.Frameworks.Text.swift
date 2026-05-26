@@ -7,9 +7,12 @@ extension Services.Formatter.Frameworks {
     /// Formats framework list as plain text for CLI output
     public struct Text: Services.Formatter.Result {
         private let totalDocs: Int
+        /// #1045 Gap 2: registry-derived source-id list for footer tips.
+        private let availableSources: [String]?
 
-        public init(totalDocs: Int) {
+        public init(totalDocs: Int, availableSources: [String]? = nil) {
             self.totalDocs = totalDocs
+            self.availableSources = availableSources
         }
 
         public func format(_ frameworks: [String: Int]) -> String {
@@ -25,7 +28,10 @@ extension Services.Formatter.Frameworks {
             }
 
             // Footer: tips and guidance
-            let footer = Services.Formatter.Footer.Search.singleSource(Shared.Constants.SourcePrefix.appleDocs)
+            let footer = Services.Formatter.Footer.Search.singleSource(
+                Shared.Constants.SourcePrefix.appleDocs,
+                availableSources: availableSources
+            )
             output += footer.formatText()
 
             return output

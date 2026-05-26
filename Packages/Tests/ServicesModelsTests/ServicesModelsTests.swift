@@ -325,10 +325,14 @@ struct FooterKindTests {
     @Test("Has the canonical case set used by the formatters")
     func canonicalCases() {
         let cases = Services.Formatter.Footer.Kind.allCases
-        // The formatter code branches on these five cases. Locking the
-        // set here means adding a new case forces a test + formatter update.
+        // The formatter code branches on these cases. Locking the set
+        // here means adding a new case forces a test + formatter
+        // update. `allSourcesDiscovery` landed in #1045 Gap 2 — the
+        // always-present bottom-of-footer "All sources you can search"
+        // block (compact middot-joined list, derived from the
+        // production source registry).
         let values = Set(cases.map(\.rawValue))
-        #expect(values == ["sourceTip", "semanticTip", "teaser", "platformTip", "custom"])
+        #expect(values == ["sourceTip", "semanticTip", "teaser", "platformTip", "allSourcesDiscovery", "custom"])
     }
 
     @Test("Raw values are stable identifiers")
@@ -337,6 +341,7 @@ struct FooterKindTests {
         #expect(Services.Formatter.Footer.Kind.semanticTip.rawValue == "semanticTip")
         #expect(Services.Formatter.Footer.Kind.teaser.rawValue == "teaser")
         #expect(Services.Formatter.Footer.Kind.platformTip.rawValue == "platformTip")
+        #expect(Services.Formatter.Footer.Kind.allSourcesDiscovery.rawValue == "allSourcesDiscovery")
         #expect(Services.Formatter.Footer.Kind.custom.rawValue == "custom")
     }
 }

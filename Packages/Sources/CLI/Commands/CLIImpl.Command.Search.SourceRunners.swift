@@ -101,12 +101,17 @@ extension CLIImpl.Command.Search {
             )
         }
 
+        // #1045 Gap 2 wiring: registry-derived source-id list for the
+        // formatter's footer tips. Threaded through all 3 formatters.
+        let registeredSources = CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition.id)
+
         switch format {
         case .text:
             let formatter = Services.Formatter.Text(
                 query: query,
                 source: source,
-                teasers: teasers
+                teasers: teasers,
+                availableSources: registeredSources
             )
             Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         case .json:
@@ -126,7 +131,8 @@ extension CLIImpl.Command.Search {
                     minimumVisionOS: minVisionos
                 ),
                 config: Self.makeStandardConfig(),
-                teasers: teasers
+                teasers: teasers,
+                availableSources: registeredSources
             )
             Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         }
@@ -186,15 +192,28 @@ extension CLIImpl.Command.Search {
             teasers = Services.Formatter.TeaserResults()
         }
 
+        // #1045 Gap 2 wiring: registry-derived source-id list.
+        let samplesRegisteredSources = CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition.id)
+
         switch format {
         case .text:
-            let formatter = Sample.Format.Text.Search(query: query, framework: framework, teasers: teasers)
+            let formatter = Sample.Format.Text.Search(
+                query: query,
+                framework: framework,
+                teasers: teasers,
+                availableSources: samplesRegisteredSources
+            )
             Cupertino.Context.composition.logging.recording.output(formatter.format(result))
         case .json:
             let formatter = Sample.Format.JSON.Search(query: query, framework: framework)
             Cupertino.Context.composition.logging.recording.output(formatter.format(result))
         case .markdown:
-            let formatter = Sample.Format.Markdown.Search(query: query, framework: framework, teasers: teasers)
+            let formatter = Sample.Format.Markdown.Search(
+                query: query,
+                framework: framework,
+                teasers: teasers,
+                availableSources: samplesRegisteredSources
+            )
             Cupertino.Context.composition.logging.recording.output(formatter.format(result))
         }
     }
@@ -300,15 +319,29 @@ extension CLIImpl.Command.Search {
 
         let higQuery = Services.HIGQuery(text: query, platform: nil, category: nil)
 
+        // #1045 Gap 2 wiring: registry-derived source-id list for the
+        // footer's "narrow with --source" tip. Threaded through HIG.Text
+        // and HIG.Markdown so a registered new source appears in the tip.
+        let higAvailableSources = CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition.id)
+
         switch format {
         case .text:
-            let formatter = Services.Formatter.HIG.Text(query: higQuery, teasers: teasers)
+            let formatter = Services.Formatter.HIG.Text(
+                query: higQuery,
+                teasers: teasers,
+                availableSources: higAvailableSources
+            )
             Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         case .json:
             let formatter = Services.Formatter.HIG.JSON(query: higQuery)
             Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         case .markdown:
-            let formatter = Services.Formatter.HIG.Markdown(query: higQuery, config: Self.makeStandardConfig(), teasers: teasers)
+            let formatter = Services.Formatter.HIG.Markdown(
+                query: higQuery,
+                config: Self.makeStandardConfig(),
+                teasers: teasers,
+                availableSources: higAvailableSources
+            )
             Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         }
     }

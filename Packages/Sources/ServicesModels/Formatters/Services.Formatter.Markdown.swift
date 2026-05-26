@@ -12,6 +12,8 @@ extension Services.Formatter {
         private let config: Services.Formatter.Config
         private let teasers: Services.Formatter.TeaserResults?
         private let showPlatformTip: Bool
+        /// #1045 Gap 2: registry-derived source-id list for footer tips.
+        private let availableSources: [String]?
 
         public init(
             query: String,
@@ -25,13 +27,15 @@ extension Services.Formatter {
                 emptyMessage: "_No results found. Try broader search terms._"
             ),
             teasers: Services.Formatter.TeaserResults? = nil,
-            showPlatformTip: Bool = true
+            showPlatformTip: Bool = true,
+            availableSources: [String]? = nil
         ) {
             self.query = query
             self.filters = filters
             self.config = config
             self.teasers = teasers
             self.showPlatformTip = showPlatformTip
+            self.availableSources = availableSources
         }
 
         public func format(_ results: [Search.Result]) -> String {
@@ -114,7 +118,8 @@ extension Services.Formatter {
             let footer = Services.Formatter.Footer.Search.singleSource(
                 searchedSource,
                 teasers: teasers,
-                showPlatformTip: showPlatformTip
+                showPlatformTip: showPlatformTip,
+                availableSources: availableSources
             )
             output += footer.formatMarkdown()
 

@@ -801,11 +801,20 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             )
         }
 
+        // #1045 Gap 2 wiring: registry-derived source-id list for the
+        // formatter's footer tips. Strip "all" and the appleSampleCode
+        // alias the schema enum carries but the formatter doesn't display.
+        let docsAvailableSources: [String]? = searchToolSourceEnumValues.isEmpty
+            ? nil
+            : searchToolSourceEnumValues.filter { id in
+                id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
+            }
         let formatter = Services.Formatter.Markdown(
             query: query,
             filters: filters,
             config: config,
-            teasers: teasers
+            teasers: teasers,
+            availableSources: docsAvailableSources
         )
         let markdown = formatter.format(results)
 
@@ -875,8 +884,18 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             includeArchive: false
         )
 
-        // Use shared formatter
-        let formatter = Sample.Format.Markdown.Search(query: query, framework: framework, teasers: teasers)
+        // Use shared formatter — #1045 Gap 2 wiring.
+        let samplesAvailableSources: [String]? = searchToolSourceEnumValues.isEmpty
+            ? nil
+            : searchToolSourceEnumValues.filter { id in
+                id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
+            }
+        let formatter = Sample.Format.Markdown.Search(
+            query: query,
+            framework: framework,
+            teasers: teasers,
+            availableSources: samplesAvailableSources
+        )
         let markdown = formatter.format(result)
 
         return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
@@ -954,11 +973,18 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             minimumWatchOS: nil,
             minimumVisionOS: nil
         )
+        // #1045 Gap 2 wiring: registry-derived source-id list.
+        let packagesAvailableSources: [String]? = searchToolSourceEnumValues.isEmpty
+            ? nil
+            : searchToolSourceEnumValues.filter { id in
+                id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
+            }
         let formatter = Services.Formatter.Markdown(
             query: query,
             filters: filters,
             config: Self.makeStandardConfig(),
-            teasers: teasers
+            teasers: teasers,
+            availableSources: packagesAvailableSources
         )
         let markdown = formatter.format(results)
 
@@ -994,9 +1020,22 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             includeArchive: false
         )
 
-        // Use shared formatter
+        // Use shared formatter — #1045 Gap 2 wiring: thread registry-
+        // derived source-id list (sans "all" / appleSampleCode alias)
+        // into the formatter so the footer's "narrow with --source" tip
+        // reflects every registered source.
         let higQuery = Services.HIGQuery(text: query, platform: nil, category: nil)
-        let formatter = Services.Formatter.HIG.Markdown(query: higQuery, config: Self.makeStandardConfig(), teasers: teasers)
+        let higAvailableSources: [String]? = searchToolSourceEnumValues.isEmpty
+            ? nil
+            : searchToolSourceEnumValues.filter { id in
+                id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
+            }
+        let formatter = Services.Formatter.HIG.Markdown(
+            query: higQuery,
+            config: Self.makeStandardConfig(),
+            teasers: teasers,
+            availableSources: higAvailableSources
+        )
         let markdown = formatter.format(results)
 
         return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
@@ -1157,7 +1196,16 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let frameworks = try await searchIndex.listFrameworks()
         let totalDocs = try await searchIndex.documentCount()
 
-        let formatter = Services.Formatter.Frameworks.Markdown(totalDocs: totalDocs)
+        // #1045 Gap 2 wiring: registry-derived source-id list.
+        let frameworksAvailableSources: [String]? = searchToolSourceEnumValues.isEmpty
+            ? nil
+            : searchToolSourceEnumValues.filter { id in
+                id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
+            }
+        let formatter = Services.Formatter.Frameworks.Markdown(
+            totalDocs: totalDocs,
+            availableSources: frameworksAvailableSources
+        )
         let markdown = formatter.format(frameworks)
 
         return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
