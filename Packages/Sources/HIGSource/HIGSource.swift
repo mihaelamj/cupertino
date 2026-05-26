@@ -55,4 +55,9 @@ public struct HIGSource: Search.SourceProvider {
     public func makeIndexer() -> any Search.SourceIndexer {
         Search.HIGIndexer()
     }
+
+    /// #1042 Cluster 8: HIG uses its own search runner (`runHIGSearch`
+    /// in `CLIImpl.Command.Search` / `handleSearchHIG` in
+    /// `CompositeToolProvider`); not the default `.docs` route.
+    public var searchRoute: Search.SearchRoute { .hig }
 }

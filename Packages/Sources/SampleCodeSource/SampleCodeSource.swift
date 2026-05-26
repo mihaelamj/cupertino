@@ -69,4 +69,9 @@ public struct SampleCodeSource: Search.SourceProvider {
     public func makeIndexer() -> any Search.SourceIndexer {
         Search.SampleCodeIndexer()
     }
+
+    /// #1042 Cluster 8: samples use their own search runner
+    /// (`runSampleSearch` / `handleSearchSamples`); not the default
+    /// `.docs` route.
+    public var searchRoute: Search.SearchRoute { .samples }
 }

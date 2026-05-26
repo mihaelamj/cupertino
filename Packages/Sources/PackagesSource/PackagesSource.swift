@@ -61,6 +61,11 @@ public struct PackagesSource: Search.SourceProvider {
     public func makeIndexer() -> any Search.SourceIndexer {
         PackagesViewSourceIndexer()
     }
+
+    /// #1042 Cluster 8: packages live in their own DB (packages.db),
+    /// not search.db; the dispatcher uses `runPackageSearch` /
+    /// `handleSearchPackages`.
+    public var searchRoute: Search.SearchRoute { .packages }
 }
 
 // MARK: - View-source no-op concretes

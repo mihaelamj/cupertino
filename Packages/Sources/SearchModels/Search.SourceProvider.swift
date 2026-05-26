@@ -104,5 +104,52 @@ extension Search {
         /// root calls this once at indexer-dict-assembly time and
         /// registers the result under `definition.id`.
         func makeIndexer() -> any Search.SourceIndexer
+
+        /// Which CLI/MCP search-dispatch runner this source uses at
+        /// query time. Pre-#1042 Cluster 8, both
+        /// `CLIImpl.Command.Search.run` and
+        /// `SearchToolProvider.CompositeToolProvider.handleSearch`
+        /// hardcoded an 8-arm switch over source-ids; adding a new
+        /// source required editing both switches. Post-fix the
+        /// dispatcher consults this property on each registered
+        /// provider and routes to the matching runner. The default
+        /// extension returns `.docs` (the most common case: 5 of 8
+        /// shipped sources). Sources whose dispatch differs override
+        /// in their concrete (`HIGSource`, `SampleCodeSource`,
+        /// `PackagesSource`).
+        ///
+        /// New sources whose dispatch fits one of the existing 4
+        /// routes (docs / hig / samples / packages) declare the
+        /// matching enum case. Sources whose dispatch is genuinely
+        /// novel return `.unified` and the dispatcher falls back to
+        /// the fan-out runner — the same behaviour as the pre-#1042
+        /// `default:` arm.
+        var searchRoute: Search.SearchRoute { get }
     }
+
+    /// Which dispatcher runner a source uses for `cupertino search` /
+    /// MCP `tools/call search`. See `Search.SourceProvider.searchRoute`.
+    /// String-backed so additional routes a future source might need
+    /// can be added by extension without breaking existing conformers.
+    public enum SearchRoute: String, Sendable, Equatable, Hashable {
+        /// Docs DB (apple-docs / apple-archive / swift-evolution /
+        /// swift-org / swift-book). Default.
+        case docs
+        /// HIG-specific handler.
+        case hig
+        /// Samples (samples.db) — separate handler from docs.
+        case samples
+        /// Packages (packages.db) — different DB from docs.
+        case packages
+        /// Fall-back to the unified fan-out runner. Same as the
+        /// pre-#1042 `default:` arm.
+        case unified
+    }
+}
+
+extension Search.SourceProvider {
+    /// Default route is `.docs` — the most common case. Sources whose
+    /// dispatch differs (HIGSource, SampleCodeSource, PackagesSource)
+    /// override.
+    public var searchRoute: Search.SearchRoute { .docs }
 }

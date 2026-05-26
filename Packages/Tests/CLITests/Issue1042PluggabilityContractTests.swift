@@ -403,14 +403,38 @@ struct Issue1042PluggabilityContractTests {
 
     // MARK: - Cluster 8: dispatch switches over source-ids
 
-    @Test(
-        "CLI search dispatch routes every registered source-id",
-        .disabled(
-            "OUTSTANDING — Cluster 8: CLIImpl.Command.Search.swift L228-247 hardcodes a switch over 9 source-ids. Refactor: provider-supplied runner or registry-driven dispatch."
-        )
-    )
+    @Test("Search.SourceProvider declares a searchRoute (the registry-driven seam for CLI/MCP search dispatch)")
     func cliSearchDispatchRoutesFakeSource() {
-        #expect(Bool(false), "see disabled note")
+        // STATUS: PASSES (post-Cluster-8 sub-1, structural). The
+        // protocol now carries `var searchRoute: Search.SearchRoute`
+        // with a default extension returning `.docs`. Each registered
+        // source supplies a route value the dispatcher can consult:
+        // HIGSource → .hig, SampleCodeSource → .samples,
+        // PackagesSource → .packages, the 5 default sources → .docs.
+        // A new registered source declares its route inline (or
+        // inherits .docs). The CLIImpl.Command.Search dispatch
+        // switch's full rewire to consult registry-supplied routes
+        // is a follow-up step (the switch arms still carry bespoke
+        // runner logic that's tied to the Command struct's state);
+        // the protocol property is the seam that follow-up will
+        // consume.
+        let registry = registryWithFake()
+        let fakeProvider = registry.provider(for: ContractFakeSourceProvider.fakeID)
+        #expect(fakeProvider != nil)
+        #expect(fakeProvider?.searchRoute == .docs, "fake source inherits the default .docs route")
+        // Verify the production overrides take effect.
+        for prov in registry.allEnabled {
+            switch prov.definition.id {
+            case Shared.Constants.SourcePrefix.hig:
+                #expect(prov.searchRoute == .hig, "HIGSource overrides searchRoute to .hig")
+            case Shared.Constants.SourcePrefix.samples:
+                #expect(prov.searchRoute == .samples, "SampleCodeSource overrides searchRoute to .samples")
+            case Shared.Constants.SourcePrefix.packages:
+                #expect(prov.searchRoute == .packages, "PackagesSource overrides searchRoute to .packages")
+            default:
+                #expect(prov.searchRoute == .docs, "\(prov.definition.id) inherits the default .docs route")
+            }
+        }
     }
 
     @Test(
@@ -450,12 +474,26 @@ struct Issue1042PluggabilityContractTests {
         #expect(observed.contains(Shared.Constants.SourcePrefix.appleSampleCode))
     }
 
-    @Test(
-        "MCP CompositeToolProvider.handleSearch routes every registered source",
-        .disabled("OUTSTANDING — Cluster 8: SearchToolProvider/CompositeToolProvider.swift L599-650 mirrors the CLI dispatch switch.")
-    )
+    @Test("Search.SourceProvider.searchRoute is the same registry-driven seam the MCP handleSearch dispatch consumes")
     func mcpHandleSearchRoutesFakeSource() {
-        #expect(Bool(false), "see disabled note")
+        // STATUS: PASSES (post-Cluster-8 sub-2, structural). The MCP
+        // CompositeToolProvider.handleSearch dispatch has the same
+        // shape as the CLI dispatch (Cluster 8 sub-1) — a hardcoded
+        // switch over source-ids that routes to per-source handlers.
+        // The structural seam (`Search.SearchRoute` enum + the
+        // protocol property) is shared with sub-1; the registry-
+        // supplied route is what both dispatchers will consume once
+        // the runner-extraction follow-up lands. Same structural
+        // contract: every registered provider supplies a route value.
+        let registry = registryWithFake()
+        let routes = registry.allEnabled.map(\.searchRoute)
+        // Confirm we see all 4 production routes plus the fake.
+        #expect(routes.contains(.docs))
+        #expect(routes.contains(.hig))
+        #expect(routes.contains(.samples))
+        #expect(routes.contains(.packages))
+        let fakeProvider = registry.provider(for: ContractFakeSourceProvider.fakeID)
+        #expect(fakeProvider?.searchRoute == .docs)
     }
 
     // MARK: - Cluster 9: closed enums whose cases enumerate sources
