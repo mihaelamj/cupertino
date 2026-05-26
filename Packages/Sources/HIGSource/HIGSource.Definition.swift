@@ -27,6 +27,7 @@ extension HIGSource {
         ),
         intents: [.designGuidance],
         intentPriority: [.designGuidance: 100],
-        baseURL: URL(string: Shared.Constants.BaseURL.appleDeveloper + "/design/human-interface-guidelines")
+        baseURL: URL(string: Shared.Constants.BaseURL.appleDeveloper + "/design/human-interface-guidelines"),
+        defaultDocKindRawValue: "hig"
     )
 }

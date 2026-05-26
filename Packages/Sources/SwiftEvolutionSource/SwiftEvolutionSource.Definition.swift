@@ -28,6 +28,7 @@ extension SwiftEvolutionSource {
             .migration: 70,
             .conceptual: 50,
         ],
-        baseURL: URL(string: Shared.Constants.BaseURL.swiftEvolution)
+        baseURL: URL(string: Shared.Constants.BaseURL.swiftEvolution),
+        defaultDocKindRawValue: "evolutionProposal"
     )
 }

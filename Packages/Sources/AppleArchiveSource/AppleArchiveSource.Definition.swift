@@ -31,6 +31,7 @@ extension AppleArchiveSource {
             .migration: 80,
             .troubleshooting: 60,
         ],
-        baseURL: URL(string: Shared.Constants.BaseURL.appleDeveloper + "/library/archive")
+        baseURL: URL(string: Shared.Constants.BaseURL.appleDeveloper + "/library/archive"),
+        defaultDocKindRawValue: "archive"
     )
 }

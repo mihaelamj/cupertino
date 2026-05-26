@@ -74,6 +74,24 @@ extension Search {
             definition(for: id) != nil
         }
 
+        /// #1045 Gap 3: registry-derived map from source-id to
+        /// `Search.DocKind` rawValue. Composition root passes this via
+        /// the SourceLookup (already plumbed through `Search.Index`'s
+        /// init); SearchSQLite's `Search.Classify.kind(...)` looks up
+        /// the rawValue here and resolves to its own `DocKind` enum.
+        /// Sources with `defaultDocKindRawValue == nil` (apple-docs's
+        /// bespoke classifier path; samples / packages which don't
+        /// emit `docs_metadata` rows) are absent from the dict.
+        public var docKindRawValuesByID: [String: String] {
+            var result: [String: String] = [:]
+            for definition in definitions {
+                if let rawValue = definition.defaultDocKindRawValue {
+                    result[definition.id] = rawValue
+                }
+            }
+            return result
+        }
+
         // MARK: - Convenience for Search.Source
 
         /// Display name for a `Search.Source`, falling back to the raw

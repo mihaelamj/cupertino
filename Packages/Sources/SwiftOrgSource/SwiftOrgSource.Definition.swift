@@ -27,6 +27,7 @@ extension SwiftOrgSource {
             .conceptual: 70,
             .howTo: 50,
         ],
-        baseURL: URL(string: Shared.Constants.BaseURL.swiftOrgBase)
+        baseURL: URL(string: Shared.Constants.BaseURL.swiftOrgBase),
+        defaultDocKindRawValue: "swiftOrgDoc"
     )
 }
