@@ -1,4 +1,5 @@
 import Foundation
+import LoggingModels
 import SampleIndexModels
 import SearchModels
 import ServicesModels
@@ -22,14 +23,21 @@ import SharedConstants
 /// stays identical across transports.
 extension Services {
     public enum ReadService {
-        /// Backend bucket the read dispatcher routes to. Three shipped
-        /// buckets historically aligned with the three monolithic DBs
-        /// (`docs` ↔ search.db family, `samples` ↔ samples.db,
-        /// `packages` ↔ packages.db). Post-#1042 Cluster 9 sub-3 this
-        /// is a rawValue-String struct, not a closed enum, so adding a
-        /// new backend bucket (e.g. when WWDC transcripts join with
-        /// their own backend lookup) is a `static let` declaration —
-        /// no enum case + no exhaustive switch in the dispatcher.
+        /// Backend bucket the read dispatcher historically routed to.
+        /// Three buckets (docs / samples / packages) aligned with the
+        /// three monolithic DBs of the pre-per-source-split world.
+        ///
+        /// **2026-05-26 audit #1055**: this enum is no longer
+        /// load-bearing for dispatch. `Services.ReadService.read` now
+        /// iterates the registry and asks each provider's
+        /// `Search.SourceReadStrategy` directly; the bucket-arm
+        /// `if source == .docs/.samples/.packages` dispatch in the
+        /// old `readFrom` was deleted. The struct + its `.docs /
+        /// .samples / .packages` static lets stay for back-compat
+        /// with callers (CLI's `cupertino read --source <id>` flag
+        /// resolution + 2 test files) that pass it to identify the
+        /// preferred provider family. New code should pass a
+        /// source-id string directly via `explicitSourceID` instead.
         public struct Source: RawRepresentable, Sendable, Equatable, Hashable {
             public let rawValue: String
             public init(rawValue: String) {
@@ -108,31 +116,14 @@ extension Services {
             }
         }
 
-        /// Strategy for resolving a file inside `packages.db` to its
-        /// raw content. GoF Strategy pattern (Gamma et al, 1994):
-        /// production composition root (CLI) wires a
-        /// `LivePackageFileLookupStrategy` that wraps
-        /// `Search.PackageQuery(dbPath:).fileContent(...)` + a
-        /// matching `disconnect()`. ReadService doesn't import the
-        /// SearchAPI / SearchSQLite targets, so the actor stays opaque behind this seam.
-        ///
-        /// Replaces the previous
-        /// `PackageFileLookup = @Sendable (URL, String, String, String) async throws -> String?`
-        /// closure typealias. The protocol form names the contract at
-        /// the constructor site, makes captured-state explicit, and
-        /// produces one-line test mocks.
-        public protocol PackageFileLookupStrategy: Sendable {
-            /// Look up the raw content of a file inside `packages.db`.
-            /// Returns `nil` when the identifier doesn't resolve;
-            /// throws if the lookup itself fails (DB open error,
-            /// SQL error, etc.).
-            func fileContent(
-                dbURL: URL,
-                owner: String,
-                repo: String,
-                relpath: String
-            ) async throws -> String?
-        }
+        /// 2026-05-26 audit #1055: the Services-side
+        /// `PackageFileLookupStrategy` protocol moved to
+        /// `Search.PackageFileLookupStrategy` (in SearchModels) so
+        /// per-source read strategies in source targets can reference
+        /// it without depending on Services. CLI's
+        /// `LivePackageFileLookupStrategy` was updated to conform to
+        /// the SearchModels protocol.
+        public typealias PackageFileLookupStrategy = Search.PackageFileLookupStrategy
 
         /// Read a document by identifier. When `explicit` is provided the
         /// matching backend is used; otherwise we infer:
@@ -167,27 +158,16 @@ extension Services {
             sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
             packageFileLookup: any PackageFileLookupStrategy,
             docsDBURLs: [String: URL]? = nil,
-            explicitDocsSourceID: String? = nil
+            explicitDocsSourceID: String? = nil,
+            providers: [any Search.SourceProvider]
         ) async throws -> Result {
             // #587: accept canonical Apple Developer web URLs by
             // converting them to the lossless `apple-docs://...` URI
-            // before the regular dispatch. Users (and AI agents) routinely
-            // paste the URL form when asked to read a doc; rejecting it
-            // forces them to learn cupertino's URI conventions first.
-            // The MCP `read_document` path applies the same normalisation
-            // for transport symmetry.
+            // before the regular dispatch.
             let identifier = Self.normalizeIdentifier(rawIdentifier)
 
             // #1039: resolve the docs DB URL once. Per-source routing
-            // happens via either (a) the raw `--source <id>` value
-            // (`explicitDocsSourceID`) for non-URI identifiers or
-            // (b) the URI's scheme for URI identifiers. Falls back to
-            // `searchDB` for callers that haven't migrated yet and
-            // for URI schemes not in the map. The raw source-id is
-            // threaded separately from `explicit: Source?` because
-            // that enum is narrowed to `.docs / .samples / .packages`
-            // and loses the original "hig" / "apple-docs" / etc.
-            // disambiguation.
+            // happens via the URI scheme or the `explicitDocsSourceID`.
             let resolvedDocsDB = resolveDocsDBURL(
                 identifier: identifier,
                 explicitSourceID: explicitDocsSourceID,
@@ -195,65 +175,78 @@ extension Services {
                 docsDBURLs: docsDBURLs
             )
 
-            if let explicit {
-                return try await readFrom(
-                    source: explicit,
-                    identifier: identifier,
-                    format: format,
-                    searchDB: resolvedDocsDB,
-                    samplesDB: samplesDB,
-                    packagesDB: packagesDB,
-                    allowFallback: false,
-                    searchDatabaseFactory: searchDatabaseFactory,
-                    sampleDatabaseFactory: sampleDatabaseFactory,
-                    packageFileLookup: packageFileLookup
-                )
-            }
+            // 2026-05-26 audit #1055: build the read env once and
+            // hand it to per-source `Search.SourceReadStrategy`
+            // concretes via the registry. Pre-fix this dispatched
+            // through 3 hardcoded `if source == .docs/.samples/.packages`
+            // arms; post-fix `runProviderStrategy` walks one provider
+            // at a time and lets each strategy decide whether the
+            // identifier is its concern.
+            let docsLookup = LiveDocsLookupStrategy(searchDatabaseFactory: searchDatabaseFactory)
+            let sampleLookup = LiveSampleLookupStrategy(sampleDatabaseFactory: sampleDatabaseFactory)
 
-            if identifier.contains("://") {
-                return try await readFrom(
-                    source: .docs,
-                    identifier: identifier,
-                    format: format,
-                    searchDB: resolvedDocsDB,
-                    samplesDB: samplesDB,
-                    packagesDB: packagesDB,
-                    allowFallback: false,
-                    searchDatabaseFactory: searchDatabaseFactory,
-                    sampleDatabaseFactory: sampleDatabaseFactory,
-                    packageFileLookup: packageFileLookup
-                )
-            }
-
-            do {
-                return try await readFrom(
-                    source: .samples,
-                    identifier: identifier,
-                    format: format,
-                    searchDB: resolvedDocsDB,
-                    samplesDB: samplesDB,
-                    packagesDB: packagesDB,
-                    allowFallback: true,
-                    searchDatabaseFactory: searchDatabaseFactory,
-                    sampleDatabaseFactory: sampleDatabaseFactory,
-                    packageFileLookup: packageFileLookup
-                )
-            } catch ReadError.samplesNotFound, ReadError.packagesNotFound,
-                ReadError.packagesIdentifierInvalid {
-                // Auto-source: try packages explicitly as a last resort.
-            }
-            return try await readFrom(
-                source: .packages,
+            // The legacy `docsDBURLs` map flows through to the env
+            // so `Search.DocsReadStrategy` resolves per-source DBs.
+            // When the caller didn't supply one (pre-#1037 tests),
+            // the fallback `searchDB` URL is used for every docs id.
+            let env = Search.ReadEnvironment(
                 identifier: identifier,
                 format: format,
-                searchDB: resolvedDocsDB,
+                docsDBURLs: docsDBURLs ?? [:],
+                fallbackSearchDB: resolvedDocsDB,
                 samplesDB: samplesDB,
                 packagesDB: packagesDB,
-                allowFallback: false,
-                searchDatabaseFactory: searchDatabaseFactory,
-                sampleDatabaseFactory: sampleDatabaseFactory,
-                packageFileLookup: packageFileLookup
+                docsLookup: docsLookup,
+                sampleLookup: sampleLookup,
+                packageFileLookup: packageFileLookup,
+                allowFallback: explicit == nil,
+                logger: LoggingModels.Logging.NoopRecording()
             )
+
+            // Pick the candidate providers based on explicit hints.
+            let candidates: [any Search.SourceProvider]
+            if let explicitDocsSourceID, let specific = providers.first(where: { $0.definition.id == explicitDocsSourceID }) {
+                // Single-source override (--source <id>); only that
+                // provider runs.
+                candidates = [specific]
+            } else if let explicit {
+                // Legacy bucket-narrowed (--source explicit value
+                // resolved through legacyBucket).
+                candidates = providers.filter { Self.legacyBucket(for: $0) == explicit }
+            } else if identifier.contains("://") {
+                // URI form: route to docs-tier providers.
+                candidates = providers.filter { Self.legacyBucket(for: $0) == .docs }
+            } else {
+                // Auto-source: try samples → packages → docs.
+                candidates = Self.autoSourceOrder(providers: providers)
+            }
+
+            // Walk each candidate. The first non-nil strategy result
+            // wins; nil means "not my concern, try the next".
+            for provider in candidates {
+                do {
+                    if let result = try await runProviderStrategy(provider: provider, env: env) {
+                        return result
+                    }
+                } catch {
+                    // For explicit-source reads the caller wants the
+                    // error surfaced (no fallback). For auto-source
+                    // / URI reads, swallow and try the next strategy.
+                    if explicit != nil || explicitDocsSourceID != nil {
+                        throw error
+                    }
+                }
+            }
+
+            // No provider claimed the identifier.
+            if let explicit {
+                switch explicit {
+                case .samples: throw ReadError.samplesNotFound(identifier: identifier)
+                case .packages: throw ReadError.packagesNotFound(identifier: identifier)
+                default: throw ReadError.docsNotFound(identifier: identifier)
+                }
+            }
+            throw ReadError.notFoundAnywhere(identifier: identifier)
         }
 
         /// #1039: resolve the docs DB URL for a read. Per-source DB
@@ -319,157 +312,56 @@ extension Services {
             return uri
         }
 
-        // MARK: - Per-source reads
+        // MARK: - Registry-driven dispatch
 
-        private static func readFrom(
-            source: Source,
-            identifier: String,
-            format: Search.DocumentFormat,
-            searchDB: URL,
-            samplesDB: URL,
-            packagesDB: URL,
-            allowFallback: Bool,
-            searchDatabaseFactory: any Search.DatabaseFactory,
-            sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
-            packageFileLookup: any PackageFileLookupStrategy
-        ) async throws -> Result {
-            // Post-#1042 Cluster 9 sub-3: Source is a rawValue struct,
-            // not a closed enum; we dispatch by static-let equality
-            // instead of an exhaustive switch. An unrecognised
-            // bucket falls through to `.unknownSource(rawValue)` which
-            // is the same error a backend mismatch would throw.
-            if source == .docs {
-                return try await readFromDocs(
-                    identifier: identifier,
-                    format: format,
-                    searchDB: searchDB,
-                    searchDatabaseFactory: searchDatabaseFactory
-                )
-            }
-            if source == .samples {
-                return try await readFromSamples(
-                    identifier: identifier,
-                    samplesDB: samplesDB,
-                    allowFallback: allowFallback,
-                    packagesDB: packagesDB,
-                    sampleDatabaseFactory: sampleDatabaseFactory,
-                    packageFileLookup: packageFileLookup
-                )
-            }
-            if source == .packages {
-                return try await readFromPackages(
-                    identifier: identifier,
-                    packagesDB: packagesDB,
-                    packageFileLookup: packageFileLookup
-                )
-            }
-            throw ReadError.unknownSource(source.rawValue)
+        /// 2026-05-26 audit #1055: dispatch a single provider's read
+        /// strategy. Replaces the pre-fix 3-arm bucket dispatch in
+        /// the old `readFrom(source:)`. Returns nil when the
+        /// provider's strategy says "not my concern"; throws when
+        /// the strategy itself fails.
+        private static func runProviderStrategy(
+            provider: any Search.SourceProvider,
+            env: Search.ReadEnvironment
+        ) async throws -> Result? {
+            guard let strategy = provider.makeReadStrategy() else { return nil }
+            guard let result = try await strategy.read(env: env) else { return nil }
+            // Map the per-source strategy result to the legacy
+            // `Source` bucket for back-compat with callers that key
+            // off the resolvedSource value. The provider's
+            // destinationDB drives the mapping (docs.search-tier
+            // sources resolve to `.docs`; samples/packages to their
+            // own bucket).
+            let bucket = Self.legacyBucket(for: provider)
+            return Result(content: result.content, resolvedSource: bucket)
         }
 
-        private static func readFromDocs(
-            identifier: String,
-            format: Search.DocumentFormat,
-            searchDB: URL,
-            searchDatabaseFactory: any Search.DatabaseFactory
-        ) async throws -> Result {
-            let content = try await Services.ServiceContainer.withDocsService(
-                searchDB: searchDB,
-                searchDatabaseFactory: searchDatabaseFactory
-            ) { service in
-                try await service.read(uri: identifier, format: format)
+        /// Map a registered provider to the legacy `Source` bucket
+        /// the result type still carries for back-compat. Drives
+        /// `Result.resolvedSource` for callers that switch on the
+        /// 3 historical buckets. New consumers should read the
+        /// `definition.id` from the provider directly.
+        private static func legacyBucket(for provider: any Search.SourceProvider) -> Source {
+            switch provider.destinationDB {
+            case .packages: return .packages
+            case .appleSampleCode: return .samples
+            default: return .docs
             }
-            guard let content else {
-                throw ReadError.docsNotFound(identifier: identifier)
-            }
-            return Result(content: content, resolvedSource: .docs)
         }
 
-        private static func readFromSamples(
-            identifier: String,
-            samplesDB: URL,
-            allowFallback: Bool,
-            packagesDB: URL,
-            sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
-            packageFileLookup: any PackageFileLookupStrategy
-        ) async throws -> Result {
-            guard FileManager.default.fileExists(atPath: samplesDB.path) else {
-                if allowFallback {
-                    return try await readFromPackages(
-                        identifier: identifier,
-                        packagesDB: packagesDB,
-                        packageFileLookup: packageFileLookup
-                    )
-                }
-                throw ReadError.samplesNotFound(identifier: identifier)
-            }
-
-            if let slashIdx = identifier.firstIndex(of: "/") {
-                let projectId = String(identifier[..<slashIdx])
-                let path = String(identifier[identifier.index(after: slashIdx)...])
-                let file = try await Services.ServiceContainer.withSampleService(
-                    samplesDB: samplesDB,
-                    sampleDatabaseFactory: sampleDatabaseFactory
-                ) { service in
-                    try await service.getFile(projectId: projectId, path: path)
-                }
-                if let file {
-                    return Result(content: file.content, resolvedSource: .samples)
-                }
-            } else {
-                let project = try await Services.ServiceContainer.withSampleService(
-                    samplesDB: samplesDB,
-                    sampleDatabaseFactory: sampleDatabaseFactory
-                ) { service in
-                    try await service.getProject(id: identifier)
-                }
-                if let project {
-                    return Result(
-                        content: project.readme ?? project.description,
-                        resolvedSource: .samples
-                    )
-                }
-            }
-
-            if allowFallback {
-                return try await readFromPackages(
-                    identifier: identifier,
-                    packagesDB: packagesDB,
-                    packageFileLookup: packageFileLookup
-                )
-            }
-            throw ReadError.samplesNotFound(identifier: identifier)
-        }
-
-        private static func readFromPackages(
-            identifier: String,
-            packagesDB: URL,
-            packageFileLookup: any PackageFileLookupStrategy
-        ) async throws -> Result {
-            // Identifier shape: `<owner>/<repo>/<relpath>`. Anything else is
-            // not a valid package identifier -- auto-source mode bails here.
-            let parts = identifier.split(separator: "/", maxSplits: 2, omittingEmptySubsequences: true)
-            guard parts.count == 3 else {
-                throw ReadError.packagesIdentifierInvalid(identifier: identifier)
-            }
-            let owner = String(parts[0])
-            let repo = String(parts[1])
-            let relpath = String(parts[2])
-
-            guard FileManager.default.fileExists(atPath: packagesDB.path) else {
-                throw ReadError.packagesNotFound(identifier: identifier)
-            }
-
-            let content: String?
-            do {
-                content = try await packageFileLookup.fileContent(dbURL: packagesDB, owner: owner, repo: repo, relpath: relpath)
-            } catch {
-                throw ReadError.backendFailed("packages.db query failed: \(error.localizedDescription)")
-            }
-
-            guard let content else {
-                throw ReadError.packagesNotFound(identifier: identifier)
-            }
-            return Result(content: content, resolvedSource: .packages)
+        /// Build the canonical try-order for the auto-source flow.
+        /// Pre-fix: try samples → packages → docs. Post-fix: same
+        /// order, but each "bucket" expands to every registered
+        /// provider in that family (so 6 docs-tier sources get
+        /// tried). The order is preserved because the legacy
+        /// auto-source semantics matched samples-shaped identifiers
+        /// first, then packages-shaped, then docs URIs.
+        private static func autoSourceOrder(
+            providers: [any Search.SourceProvider]
+        ) -> [any Search.SourceProvider] {
+            let samples = providers.filter { Self.legacyBucket(for: $0) == .samples }
+            let packages = providers.filter { Self.legacyBucket(for: $0) == .packages }
+            let docs = providers.filter { Self.legacyBucket(for: $0) == .docs }
+            return samples + packages + docs
         }
     }
 }

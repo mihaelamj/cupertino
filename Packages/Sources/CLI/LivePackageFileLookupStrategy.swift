@@ -26,15 +26,20 @@ import SharedConstants
 // `cupertino read` wires one of these into every `Services.ReadService.read`
 // call.
 
-struct LivePackageFileLookupStrategy: Services.ReadService.PackageFileLookupStrategy {
-    func fileContent(
-        dbURL: URL,
+// 2026-05-26 audit #1055: conforms to the canonical
+// `Search.PackageFileLookupStrategy` protocol (in SearchModels)
+// that per-source `PackagesReadStrategy` consumes. The legacy
+// `Services.ReadService.PackageFileLookupStrategy` typealias still
+// points here for back-compat with the existing CLI plumbing.
+struct LivePackageFileLookupStrategy: Search.PackageFileLookupStrategy {
+    func read(
+        packagesDB: URL,
         owner: String,
         repo: String,
-        relpath: String
+        path: String
     ) async throws -> String? {
-        let query = try await SearchModule.PackageQuery(dbPath: dbURL)
+        let query = try await SearchModule.PackageQuery(dbPath: packagesDB)
         defer { Task { await query.disconnect() } }
-        return try await query.fileContent(owner: owner, repo: repo, relpath: relpath)
+        return try await query.fileContent(owner: owner, repo: repo, relpath: path)
     }
 }

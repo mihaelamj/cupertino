@@ -1,4 +1,5 @@
 import ArgumentParser
+import CupertinoComposition
 import Foundation
 import Logging
 import LoggingModels
@@ -186,6 +187,11 @@ extension CLIImpl.Command {
 
             let result: Services.ReadService.Result
             do {
+                // 2026-05-26 audit #1055: pass the production source
+                // registry so ReadService dispatches via each provider's
+                // `Search.SourceReadStrategy` instead of the legacy
+                // 3-arm bucket switch.
+                let registry = CupertinoComposition.makeProductionSourceRegistry()
                 result = try await Services.ReadService.read(
                     identifier: identifier,
                     explicit: explicit,
@@ -197,7 +203,8 @@ extension CLIImpl.Command {
                     sampleDatabaseFactory: sampleDatabaseFactory,
                     packageFileLookup: LivePackageFileLookupStrategy(),
                     docsDBURLs: docsDBURLs,
-                    explicitDocsSourceID: source
+                    explicitDocsSourceID: source,
+                    providers: registry.allEnabled
                 )
             } catch Services.ReadService.ReadError.docsNotFound(let id) {
                 // Round-18 critic finding #2: name the resolved DB

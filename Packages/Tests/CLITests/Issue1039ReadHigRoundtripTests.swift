@@ -1,4 +1,5 @@
 @testable import CLI
+import CupertinoComposition
 import Foundation
 import LoggingModels
 import SearchAPI
@@ -26,11 +27,17 @@ import Testing
 
 @Suite("#1039 end-to-end: cupertino read hig://... opens hig.db")
 struct Issue1039ReadHigRoundtripTests {
-    /// A minimal `PackageFileLookupStrategy` stub for ReadService's
+    /// A minimal `Search.PackageFileLookupStrategy` stub for ReadService's
     /// composition root. The test never exercises the packages path,
     /// so the stub returns nil unconditionally.
-    private struct NoopPackageFileLookup: Services.ReadService.PackageFileLookupStrategy {
-        func fileContent(dbURL: URL, owner: String, repo: String, relpath: String) async throws -> String? {
+    ///
+    /// 2026-05-26 audit #1055: protocol moved from
+    /// `Services.ReadService.PackageFileLookupStrategy` to
+    /// `Search.PackageFileLookupStrategy` (SearchModels); method
+    /// renamed from `fileContent(dbURL:owner:repo:relpath:)` to
+    /// `read(packagesDB:owner:repo:path:)`.
+    private struct NoopPackageFileLookup: Search.PackageFileLookupStrategy {
+        func read(packagesDB: URL, owner: String, repo: String, path: String) async throws -> String? {
             nil
         }
     }
@@ -82,7 +89,8 @@ struct Issue1039ReadHigRoundtripTests {
             searchDatabaseFactory: LiveSearchDatabaseFactory(),
             sampleDatabaseFactory: LiveSampleIndexDatabaseFactory(),
             packageFileLookup: NoopPackageFileLookup(),
-            docsDBURLs: docsDBURLs
+            docsDBURLs: docsDBURLs,
+            providers: CupertinoComposition.makeProductionSourceRegistry().allEnabled
         )
 
         #expect(result.resolvedSource == .docs)
@@ -145,7 +153,8 @@ struct Issue1039ReadHigRoundtripTests {
             sampleDatabaseFactory: LiveSampleIndexDatabaseFactory(),
             packageFileLookup: NoopPackageFileLookup(),
             docsDBURLs: ["hig": higDBPath],
-            explicitDocsSourceID: "hig"
+            explicitDocsSourceID: "hig",
+            providers: CupertinoComposition.makeProductionSourceRegistry().allEnabled
         )
 
         #expect(result.resolvedSource == .docs)
