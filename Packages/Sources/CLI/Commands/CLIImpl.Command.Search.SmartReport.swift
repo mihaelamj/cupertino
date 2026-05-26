@@ -51,29 +51,26 @@ extension CLIImpl.Command.Search {
     ///
     /// #1042 audit + wiring batch 3: derived at call time from the
     /// production source registry. A "docs-tier" source is one whose
-    /// `destinationDB` is neither `.samples` nor `.packages` — i.e.
-    /// any source whose rows live in the search.db family. That covers
+    /// `destinationDB` is in the search.db FTS family. That covers
     /// apple-docs, hig, apple-archive, swift-evolution, swift-org,
     /// swift-book today, and any future search-tier source. `searchRoute`
     /// is NOT the right predicate here — HIG has `.hig` dispatch but
     /// still lives in the search.db family (Cluster 9 sub-3 test
     /// showed this regression and was caught by `CLISearchUrlResolutionTests`).
     /// `includeArchive` is `true` for the apple-archive provider only.
+    ///
+    /// 2026-05-26 audit #1055 layer-2 part 3: filter flipped from a
+    /// hardcoded `excluded: [.appleSampleCode, .packages]` descriptor
+    /// set to `provider.isSearchTier`. Pre-fix any new source with a
+    /// non-FTS backend (its own bespoke index) had to be appended to
+    /// that set; post-fix `SampleCodeSource` and `PackagesSource`
+    /// override `isSearchTier = false` themselves, every other source
+    /// inherits the `true` default and joins the docs-tier fan-out
+    /// automatically.
     static func docsSources() -> [(prefix: String, includeArchive: Bool)] {
         let registry = CLIImpl.makeProductionSourceRegistry()
-        // Excluded descriptors: samples (`.appleSampleCode`, NOT `.samples`)
-        // and packages. Note the asymmetry — `SampleCodeSource.destinationDB`
-        // is `.appleSampleCode` post-#1036's per-source DB split, even
-        // though the source-id is `samples`. Future-proofing: the
-        // search.db-tier predicate is "anywhere a Search.Index family
-        // DB lives", which today maps to: not `.appleSampleCode`, not
-        // `.packages`. If a new source ships a non-search-tier DB
-        // (its own bespoke index), it needs to declare a non-search
-        // destinationDB and be added to this exclusion list — same
-        // pattern samples/packages already follow.
-        let excluded: Set<Shared.Models.DatabaseDescriptor> = [.appleSampleCode, .packages]
         return registry.allEnabled
-            .filter { !excluded.contains($0.destinationDB) }
+            .filter(\.isSearchTier)
             .map { (
                 prefix: $0.definition.id,
                 includeArchive: $0.definition.id == Shared.Constants.SourcePrefix.appleArchive

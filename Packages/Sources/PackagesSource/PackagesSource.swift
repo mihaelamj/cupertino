@@ -80,6 +80,13 @@ public struct PackagesSource: Search.SourceProvider {
     public func makeReadStrategy() -> (any Search.SourceReadStrategy)? {
         PackagesReadStrategy()
     }
+
+    /// 2026-05-26 audit #1055 layer-2 part 3: packages live in
+    /// `packages.db` with BM25 + chunk + apple_imports_json schema,
+    /// NOT in the search.db FTS family. `SmartReport.docsSources()`
+    /// filters non-search-tier providers out of the unified docs
+    /// fan-out.
+    public var isSearchTier: Bool { false }
 }
 
 // MARK: - View-source no-op concretes

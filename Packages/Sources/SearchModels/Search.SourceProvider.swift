@@ -159,6 +159,17 @@ extension Search {
         /// `SampleCodeSource` returns `SamplesReadStrategy`,
         /// `PackagesSource` returns `PackagesReadStrategy`).
         func makeReadStrategy() -> (any Search.SourceReadStrategy)?
+
+        /// 2026-05-26 audit #1055 layer-2 part 3: is this source's
+        /// `destinationDB` in the search.db FTS family?
+        /// `CLIImpl.Command.Search.SmartReport.docsSources` filters
+        /// by this property. Pre-fix the SmartReport had a hardcoded
+        /// `excluding: [.appleSampleCode, .packages]` set — any new
+        /// source with a non-FTS backend (its own bespoke index) had
+        /// to be appended to that set. Now `Samples` and `Packages`
+        /// override to `false`; every other source (default `true`)
+        /// joins the docs-tier fan-out automatically.
+        var isSearchTier: Bool { get }
     }
 
     /// Which dispatcher runner a source uses for `cupertino search` /
@@ -219,4 +230,10 @@ extension Search.SourceProvider {
     /// nil — the CLI reports "Source 'X' has no fetch capability"
     /// for those.
     public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? { nil }
+
+    /// Default: this source's `destinationDB` lives in the search.db
+    /// FTS family. The 2 non-FTS sources (`SampleCodeSource` reading
+    /// `apple-sample-code.db` catalog tables, `PackagesSource` reading
+    /// `packages.db` BM25+chunk schema) override to `false`.
+    public var isSearchTier: Bool { true }
 }
