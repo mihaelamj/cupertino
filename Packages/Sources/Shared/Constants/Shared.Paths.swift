@@ -86,44 +86,53 @@ extension Shared {
 
         // MARK: - Derived directories
 
+        /// Canonical per-source directory lookup. Pluggability anchor
+        /// for #1042 Cluster 13: consumers SHOULD call this with a
+        /// dirname supplied by the source's own `fetchInfo.outputDir`
+        /// (via the registry) rather than via the per-source typed
+        /// accessors below (now deprecated).
+        public func directory(named dirname: String) -> URL {
+            baseDirectory.appendingPathComponent(dirname)
+        }
+
         /// `<baseDirectory>/docs`
         public var docsDirectory: URL {
-            baseDirectory.appendingPathComponent(Shared.Constants.Directory.docs)
+            directory(named: Shared.Constants.Directory.docs)
         }
 
         /// `<baseDirectory>/swift-evolution`
         public var swiftEvolutionDirectory: URL {
-            baseDirectory.appendingPathComponent(Shared.Constants.Directory.swiftEvolution)
+            directory(named: Shared.Constants.Directory.swiftEvolution)
         }
 
         /// `<baseDirectory>/swift-org`
         public var swiftOrgDirectory: URL {
-            baseDirectory.appendingPathComponent(Shared.Constants.Directory.swiftOrg)
+            directory(named: Shared.Constants.Directory.swiftOrg)
         }
 
         /// `<baseDirectory>/swift-book`
         public var swiftBookDirectory: URL {
-            baseDirectory.appendingPathComponent(Shared.Constants.Directory.swiftBook)
+            directory(named: Shared.Constants.Directory.swiftBook)
         }
 
         /// `<baseDirectory>/packages`
         public var packagesDirectory: URL {
-            baseDirectory.appendingPathComponent(Shared.Constants.Directory.packages)
+            directory(named: Shared.Constants.Directory.packages)
         }
 
         /// `<baseDirectory>/sample-code`
         public var sampleCodeDirectory: URL {
-            baseDirectory.appendingPathComponent(Shared.Constants.Directory.sampleCode)
+            directory(named: Shared.Constants.Directory.sampleCode)
         }
 
         /// `<baseDirectory>/archive`
         public var archiveDirectory: URL {
-            baseDirectory.appendingPathComponent(Shared.Constants.Directory.archive)
+            directory(named: Shared.Constants.Directory.archive)
         }
 
         /// `<baseDirectory>/hig`
         public var higDirectory: URL {
-            baseDirectory.appendingPathComponent(Shared.Constants.Directory.hig)
+            directory(named: Shared.Constants.Directory.hig)
         }
 
         // MARK: - Derived files

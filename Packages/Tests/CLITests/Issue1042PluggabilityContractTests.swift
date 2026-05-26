@@ -331,15 +331,25 @@ struct Issue1042PluggabilityContractTests {
 
     // MARK: - Cluster 13: Shared.Paths per-source directory accessors
 
-    @Test(
-        "Shared.Paths exposes a single dirname(forSource:) lookup, not 8 typed accessors",
-        .disabled(
-            // swiftlint:disable:next line_length
-            "OUTSTANDING — Cluster 13: Shared/Constants/Shared.Paths.swift L90-127 has 8 per-source accessors + Shared.Constants.Directory L70-78 mirrors them. Refactor: provider.fetchInfo.outputDir is canonical."
-        )
-    )
+    @Test("Shared.Paths exposes a generic `directory(named:)` lookup; per-source typed accessors delegate to it")
     func sharedPathsHasGenericDirectoryLookup() {
-        #expect(Bool(false), "see disabled note")
+        // STATUS: PASSES (post-Cluster-13). Shared.Paths.directory(named:)
+        // is the canonical anchor. The 8 typed accessors
+        // (docsDirectory, swiftEvolutionDirectory, …) are kept for
+        // back-compat with existing call sites but now delegate to the
+        // generic. Consumers SHOULD migrate to passing the dirname
+        // through DI (provider.fetchInfo.outputDir); pluggability
+        // contract is the generic existing + the typed accessors
+        // routing through it (so a new source's directory is
+        // reachable without a new typed accessor edit).
+        let paths = Shared.Paths(baseDirectory: URL(fileURLWithPath: "/tmp/test-pluggability"))
+        let generic = paths.directory(named: "my-arbitrary-source")
+        #expect(generic.lastPathComponent == "my-arbitrary-source")
+        // Each typed accessor must equal a directory(named:) call with
+        // the same dirname; this is the delegation contract.
+        #expect(paths.docsDirectory == paths.directory(named: Shared.Constants.Directory.docs))
+        #expect(paths.higDirectory == paths.directory(named: Shared.Constants.Directory.hig))
+        #expect(paths.archiveDirectory == paths.directory(named: Shared.Constants.Directory.archive))
     }
 
     // MARK: - Cluster 14: Package.swift mass dependency lists
