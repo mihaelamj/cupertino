@@ -41,21 +41,31 @@ import LoggingModels
 enum SaveSiblingGate {
     // MARK: - Target
 
-    /// Which of the three local databases a `cupertino save` invocation
-    /// targets. Multiple may be selected if the user passes no scope
-    /// flags (the default builds all three).
-    enum Target: String, CaseIterable {
-        case search
-        case packages
-        case samples
-
-        var dbFilename: String {
-            switch self {
-            case .search: return "search.db"
-            case .packages: return "packages.db"
-            case .samples: return "samples.db"
-            }
+    /// Which local database a `cupertino save` invocation targets.
+    /// Multiple may be selected if the user passes no scope flags.
+    ///
+    /// Post-#1042 Cluster 9 sub-2: rawValue-String struct instead of a
+    /// closed enum, so adding a new bucket (e.g. when search.db's
+    /// post-#1036 per-source split surfaces here) is a `static let`
+    /// declaration without a switch arm. `dbFilename` is derived from
+    /// the rawValue (`<rawValue>.db`), so the static lets carry the
+    /// bucket name and the file shape stays mechanical.
+    struct Target: RawRepresentable, Sendable, Equatable, Hashable {
+        let rawValue: String
+        init(rawValue: String) {
+            self.rawValue = rawValue
         }
+
+        static let search = Target(rawValue: "search")
+        static let packages = Target(rawValue: "packages")
+        static let samples = Target(rawValue: "samples")
+
+        static let allKnownCases: [Target] = [.search, .packages, .samples]
+
+        /// Back-compat alias for CaseIterable callsites pre-Cluster-9.
+        static let allCases: [Target] = allKnownCases
+
+        var dbFilename: String { "\(rawValue).db" }
     }
 
     // MARK: - Sibling

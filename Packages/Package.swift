@@ -1260,7 +1260,11 @@ let targets: [Target] = {
         // ConstantsAuditTests can pin PerSourceDBSplitMigrator.legacyRenameSuffix.
         // Diagnostics added so PerSourceDestinationRoundtripTests can read
         // the per-DB PRAGMA user_version stamp via Diagnostics.Probes.
-        dependencies: ["CLI", "Diagnostics", "Distribution", "DistributionModels"]
+        // Services + ServicesModels added in #1042 so
+        // Issue1042PluggabilityContractTests can assert against
+        // Services.ReadService.Source (Cluster 9 sub-3). The same
+        // pattern is used in Issue1039ReadHigRoundtripTests.
+        dependencies: ["CLI", "Diagnostics", "Distribution", "DistributionModels", "Services", "ServicesModels"]
     )
     let mockAIAgentTestsTarget = Target.testTarget(
         name: "MockAIAgentTests",

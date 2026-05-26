@@ -22,10 +22,25 @@ import SharedConstants
 /// stays identical across transports.
 extension Services {
     public enum ReadService {
-        public enum Source: String, Sendable, Equatable {
-            case docs
-            case samples
-            case packages
+        /// Backend bucket the read dispatcher routes to. Three shipped
+        /// buckets historically aligned with the three monolithic DBs
+        /// (`docs` ↔ search.db family, `samples` ↔ samples.db,
+        /// `packages` ↔ packages.db). Post-#1042 Cluster 9 sub-3 this
+        /// is a rawValue-String struct, not a closed enum, so adding a
+        /// new backend bucket (e.g. when WWDC transcripts join with
+        /// their own backend lookup) is a `static let` declaration —
+        /// no enum case + no exhaustive switch in the dispatcher.
+        public struct Source: RawRepresentable, Sendable, Equatable, Hashable {
+            public let rawValue: String
+            public init(rawValue: String) {
+                self.rawValue = rawValue
+            }
+
+            public static let docs = Source(rawValue: "docs")
+            public static let samples = Source(rawValue: "samples")
+            public static let packages = Source(rawValue: "packages")
+
+            public static let allKnownCases: [Source] = [.docs, .samples, .packages]
         }
 
         public enum ReadError: Error {
@@ -295,15 +310,20 @@ extension Services {
             sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
             packageFileLookup: any PackageFileLookupStrategy
         ) async throws -> Result {
-            switch source {
-            case .docs:
+            // Post-#1042 Cluster 9 sub-3: Source is a rawValue struct,
+            // not a closed enum; we dispatch by static-let equality
+            // instead of an exhaustive switch. An unrecognised
+            // bucket falls through to `.unknownSource(rawValue)` which
+            // is the same error a backend mismatch would throw.
+            if source == .docs {
                 return try await readFromDocs(
                     identifier: identifier,
                     format: format,
                     searchDB: searchDB,
                     searchDatabaseFactory: searchDatabaseFactory
                 )
-            case .samples:
+            }
+            if source == .samples {
                 return try await readFromSamples(
                     identifier: identifier,
                     samplesDB: samplesDB,
@@ -312,13 +332,15 @@ extension Services {
                     sampleDatabaseFactory: sampleDatabaseFactory,
                     packageFileLookup: packageFileLookup
                 )
-            case .packages:
+            }
+            if source == .packages {
                 return try await readFromPackages(
                     identifier: identifier,
                     packagesDB: packagesDB,
                     packageFileLookup: packageFileLookup
                 )
             }
+            throw ReadError.unknownSource(source.rawValue)
         }
 
         private static func readFromDocs(

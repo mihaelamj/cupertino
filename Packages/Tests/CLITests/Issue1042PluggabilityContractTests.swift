@@ -6,6 +6,8 @@ import Foundation
 import LoggingModels
 import SearchAPI
 import SearchModels
+import Services
+import ServicesModels
 import SharedConstants
 import Testing
 
@@ -270,14 +272,22 @@ struct Issue1042PluggabilityContractTests {
 
     // MARK: - Cluster 9: closed enums whose cases enumerate sources
 
-    @Test(
-        "SaveSiblingGate.Target is registry-driven, not a closed enum",
-        .disabled(
-            "OUTSTANDING — Cluster 9: CLI/Commands/SaveSiblingGate.swift L47-58 closed `enum Target: String, CaseIterable`. Refactor: String-keyed dispatch over registry destinationDBs."
-        )
-    )
+    @Test("SaveSiblingGate.Target is a rawValue-String struct, not a closed enum")
     func saveSiblingGateTargetIsRegistryDriven() {
-        #expect(Bool(false), "see disabled note")
+        // STATUS: PASSES (post-Cluster-9 sub-2). Closed enum became a
+        // RawRepresentable struct with rawValue + dbFilename derived
+        // (`<rawValue>.db`). Adding a new bucket — the post-#1036 per-
+        // source DB split will surface here when SaveSiblingGate
+        // tracks per-source destinations — is a `static let myNew =
+        // Target(rawValue: "my-new")` declaration with no switch arm.
+        // Note: this test relies on @testable import CLI; the type
+        // itself is internal.
+        let custom = SaveSiblingGate.Target(rawValue: "wwdc")
+        #expect(custom.rawValue == "wwdc")
+        #expect(custom.dbFilename == "wwdc.db")
+        // Existing buckets still discoverable via static lets.
+        #expect(SaveSiblingGate.Target.search.dbFilename == "search.db")
+        #expect(SaveSiblingGate.Target.allKnownCases.count == 3)
     }
 
     @Test("Search.FetchInfo.DefaultOutputDirKey is a rawValue-String struct, not a closed enum")
@@ -304,15 +314,18 @@ struct Issue1042PluggabilityContractTests {
         #expect(Bool(false), "see disabled note")
     }
 
-    @Test(
-        "Services.ReadService.Source is registry-driven",
-        .disabled(
-            // swiftlint:disable:next line_length
-            "OUTSTANDING — Cluster 9: Services/ReadCommands/Services.ReadService.swift L25-29 closed `enum Source`. Refactor: derive backend from SourceProvider."
-        )
-    )
+    @Test("Services.ReadService.Source is a rawValue-String struct, not a closed enum")
     func readServiceSourceIsRegistryDriven() {
-        #expect(Bool(false), "see disabled note")
+        // STATUS: PASSES (post-Cluster-9 sub-3). Closed enum became a
+        // RawRepresentable struct; the dispatcher's exhaustive switch
+        // became if/elseif/else with an `.unknownSource(rawValue)`
+        // fallthrough. New backend buckets are added as `static let`
+        // declarations + a new `if source == .myNew` arm in dispatch.
+        let custom = Services.ReadService.Source(rawValue: "wwdc")
+        #expect(custom.rawValue == "wwdc")
+        // Existing buckets still discoverable.
+        #expect(Services.ReadService.Source.docs.rawValue == "docs")
+        #expect(Services.ReadService.Source.allKnownCases.count == 3)
     }
 
     @Test(
