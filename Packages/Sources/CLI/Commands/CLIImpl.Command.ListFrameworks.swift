@@ -66,7 +66,7 @@ extension CLIImpl.Command {
             // floor for whether this command can run at all.
             guard FileManager.default.fileExists(atPath: appleDocsURL.path) else {
                 CLIImpl.printUserFacingDiagnostic(
-                    CLIImpl.appleDocsDBMissingMessage(url: appleDocsURL),
+                    CLIImpl.perSourceDBMissingMessage(url: appleDocsURL),
                     recording: Cupertino.Context.composition.logging.recording
                 )
                 throw ExitCode.failure

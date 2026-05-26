@@ -51,7 +51,7 @@ extension CLIImpl {
         )
     }
 
-    /// Build the standard "DB not found" diagnostic for an AST-aware
+    /// Build the standard "DB not found" diagnostic for a per-source
     /// CLI command. Migration-aware: when a legacy `search.db` is
     /// sitting in the same directory, the diagnostic explicitly
     /// surfaces it so the user knows the in-place upgrade path is
@@ -60,7 +60,15 @@ extension CLIImpl {
     /// the message just said "Run `cupertino setup` first." and the
     /// user with a populated legacy search.db sitting RIGHT THERE
     /// could be reasonably confused.
-    public static func appleDocsDBMissingMessage(url: URL) -> String {
+    ///
+    /// Accepts any per-source DB URL (apple-documentation.db,
+    /// apple-archive.db, etc.); the migration narrative is the same
+    /// regardless of which per-source DB is missing because
+    /// `cupertino setup` always runs the split migrator over the
+    /// legacy file. Renamed from `appleDocsDBMissingMessage` per
+    /// #1040 to drop the apple-docs-only scoping that the name implied
+    /// but the body never enforced.
+    public static func perSourceDBMissingMessage(url: URL) -> String {
         let baseMessage = "❌ \(url.lastPathComponent) not found at \(url.path). Run `cupertino setup` first."
         let legacy = url.deletingLastPathComponent().appendingPathComponent(
             Shared.Constants.FileName.searchDatabase

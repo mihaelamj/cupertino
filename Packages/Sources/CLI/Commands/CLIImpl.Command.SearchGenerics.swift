@@ -75,7 +75,7 @@ extension CLIImpl.Command {
             let searchDBURL = CLIImpl.resolveAppleDocsDBURL(override: searchDb)
             guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
                 CLIImpl.printUserFacingDiagnostic(
-                    CLIImpl.appleDocsDBMissingMessage(url: searchDBURL),
+                    CLIImpl.perSourceDBMissingMessage(url: searchDBURL),
                     recording: recording
                 )
                 throw ExitCode.failure
