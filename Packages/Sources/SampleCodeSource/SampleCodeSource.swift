@@ -93,4 +93,10 @@ public struct SampleCodeSource: Search.SourceProvider {
     /// search.db FTS family. `SmartReport.docsSources()` filters
     /// non-search-tier providers out of the unified docs fan-out.
     public var isSearchTier: Bool { false }
+
+    /// 2026-05-26 post-#1056: samples use
+    /// `env.sampleCatalogProvider` for indexing instead of a corpus
+    /// directory. The strategy runs in the dispatch but doesn't read
+    /// from the directory parameter.
+    public var requiresCorpusDirectory: Bool { false }
 }

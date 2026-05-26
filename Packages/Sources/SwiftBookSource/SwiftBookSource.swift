@@ -38,6 +38,12 @@ public struct SwiftBookSource: Search.SourceProvider {
 
     public var fetchInfo: Search.FetchInfo? { nil }
 
+    /// 2026-05-26 post-#1056: swift-book is a view-source over the
+    /// swift-org crawl (its pages are co-crawled by swift-org via
+    /// URL-prefix tagging). The strategy runs in the dispatch but
+    /// doesn't read a corpus directory of its own.
+    public var requiresCorpusDirectory: Bool { false }
+
     public var destinationDB: Shared.Models.DatabaseDescriptor { .swiftBook }
 
     /// Swift Book read-side capabilities. The Book is universal text +
