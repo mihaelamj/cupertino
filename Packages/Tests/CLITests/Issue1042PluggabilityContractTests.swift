@@ -743,16 +743,91 @@ struct Issue1042PluggabilityContractTests {
         )
     }
 
+    // MARK: - Layer-2 deepenings (#1055)
+
+    @Test("Search.SourceProvider.makeReadStrategy is a PROTOCOL REQUIREMENT (not just a default extension)")
+    func makeReadStrategyIsProtocolRequirement() {
+        // STATUS: PASSES (post-#1055 layer-2 part 1). Regression pin
+        // for the static-dispatch bug discovered during the layer-2
+        // close-out: when `makeReadStrategy()` was declared ONLY as a
+        // default extension on `Search.SourceProvider`, Swift's static
+        // dispatch resolved through the extension default (returning
+        // nil) instead of per-source overrides. Fix: hoist the method
+        // signature into the protocol body so dynamic dispatch picks
+        // the per-source override. Test asserts each production
+        // provider returns a non-nil strategy when called via the
+        // protocol witness; if a future refactor demotes the method
+        // back to an extension, every provider here would still
+        // compile but return the default nil and this test fails.
+        let registry = registryWithFake()
+        for prov in registry.allEnabled where prov.definition.id != ContractFakeSourceProvider.fakeID {
+            #expect(
+                prov.makeReadStrategy() != nil,
+                "\(prov.definition.id) must return a non-nil read strategy via dynamic dispatch"
+            )
+        }
+    }
+
+    @Test("Search.SearchRoute is a rawValue-String struct, not a closed enum")
+    func searchRouteIsRegistryDriven() {
+        // STATUS: PASSES (post-#1055 layer-2 part 2). Pre-fix
+        // SearchRoute was a closed enum with 5 cases; both
+        // `CLIImpl.Command.Search.run` and
+        // `SearchToolProvider.CompositeToolProvider.handleSearch` had
+        // `switch route` arms — a new route required new enum case
+        // AND matching arms in BOTH dispatchers. Post-fix the closed
+        // enum became a RawRepresentable struct; dispatchers use
+        // `if route == .X` and fall through to `.unified` on any
+        // unrecognised route. Test pins the RawRepresentable shape +
+        // checks every production route resolves via rawValue.
+        let custom = Search.SearchRoute(rawValue: "wwdc")
+        #expect(custom.rawValue == "wwdc")
+        #expect(Search.SearchRoute.docs.rawValue == "docs")
+        #expect(Search.SearchRoute.hig.rawValue == Shared.Constants.SourcePrefix.hig)
+        #expect(Search.SearchRoute.samples.rawValue == Shared.Constants.SourcePrefix.samples)
+        #expect(Search.SearchRoute.packages.rawValue == Shared.Constants.SourcePrefix.packages)
+        #expect(Search.SearchRoute.unified.rawValue == "unified")
+        #expect(Search.SearchRoute.allKnownCases.count == 5)
+    }
+
+    @Test("Search.SourceProvider.isSearchTier declares which providers join the docs-tier FTS fan-out")
+    func isSearchTierFiltersFanOut() {
+        // STATUS: PASSES (post-#1055 layer-2 part 3). Pre-fix
+        // `SmartReport.docsSources()` filtered the registry by a
+        // hardcoded `excluded: Set<DatabaseDescriptor> =
+        // [.appleSampleCode, .packages]`. Any new source with a non-
+        // FTS backend had to be appended to that set in the same PR.
+        // Post-fix `var isSearchTier: Bool { get }` is a protocol
+        // requirement with `true` default; `SampleCodeSource` and
+        // `PackagesSource` override `false`. Filter becomes
+        // `.filter(\.isSearchTier)`. Test pins: every production
+        // provider's `isSearchTier` value matches the expected
+        // FTS-family classification, and a fake provider that inherits
+        // the default sits in the FTS family automatically.
+        let registry = registryWithFake()
+        for prov in registry.allEnabled {
+            switch prov.definition.id {
+            case Shared.Constants.SourcePrefix.samples:
+                #expect(prov.isSearchTier == false, "SampleCodeSource is not in the FTS family")
+            case Shared.Constants.SourcePrefix.packages:
+                #expect(prov.isSearchTier == false, "PackagesSource is not in the FTS family")
+            default:
+                #expect(prov.isSearchTier == true, "\(prov.definition.id) inherits the FTS-family default")
+            }
+        }
+    }
+
     // MARK: - Coverage gate
 
     @Test("Contract enumerates every audit cluster")
     func contractCoversAllClusters() {
         // Sanity pin: this suite must declare at least one assertion
-        // per audit cluster (1 through 14). When a new audit pass finds
-        // a 15th violation cluster, add its assertion here AND bump this
-        // count. The pin is human-tracked, not mechanical.
+        // per audit cluster (1 through 14) plus the 3 layer-2
+        // deepenings closed under #1055. When a new audit pass finds
+        // a 15th violation cluster, add its assertion here AND bump
+        // this count. The pin is human-tracked, not mechanical.
         let auditedClusterCount = 14
-        let stubbedAssertions = 19 // count of @Test functions in this suite
+        let stubbedAssertions = 22 // count of @Test functions in this suite
         #expect(stubbedAssertions >= auditedClusterCount, "every audit cluster needs at least one contract assertion")
     }
 }
