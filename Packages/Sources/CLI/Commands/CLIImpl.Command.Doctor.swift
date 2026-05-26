@@ -125,13 +125,55 @@ extension CLIImpl.Command {
             // changes. Every element of the list is iterated (no `prefix`,
             // no out-of-loop calls), so a new conformer cannot silently
             // disappear from `cupertino doctor`'s output.
+            //
+            // Post-2026-05-26 audit Finding 7.1: extend coverage to every
+            // per-source destinationDB declared by the registry. Pre-fix
+            // only the legacy 3-DB shape (packages / samples / search)
+            // got a health probe; the 5-6 per-source FTS DBs landed by
+            // #1036 (apple-documentation.db, hig.db, apple-archive.db,
+            // swift-evolution.db, swift-documentation.db) were SILENTLY
+            // un-probed — a corrupt per-source DB would let doctor
+            // report "healthy" while MCP returned partial results.
+            //
+            // Composition: 2 dedicated conformers for the two non-FTS
+            // DB families (PackagesHealthCheck for packages.db's
+            // BM25+chunk schema; SamplesHealthCheck for apple-sample-code.db's
+            // catalog-metadata tables which use a different schema_version
+            // probe) + the legacy `.search` SearchHealthCheck (transitional)
+            // + one SearchHealthCheck per registered FTS-tier destinationDB.
             let recording = Cupertino.Context.composition.logging.recording
             let paths = Shared.Paths.live()
-            let healthChecks: [any Distribution.DatabaseHealthCheck] = [
+            let registry = CLIImpl.makeProductionSourceRegistry()
+            var healthChecks: [any Distribution.DatabaseHealthCheck] = [
                 PackagesHealthCheck(packagesDBURL: paths.packagesDatabase),
                 SamplesHealthCheck(samplesDBURL: Sample.Index.databasePath(baseDirectory: paths.baseDirectory)),
-                SearchHealthCheck(searchDBURL: URL(fileURLWithPath: searchDB).expandingTildeInPath),
+                SearchHealthCheck(
+                    descriptor: .search,
+                    searchDBURL: URL(fileURLWithPath: searchDB).expandingTildeInPath,
+                    isRequired: true
+                ),
             ]
+            // One conformer per FTS-tier per-source destinationDB.
+            // Excluded: .search (already added above as legacy required),
+            // .packages (its own non-FTS conformer), .appleSampleCode
+            // (its own dual-schema conformer). Uniquify by descriptor.id
+            // because view-source pairs (swift-org + swift-book) share
+            // `.swiftDocumentation`.
+            var seen: Set<String> = [
+                Shared.Models.DatabaseDescriptor.search.id,
+                Shared.Models.DatabaseDescriptor.packages.id,
+                Shared.Models.DatabaseDescriptor.appleSampleCode.id,
+            ]
+            for provider in registry.allEnabled {
+                let descriptor = provider.destinationDB
+                guard !seen.contains(descriptor.id) else { continue }
+                seen.insert(descriptor.id)
+                healthChecks.append(SearchHealthCheck(
+                    descriptor: descriptor,
+                    searchDBURL: paths.baseDirectory.appendingPathComponent(descriptor.filename),
+                    isRequired: false
+                ))
+            }
             for check in healthChecks {
                 let ok = await check.run(output: recording)
                 if check.isRequired { allChecks = ok && allChecks }
@@ -251,20 +293,38 @@ extension CLIImpl.Command {
             // not stamp the PRAGMA so it can coexist with Search.Index
             // tables in the same file).
             //
-            // Adding a new per-source DB: append one entry below. The
-            // loop is otherwise descriptor-agnostic.
+            // Post-2026-05-26 audit (Finding 7.2): derive the entries
+            // list from the production source registry so adding a new
+            // source automatically extends Doctor's schema-version
+            // output without an edit here. The legacy `.search`
+            // descriptor stays as a leading transitional entry for
+            // pre-#1037 users; the 2 non-uniform path resolvers
+            // (`.packages` → `paths.packagesDatabase`; `.appleSampleCode`
+            // → `Sample.Index.databasePath`) handle the special cases.
+            // Every other descriptor's path is `baseDirectory + filename`.
             let docsBase = paths.baseDirectory
-            let entries: [(Shared.Models.DatabaseDescriptor, URL)] = [
+            let registry = CLIImpl.makeProductionSourceRegistry()
+            var entries: [(Shared.Models.DatabaseDescriptor, URL)] = [
                 (.search, URL(fileURLWithPath: searchDB).expandingTildeInPath),
-                (.appleDocumentation, docsBase.appendingPathComponent(Shared.Models.DatabaseDescriptor.appleDocumentation.filename)),
-                (.hig, docsBase.appendingPathComponent(Shared.Models.DatabaseDescriptor.hig.filename)),
-                (.appleArchive, docsBase.appendingPathComponent(Shared.Models.DatabaseDescriptor.appleArchive.filename)),
-                (.swiftEvolution, docsBase.appendingPathComponent(Shared.Models.DatabaseDescriptor.swiftEvolution.filename)),
-                (.swiftOrg, docsBase.appendingPathComponent(Shared.Models.DatabaseDescriptor.swiftOrg.filename)),
-                (.swiftBook, docsBase.appendingPathComponent(Shared.Models.DatabaseDescriptor.swiftBook.filename)),
-                (.packages, paths.packagesDatabase),
-                (.appleSampleCode, Sample.Index.databasePath(baseDirectory: docsBase)),
             ]
+            // Each registered destination — uniquify via Set since
+            // view-source pairs (swift-org + swift-book) share a
+            // destinationDB.
+            var seenDescriptors: Set<String> = [Shared.Models.DatabaseDescriptor.search.id]
+            for provider in registry.allEnabled {
+                let descriptor = provider.destinationDB
+                guard !seenDescriptors.contains(descriptor.id) else { continue }
+                seenDescriptors.insert(descriptor.id)
+                let url: URL
+                if descriptor == .packages {
+                    url = paths.packagesDatabase
+                } else if descriptor == .appleSampleCode {
+                    url = Sample.Index.databasePath(baseDirectory: docsBase)
+                } else {
+                    url = docsBase.appendingPathComponent(descriptor.filename)
+                }
+                entries.append((descriptor, url))
+            }
             for (descriptor, url) in entries {
                 let label = descriptor.filename
                 guard FileManager.default.fileExists(atPath: url.path) else {

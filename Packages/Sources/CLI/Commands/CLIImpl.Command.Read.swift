@@ -92,9 +92,20 @@ extension CLIImpl.Command {
                 ? .markdown
                 : .json
 
+            // 2026-05-26 audit Finding 14.3: registry-derived
+            // destinationsByID dict drives ReadService's bucket
+            // classification. Adding a new source flows through here
+            // automatically; pre-fix the resolver enumerated every
+            // shipped source-id in a hardcoded 9-arm switch.
+            let readDestinationsByID = CLIImpl.makeDestinationsByID(
+                registry: CLIImpl.makeProductionSourceRegistry()
+            )
             let explicit: Services.ReadService.Source?
             do {
-                explicit = try Services.ReadService.resolveSource(source)
+                explicit = try Services.ReadService.resolveSource(
+                    source,
+                    destinationsByID: readDestinationsByID
+                )
             } catch Services.ReadService.ReadError.unknownSource(let raw) {
                 CLIImpl.printUserFacingDiagnostic(
                     "Unknown --source value: \(raw). See `cupertino read --help`.",

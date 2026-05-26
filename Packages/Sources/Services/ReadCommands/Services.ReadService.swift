@@ -65,23 +65,46 @@ extension Services {
 
         /// Map a CLI `--source <name>` value to a backend, or nil for "infer".
         /// Throws `.unknownSource` for values that don't match a known source.
-        public static func resolveSource(_ raw: String?) throws -> Source? {
+        ///
+        /// Post-2026-05-26 audit Finding 14.3: the classifier is now
+        /// driven by a registry-supplied `[String: DatabaseDescriptor]`
+        /// dict (source-id → destinationDB). Pre-fix this method had a
+        /// hardcoded 9-arm switch enumerating every shipped source-id
+        /// — adding a new source required editing this file. Now the
+        /// CLI composition root builds the dict from the production
+        /// source registry; the dispatcher classifies on the
+        /// destinationDB (3 stable bucket cases: `.packages`,
+        /// `.appleSampleCode`, default → docs).
+        ///
+        /// `apple-sample-code` is accepted as a legacy alias for
+        /// `samples` because both clients pass the canonical id AND
+        /// the descriptor id depending on the call path.
+        public static func resolveSource(
+            _ raw: String?,
+            destinationsByID: [String: Shared.Models.DatabaseDescriptor]
+        ) throws -> Source? {
             guard let raw else { return nil }
-            switch raw {
-            case Shared.Constants.SourcePrefix.appleDocs,
-                 Shared.Constants.SourcePrefix.appleArchive,
-                 Shared.Constants.SourcePrefix.hig,
-                 Shared.Constants.SourcePrefix.swiftEvolution,
-                 Shared.Constants.SourcePrefix.swiftOrg,
-                 Shared.Constants.SourcePrefix.swiftBook:
-                return .docs
-            case Shared.Constants.SourcePrefix.samples,
-                 Shared.Constants.SourcePrefix.appleSampleCode:
-                return .samples
-            case Shared.Constants.SourcePrefix.packages:
-                return .packages
-            default:
+            // Legacy alias: `apple-sample-code` rolls into `samples`.
+            let canonical = raw == Shared.Constants.SourcePrefix.appleSampleCode
+                ? Shared.Constants.SourcePrefix.samples
+                : raw
+            guard let destination = destinationsByID[canonical] else {
                 throw ReadError.unknownSource(raw)
+            }
+            // 3 stable bucket arms aligned with the 3 backend handlers
+            // (docs reader / samples reader / packages reader). Adding
+            // a new source within an existing DB family flows through
+            // automatically; only a brand-new DB family would require
+            // a new bucket case (and a corresponding new backend
+            // handler — that's a fundamental architecture change, not
+            // a routine source addition).
+            switch destination {
+            case .packages:
+                return .packages
+            case .appleSampleCode:
+                return .samples
+            default:
+                return .docs
             }
         }
 

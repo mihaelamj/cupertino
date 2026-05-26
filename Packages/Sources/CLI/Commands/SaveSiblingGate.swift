@@ -1,6 +1,8 @@
 import Darwin
 import Foundation
 import LoggingModels
+import SearchModels
+import SharedConstants
 
 // MARK: - Concurrent-save gate (#253)
 
@@ -634,21 +636,44 @@ enum SaveSiblingGate {
         hasPackages: inout Bool,
         hasSamples: inout Bool
     ) {
-        switch id {
-        case "packages":
+        // Post-2026-05-26 audit Finding 14.1: classify by
+        // `destinationDB` rather than enumerating source-id literals.
+        // Pre-fix the switch hardcoded 6 docs-tier ids; adding a new
+        // source required editing this file. Now adding a new source
+        // = one register call in CLIImpl.makeProductionSourceRegistry
+        // and the classifier finds it via `registry.entry(for:)`.
+        //
+        // Legacy alias `apple-sample-code` is still accepted (matches
+        // `CLIImpl.Command.Save.sourceIDAliases`); both alias to
+        // SampleCodeSource (destinationDB == .appleSampleCode) which
+        // fires BOTH samples + docs targets per the one-DB-two-tracks
+        // design (#1037).
+        let registry = CLIImpl.makeProductionSourceRegistry()
+        let canonicalID = id == Shared.Constants.SourcePrefix.appleSampleCode
+            ? Shared.Constants.SourcePrefix.samples
+            : id
+        guard let entry = registry.entry(for: canonicalID) else {
+            // Unknown id (or a legacy alias not yet recognised by the
+            // registry): ignore. Save.run's resolver raises at runtime.
+            return
+        }
+        switch entry.provider.destinationDB {
+        case .packages:
             hasPackages = true
-        case "samples", "apple-sample-code":
-            // Samples scope fires BOTH the standalone Sample.Index
-            // pipeline (.samples target) AND the docs runner (.search
-            // target) for SampleCodeSource's FTS rows. Per the
-            // one-DB-two-tracks design (#1037).
+        case .appleSampleCode:
+            // SampleCodeSource fires both pipelines: the dedicated
+            // Sample.Index runner writes catalog tables; the docs
+            // runner's `.appleSampleCode` group writes FTS rows into
+            // the SAME apple-sample-code.db file (separate
+            // schema_version per the one-DB-two-tracks design).
             hasSamples = true
             hasDocs = true
-        case "apple-docs", "swift-evolution", "hig", "apple-archive", "swift-org", "swift-book":
-            hasDocs = true
         default:
-            // Unknown id: ignore. Save.run's resolver will raise.
-            break
+            // Every other shipped destinationDB is in the search.db
+            // family (apple-documentation / hig / apple-archive /
+            // swift-evolution / swift-documentation) — the docs runner
+            // owns it.
+            hasDocs = true
         }
     }
 

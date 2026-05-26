@@ -187,4 +187,21 @@ extension CLIImpl {
         }
         return result
     }
+
+    /// 2026-05-26 audit Finding 14.3: build the source-id →
+    /// destinationDB dict that `Services.ReadService.resolveSource`
+    /// consumes to classify a CLI `--source <id>` value into one of
+    /// 3 backend buckets (.docs / .samples / .packages). Pre-fix
+    /// `resolveSource` had a hardcoded 9-arm switch enumerating every
+    /// shipped source-id; post-fix the dict is registry-derived so a
+    /// new source flows through automatically.
+    public static func makeDestinationsByID(
+        registry: Search.SourceRegistry
+    ) -> [String: Shared.Models.DatabaseDescriptor] {
+        Dictionary(
+            uniqueKeysWithValues: registry.allEnabled.map { provider in
+                (provider.definition.id, provider.destinationDB)
+            }
+        )
+    }
 }
