@@ -6,7 +6,7 @@ extension Search.Index {
     func extractSourcePrefix(_ query: String) -> (source: String?, remainingQuery: String) {
         let lowercased = query.lowercased()
 
-        for prefix in Self.knownSourcePrefixes where lowercased.hasPrefix(prefix) {
+        for prefix in knownSourcePrefixes where lowercased.hasPrefix(prefix) {
             // Check if it's followed by whitespace or end of string
             let afterPrefix = query.dropFirst(prefix.count)
             if afterPrefix.isEmpty || afterPrefix.first?.isWhitespace == true {

@@ -467,8 +467,17 @@ extension Search.Index {
     // MARK: - Searching
 
     /// Known source prefixes that should be treated as source filters when detected in query.
-    /// See Shared.Constants.SourcePrefix for available prefixes.
-    static let knownSourcePrefixes = Shared.Constants.SourcePrefix.allPrefixes
+    ///
+    /// #1042 Cluster 2 sub-1: derived from the actor's
+    /// `sourceLookup` (the composition-root-supplied
+    /// `Search.SourceLookup` already passed at init) plus the
+    /// special-token `"all"`. Pre-fix this was a static reference to
+    /// the foundation-tier `Shared.Constants.SourcePrefix.allPrefixes`
+    /// literal; adding a new source required editing that literal.
+    /// Post-fix a registered new source's id appears here automatically.
+    var knownSourcePrefixes: [String] {
+        sourceLookup.allIDs + ["all"]
+    }
 
     /// Apple-docs framework authority used as a HEURISTIC 1 tiebreak (#256).
     ///

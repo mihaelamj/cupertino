@@ -21,25 +21,39 @@ extension Services.Formatter.Footer {
         /// Custom footer items
         public let customItems: [Item]
 
+        /// #1042 Cluster 2: composition-root-supplied list of source IDs
+        /// for the "💡 To narrow results, use `source` parameter: …" tip.
+        /// When nil, falls back to `Shared.Constants.Search.availableSources`
+        /// (the historical static literal). A registry-aware composition
+        /// root supplies the list from `makeProductionSourceRegistry().allEnabled.map(\.definition.id)`,
+        /// so a new registered source's id appears in the tip without
+        /// editing the static literal.
+        public let availableSources: [String]?
+
         public init(
             currentSource: String? = nil,
             teasers: Services.Formatter.TeaserResults? = nil,
             showSemanticTip: Bool = true,
             showPlatformTip: Bool = true,
-            customItems: [Item] = []
+            customItems: [Item] = [],
+            availableSources: [String]? = nil
         ) {
             self.currentSource = currentSource
             self.teasers = teasers
             self.showSemanticTip = showSemanticTip
             self.showPlatformTip = showPlatformTip
             self.customItems = customItems
+            self.availableSources = availableSources
         }
 
         public func makeFooter() -> [Item] {
             var items: [Item] = []
 
             // 1. Source tip (always show)
-            let sources = Shared.Constants.Search.availableSources.joined(separator: ", ")
+            // #1042 Cluster 2: prefer composition-root-supplied list,
+            // fall back to the foundation-tier static literal.
+            let sourceList = availableSources ?? Shared.Constants.Search.availableSources
+            let sources = sourceList.joined(separator: ", ")
             let sourceTip = if currentSource == nil {
                 // Unified search - show how to narrow
                 "_To narrow results, use `source` parameter: \(sources)_"
