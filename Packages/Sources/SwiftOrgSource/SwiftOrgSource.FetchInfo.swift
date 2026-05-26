@@ -14,6 +14,7 @@ extension SwiftOrgSource {
         sourceID: Shared.Constants.SourcePrefix.swiftOrg,
         crawlBaseURLs: [Shared.Constants.BaseURL.swiftOrg],
         defaultOutputDirKey: .swiftOrg,
-        isWebCrawlable: true
+        isWebCrawlable: true,
+        corpusFileSuffix: "pages"
     )
 }

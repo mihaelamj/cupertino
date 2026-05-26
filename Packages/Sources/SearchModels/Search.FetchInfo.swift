@@ -57,18 +57,35 @@ extension Search {
         /// (`false`).
         public let isWebCrawlable: Bool
 
+        /// Human-readable noun naming the kind of files this fetch
+        /// produces on disk (e.g. `"files"`, `"proposals"`, `"pages"`,
+        /// `"guides"`, `"archives"`). Used by `cupertino doctor`'s
+        /// raw-corpus inventory line to render counts as e.g.
+        /// `(173 pages)` instead of a flat `(173 files)`.
+        ///
+        /// 2026-05-26 audit follow-up: pre-fix Doctor's
+        /// `checkDocumentationDirectories` hardcoded a 5-entry
+        /// `[CorpusEntry]` literal naming each suffix inline; adding
+        /// a new web-crawlable source meant editing Doctor. Post-fix
+        /// Doctor iterates `registry.allEnabled.filter { $0.isSearchTier
+        /// && $0.fetchInfo != nil }` and reads the suffix here. Default
+        /// `"files"` covers any source that doesn't care to specialise.
+        public let corpusFileSuffix: String
+
         public init(
             displayName: String,
             sourceID: String,
             crawlBaseURLs: [String] = [],
             defaultOutputDirKey: DefaultOutputDirKey,
-            isWebCrawlable: Bool
+            isWebCrawlable: Bool,
+            corpusFileSuffix: String = "files"
         ) {
             self.displayName = displayName
             self.sourceID = sourceID
             self.crawlBaseURLs = crawlBaseURLs
             self.defaultOutputDirKey = defaultOutputDirKey
             self.isWebCrawlable = isWebCrawlable
+            self.corpusFileSuffix = corpusFileSuffix
         }
     }
 }

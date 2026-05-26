@@ -515,27 +515,49 @@ extension CLIImpl.Command {
         /// Filesystem check for raw corpus directories. These are *inputs* for
         /// `cupertino save`; they're optional once `search.db` is built (a user
         /// who ran `cupertino setup` has the DB but no source dirs, and that's
-        /// fine). All five directories are warnings-only — missing dirs don't
+        /// fine). All directories are warnings-only — missing dirs don't
         /// fail doctor. The query-correctness truth lives in `search.db` and is
         /// reported by `checkSearchDatabase`.
+        ///
+        /// 2026-05-26 audit follow-up: pre-fix the entries list was a
+        /// hardcoded 5-element literal naming `(label, url, suffix,
+        /// fetchType)` inline; adding a new web-crawlable source meant
+        /// editing Doctor AND the `fetchType` values had drifted —
+        /// `"docs"` / `"evolution"` / `"swift"` / `"archive"` were not
+        /// valid `--source` values post-#1007 registry-driven dispatch,
+        /// so Doctor's "→ Run: cupertino fetch --source X" guidance
+        /// pointed at commands that would error out with "Unknown
+        /// --source value 'docs'". Post-fix the list is derived from
+        /// the production registry — every FTS-tier source with a
+        /// non-nil `fetchInfo` contributes one entry, each pulling its
+        /// label from `fetchInfo.displayName`, its URL from
+        /// `Shared.Paths.directory(named: fetchInfo.defaultOutputDirKey.rawValue)`,
+        /// its `suffix` from `fetchInfo.corpusFileSuffix`, and its
+        /// `fetchType` from `fetchInfo.sourceID` (the canonical
+        /// `--source` flag value).
         private func checkDocumentationDirectories() -> Bool {
-            // Path-DI composition sub-root (#535).
             let paths = Shared.Paths.live()
-            let docsURL = URL(fileURLWithPath: docsDir).expandingTildeInPath
-            let evolutionURL = URL(fileURLWithPath: evolutionDir).expandingTildeInPath
-            let higURL = paths.higDirectory
-            let swiftOrgURL = paths.swiftOrgDirectory
-            let archiveURL = paths.archiveDirectory
+            let registry = CLIImpl.makeProductionSourceRegistry()
+            let cliDocsURL = URL(fileURLWithPath: docsDir).expandingTildeInPath
+            let cliEvolutionURL = URL(fileURLWithPath: evolutionDir).expandingTildeInPath
 
             Cupertino.Context.composition.logging.recording.output("📂 Raw corpus directories (input for `cupertino save`)")
 
-            let entries: [CorpusEntry] = [
-                CorpusEntry(label: "Apple docs", url: docsURL, suffix: "files", fetchType: "docs"),
-                CorpusEntry(label: "Swift Evolution", url: evolutionURL, suffix: "proposals", fetchType: "evolution"),
-                CorpusEntry(label: "Swift.org", url: swiftOrgURL, suffix: "pages", fetchType: "swift"),
-                CorpusEntry(label: "HIG", url: higURL, suffix: "pages", fetchType: "hig"),
-                CorpusEntry(label: "Apple Archive", url: archiveURL, suffix: "guides", fetchType: "archive"),
-            ]
+            let entries: [CorpusEntry] = registry.allEnabled.compactMap { provider in
+                guard provider.isSearchTier, let info = provider.fetchInfo else { return nil }
+                let dirKey = info.defaultOutputDirKey.rawValue
+                let url: URL = switch info.sourceID {
+                case Shared.Constants.SourcePrefix.appleDocs: cliDocsURL
+                case Shared.Constants.SourcePrefix.swiftEvolution: cliEvolutionURL
+                default: paths.directory(named: dirKey)
+                }
+                return CorpusEntry(
+                    label: info.displayName,
+                    url: url,
+                    suffix: info.corpusFileSuffix,
+                    fetchType: info.sourceID
+                )
+            }
 
             for entry in entries {
                 if FileManager.default.fileExists(atPath: entry.url.path) {

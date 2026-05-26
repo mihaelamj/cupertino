@@ -15,6 +15,7 @@ extension HIGSource {
         sourceID: Shared.Constants.SourcePrefix.hig,
         crawlBaseURLs: [Shared.Constants.BaseURL.appleHIG],
         defaultOutputDirKey: .hig,
-        isWebCrawlable: true
+        isWebCrawlable: true,
+        corpusFileSuffix: "pages"
     )
 }

@@ -18,6 +18,7 @@ extension AppleArchiveSource {
         sourceID: Shared.Constants.SourcePrefix.appleArchive,
         crawlBaseURLs: [Shared.Constants.BaseURL.appleArchive],
         defaultOutputDirKey: .archive,
-        isWebCrawlable: false
+        isWebCrawlable: false,
+        corpusFileSuffix: "guides"
     )
 }
