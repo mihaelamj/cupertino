@@ -40,8 +40,10 @@ extension CLIImpl.Command {
             name: .long,
             help: """
             Disambiguator for non-URI identifiers: apple-docs, apple-archive, hig, \
-            swift-evolution, swift-org, swift-book, samples, packages. \
-            Auto-detected when omitted.
+            swift-evolution, swift-org, swift-book, samples (alias: \
+            apple-sample-code), packages. Auto-detected when omitted. For URI \
+            identifiers the scheme is the disambiguator; if `--source` is also \
+            given it must match the URI's scheme.
             """
         )
         var source: String?
@@ -99,6 +101,34 @@ extension CLIImpl.Command {
                     recording: Cupertino.Context.composition.logging.recording
                 )
                 throw ExitCode.failure
+            }
+
+            // Round-18 critic finding #1 (#1039 follow-up): when both
+            // the identifier carries a URI scheme AND `--source` is
+            // given, the two must agree. Pre-fix `cupertino read
+            // 'hig://...' --source apple-docs` silently routed to
+            // apple-documentation.db (resolveDocsDBURL short-circuits
+            // on explicit source-id before checking the URI scheme),
+            // then returned `docsNotFound` against the wrong DB. Now
+            // we reject the mismatch with a clear diagnostic before
+            // opening any file. The samples / apple-sample-code alias
+            // is allowed when the URI scheme is `samples` (both
+            // narrow to the same backend).
+            if let rawSource = source, let schemeEnd = identifier.range(of: "://") {
+                let scheme = String(identifier[..<schemeEnd.lowerBound])
+                let normalised = (rawSource == Shared.Constants.SourcePrefix.appleSampleCode)
+                    ? Shared.Constants.SourcePrefix.samples
+                    : rawSource
+                let normalisedScheme = (scheme == Shared.Constants.SourcePrefix.appleSampleCode)
+                    ? Shared.Constants.SourcePrefix.samples
+                    : scheme
+                if normalised != normalisedScheme {
+                    CLIImpl.printUserFacingDiagnostic(
+                        "❌ --source '\(rawSource)' disagrees with URI scheme '\(scheme)'. Drop --source (the URI is unambiguous) or change one to match the other.",
+                        recording: Cupertino.Context.composition.logging.recording
+                    )
+                    throw ExitCode.failure
+                }
             }
 
             // Path-DI composition sub-root (#535).
@@ -159,8 +189,20 @@ extension CLIImpl.Command {
                     explicitDocsSourceID: source
                 )
             } catch Services.ReadService.ReadError.docsNotFound(let id) {
+                // Round-18 critic finding #2: name the resolved DB
+                // filename so the user knows which per-source file to
+                // inspect. Re-resolve here (same inputs the read
+                // pipeline used) instead of plumbing the URL through
+                // the ReadError enum, which would be a breaking
+                // enum-shape change for non-CLI consumers.
+                let resolved = Services.ReadService.resolveDocsDBURL(
+                    identifier: id,
+                    explicitSourceID: source,
+                    fallback: searchDBURL,
+                    docsDBURLs: docsDBURLs
+                )
                 CLIImpl.printUserFacingDiagnostic(
-                    "Document not found in any docs database: \(id)",
+                    "Document not found in \(resolved.lastPathComponent): \(id)",
                     recording: Cupertino.Context.composition.logging.recording
                 )
                 throw ExitCode.failure

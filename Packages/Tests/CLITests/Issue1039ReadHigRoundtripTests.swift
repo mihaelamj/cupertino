@@ -89,13 +89,17 @@ struct Issue1039ReadHigRoundtripTests {
         #expect(result.content.contains("Standard Button") || result.content.contains("Standard buttons"))
     }
 
-    @Test("Non-URI identifier with --source hig still routes to hig.db (explicit source-id path)")
-    func nonURIWithExplicitSourceHigRoutes() async throws {
+    @Test("Non-URI identifier with explicit source `hig` routes through ReadService.read to hig.db end-to-end")
+    func nonURIWithExplicitSourceHigRoutesEndToEnd() async throws {
         // Round-17 critic finding #3: pre-fix `cupertino read foo
         // --source hig` (non-URI identifier with explicit source)
         // fell back to legacy searchDB. Post-fix the explicit
         // source-id is threaded into `resolveDocsDBURL` and routes
-        // to hig.db.
+        // to hig.db. Round-18 critic finding #3 strengthened the
+        // test to actually call `ReadService.read` (not just the
+        // pure helper), so an end-to-end regression that breaks
+        // the explicit-source path inside `readFromDocs` is
+        // caught.
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("issue1039-explicit-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -108,34 +112,43 @@ struct Issue1039ReadHigRoundtripTests {
             indexers: [:],
             sourceLookup: .empty
         )
-        // The fixture row uses a URI scheme; the test queries by
-        // the URI exactly (since Services.DocsSearchService.read
-        // matches on the `uri` column). The point isn't to test
-        // a non-URI key/value pair, it's that the SAME identifier
-        // routes to hig.db via the explicit source path, not the
-        // URI-scheme path.
+        // The non-URI fixture uses a slug-style identifier. The
+        // read path queries the `uri` column of docs_metadata, so
+        // we store the slug AS the uri value; this exercises the
+        // explicit-source-id-driven DB routing without depending
+        // on URI scheme parsing.
+        let nonURIIdentifier = "issue-1039-explicit-hig-slug"
         try await writer.indexDocument(Search.IndexDocumentParams(
-            uri: "hig://standard-button-doc",
+            uri: nonURIIdentifier,
             source: Shared.Constants.SourcePrefix.hig,
             framework: "HIG",
             title: "Standard Button (explicit-source variant)",
-            content: "Body.",
+            content: "Body content for the explicit-source end-to-end roundtrip.",
             filePath: "/tmp/issue-1039-explicit-hig",
             contentHash: "issue-1039-explicit-hig",
             lastCrawled: Date()
         ))
         await writer.disconnect()
 
-        // Resolution test: `resolveDocsDBURL` must pick hig.db when
-        // explicitSourceID == "hig" even though the identifier has
-        // NO URI scheme separator. This is the pre-#1039 bug
-        // (helper fell back to legacy searchDB).
-        let resolved = Services.ReadService.resolveDocsDBURL(
-            identifier: "some-non-uri-identifier",
-            explicitSourceID: "hig",
-            fallback: tempDir.appendingPathComponent("legacy-not-here.db"),
-            docsDBURLs: ["hig": higDBPath]
+        let bogusSearchDB = tempDir.appendingPathComponent("nonexistent.db")
+        let bogusSamplesDB = tempDir.appendingPathComponent("nonexistent-samples.db")
+        let bogusPackagesDB = tempDir.appendingPathComponent("nonexistent-packages.db")
+
+        let result = try await Services.ReadService.read(
+            identifier: nonURIIdentifier,
+            explicit: .docs,
+            format: .markdown,
+            searchDB: bogusSearchDB,
+            samplesDB: bogusSamplesDB,
+            packagesDB: bogusPackagesDB,
+            searchDatabaseFactory: LiveSearchDatabaseFactory(),
+            sampleDatabaseFactory: LiveSampleIndexDatabaseFactory(),
+            packageFileLookup: NoopPackageFileLookup(),
+            docsDBURLs: ["hig": higDBPath],
+            explicitDocsSourceID: "hig"
         )
-        #expect(resolved.path == higDBPath.path, "explicit --source hig must route to hig.db, not the legacy fallback")
+
+        #expect(result.resolvedSource == .docs)
+        #expect(result.content.contains("Standard Button") || result.content.contains("explicit-source"))
     }
 }
