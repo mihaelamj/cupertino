@@ -16,7 +16,7 @@ import Foundation
 //
 // #789: PackagesIndexer removed along with the search.db `packages`
 // table. Package indexing lives in packages.db via the dedicated
-// `Indexer.PackagesService` (`cupertino save --packages`).
+// `Indexer.PackagesService` (`cupertino save --source packages`).
 //
 // #932: the static `Search.IndexerRegistry` enum was dissolved. The
 // production indexer concretes are assembled inline at the

@@ -10,7 +10,7 @@ cupertino fetch --source availability --fast
 
 ## Description
 
-Tunes the availability annotation pass for speed at the cost of robustness — higher concurrency, shorter per-request timeout. Use when the network is reliable and you want the run to finish quickly.
+Tunes the availability annotation pass for speed at the cost of robustness, higher concurrency, shorter per-request timeout. Use when the network is reliable and you want the run to finish quickly.
 
 ## Default
 

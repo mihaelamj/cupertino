@@ -1,8 +1,12 @@
+import AppleArchiveSource
+import AppleDocsSource
 import Foundation
 import LoggingModels
 import MCPCore
 @testable import MCPSupport
+import SearchModels
 import SharedConstants
+import SwiftEvolutionSource
 import Testing
 
 // Covers the malformed-URL skip path added to
@@ -28,10 +32,19 @@ struct DocsResourceProviderMalformedURLSkipTests {
             crawler: Shared.Configuration.Crawler(outputDirectory: tempRoot),
             changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempRoot)
         )
+        // 2026-05-26 audit Cluster 12 follow-up: strategies + scheme
+        // map mirror production wiring.
+        let appleDocs = AppleDocsURIResourceStrategy()
+        let evolution = SwiftEvolutionURIResourceStrategy()
+        let archive = AppleArchiveURIResourceStrategy()
         return MCP.Support.DocsResourceProvider(
             configuration: config,
-            evolutionDirectory: evolutionDir,
-            archiveDirectory: archiveDir,
+            resourceStrategies: [appleDocs, evolution, archive],
+            directoriesByScheme: [
+                appleDocs.scheme: tempRoot,
+                evolution.scheme: evolutionDir,
+                archive.scheme: archiveDir,
+            ],
             markdownLookup: nil,
             logger: Logging.NoopRecording()
         )

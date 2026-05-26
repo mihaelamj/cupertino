@@ -14,7 +14,7 @@ Required when `--platform` is set. Lex compare in SQL; correct for all current A
 
 ## Format
 
-Dotted decimal — `16.0`, `13.0`, `10.15`, etc.
+Dotted decimal, `16.0`, `13.0`, `10.15`, etc.
 
 ## Default
 

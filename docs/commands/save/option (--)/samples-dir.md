@@ -1,11 +1,11 @@
 # --samples-dir
 
-Sample-code source directory for `--samples`
+Sample-code source directory for `--source samples`
 
 ## Synopsis
 
 ```bash
-cupertino save --samples --samples-dir <path>
+cupertino save --source samples --samples-dir <path>
 ```
 
 ## Description
@@ -19,11 +19,11 @@ Override the default `~/.cupertino/sample-code/` source location. The samples in
 ## Example
 
 ```bash
-cupertino save --samples --samples-dir ~/Downloads/sample-code
+cupertino save --source samples --samples-dir ~/Downloads/sample-code
 ```
 
 ## Notes
 
 - Tilde (`~`) expansion supported.
 - Honours `Shared.BinaryConfig.baseDirectory` overrides (#211).
-- If the directory is missing, the samples scope is skipped with an info log (when running multi-scope) or errors (when only `--samples` was passed).
+- If the directory is missing, the samples scope is skipped with an info log (when running multi-scope) or errors (when only `--source samples` was passed).

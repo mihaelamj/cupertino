@@ -1,4 +1,5 @@
 import Foundation
+import SharedConstants
 
 // MARK: - Search.SourceRegistry
 
@@ -81,11 +82,44 @@ extension Search {
         }
 
         /// Number of registered providers (enabled + disabled).
-        public var count: Int { entries.count }
+        public var count: Int {
+            entries.count
+        }
 
         /// `true` when zero providers are registered. The composition
         /// root should never reach the indexer-dispatch path with an
         /// empty registry; treat as a configuration error at the door.
-        public var isEmpty: Bool { entries.isEmpty }
+        public var isEmpty: Bool {
+            entries.isEmpty
+        }
+
+        /// Enabled providers grouped by their `destinationDB`. Drives
+        /// step 5 of the per-source DB split epic
+        /// (`docs/design/per-source-db-split.md`): the composition root
+        /// opens one DB per group, builds a per-group indexer dict +
+        /// strategies list, and fans out the write path so each
+        /// source's rows land in its declared DB.
+        ///
+        /// `excluding` lets callers omit DBs that have their own
+        /// pipeline outside `Search.IndexBuilder` (today: `.packages`,
+        /// written by the dedicated `Indexer.PackagesService` post-#789).
+        /// Passing an empty set returns groups for every destinationDB
+        /// declared by any enabled provider.
+        ///
+        /// The return value is a `Dictionary` keyed by the FULL
+        /// `Shared.Models.DatabaseDescriptor` value (not just `id`).
+        /// That matters: a future regression where two sources
+        /// accidentally share an `id` but diverge on `filename` /
+        /// `displayName` partitions correctly here (whereas keying on
+        /// `.id` alone would conflate them silently). See
+        /// `PluggabilityInvariantTests.swift` Seam 6.
+        public func groupedByDestinationDB(
+            excluding: Set<Shared.Models.DatabaseDescriptor> = []
+        ) -> [Shared.Models.DatabaseDescriptor: [any Search.SourceProvider]] {
+            Dictionary(
+                grouping: allEnabled.filter { !excluding.contains($0.destinationDB) },
+                by: { $0.destinationDB }
+            )
+        }
     }
 }

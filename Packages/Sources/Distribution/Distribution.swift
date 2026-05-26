@@ -1,7 +1,8 @@
-import Foundation
 @_exported import DistributionModels
+import Foundation
 
 // MARK: - Distribution module — concrete `cupertino setup` orchestrator
+
 //
 // The `Distribution` namespace anchor lives in the foundation-only
 // `DistributionModels` seam target (Pattern A, matching `Search` /

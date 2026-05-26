@@ -15,7 +15,7 @@ import Testing
 @Suite("#1027: indexer dict derived from registry filtered by destinationDB")
 struct Issue1027IndexerDictRegistryDerivationTests {
     private static let derivedDict: [String: any Search.SourceIndexer] = CLIImpl.makeProductionSourceRegistry().allEnabled
-        .filter { $0.destinationDB == .search }
+        .filter { $0.destinationDB != .packages }
         .reduce(into: [:]) { dict, provider in
             dict[provider.definition.id] = provider.makeIndexer()
         }

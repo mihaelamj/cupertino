@@ -2,6 +2,7 @@ import Foundation
 import SharedConstants
 
 // MARK: - Crawler.AppleDocsProgress + ProgressObserving
+
 //
 // Naming note: the producer-target class `Crawler.AppleDocs` is a
 // `public final class` declared in the `Crawler` SPM target's

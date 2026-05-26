@@ -16,15 +16,15 @@ Fetches all documentation types in parallel: Apple docs, Swift.org docs, Swift E
 
 Runs every non-`all` fetch type **in parallel**:
 
-1. **docs** — Apple Developer Documentation
-2. **swift** — Swift.org Documentation
-3. **evolution** — Swift Evolution Proposals
-4. **packages** — Swift Package Index metadata + GitHub source archives ([#217](https://github.com/mihaelamj/cupertino/issues/217))
-5. **code** — Apple Sample Code from `developer.apple.com/sample-code` (requires Safari sign-in for cookie reuse)
-6. **samples** — Sample code projects from GitHub (the recommended path for sample data)
-7. **archive** — Apple Archive legacy programming guides
-8. **hig** — Human Interface Guidelines
-9. **availability** — API version-info pass over an existing docs corpus
+1. **docs**, Apple Developer Documentation
+2. **swift**, Swift.org Documentation
+3. **evolution**, Swift Evolution Proposals
+4. **packages**, Swift Package Index metadata + GitHub source archives ([#217](https://github.com/mihaelamj/cupertino/issues/217))
+5. **code**, Apple Sample Code from `developer.apple.com/sample-code` (requires Safari sign-in for cookie reuse)
+6. **samples**, Sample code projects from GitHub (the recommended path for sample data)
+7. **archive**, Apple Archive legacy programming guides
+8. **hig**, Human Interface Guidelines
+9. **availability**, API version-info pass over an existing docs corpus
 
 ## Default Settings
 
@@ -152,7 +152,7 @@ cupertino fetch --source all --start-clean
 cupertino fetch --source all --max-pages 1000
 ```
 
-Resume is automatic across all types — interrupted fetches pick up where they left off on the next run with no flag.
+Resume is automatic across all types, interrupted fetches pick up where they left off on the next run with no flag.
 
 ## Sample Code Authentication
 

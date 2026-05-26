@@ -16,7 +16,7 @@ Verifies that the MCP server can start and all required components are available
 
 - **Server initialization** - MCP server can be created, transport is stdio, current protocol version
 - **Packages index (`packages.db`)** - Presence, size, row counts (packages + indexed files), bundled version. Missing is a warning, not a failure.
-- **Sample code index (`samples.db`)** - Presence, size, row counts (projects + indexed files + symbols).
+- **Sample code index (`apple-sample-code.db`)** - Presence, size, row counts (projects + indexed files + symbols).
 - **Search index (`search.db`)** - Presence, size, **schema version** vs binary, indexed framework count. Schema mismatch (older or newer than the binary) is a hard fail with a precise rebuild hint.
 - **Resource providers** - DocsResourceProvider and SearchToolProvider are available
 - **Schema versions per DB** ([#234](https://github.com/mihaelamj/cupertino/issues/234)) - sequential schema number + journal mode (WAL warnings) + WAL sidecar size + non-local-volume warnings ([#236](https://github.com/mihaelamj/cupertino/issues/236)).
@@ -134,8 +134,8 @@ Default `cupertino doctor` output (no flags):
    ✓ Indexed files: 20186
    ℹ  Bundled version: 1.1.0
 
-🧪 Sample Code Index (samples.db)
-   ✓ Database: /Users/you/.cupertino/samples.db
+🧪 Sample Code Index (apple-sample-code.db)
+   ✓ Database: /Users/you/.cupertino/apple-sample-code.db
    ✓ Size: 184.4 MB
    ✓ Projects: 619
    ✓ Indexed files: 18928
@@ -157,9 +157,15 @@ Default `cupertino doctor` output (no flags):
 
 8. Schema versions (#234)
 
-   ✓ search.db: 13 (sequential), journal=wal
+   ⚠ search.db: not built
+   ✓ apple-documentation.db: 18 (sequential), journal=wal
+   ✓ hig.db: 18 (sequential), journal=wal
+   ✓ apple-archive.db: 18 (sequential), journal=wal
+   ✓ swift-evolution.db: 18 (sequential), journal=wal
+   ✓ swift-org.db: 18 (sequential), journal=wal
+   ✓ swift-book.db: 18 (sequential), journal=wal
    ✓ packages.db: 2 (sequential), journal=delete
-   ✓ samples.db: 3 (sequential), journal=wal
+   ✓ apple-sample-code.db: 4 (sequential), journal=wal
 
 ✅ All checks passed - MCP server ready
 ```
@@ -192,7 +198,7 @@ Default `cupertino doctor` output (no flags):
     ✓  /Users/you/.cupertino/packages  (183 packages)
     ✓  availability.json sidecars  (183/183)
 
-  Samples (samples.db)
+  Samples (apple-sample-code.db)
     ✓  /Users/you/.cupertino/sample-code  (627 zips)
     (annotation runs inline during save, no preflight check needed)
 
@@ -240,9 +246,9 @@ Default `cupertino doctor` output before `cupertino setup` has been run:
      → Run: cupertino setup  (downloads the pre-built packages index)
      Expected version: 1.1.0
 
-🧪 Sample Code Index (samples.db)
-   ⚠  Database: /Users/you/.cupertino/samples.db (not found)
-     → Run: cupertino fetch --source samples && cupertino cleanup && cupertino save --samples
+🧪 Sample Code Index (apple-sample-code.db)
+   ⚠  Database: /Users/you/.cupertino/apple-sample-code.db (not found)
+     → Run: cupertino fetch --source samples && cupertino cleanup && cupertino save --source samples
 
 🔍 Search Index
    ✗ Database: /Users/you/.cupertino/search.db (not found)
@@ -278,13 +284,13 @@ Verifies:
 
 **Warning only** - server runs without `packages.db`; the packages tool simply isn't available.
 
-#### 3. Sample Code Index (`samples.db`)
+#### 3. Sample Code Index (`apple-sample-code.db`)
 
 Verifies:
-- `~/.cupertino/samples.db` exists
+- `~/.cupertino/apple-sample-code.db` exists
 - Reports size, project count, indexed file count, indexed symbol count
 
-**Warning only** - server runs without `samples.db`; the sample-code search just isn't available.
+**Warning only** - server runs without `apple-sample-code.db`; the sample-code search just isn't available.
 
 #### 4. Search Index (`search.db`)
 
@@ -312,7 +318,7 @@ Confirms that:
 
 #### 6. Schema versions per DB ([#234](https://github.com/mihaelamj/cupertino/issues/234))
 
-Reads `PRAGMA user_version` for each of the three local databases and reports the sequential schema number plus journal mode. Anything other than `journal=wal` is flagged (with a separate non-local-volume warning for DBs on NFS / SMB / AFP — SQLite WAL doesn't work over network filesystems, [#236](https://github.com/mihaelamj/cupertino/issues/236)). The WAL sidecar size is included; runaway sidecars (`> 16 MB`) hint at checkpoint starvation from a long-lived reader.
+Reads `PRAGMA user_version` for each of the three local databases and reports the sequential schema number plus journal mode. Anything other than `journal=wal` is flagged (with a separate non-local-volume warning for DBs on NFS / SMB / AFP, SQLite WAL doesn't work over network filesystems, [#236](https://github.com/mihaelamj/cupertino/issues/236)). The WAL sidecar size is included; runaway sidecars (`> 16 MB`) hint at checkpoint starvation from a long-lived reader.
 
 ### `--save` only (maintainer-facing, added by [`--save`](option%20%28--%29/save.md))
 
@@ -458,9 +464,9 @@ Or, if you'd rather pull the pre-built DB matching this binary:
 rm ~/.cupertino/search.db && cupertino setup
 ```
 
-**Inverse problem** (binary newer than DB the user is running against — schema version on disk is **higher** than the binary expects):
+**Inverse problem** (binary newer than DB the user is running against, schema version on disk is **higher** than the binary expects):
 ```
-✗ Schema version: 13 (newer than binary — expected 12)
+✗ Schema version: 13 (newer than binary, expected 12)
   → Upgrade cupertino: brew upgrade cupertino
 ```
 

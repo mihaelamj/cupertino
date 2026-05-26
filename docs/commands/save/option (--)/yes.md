@@ -23,11 +23,11 @@ The prompt is also auto-skipped when stdin isn't a TTY (CI / pipes), so this fla
 
 ```bash
 cupertino save --yes
-cupertino save --packages --samples -y
+cupertino save --source packages --source samples -y
 ```
 
 ## Notes
 
-- The preflight summary still prints — only the prompt is skipped.
+- The preflight summary still prints, only the prompt is skipped.
 - Use `cupertino doctor --save` to read-only check what the preflight would say without committing to a run.
 - Backed by `Indexer.Preflight.preflightLines(...)` (lifted to the `Indexer` package in #244).

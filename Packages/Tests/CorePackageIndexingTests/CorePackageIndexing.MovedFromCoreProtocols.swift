@@ -6,6 +6,7 @@ import SharedConstants
 import Testing
 
 // MARK: - Tests moved from CoreProtocolsTests during #536 phase 2a
+
 //
 // `Core.PackageIndexing.ExclusionList` and `Core.PackageIndexing.GitHubCanonicalizer`
 // were moved out of CoreProtocols (foundation-only protocol seam) and into

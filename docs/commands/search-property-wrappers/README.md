@@ -22,7 +22,7 @@ cupertino search-property-wrappers --wrapper <name>
 | `--framework` | string | none | Restrict to a single framework (e.g. `swiftui`, `uikit`, `combine`). |
 | `--limit` | int | 10 | Maximum results. |
 | `--format` | enum | `text` | Output format: `text`, `json`, `markdown`. |
-| `--search-db` | path | `~/.cupertino/search.db` | Override the indexed search database. |
+`~/.cupertino/apple-documentation.db` | Override the apple-docs database (post-#1037 per-source DB split). Default resolves through the production source registry. |
 
 ## Examples
 

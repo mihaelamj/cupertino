@@ -23,34 +23,52 @@ extension CLIImpl.Command {
     struct Save: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "save",
-            abstract: "Rebuild search.db / packages.db / samples.db from on-disk sources",
+            abstract: "Rebuild per-source databases from on-disk sources",
             discussion: """
-            Most users do NOT need this command — `cupertino setup` downloads the pre-built
+            Most users do NOT need this command. `cupertino setup` downloads the pre-built
             bundle and is the supported end-user workflow. `save` is for maintainers
             rebuilding the bundle, or advanced users rebuilding from a local crawl produced
             by `cupertino fetch`.
 
-            Builds up to three local databases from whichever sources happen to be on disk:
+            Build target is selected per source via `--source <id>` (repeatable) or
+            `--all` for every source. Valid source ids:
 
-              search.db   — Apple docs, Swift Evolution, HIG, Apple Archive, Swift.org, Swift Book
-              packages.db — Swift package metadata and source archives
-              samples.db  — Apple sample-code projects and their source files
+              apple-docs       Apple Developer Documentation
+              swift-evolution  Swift Evolution proposals
+              hig              Human Interface Guidelines
+              apple-archive    Apple Archive legacy guides
+              swift-org        Swift.org documentation
+              swift-book       Swift Book (view-source, co-located with swift-org)
+              samples          Apple Sample Code (rich schema + FTS rows)
+              packages         Swift package metadata + source archives
 
-            With no scope flag, all three databases are built. Sources whose input directory
-            is absent or whose catalog is empty are skipped cleanly (`[source] skipped
-            (no local corpus)`) and do not count as failures. Use --docs / --packages /
-            --samples to build a subset.
+            Sources whose input directory is absent or whose catalog is empty are
+            skipped cleanly (`[source] skipped (no local corpus)`) and do not count as
+            failures.
 
             A preflight summary is printed before indexing starts. Pass --yes (or pipe stdin)
             to skip the confirmation prompt. Run 'cupertino doctor --save' to preview the
             preflight output without writing any database.
 
+            DISPATCH:
+              `--source <id>` narrows the docs runner to ONLY the
+              destination DB whose providers include that id.
+              `--source apple-docs` builds apple-documentation.db
+              alone; `--source hig` builds hig.db alone, etc.
+              View-source pairs (`swift-org` + `swift-book`) co-locate
+              in `swift-documentation.db`, so either id pulls both.
+              `--source samples` runs both the Sample.Index rich-data
+              pipeline AND the SampleCodeSource FTS rows under the
+              single `apple-sample-code.db` file (one-DB-two-tracks
+              per #1037). `--source packages` runs the standalone
+              PackagesService against `packages.db`.
+
             EXAMPLES
-              cupertino save                    # build all three DBs from whatever is on disk
-              cupertino save --docs             # search.db only
-              cupertino save --samples          # samples.db only
-              cupertino save --packages         # packages.db only
-              cupertino save --remote           # stream docs from GitHub (no local corpus needed)
+              cupertino save --all                          # build every source's DB
+              cupertino save --source apple-docs            # apple-documentation.db only
+              cupertino save --source samples               # apple-sample-code.db (both tracks)
+              cupertino save --source apple-docs --source hig   # two DBs
+              cupertino save --remote                       # stream docs from GitHub
             """
         )
 
@@ -87,36 +105,33 @@ extension CLIImpl.Command {
         @Flag(name: .long, help: "Stream documentation from GitHub (instant setup, no local files needed)")
         var remote: Bool = false
 
-        @Flag(
+        @Option(
             name: .long,
             help: """
-            Build search.db (Apple docs + Swift Evolution + HIG + Archive + \
-            Swift.org + Swift Book). Defaults to ON when no scope flag is passed.
+            Source id to build (repeatable). Valid ids: apple-docs, swift-evolution, \
+            hig, apple-archive, swift-org, swift-book, samples, packages. Pass \
+            `--source <id>` multiple times to build several sources. Mutually \
+            exclusive with `--all`. At least one of `--source` or `--all` is \
+            required (no scope flag = usage error post-#1037).
             """
         )
-        var docs: Bool = false
+        var source: [String] = []
 
         @Flag(
             name: .long,
-            help: "Build packages.db from extracted package archives at `~/.cupertino/packages/<owner>/<repo>/`."
+            help: "Build every source's DB. Mutually exclusive with `--source`."
         )
-        var packages: Bool = false
+        var all: Bool = false
 
-        @Flag(
-            name: .long,
-            help: "Build samples.db from extracted sample-code zips at `~/.cupertino/sample-code/`."
-        )
-        var samples: Bool = false
-
-        @Option(name: .long, help: "Sample-code source directory (used with `--samples`).")
+        @Option(name: .long, help: "Sample-code source directory (used with `--source samples`).")
         var samplesDir: String?
 
-        @Option(name: .long, help: "samples.db output path override (used with `--samples`).")
+        @Option(name: .long, help: "apple-sample-code.db output path override (used with `--source samples`).")
         var samplesDB: String?
 
         @Flag(
             name: .long,
-            help: "Force re-index of every sample under `--samples` (existing rows wiped)."
+            help: "Force re-index of every sample under `--source samples` (existing rows wiped)."
         )
         var force: Bool = false
 
@@ -181,15 +196,85 @@ extension CLIImpl.Command {
             // future operator everything they need to reproduce.
             Cupertino.Context.composition.logging.logInvocation()
 
+            let recording = Cupertino.Context.composition.logging.recording
+
+            // Warn when samples-scoped flags are passed but the
+            // current invocation doesn't include the samples scope
+            // (either via `--source samples` or under `--remote` which
+            // bypasses samples entirely). The warning must fire BEFORE
+            // the --remote short-circuit so a user running
+            // `cupertino save --remote --samples-db /tmp/x.db` sees
+            // that their --samples-db is being ignored, rather than
+            // discovering it after a multi-hour remote stream
+            // (critic round-8 finding #7).
+            //
+            // `--remote` mode always ignores samples (it only streams
+            // docs from GitHub); during the resolver path we recompute
+            // whether samples is in scope below.
+            let samplesIsInScope = !remote && (all || source.contains(Shared.Constants.SourcePrefix.samples) ||
+                source.contains(Shared.Constants.SourcePrefix.appleSampleCode))
+            if !samplesIsInScope {
+                let category: LoggingModels.Logging.Category = .samples
+                // Critic round-9 finding #2: under --remote, the user
+                // cannot follow the natural fix ("add --source samples")
+                // because --source is mutex with --remote. Emit a
+                // different hint that doesn't recommend a flag combo
+                // that the binary will reject.
+                let remediation = remote
+                    ? "drop the flag (`--remote` streams docs only, no samples build)"
+                    : "Either add `--source samples` or drop the flag"
+                if samplesDir != nil {
+                    recording.warning(
+                        "⚠️  `--samples-dir` is ignored: \(remediation).",
+                        category: category
+                    )
+                }
+                if samplesDB != nil {
+                    recording.warning(
+                        "⚠️  `--samples-db` is ignored: \(remediation).",
+                        category: category
+                    )
+                }
+                if force {
+                    let forceRemediation = remote
+                        ? "drop the flag (`--remote` doesn't index samples)"
+                        : "pass `--source samples` to use it. Currently ignored"
+                    recording.warning(
+                        "⚠️  `--force` only re-indexes the samples scope; \(forceRemediation).",
+                        category: category
+                    )
+                }
+            }
+
+            // `--remote` is its own mode and bypasses the per-source
+            // resolver. Pre-#1037 it could combine with the legacy
+            // flag triplet (and just ignored the triplet); post-#1037
+            // we surface the conflict as a usage error so the user
+            // doesn't think their `--source` value is being honoured.
             if remote {
+                guard source.isEmpty, !all else {
+                    recording.error(
+                        "❌ `--remote` is incompatible with `--source` / `--all`. " +
+                            "`--remote` streams every docs source from GitHub; per-source " +
+                            "selection is not yet supported in remote mode (#1037 follow-up)."
+                    )
+                    throw ExitCode.failure
+                }
                 try await runRemote()
                 return
             }
 
-            let scopeFlagsSet = docs || packages || samples
-            let buildDocs = !scopeFlagsSet || docs
-            let buildPackages = !scopeFlagsSet || packages
-            let buildSamples = !scopeFlagsSet || samples
+            // Resolve `--source <id>` (repeatable) + `--all` into the
+            // three internal bucket booleans (commit-1 of the
+            // per-source CLI refactor: surface change only, dispatch
+            // still bucket-level). Commit 2 will refactor
+            // `LiveDocsIndexingRunner` to filter per source-id so
+            // `--source apple-docs` builds ONLY apple-documentation.db
+            // rather than the entire docs bucket.
+            let selectedSourceIDs = try Self.resolveSelectedSourceIDs(source: source, all: all)
+            let buildDocs = selectedSourceIDs.contains { Self.isDocsBucketSource($0) }
+            let buildPackages = selectedSourceIDs.contains(Shared.Constants.SourcePrefix.packages)
+            let buildSamples = selectedSourceIDs.contains(Shared.Constants.SourcePrefix.samples)
 
             // #253: gate on concurrent siblings before any preflight or
             // write. Detect other `cupertino save` processes targeting
@@ -201,7 +286,6 @@ extension CLIImpl.Command {
             if buildPackages { myTargets.insert(.packages) }
             if buildSamples { myTargets.insert(.samples) }
 
-            let recording = Cupertino.Context.composition.logging.recording
             switch SaveSiblingGate.gate(
                 myTargets: myTargets,
                 recording: recording,
@@ -275,7 +359,10 @@ extension CLIImpl.Command {
                 ?? Shared.Paths.live().baseDirectory
 
             if buildDocs {
-                try await runDocsIndexer(effectiveBase: effectiveBase)
+                try await runDocsIndexer(
+                    effectiveBase: effectiveBase,
+                    selectedSourceIDs: selectedSourceIDs
+                )
             }
             if buildPackages {
                 try await runPackagesIndexerSafely(effectiveBase: effectiveBase)
@@ -370,6 +457,107 @@ extension CLIImpl.Command {
                 throw Diagnostics.InsufficientDiskSpaceError(
                     neededBytes: needed, freeBytes: free, path: path
                 )
+            }
+        }
+
+        // MARK: - Per-source CLI resolution
+
+        /// Valid `--source <id>` literals for `cupertino save`. Derived
+        /// from the production source registry plus `packages` (which
+        /// is excluded from the docs-runner grouping but is its own
+        /// build target via PackagesService). Source of truth for the
+        /// CLI's vocabulary; expanding the registry adds entries here
+        /// automatically.
+        static func validSourceIDs() -> Set<String> {
+            var ids = Set(CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition.id))
+            // `packages` is in the registry today (PackagesSource lives
+            // at `.packages`) but `groupedByDestinationDB(excluding:
+            // [.packages])` filters it out of the docs runner because
+            // its write pipeline is the standalone PackagesService.
+            // Either way, allEnabled already includes it; this insert
+            // is defensive in case a future refactor drops it from the
+            // registry while keeping the standalone pipeline.
+            ids.insert(Shared.Constants.SourcePrefix.packages)
+            return ids
+        }
+
+        /// Aliases that the resolver accepts alongside the canonical
+        /// `--source <id>` set. Cross-command consistency with
+        /// `cupertino fetch --source apple-sample-code` (which has
+        /// historically accepted both `apple-sample-code` and `samples`
+        /// for the same source). Each alias maps onto its canonical id
+        /// before validation.
+        static let sourceIDAliases: [String: String] = [
+            // Historical fetch-side alias for SampleCodeSource. The
+            // canonical save-side id is `samples`
+            // (`SourcePrefix.samples`); `apple-sample-code` is what
+            // `cupertino fetch` accepts (`SourcePrefix.appleSampleCode`).
+            // Maps onto `samples` so a user who runs
+            // `cupertino fetch --source apple-sample-code` can run the
+            // matching `cupertino save --source apple-sample-code`
+            // without hitting an unknown-id error.
+            Shared.Constants.SourcePrefix.appleSampleCode: Shared.Constants.SourcePrefix.samples,
+        ]
+
+        /// Source-ids that map to the docs-runner bucket (`buildDocs`).
+        /// Every registry-enabled source EXCEPT `packages` lives there
+        /// today; `samples` is in the docs runner via
+        /// `SampleCodeSource` (which writes FTS rows to
+        /// `apple-sample-code.db`) AND in the standalone samples
+        /// runner (which writes the rich Sample.Index schema to the
+        /// same file). Both fire together when `samples` is selected.
+        static func isDocsBucketSource(_ id: String) -> Bool {
+            id != Shared.Constants.SourcePrefix.packages
+        }
+
+        /// Validate + collapse `--source <id>` (repeatable) + `--all`
+        /// into a `Set<String>` of selected ids. Throws a usage-error
+        /// `ExitCode.failure` (with a logged message) on:
+        ///   - both `--source` and `--all` passed (mutual exclusion)
+        ///   - neither passed (no scope set; pre-#1037's "default to
+        ///     everything" behaviour intentionally removed per the
+        ///     "each source needs its own option" direction)
+        ///   - `--source <id>` value not in `validSourceIDs()`
+        ///
+        /// `--all` returns the full `validSourceIDs()` set.
+        static func resolveSelectedSourceIDs(
+            source: [String],
+            all: Bool
+        ) throws -> Set<String> {
+            let recording = Cupertino.Context.composition.logging.recording
+            let valid = validSourceIDs()
+
+            switch (source.isEmpty, all) {
+            case (true, true):
+                return valid
+            case (false, true):
+                recording.error(
+                    "❌ `--source` and `--all` are mutually exclusive. Pass one but not both."
+                )
+                throw ExitCode.failure
+            case (true, false):
+                let sortedValid = valid.sorted().joined(separator: ", ")
+                recording.error(
+                    "❌ `cupertino save` requires either `--source <id>` (repeatable) " +
+                        "or `--all`. Valid ids: \(sortedValid). Pre-#1037 binaries defaulted " +
+                        "to building every DB; post-#1037 the scope is explicit."
+                )
+                throw ExitCode.failure
+            case (false, false):
+                // Apply aliases before validating so cross-command
+                // names (e.g. fetch's `apple-sample-code`) collapse
+                // onto canonical save-side ids.
+                let normalized = Set(source.map { sourceIDAliases[$0] ?? $0 })
+                let unknown = normalized.subtracting(valid).sorted()
+                guard unknown.isEmpty else {
+                    let sortedValid = valid.sorted().joined(separator: ", ")
+                    recording.error(
+                        "❌ Unknown `--source` value(s): \(unknown.joined(separator: ", ")). " +
+                            "Valid ids: \(sortedValid)."
+                    )
+                    throw ExitCode.failure
+                }
+                return normalized
             }
         }
 
@@ -481,11 +669,35 @@ extension CLIImpl.Command.Save {
             ?? effectiveBase.appendingPathComponent(Shared.Constants.FileName.searchDatabase)
         let stateFileURL = effectiveBase.appendingPathComponent("remote-save-state.json")
 
+        // #1042 Cluster 11 sub-2 wiring: derive the phase→URI-scheme
+        // dispatch map from the production source registry. Each
+        // shipped phase (docs/evolution/archive/swiftOrg/packages)
+        // maps 1:1 to a SourceProvider whose `definition.id` IS the
+        // canonical URI scheme. Composition root assembles the dict
+        // explicitly so the mapping is auditable; a new phase added
+        // for a new source extends this dict in one place.
         let fetcher = RemoteSync.GitHubFetcher()
+        let saveRegistry = CLIImpl.makeProductionSourceRegistry()
+        let saveProviderByID: [String: any Search.SourceProvider] = Dictionary(
+            uniqueKeysWithValues: saveRegistry.allEnabled.map { ($0.definition.id, $0) }
+        )
+        let phaseURIPrefixes: [RemoteSync.IndexState.Phase: String] = [
+            .docs: saveProviderByID[Shared.Constants.SourcePrefix.appleDocs]?.definition.id
+                ?? Shared.Constants.SourcePrefix.appleDocs,
+            .evolution: saveProviderByID[Shared.Constants.SourcePrefix.swiftEvolution]?.definition.id
+                ?? Shared.Constants.SourcePrefix.swiftEvolution,
+            .archive: saveProviderByID[Shared.Constants.SourcePrefix.appleArchive]?.definition.id
+                ?? Shared.Constants.SourcePrefix.appleArchive,
+            .swiftOrg: saveProviderByID[Shared.Constants.SourcePrefix.swiftOrg]?.definition.id
+                ?? Shared.Constants.SourcePrefix.swiftOrg,
+            .packages: saveProviderByID[Shared.Constants.SourcePrefix.packages]?.definition.id
+                ?? Shared.Constants.SourcePrefix.packages,
+        ]
         let indexer = RemoteSync.Indexer(
             fetcher: fetcher,
             stateFileURL: stateFileURL,
-            appVersion: Shared.Constants.App.version
+            appVersion: Shared.Constants.App.version,
+            phaseURIPrefixes: phaseURIPrefixes
         )
 
         if await indexer.hasResumableState() {

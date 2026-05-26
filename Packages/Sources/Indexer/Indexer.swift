@@ -2,6 +2,7 @@ import Foundation
 @_exported import IndexerModels
 
 // MARK: - Indexer module — concrete orchestrators
+
 //
 // The `Indexer` namespace anchor lives in the foundation-only
 // `IndexerModels` seam target (Pattern A, matching how `Search` lives

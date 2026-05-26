@@ -14,7 +14,7 @@ import SharedConstants
 /// CLI command for unified search across all documentation sources.
 /// Mirrors MCP `search` tool functionality with `--source` parameter routing.
 ///
-/// After #239 the default (no `--source`) path runs `SearchModule.SmartQuery` —
+/// After #239 the default (no `--source`) path runs `SearchModule.SmartQuery` --
 /// a fan-out across every available DB with reciprocal-rank-fusion ranking
 /// and chunked output, replacing what `cupertino ask` used to do. The
 /// single-source `--source <name>` path still runs the source-specific
@@ -145,7 +145,14 @@ extension CLIImpl.Command {
 
         @Option(
             name: .long,
-            help: "Path to search database (search.db)"
+            help: """
+            Override the path used for every docs source's database. Legacy debug \
+            knob: post-#1037 each docs source resolves to its own per-source DB \
+            (apple-documentation.db / hig.db / apple-archive.db / swift-evolution.db / \
+            swift-org.db / swift-book.db); passing this opens the single file for \
+            every source-prefix the fan-out queries. Mostly useful for tests + the \
+            migration window from a legacy monolithic search.db.
+            """
         )
         var searchDb: String?
 
@@ -190,7 +197,7 @@ extension CLIImpl.Command {
             help: """
             Trim each result's excerpt to its first few lines for quick triage. \
             Read-full link, tips, and see-also still print. Fan-out mode + \
-            text/markdown only — JSON keeps full chunks for programmatic consumers.
+            text/markdown only -- JSON keeps full chunks for programmatic consumers.
             """
         )
         var brief: Bool = false
@@ -218,25 +225,52 @@ extension CLIImpl.Command {
         var format: OutputFormat = .text
 
         mutating func run() async throws {
-            switch source {
-            case Shared.Constants.SourcePrefix.samples, Shared.Constants.SourcePrefix.appleSampleCode:
+            // 2026-05-26 audit Finding 14.2: dispatch via
+            // `Search.SourceProvider.searchRoute` instead of enumerating
+            // source-id literals. Pre-fix the switch hardcoded 8 source
+            // ids; adding a new source required editing this file.
+            // Post-fix the route is the source's own declared property,
+            // so a NEW source plugs in by setting `searchRoute = .docs`
+            // (or `.hig` / `.samples` / `.packages` for bespoke
+            // routing) and the dispatch finds it via `registry.entry(for:)`.
+            //
+            // Legacy `apple-sample-code` is accepted as an alias for
+            // `samples` because both ids flow into the same SampleCodeSource.
+            // Empty `source` (nil / "" / "all") falls through to the
+            // unified SmartQuery fan-out.
+            let registry = CLIImpl.makeProductionSourceRegistry()
+            let route: SearchModels.Search.SearchRoute
+            if let source, !source.isEmpty {
+                let canonicalID = source == Shared.Constants.SourcePrefix.appleSampleCode
+                    ? Shared.Constants.SourcePrefix.samples
+                    : source
+                route = registry.entry(for: canonicalID)?.provider.searchRoute ?? .unified
+            } else {
+                route = .unified
+            }
+            // 2026-05-26 audit #1055 layer-2: SearchRoute is now an
+            // open RawRepresentable struct (not a closed enum), so
+            // dispatch is `if route == .X` equality chains instead
+            // of an exhaustive switch. Unknown routes fall through
+            // to the unified fan-out (matching the pre-fix `default:`
+            // arm), which means a new source declaring a novel
+            // `searchRoute` works out-of-the-box without editing
+            // this dispatcher.
+            if route == .samples {
                 try await runSampleSearch()
-            case Shared.Constants.SourcePrefix.hig:
+            } else if route == .hig {
                 try await runHIGSearch()
-            case Shared.Constants.SourcePrefix.packages:
+            } else if route == .packages {
                 // packages live in their own DB (packages.db), not search.db.
                 // The docs runner queries search.db only and would silently
                 // return [] here. Use the dedicated single-fetcher SmartQuery
                 // path instead so packages.db is actually consulted (#261).
                 try await runPackageSearch()
-            case Shared.Constants.SourcePrefix.appleDocs,
-                 Shared.Constants.SourcePrefix.appleArchive,
-                 Shared.Constants.SourcePrefix.swiftEvolution,
-                 Shared.Constants.SourcePrefix.swiftOrg,
-                 Shared.Constants.SourcePrefix.swiftBook:
+            } else if route == .docs {
                 try await runDocsSearch()
-            default:
-                // Default (nil or "all") triggers the SmartQuery fan-out.
+            } else {
+                // Default fallthrough: `.unified` + any future
+                // unrecognised route. Triggers SmartQuery fan-out.
                 try await runUnifiedSearch()
             }
         }
@@ -270,14 +304,18 @@ extension CLIImpl.Command {
             // can't take the rest down), which would also swallow the
             // "bogus framework" throw and make `--framework banana`
             // read as "no results" instead of a clear error.
+            // Post-#1037 framework partitioning lives in
+            // `apple-documentation.db`; resolve through that source-id.
             if let framework,
                !framework.trimmingCharacters(in: .whitespaces).isEmpty,
-               let searchIndex = plan.searchIndex {
-                let resolved = await (try? searchIndex.resolveFrameworkIdentifier(framework))
+               let appleDocsIndex = plan.docsIndexes[Self.frameworkValidationSourceID] {
+                let resolved = await (try? appleDocsIndex.resolveFrameworkIdentifier(framework))
                     ?? framework.lowercased().replacingOccurrences(of: " ", with: "")
-                let exists = await (try? searchIndex.frameworkExistsInCorpus(resolved)) ?? false
+                let exists = await (try? appleDocsIndex.frameworkExistsInCorpus(resolved)) ?? false
                 if !exists {
-                    await plan.searchIndex?.disconnect()
+                    for index in plan.docsIndexes.values {
+                        await index.disconnect()
+                    }
                     await plan.sampleService?.disconnect()
                     Cupertino.Context.composition.logging.recording.error(
                         "❌ Unknown framework: '\(framework)'. " +
@@ -287,28 +325,40 @@ extension CLIImpl.Command {
                 }
             }
 
-            let smartQuery = SearchModule.SmartQuery(fetchers: plan.fetchers)
+            // #1045 Gap 1 wiring: derive RRF fusion weights from each
+            // registered provider's `properties.rankWeight`. Production
+            // call site uses `CLIImpl.makeSmartQuerySourceWeights(...)`
+            // so the assembly logic is single-sourced + behavioural
+            // tests can exercise it directly.
+            let smartQueryWeights = CLIImpl.makeSmartQuerySourceWeights(
+                registry: CLIImpl.makeProductionSourceRegistry()
+            )
+            let smartQuery = SearchModule.SmartQuery(
+                fetchers: plan.fetchers,
+                sourceWeightsOverride: smartQueryWeights
+            )
             let rawResult = await smartQuery.answer(
                 question: trimmed,
                 limit: limit,
                 perFetcherLimit: perSource
             )
 
-            // #648 (CLI JSON path) — when search.db fails to OPEN
-            // (vs. throws per-query), no apple-docs / hig / swift-
-            // evolution / apple-archive / swift-org / swift-book
-            // fetcher ran, so SmartQuery's per-fetcher classifier
-            // never fired and `rawResult.degradedSources` is empty.
-            // Bridge `plan.searchDBDisabledReason` (#645's classifier
-            // output from the open path) into the result so CLI
-            // `--format json` consumers see the same degradedSources
-            // payload MCP markdown already shows post-#652.
+            // #648 (CLI JSON path) -- when a per-source DB fails to OPEN
+            // (vs. throws per-query), that source's fetcher never ran,
+            // so SmartQuery's per-fetcher classifier never fired for
+            // it and `rawResult.degradedSources` is empty for that
+            // source. Bridge `plan.disabledReasonsBySource` (#645's
+            // classifier output from the open path, lifted to a
+            // per-source dictionary post-#1037) into the result so
+            // CLI `--format json` consumers see the same
+            // `degradedSources` payload MCP markdown already shows
+            // post-#652.
             let result = Self.augmentWithOpenTimeDegradation(
                 result: rawResult,
-                disabledReason: plan.searchDBDisabledReason
+                disabledReasonsBySource: plan.disabledReasonsBySource
             )
 
-            if let index = plan.searchIndex {
+            for index in plan.docsIndexes.values {
                 await index.disconnect()
             }
             if let service = plan.sampleService {
@@ -328,44 +378,39 @@ extension CLIImpl.Command {
 
         // MARK: - Open-time degradation injection (#648, CLI JSON path)
 
-        /// #648 (CLI JSON path) — bridge `FetcherPlan.searchDBDisabledReason`
-        /// (#645's classifier output for search.db open failures) into the
-        /// `SmartResult.degradedSources` array. Mirrors
+        /// #648 (CLI JSON path) -- bridge `FetcherPlan.disabledReasonsBySource`
+        /// (#645's classifier output for per-source DB open failures) into
+        /// the `SmartResult.degradedSources` array. Mirrors
         /// `CompositeToolProvider.injectOpenTimeDegradation` on the MCP
-        /// side (#648-open-time / PR #652); same 6 search.db-backed
-        /// source names, same dedup-by-name merge so a future refactor
-        /// that wires partial-fetcher availability won't double-count.
-        /// Pure function on value types; lifted to internal scope so
-        /// tests can pin the merge logic without standing up the full
-        /// search command pipeline.
+        /// side (#648-open-time / PR #652).
+        ///
+        /// Post-#1037 the input is a `[sourceID: reason]` dictionary
+        /// (one entry per per-source DB that exists but couldn't open),
+        /// replacing the legacy single-string `disabledReason` that
+        /// blanketed every search.db-backed source uniformly. A partial
+        /// failure (e.g. `hig.db` stale while the rest opened cleanly)
+        /// now surfaces just `hig` as degraded rather than fabricating
+        /// six fake `DegradedSource` entries.
+        ///
+        /// Dedup against entries the per-fetcher classifier may have
+        /// populated (preserve their original reason on collision --
+        /// the fetcher saw the error first). Pure function on value
+        /// types; lifted to internal scope so tests can pin the merge
+        /// logic without standing up the full search command pipeline.
         static func augmentWithOpenTimeDegradation(
             result: SearchModule.SmartResult,
-            disabledReason: String?
+            disabledReasonsBySource: [String: String]
         ) -> SearchModule.SmartResult {
-            guard let disabledReason else { return result }
+            guard !disabledReasonsBySource.isEmpty else { return result }
 
-            // The 6 sources backed by `search.db`. `samples` (samples.db)
-            // and `packages` (packages.db) live in different DBs and
-            // aren't affected by `search.db` being closed, so they stay
-            // out of the synthesised list.
-            let searchDBSources: [String] = [
-                Shared.Constants.SourcePrefix.appleDocs,
-                Shared.Constants.SourcePrefix.appleArchive,
-                Shared.Constants.SourcePrefix.hig,
-                Shared.Constants.SourcePrefix.swiftEvolution,
-                Shared.Constants.SourcePrefix.swiftOrg,
-                Shared.Constants.SourcePrefix.swiftBook,
-            ]
-
-            // Dedupe against entries the per-fetcher classifier may have
-            // populated (currently unreachable when searchIndex is nil
-            // — no fetchers run — but a future refactor wiring partial
-            // availability could populate some; preserve their original
-            // reason on collision because the fetcher saw it first).
             let existing = Set(result.degradedSources.map(\.name))
-            let synthesised = searchDBSources
-                .filter { !existing.contains($0) }
-                .map { SearchModels.Search.DegradedSource(name: $0, reason: disabledReason) }
+            // Sort by source-id for deterministic output (CLI JSON
+            // consumers + tests depend on a stable ordering; a
+            // dictionary's iteration order is unstable).
+            let synthesised = disabledReasonsBySource
+                .filter { !existing.contains($0.key) }
+                .sorted(by: { $0.key < $1.key })
+                .map { SearchModels.Search.DegradedSource(name: $0.key, reason: $0.value) }
 
             return SearchModule.SmartResult(
                 question: result.question,

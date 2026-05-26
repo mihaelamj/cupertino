@@ -43,6 +43,17 @@ public struct PackagesSource: Search.SourceProvider {
 
     public var destinationDB: Shared.Models.DatabaseDescriptor { .packages }
 
+    public var capabilities: Search.Capabilities {
+        .init(
+            searchers: [.text, .packageSearch],
+            operations: [.readByURI],
+            metadata: [
+                .hasMinSwiftVersion: true,
+                .hasPackageMetadata: true,
+            ]
+        )
+    }
+
     public func makeStrategy(env _: Search.IndexEnvironment) -> any Search.SourceIndexingStrategy {
         PackagesViewSourceStrategy()
     }
@@ -50,6 +61,32 @@ public struct PackagesSource: Search.SourceProvider {
     public func makeIndexer() -> any Search.SourceIndexer {
         PackagesViewSourceIndexer()
     }
+
+    /// #1042 Cluster 8: packages live in their own DB (packages.db),
+    /// not search.db; the dispatcher uses `runPackageSearch` /
+    /// `handleSearchPackages`.
+    public var searchRoute: Search.SearchRoute { .packages }
+
+    /// 2026-05-26 audit Finding 9.7 + 11.1: per-source fetch strategy.
+    /// 3-stage pipeline (metadata refresh + archive download +
+    /// availability annotation) lifted from `CLIImpl.Command.Fetch.runPackageFetch`.
+    public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? {
+        PackagesFetchStrategy()
+    }
+
+    /// 2026-05-26 audit #1055: per-source read strategy. Reads
+    /// `<owner>/<repo>/<relpath>` identifiers; returns nil otherwise
+    /// so `Services.ReadService`'s auto-source flow can continue.
+    public func makeReadStrategy() -> (any Search.SourceReadStrategy)? {
+        PackagesReadStrategy()
+    }
+
+    /// 2026-05-26 audit #1055 layer-2 part 3: packages live in
+    /// `packages.db` with BM25 + chunk + apple_imports_json schema,
+    /// NOT in the search.db FTS family. `SmartReport.docsSources()`
+    /// filters non-search-tier providers out of the unified docs
+    /// fan-out.
+    public var isSearchTier: Bool { false }
 }
 
 // MARK: - View-source no-op concretes

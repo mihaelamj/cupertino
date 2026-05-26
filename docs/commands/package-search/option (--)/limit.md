@@ -10,7 +10,7 @@ cupertino package-search <question> --limit <number>
 
 ## Description
 
-Cap the number of result chunks emitted. `package-search` returns chunked excerpts ranked by smart-query scoring (intent classification + bm25 + RRF) — `--limit` controls the depth, not the breadth.
+Cap the number of result chunks emitted. `package-search` returns chunked excerpts ranked by smart-query scoring (intent classification + bm25 + RRF), `--limit` controls the depth, not the breadth.
 
 ## Default
 
@@ -35,5 +35,5 @@ cupertino package-search "Vapor request middleware" --limit 1
 
 ## Notes
 
-- Chunks come from the packages FTS index — typically a function or a few-line snippet of source / README.
+- Chunks come from the packages FTS index, typically a function or a few-line snippet of source / README.
 - Each chunk includes the package, file path, and a `▶ Read full:` hint.

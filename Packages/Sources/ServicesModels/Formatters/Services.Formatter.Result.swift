@@ -1,5 +1,6 @@
 import Foundation
 import SearchModels
+
 // MARK: - Result Formatter Protocol
 
 extension Services.Formatter {

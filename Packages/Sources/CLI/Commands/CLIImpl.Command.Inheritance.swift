@@ -10,7 +10,7 @@ import SharedConstants
 
 /// CLI command for walking class-inheritance chains stored in the
 /// `inheritance` edge table introduced in v15 schema. Mirrors the
-/// `get_inheritance` MCP tool surface — same parameters, same
+/// `get_inheritance` MCP tool surface -- same parameters, same
 /// disambiguation behaviour. Useful for UIKit / AppKit / Foundation
 /// class hierarchies (`UIButton ← UIControl ← UIView ← UIResponder
 /// ← NSObject`); non-class kinds (struct, enum, protocol) return
@@ -39,7 +39,7 @@ extension CLIImpl.Command {
 
             NON-CLASS KINDS:
               SwiftUI structs / enums / protocols have no inheritance edges
-              and return "no inheritance data". This is correct behaviour —
+              and return "no inheritance data". This is correct behaviour --
               value types don't inherit in Swift.
             """
         )
@@ -67,7 +67,7 @@ extension CLIImpl.Command {
 
         @Option(
             name: .long,
-            help: "Path to search database"
+            help: CLIImpl.appleDocsDBOverrideHelp
         )
         var searchDb: String?
 
@@ -85,12 +85,11 @@ extension CLIImpl.Command {
                 throw ExitCode.failure
             }
 
-            let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-                ?? Shared.Paths.live().searchDatabase
+            let searchDBURL = CLIImpl.resolveAppleDocsDBURL(override: searchDb)
 
             guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
                 CLIImpl.printUserFacingDiagnostic(
-                    "❌ search.db not found at \(searchDBURL.path). Run `cupertino setup` first.",
+                    CLIImpl.perSourceDBMissingMessage(url: searchDBURL),
                     recording: recording
                 )
                 throw ExitCode.failure
@@ -268,7 +267,7 @@ extension CLIImpl.Command.Inheritance {
         case markdown
     }
 
-    /// JSON output shape — a flat top-level plus two nested trees.
+    /// JSON output shape -- a flat top-level plus two nested trees.
     private struct JSONPayload: Codable {
         let symbol: String
         let framework: String

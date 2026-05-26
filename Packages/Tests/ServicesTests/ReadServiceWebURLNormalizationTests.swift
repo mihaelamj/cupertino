@@ -5,6 +5,7 @@ import SharedConstants
 import Testing
 
 // MARK: - #587 — Services.ReadService web-URL normalisation
+
 //
 // Pin the input-side normalisation that lets `cupertino read` (and the
 // MCP `read_document` tool, which mirrors the same logic) accept

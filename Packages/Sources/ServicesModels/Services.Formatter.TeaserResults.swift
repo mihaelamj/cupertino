@@ -18,6 +18,32 @@ extension Services.Formatter {
         public var swiftBook: [Search.Result]
         public var packages: [Search.Result]
 
+        /// #1042 Cluster 6 sub-1: open-ended bucket for sources beyond
+        /// the 8 typed properties above. A new source (e.g. WWDC
+        /// transcripts) stores its teaser results here keyed by
+        /// `definition.id`; `allSources` enumerates these alongside
+        /// the typed properties. Each entry carries the displayName +
+        /// emoji the new source declared in its `Search.SourceDefinition`,
+        /// avoiding the parallel `Prefix.emojiX` lookup the typed
+        /// properties still use.
+        public var extras: [String: ExtraSource]
+
+        public struct ExtraSource: Sendable {
+            public let sourceID: String
+            public let displayName: String
+            public let emoji: String
+            public let results: [Search.Result]
+
+            public init(sourceID: String, displayName: String, emoji: String, results: [Search.Result]) {
+                self.sourceID = sourceID
+                self.displayName = displayName
+                self.emoji = emoji
+                self.results = results
+            }
+
+            public var isEmpty: Bool { results.isEmpty }
+        }
+
         public init(
             appleDocs: [Search.Result] = [],
             samples: [Sample.Index.Project] = [],
@@ -26,7 +52,8 @@ extension Services.Formatter {
             swiftEvolution: [Search.Result] = [],
             swiftOrg: [Search.Result] = [],
             swiftBook: [Search.Result] = [],
-            packages: [Search.Result] = []
+            packages: [Search.Result] = [],
+            extras: [String: ExtraSource] = [:]
         ) {
             self.appleDocs = appleDocs
             self.samples = samples
@@ -36,13 +63,15 @@ extension Services.Formatter {
             self.swiftOrg = swiftOrg
             self.swiftBook = swiftBook
             self.packages = packages
+            self.extras = extras
         }
 
         /// Whether there are any teaser results
         public var isEmpty: Bool {
             appleDocs.isEmpty && samples.isEmpty && archive.isEmpty && hig.isEmpty &&
                 swiftEvolution.isEmpty && swiftOrg.isEmpty &&
-                swiftBook.isEmpty && packages.isEmpty
+                swiftBook.isEmpty && packages.isEmpty &&
+                extras.allSatisfy(\.value.isEmpty)
         }
 
         /// Represents a teaser source with its metadata
@@ -124,6 +153,17 @@ extension Services.Formatter {
                     sourcePrefix: Prefix.packages,
                     emoji: Prefix.emojiPackages,
                     titles: packages.map(\.title)
+                ))
+            }
+            // #1042 Cluster 6 sub-1: extras for sources beyond the
+            // 8 typed properties. Keys are SourceProvider.definition.id
+            // values; each entry carries its own displayName + emoji.
+            for (_, extra) in extras where !extra.isEmpty {
+                sources.append(SourceTeaser(
+                    displayName: extra.displayName,
+                    sourcePrefix: extra.sourceID,
+                    emoji: extra.emoji,
+                    titles: extra.results.map(\.title)
                 ))
             }
 

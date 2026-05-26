@@ -263,7 +263,7 @@ extension Search.Index {
             // the AST extractor + where-clause patterns parsed from
             // the `signature` column at index time. Clean in-place
             // ALTER TABLE ADD COLUMN, old rows get NULL, the next
-            // `cupertino save --docs` re-index populates the column.
+            // `cupertino save --source apple-docs` re-index populates the column.
             // Same NULL semantics as v15-to-v16: filters reject NULL
             // rows when set, pass through when not set.
             try await migrateToVersion17()
@@ -273,7 +273,7 @@ extension Search.Index {
             // Version 17 -> 18: DROP the `packages` and
             // `package_dependencies` tables from search.db (#789). The
             // canonical packages store is `packages.db`, built by
-            // `cupertino save --packages` and queried by `cupertino
+            // `cupertino save --source packages` and queried by `cupertino
             // package-search`. The in-search.db tables were a shallow
             // duplicate fed from a slimmed-to-empty bundled catalog.
             // Clean in-place DROP TABLE IF EXISTS, no data preserved
@@ -320,7 +320,7 @@ extension Search.Index {
     /// v16 → v17: add `generic_constraints` to doc_symbols (#755).
     /// In-place column add. v16 DBs continue to work after the
     /// migration with the new column NULL on every row; the next
-    /// `cupertino save --docs` re-index populates the column from
+    /// `cupertino save --source apple-docs` re-index populates the column from
     /// the AST extractor + signature-column where-clause parsing.
     ///
     /// The trailing `stampUserVersionUnchecked(17)` is load-bearing
@@ -348,7 +348,7 @@ extension Search.Index {
 
     /// v17 -> v18: DROP `packages` and `package_dependencies` from
     /// search.db (#789). The canonical packages store is `packages.db`
-    /// (built by `cupertino save --packages`, queried by
+    /// (built by `cupertino save --source packages`, queried by
     /// `cupertino package-search`). The in-search.db tables were a
     /// shallow duplicate fed from a slimmed-to-empty bundled catalog
     /// and added zero value over packages.db.

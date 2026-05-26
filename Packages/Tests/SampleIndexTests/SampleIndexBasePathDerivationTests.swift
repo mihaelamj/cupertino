@@ -22,6 +22,17 @@ struct SampleIndexBasePathDerivationTests {
     func samplesDatabaseUnderBase() {
         let path = Sample.Index.databasePath(baseDirectory: base)
         #expect(path.path.hasPrefix(basePrefix))
+        // Post-#1037: the active filename is `apple-sample-code.db`. The
+        // legacy `samples.db` filename is still reachable via
+        // `Sample.Index.legacySamplesDatabasePath(baseDirectory:)` for
+        // migration-detection codepaths.
+        #expect(path.lastPathComponent == "apple-sample-code.db")
+    }
+
+    @Test("Sample.Index.legacySamplesDatabasePath(baseDirectory:) still resolves the pre-#1037 filename")
+    func legacySamplesDatabaseUnderBase() {
+        let path = Sample.Index.legacySamplesDatabasePath(baseDirectory: base)
+        #expect(path.path.hasPrefix(basePrefix))
         #expect(path.lastPathComponent == "samples.db")
     }
 

@@ -30,8 +30,17 @@ extension Search {
             var jsonFiles: Set<String> = []
             var docFiles: [URL] = []
 
+            // #1046: resolve symlinks before enumerating. `FileManager.default.enumerator(at:)`
+            // silently yields zero children when the input URL is a
+            // symlink to a directory (no error, no warning). Common dev
+            // setup: `~/.cupertino-dev/<source>` symlinked to
+            // `~/.cupertino/<source>`. Pre-fix the indexer found 0 files
+            // in that case AND printed "✅ Search index built: 0 documents"
+            // with exit 0, giving the user no signal indexing was a no-op.
+            let walkRoot = directory.resolvingSymlinksInPath()
+
             guard let enumerator = FileManager.default.enumerator(
-                at: directory,
+                at: walkRoot,
                 includingPropertiesForKeys: nil,
                 options: [.skipsHiddenFiles]
             ) else {
@@ -78,9 +87,12 @@ extension Search {
         /// - Parameter directory: The root directory to scan recursively.
         /// - Returns: A list of matching `.md` file URLs (order is filesystem-defined).
         public static func findMarkdownFiles(in directory: URL) throws -> [URL] {
+            // #1046: resolve symlinks before enumerating — see findDocFiles
+            // comment block. HIG corpus is the most common symlink target.
+            let walkRoot = directory.resolvingSymlinksInPath()
             var markdownFiles: [URL] = []
             if let enumerator = FileManager.default.enumerator(
-                at: directory,
+                at: walkRoot,
                 includingPropertiesForKeys: [.isRegularFileKey],
                 options: [.skipsHiddenFiles]
             ) {

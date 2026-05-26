@@ -3,6 +3,7 @@ import Foundation
 import SharedConstants
 
 // MARK: - Core.PackageIndexing.PackageFetcher{Statistics,Progress,ProgressObserving}
+
 //
 // Naming note: the producer-target `Core.PackageIndexing.PackageFetcher`
 // is a `public actor` declared in the `CorePackageIndexing` SPM target.

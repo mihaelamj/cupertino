@@ -50,8 +50,8 @@ Sample output (database sections elided, same as `cupertino doctor` default):
    ✓ Indexed files: 20186
    ℹ  Bundled version: 1.1.0
 
-🧪 Sample Code Index (samples.db)
-   ✓ Database: ~/.cupertino/samples.db
+🧪 Sample Code Index (apple-sample-code.db)
+   ✓ Database: ~/.cupertino/apple-sample-code.db
    ✓ Size: 184.4 MB
    ✓ Projects: 619
    ✓ Indexed files: 18928
@@ -75,7 +75,7 @@ Sample output (database sections elided, same as `cupertino doctor` default):
 
    ✓ search.db: 13 (sequential), journal=wal
    ✓ packages.db: 2 (sequential), journal=delete
-   ✓ samples.db: 3 (sequential), journal=wal
+   ✓ apple-sample-code.db: 3 (sequential), journal=wal
 
 📂 Raw corpus directories (input for `cupertino save`)
    ✓ Apple docs: ~/.cupertino/docs (415212 files)
@@ -100,7 +100,7 @@ Sample output (database sections elided, same as `cupertino doctor` default):
     ✓  ~/.cupertino/packages  (183 packages)
     ✓  availability.json sidecars  (183/183)
 
-  Samples (samples.db)
+  Samples (apple-sample-code.db)
     ✓  ~/.cupertino/sample-code  (627 zips)
     (annotation runs inline during save, no preflight check needed)
 

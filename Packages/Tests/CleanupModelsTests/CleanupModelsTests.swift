@@ -4,6 +4,7 @@ import SharedConstants
 import Testing
 
 // MARK: - CleanupModels public surface smoke tests
+
 //
 // CleanupModels is the foundation-only seam target for the
 // `Sample.Cleanup.Cleaner` actor (extracted in the closures-to-Observer
@@ -61,6 +62,7 @@ struct CleanerProgressObservingWitnessTests {
                 defer { lock.unlock() }
                 count += 1
             }
+
             var value: Int {
                 lock.lock()
                 defer { lock.unlock() }

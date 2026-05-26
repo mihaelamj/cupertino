@@ -63,5 +63,5 @@ cupertino resolve-refs --input ~/.cupertino/docs --print-unresolved
 
 ## See Also
 
-- [fetch](../fetch/) — the upstream command whose `--discovery-mode json-only` output this command rewrites
-- [#208](https://github.com/mihaelamj/cupertino/issues/208) — design and motivation
+- [fetch](../fetch/), the upstream command whose `--discovery-mode json-only` output this command rewrites
+- [#208](https://github.com/mihaelamj/cupertino/issues/208), design and motivation

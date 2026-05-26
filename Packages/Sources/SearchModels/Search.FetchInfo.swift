@@ -57,18 +57,35 @@ extension Search {
         /// (`false`).
         public let isWebCrawlable: Bool
 
+        /// Human-readable noun naming the kind of files this fetch
+        /// produces on disk (e.g. `"files"`, `"proposals"`, `"pages"`,
+        /// `"guides"`, `"archives"`). Used by `cupertino doctor`'s
+        /// raw-corpus inventory line to render counts as e.g.
+        /// `(173 pages)` instead of a flat `(173 files)`.
+        ///
+        /// 2026-05-26 audit follow-up: pre-fix Doctor's
+        /// `checkDocumentationDirectories` hardcoded a 5-entry
+        /// `[CorpusEntry]` literal naming each suffix inline; adding
+        /// a new web-crawlable source meant editing Doctor. Post-fix
+        /// Doctor iterates `registry.allEnabled.filter { $0.isSearchTier
+        /// && $0.fetchInfo != nil }` and reads the suffix here. Default
+        /// `"files"` covers any source that doesn't care to specialise.
+        public let corpusFileSuffix: String
+
         public init(
             displayName: String,
             sourceID: String,
             crawlBaseURLs: [String] = [],
             defaultOutputDirKey: DefaultOutputDirKey,
-            isWebCrawlable: Bool
+            isWebCrawlable: Bool,
+            corpusFileSuffix: String = "files"
         ) {
             self.displayName = displayName
             self.sourceID = sourceID
             self.crawlBaseURLs = crawlBaseURLs
             self.defaultOutputDirKey = defaultOutputDirKey
             self.isWebCrawlable = isWebCrawlable
+            self.corpusFileSuffix = corpusFileSuffix
         }
     }
 }
@@ -76,18 +93,47 @@ extension Search {
 // MARK: - Search.FetchInfo.DefaultOutputDirKey
 
 extension Search.FetchInfo {
-    /// Per-source key naming the `Shared.Paths.*Directory` accessor
-    /// the CLI uses to resolve the default output URL for this
-    /// source's fetch. Stays in the Models tier (rawValue strings) so
-    /// no per-source target reaches into `Shared.Paths`.
-    public enum DefaultOutputDirKey: String, Sendable, Equatable, CaseIterable {
-        case docs
-        case swiftOrg = "swift-org"
-        case swiftEvolution = "swift-evolution"
-        case packages
-        case sampleCode = "sample-code"
-        case archive
-        case hig
-        case baseDirectory = "base-directory"
+    /// Per-source key naming the dirname the CLI uses to resolve the
+    /// default output URL for this source's fetch. Post-#1042 Cluster 9
+    /// this is a rawValue-String struct instead of a closed enum:
+    /// adding a new source is a `static let <name> = Self(rawValue: "<dirname>")`
+    /// declaration, no enum case + no resolveDirectory switch arm.
+    /// The CLI's `resolveDirectory(forKey:paths:)` post-Cluster-13
+    /// delegates to `Shared.Paths.directory(named:)` using the raw
+    /// value verbatim (with a single special case for `baseDirectory`,
+    /// which is the base itself, not a sub-directory).
+    ///
+    /// `allKnownCases` is the post-refactor stand-in for the closed
+    /// enum's `allCases`. Tests / inventory surfaces that need to
+    /// iterate the 8 shipped keys still can; new sources can declare
+    /// keys outside the list and they'll resolve at runtime via the
+    /// generic `paths.directory(named:)`.
+    public struct DefaultOutputDirKey: RawRepresentable, Sendable, Equatable, Hashable {
+        public let rawValue: String
+        public init(rawValue: String) {
+            self.rawValue = rawValue
+        }
+
+        public static let docs = Self(rawValue: "docs")
+        public static let swiftOrg = Self(rawValue: "swift-org")
+        public static let swiftEvolution = Self(rawValue: "swift-evolution")
+        public static let packages = Self(rawValue: "packages")
+        public static let sampleCode = Self(rawValue: "sample-code")
+        public static let archive = Self(rawValue: "archive")
+        public static let hig = Self(rawValue: "hig")
+        public static let baseDirectory = Self(rawValue: "base-directory")
+
+        /// The 8 keys shipped at v1.2.0. New sources declare additional
+        /// keys outside this list; tests iterating the production set
+        /// keep using this property.
+        public static let allKnownCases: [DefaultOutputDirKey] = [
+            .docs, .swiftOrg, .swiftEvolution, .packages,
+            .sampleCode, .archive, .hig, .baseDirectory,
+        ]
+
+        /// Back-compat alias for code paths that previously used the
+        /// closed enum's `CaseIterable` conformance. Aliased to
+        /// `allKnownCases` post-#1042 Cluster 9.
+        public static let allCases: [DefaultOutputDirKey] = allKnownCases
     }
 }

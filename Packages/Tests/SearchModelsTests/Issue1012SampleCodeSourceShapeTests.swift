@@ -49,6 +49,22 @@ struct Issue1012SampleCodeSourceShapeTests {
         #expect(indexer.displayName == "Sample Code")
     }
 
+    @Test("SampleCodeSource.legacySourceIDAliases pins [\"sample-code\"] for the step-6 migrator")
+    func legacySourceIDAliasesShape() {
+        // Load-bearing for the step-6 migrator: SampleCodeStrategy emits
+        // legacy rows tagged source = "sample-code" while
+        // definition.id = "samples" (SourcePrefix.samples). Without this
+        // alias declaration, `cupertino setup`'s migration hook would
+        // throw MigrationError.unknownSourceIDs(["sample-code"]) on any
+        // user's legacy search.db and abort the whole migration. The
+        // synthetic FakeProvider in PerSourceDBSplitMigratorMigrateTests
+        // covers the migrator's alias-resolution path; this test pins
+        // the production-side override so a future refactor that drops
+        // or mis-spells it fails loud at CI, not on a user's machine.
+        let provider = SampleCodeSource()
+        #expect(provider.legacySourceIDAliases == ["sample-code"])
+    }
+
     @Test("Search.IndexEnvironment exposes sampleCatalogProvider as optional, defaulting to nil")
     func indexEnvironmentExposesOptionalSampleCatalogProvider() {
         // Confirms the #1012 IndexEnvironment extension: AppleDocs / HIG

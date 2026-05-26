@@ -80,171 +80,26 @@ extension Search {
             into index: any Search.Database & Search.IndexWriter,
             progress: (any Search.IndexingProgressReporting)?
         ) async throws -> Search.IndexStats {
-            guard FileManager.default.fileExists(atPath: swiftOrgDirectory.path) else {
-                // #671 — clean-skip when no local corpus is available.
-                return IndexStats(
-                    source: source,
-                    indexed: 0,
-                    skipped: 0,
-                    wasSkipped: true,
-                    skipReason: "no local corpus"
-                )
-            }
-
-            let docFiles = try Search.StrategyHelpers.findDocFiles(in: swiftOrgDirectory)
-            guard !docFiles.isEmpty else {
-                // #671 — clean-skip when the dir exists but has no documents.
-                return IndexStats(
-                    source: source,
-                    indexed: 0,
-                    skipped: 0,
-                    wasSkipped: true,
-                    skipReason: "no documents found"
-                )
-            }
-
-            logger.info(
-                "🔶 Indexing \(docFiles.count) Swift.org documentation pages...",
-                category: .search
+            // Post the "diff db for each source" follow-up to #1037 (tracked
+            // at #1038), the file-walking + page-decoding + emission logic
+            // moved to `Search.StrategyHelpers.crawlSwiftDocumentation(...)`
+            // so the sibling `SwiftBookSource` target can call it with a
+            // different scope filter WITHOUT importing `SwiftOrgSource`
+            // (per `mihaela-agents/Rules/swift/per-package-import-contract.md`).
+            //
+            // This strategy passes `.swiftOrgOnly` so only pages whose
+            // URL-prefix tag is `swift-org` are indexed; swift-book-tagged
+            // pages count toward `skipped` and are picked up by
+            // `Search.SwiftBookStrategy` which targets `swift-book.db`.
+            try await Search.StrategyHelpers.crawlSwiftDocumentation(
+                swiftOrgDirectory: swiftOrgDirectory,
+                markdownStrategy: markdownStrategy,
+                logger: logger,
+                scope: .swiftOrgOnly,
+                summarySource: source,
+                into: index,
+                progress: progress
             )
-
-            var indexed = 0
-            var skipped = 0
-
-            for (idx, file) in docFiles.enumerated() {
-                let pageSource = Search.StrategyHelpers.extractFrameworkFromPath(
-                    file, relativeTo: swiftOrgDirectory
-                ) ?? Shared.Constants.SourcePrefix.swiftOrg
-
-                let structuredPage: Shared.Models.StructuredDocumentationPage
-                let jsonString: String
-
-                if file.pathExtension == "json" {
-                    do {
-                        let jsonData = try Data(contentsOf: file)
-                        jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
-                        let decoder = JSONDecoder()
-                        decoder.dateDecodingStrategy = .iso8601
-                        structuredPage = try decoder.decode(
-                            Shared.Models.StructuredDocumentationPage.self, from: jsonData
-                        )
-                    } catch {
-                        logger.error(
-                            "❌ Failed to decode \(file.lastPathComponent): \(error)",
-                            category: .search
-                        )
-                        skipped += 1
-                        continue
-                    }
-                } else {
-                    guard let mdContent = try? String(contentsOf: file, encoding: .utf8) else {
-                        skipped += 1
-                        continue
-                    }
-                    let pageURL = URL(
-                        string: "https://www.swift.org/documentation/" +
-                            "\(file.deletingPathExtension().lastPathComponent)"
-                    )
-                    guard let converted = markdownStrategy.convert(markdown: mdContent, url: pageURL) else {
-                        logger.error(
-                            "❌ Failed to convert \(file.lastPathComponent) to structured page",
-                            category: .search
-                        )
-                        skipped += 1
-                        continue
-                    }
-                    structuredPage = converted
-                    let encoder = JSONEncoder()
-                    encoder.dateEncodingStrategy = .iso8601
-                    guard let jsonData = try? encoder.encode(structuredPage),
-                          let json = String(data: jsonData, encoding: .utf8) else {
-                        logger.error(
-                            "❌ Failed to encode \(file.lastPathComponent) to JSON",
-                            category: .search
-                        )
-                        skipped += 1
-                        continue
-                    }
-                    jsonString = json
-                }
-
-                let title = structuredPage.title
-                let content = structuredPage.rawMarkdown ?? structuredPage.overview ?? ""
-                if Search.StrategyHelpers.is404Page(title: title, content: content) {
-                    skipped += 1
-                    continue
-                }
-                // #429: indexer-side poison defence (HTTP error template
-                // titles + JS-disabled fallback content). Pre-fix this was
-                // wired into apple-docs only; a 'Forbidden' row survived
-                // into the v1.0.2 bundle at `swift-org://docc_documentation`
-                // for exactly this reason.
-                if Search.StrategyHelpers.titleLooksLikeHTTPErrorTemplate(title) {
-                    logger.error(
-                        "⛔ Skipping HTTP-error-template swift-org page (#429 defence): title=\(title.prefix(60)) file=\(file.lastPathComponent)",
-                        category: .search
-                    )
-                    skipped += 1
-                    continue
-                }
-                if Search.StrategyHelpers.pageLooksLikeJavaScriptFallback(structuredPage) {
-                    logger.error(
-                        "⛔ Skipping JS-fallback swift-org page (#429 defence): title=\(title.prefix(60)) file=\(file.lastPathComponent)",
-                        category: .search
-                    )
-                    skipped += 1
-                    continue
-                }
-
-                let filename = file.deletingPathExtension().lastPathComponent
-                let uri = "\(pageSource)://\(filename)"
-
-                do {
-                    // The Swift Book covers all platforms that ship Swift support.
-                    let isSwiftBook = pageSource == Shared.Constants.SourcePrefix.swiftBook
-                    try await index.indexStructuredDocument(
-                        uri: uri,
-                        source: pageSource,
-                        framework: pageSource,
-                        page: structuredPage,
-                        jsonData: jsonString,
-                        overrideMinIOS: isSwiftBook ? "8.0" : nil,
-                        overrideMinMacOS: isSwiftBook ? "10.9" : nil,
-                        overrideMinTvOS: isSwiftBook ? "9.0" : nil,
-                        overrideMinWatchOS: isSwiftBook ? "2.0" : nil,
-                        overrideMinVisionOS: isSwiftBook ? "1.0" : nil,
-                        overrideAvailabilitySource: isSwiftBook ? "universal" : nil
-                    )
-
-                    // Index code examples and AST symbols (#192).
-                    if !structuredPage.codeExamples.isEmpty {
-                        let examples = structuredPage.codeExamples.map {
-                            (code: $0.code, language: $0.language ?? "swift")
-                        }
-                        try await index.indexCodeExamples(docUri: uri, codeExamples: examples)
-                        try await index.extractCodeExampleSymbols(
-                            docUri: uri, codeExamples: examples
-                        )
-                    }
-                    indexed += 1
-                } catch {
-                    logger.error(
-                        "❌ Failed to index \(uri): \(error)", category: .search
-                    )
-                    skipped += 1
-                }
-
-                if (idx + 1) % Shared.Constants.Interval.progressLogEvery == 0 {
-                    logger.info(
-                        "   Progress: \(idx + 1)/\(docFiles.count)", category: .search
-                    )
-                }
-            }
-
-            logger.info(
-                "   Swift.org: \(indexed) indexed, \(skipped) skipped", category: .search
-            )
-            return IndexStats(source: source, indexed: indexed, skipped: skipped)
         }
     }
 }

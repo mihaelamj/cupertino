@@ -134,6 +134,15 @@ extension Search {
         /// - Parameter directory: The Swift Evolution proposals directory.
         /// - Returns: A list of matching file URLs.
         func getProposalFiles(from directory: URL) throws -> [URL] {
+            // Note: symlink resolution lives at the composition root in
+            // `Indexer.DocsService.optionalDir` (#779) — strategy
+            // assumes the URL it receives is already resolved. The
+            // Gap-4 dict path also resolves at
+            // `CLIImpl.makeDocsIndexingDirectoryByKey` (#1046) so both
+            // paths produce non-symlink URLs by the time they reach
+            // here. The `Issue779OptionalDirSymlinkTests` negative
+            // sentinel pins this contract (this method throws ENOTDIR
+            // when given a raw symlink).
             let files = try FileManager.default.contentsOfDirectory(
                 at: directory,
                 includingPropertiesForKeys: [.contentModificationDateKey],

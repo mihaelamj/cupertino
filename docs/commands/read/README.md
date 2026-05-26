@@ -10,7 +10,7 @@ cupertino read <identifier> [--source <name>] [options]
 
 ## Description
 
-`cupertino read` is a unified front door that resolves an identifier to a full document across all three local databases — `search.db` (docs), `samples.db` (sample-code projects + files), and `packages.db` (package source files). Behaviour mirrors what every fan-out result in `cupertino search` emits:
+`cupertino read` is a unified front door that resolves an identifier to a full document across all local databases. Post-#1037 docs live in per-source files (`apple-documentation.db`, `hig.db`, `apple-archive.db`, `swift-evolution.db`, `swift-org.db`, `swift-book.db`); sample code lives in `apple-sample-code.db`; packages in `packages.db`. The read command routes by URI scheme (`apple-docs://...` -> `apple-documentation.db`; `hig://...` -> `hig.db`; same shape for the other 4 docs sources) or, for non-URI identifiers, by the `--source` disambiguator. Behaviour mirrors what every fan-out result in `cupertino search` emits:
 
 ```
 ▶ Read full: cupertino read <identifier> --source <name>
@@ -37,7 +37,7 @@ Shape alone disambiguates URI vs. non-URI, but a sample-file path and a package 
 
 #### Apple Developer web URLs (#587)
 
-Canonical `https://developer.apple.com/documentation/<framework>/<path>` URLs are accepted directly — `cupertino read` rewrites them to the lossless `apple-docs://<framework>/<path>` URI at the entry point before dispatch. The MCP `read_document` tool applies the same rewrite so both transports accept the same input. Pasting a URL straight from the browser works without first knowing the URI scheme.
+Canonical `https://developer.apple.com/documentation/<framework>/<path>` URLs are accepted directly, `cupertino read` rewrites them to the lossless `apple-docs://<framework>/<path>` URI at the entry point before dispatch. The MCP `read_document` tool applies the same rewrite so both transports accept the same input. Pasting a URL straight from the browser works without first knowing the URI scheme.
 
 Non-Apple web URLs (`https://github.com/...`, `https://example.com/...`) pass through untouched; the per-source backends reject them as before.
 
@@ -67,17 +67,17 @@ Output format. Honoured by docs reads only; samples + packages return their stor
 
 ### --search-db
 
-Path to the search database (`search.db`).
+Override the docs database path. Post-#1037 each docs source owns its own SQLite file (`apple-documentation.db`, `hig.db`, etc.). When this flag is set, EVERY docs source-id routes to the override URL (legacy single-DB debug semantic, useful for tests + custom-database workflows).
 
 **Type:** String  
-**Default:** `~/.cupertino/search.db`
+**Default:** `~/.cupertino/apple-documentation.db` for `apple-docs`, `~/.cupertino/hig.db` for `hig`, etc.; resolved through the production source registry.
 
 ### --sample-db
 
-Path to the sample-code database (`samples.db`).
+Path to the sample-code database (`apple-sample-code.db`).
 
 **Type:** String  
-**Default:** `~/.cupertino/samples.db`
+**Default:** `~/.cupertino/apple-sample-code.db`
 
 ### --packages-db
 
@@ -155,25 +155,27 @@ Rendered markdown content with YAML front matter (source URL, crawl date), full 
 
 ### Samples + packages
 
-Return their stored UTF-8 content as-is — README markdown for sample projects, file contents for sample files and package files. The `--format` flag is ignored on these paths.
+Return their stored UTF-8 content as-is, README markdown for sample projects, file contents for sample files and package files. The `--format` flag is ignored on these paths.
 
 ## Error handling
 
-### Document not found in search.db
+### Document not found in `<per-source DB filename>`
 
 ```
-Error: Document not found in search.db: apple-docs://invalid/path
+Error: Document not found in hig.db: hig://buttons/invalid-button
 ```
 
-**Solutions:** check spelling; run `cupertino search` to find valid URIs; ensure the doc is indexed (`cupertino save --docs`).
+The diagnostic names the actual per-source DB the read resolved to (`apple-documentation.db`, `hig.db`, `apple-archive.db`, `swift-evolution.db`, `swift-org.db`, `swift-book.db`). Pre-#1037 the message read `Document not found in search.db` because every docs lookup hit one file; post-#1037 each docs source owns its own SQLite file, so the missing row's location is unambiguous in the diagnostic.
 
-### Not found in samples.db
+**Solutions:** check spelling; run `cupertino search` to find valid URIs; ensure the doc is indexed (`cupertino save --source <id>` for the source named in the error).
+
+### Not found in apple-sample-code.db
 
 ```
-Error: Not found in samples.db: <projectId>
+Error: Not found in apple-sample-code.db: <projectId>
 ```
 
-**Solutions:** verify the projectId via `cupertino list-samples`; rebuild via `cupertino save --samples`.
+**Solutions:** verify the projectId via `cupertino list-samples`; rebuild via `cupertino save --source samples`.
 
 ### Not found in packages.db
 
@@ -181,12 +183,12 @@ Error: Not found in samples.db: <projectId>
 Error: Not found in packages.db: <owner>/<repo>/<relpath>
 ```
 
-**Solutions:** verify the package was indexed (`cupertino doctor` shows package count); the file might be at a different path — search the package via `cupertino search --source packages`.
+**Solutions:** verify the package was indexed (`cupertino doctor` shows package count); the file might be at a different path, search the package via `cupertino search --source packages`.
 
 ### Auto-source mode found nothing
 
 ```
-Error: Tried docs, samples, and packages — no source matched. Identifier: <x>
+Error: Tried docs, samples, and packages, no source matched. Identifier: <x>
 ```
 
 **Solution:** pass `--source` explicitly so the error message is more specific.
@@ -197,11 +199,11 @@ Each backend has its own missing-DB error pointing at `cupertino setup` or the r
 
 ## See also
 
-- [search](../search/) — fan-out search; emits `▶ Read full:` hints for every result
-- [list-samples](../list-samples/) — enumerate sample projectIds
-- [list-frameworks](../list-frameworks/) — enumerate docs frameworks
-- [serve](../serve/) — start MCP server (mirror tool: `read_document`, `read_sample`, `read_sample_file`)
-- [save](../save/) — build the three databases
+- [search](../search/), fan-out search; emits `▶ Read full:` hints for every result
+- [list-samples](../list-samples/), enumerate sample projectIds
+- [list-frameworks](../list-frameworks/), enumerate docs frameworks
+- [serve](../serve/), start MCP server (mirror tool: `read_document`, `read_sample`, `read_sample_file`)
+- [save](../save/), build the three databases
 
 ## History
 

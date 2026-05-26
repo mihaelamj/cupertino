@@ -49,7 +49,7 @@ cupertino fetch --source swift-org --max-pages 500
 
 ### Resume Interrupted Crawl (automatic)
 ```bash
-# Auto-resumes from metadata.json — no flag needed
+# Auto-resumes from metadata.json, no flag needed
 cupertino fetch --source swift-org
 ```
 

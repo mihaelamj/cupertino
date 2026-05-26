@@ -38,16 +38,16 @@ extension Shared.Constants {
     /// `Issue673PhaseFDiskPreflightTests` unit suite pins each value
     /// against its rationale comment.
     public enum DiskBudget {
-        /// `cupertino save --docs` peak: search.db (~2.5 GB at v15 full
+        /// `cupertino save --source apple-docs` peak: search.db (~2.5 GB at v15 full
         /// reindex) + WAL (~1 GB during commit) + per-doc audit JSONL
         /// (~120 MB on the 285k-row corpus). Round up to 4 GB.
         public static let docsSaveBytes: Int64 = 4 * 1024 * 1024 * 1024
 
-        /// `cupertino save --samples` peak: samples.db (~200 MB after
+        /// `cupertino save --source samples` peak: samples.db (~200 MB after
         /// the 8.6k indexed-files run) + WAL. Round up to 500 MB.
         public static let samplesSaveBytes: Int64 = 500 * 1024 * 1024
 
-        /// `cupertino save --packages` peak: packages.db (~50 MB at
+        /// `cupertino save --source packages` peak: packages.db (~50 MB at
         /// today's 9.7k-package catalog) + WAL. Round up to 200 MB.
         public static let packagesSaveBytes: Int64 = 200 * 1024 * 1024
 
@@ -103,6 +103,79 @@ extension Shared.Constants {
 
         /// Package source + docs FTS index (separate from search.db; hidden feature)
         public static let packagesIndexDatabase = "packages.db"
+
+        // MARK: Per-source database files (post-2026-05-25, per-source DB split epic)
+
+        //
+        // Filenames for the 5 DBs that split out of search.db plus the 2
+        // renames of samples.db / packages.db. Introduced additively in step 1
+        // of `docs/design/per-source-db-split.md`; sources still write to
+        // search.db / samples.db / packages.db until their destinationDB flips
+        // in step 4. See `cupertino-per-source-db-names-agreed` memory and
+        // `docs/design/corpus-structure.md` §3.5.6 for the authoritative name
+        // list + capability matrix.
+
+        /// Apple Developer Documentation database (splits from search.db).
+        public static let appleDocumentationDatabase = "apple-documentation.db"
+
+        /// Human Interface Guidelines database (splits from search.db).
+        public static let higDatabase = "hig.db"
+
+        /// Apple Archive legacy programming guides database (splits from search.db).
+        public static let appleArchiveDatabase = "apple-archive.db"
+
+        /// Swift Evolution proposals database (splits from search.db).
+        public static let swiftEvolutionDatabase = "swift-evolution.db"
+
+        /// Swift documentation database. Pre-#1038 this was the
+        /// view-source destination where SwiftOrgStrategy emitted BOTH
+        /// swift-org and swift-book pages from a single crawl. Post-#1038
+        /// the two sub-sources have their own dedicated DBs
+        /// (`swiftOrgDatabase` + `swiftBookDatabase`); this constant
+        /// stays as a legacy migration-detection target for users on
+        /// pre-#1038 bundles that still ship swift-documentation.db.
+        public static let swiftDocumentationDatabase = "swift-documentation.db"
+
+        /// Swift.org database (post #1038 "diff db for each source"
+        /// follow-up). Holds only `swift-org`-tagged rows; swift-book
+        /// pages from the same crawl land in `swiftBookDatabase`.
+        /// `SwiftOrgSource.destinationDB` returns the matching
+        /// descriptor; `Search.SwiftOrgStrategy` filters per-page
+        /// emission via `Search.StrategyHelpers.crawlSwiftDocumentation(...)`
+        /// with `scope: .swiftOrgOnly`.
+        public static let swiftOrgDatabase = "swift-org.db"
+
+        /// Swift Book database (post #1038). Holds only
+        /// `swift-book`-tagged rows; swift-org pages land in
+        /// `swiftOrgDatabase`. `SwiftBookSource.destinationDB` returns
+        /// the matching descriptor; `Search.SwiftBookStrategy` filters
+        /// per-page emission via the shared crawl helper with
+        /// `scope: .swiftBookOnly`. Pre-#1038 SwiftBookSource was a
+        /// view-source; the dedicated DB + thin Strategy concrete
+        /// shape was settled 2026-05-26 per the GoF + pluggability
+        /// directives in #1038.
+        public static let swiftBookDatabase = "swift-book.db"
+
+        /// Apple sample code database. One on-disk file holding both
+        /// the `Sample.Index.Builder` rich schema (projects + files +
+        /// file_symbols + imports) AND the search-style FTS rows
+        /// (docs_metadata + docs_fts) that `SampleCodeSource` emits.
+        /// Both pipelines coexist via per-pipeline schema-version
+        /// tables: Sample.Index uses `samples_schema_version`,
+        /// Search.Index keeps `PRAGMA user_version` (which Sample.Index
+        /// no longer writes).
+        ///
+        /// Production wiring active post-#1037:
+        /// - `Sample.Index.databasePath` returns
+        ///   `<base>/apple-sample-code.db`.
+        /// - `SampleCodeSource.destinationDB` is `.appleSampleCode`.
+        /// - The legacy `samplesDatabase` constant ("samples.db") is
+        ///   retained for migration-detection codepaths only.
+        public static let appleSampleCodeDatabase = "apple-sample-code.db"
+
+        /// Swift packages database (rename of packages.db; step 6 migration
+        /// flips the on-disk filename in user bundles).
+        public static let swiftPackagesDatabase = "swift-packages.db"
 
         /// Stores the `databaseVersion` that was active when `setup` last succeeded.
         /// Read on subsequent setup invocations to distinguish stale DBs from current ones (#168).
@@ -295,6 +368,22 @@ extension Shared.Constants {
 
     // MARK: - Source Prefixes
 
+    /// 2026-05-26 audit #1055 layer-2: canonical names for the
+    /// non-source-id `Search.SearchRoute` rawValues. The 3
+    /// source-id-shaped routes (`.hig` / `.samples` / `.packages`)
+    /// read directly from `SourcePrefix.*`; the 2 bucket-tier
+    /// routes (`docs` / `unified`) need their own canonical names
+    /// because they don't correspond to single sources.
+    /// `"docs"` = any source in the search.db family; `"unified"` =
+    /// fan-out runner. Co-located with `SourcePrefix` to keep the
+    /// route-name canon under one roof.
+    public enum SearchRouteName {
+        /// Docs-tier bucket route (search.db family).
+        public static let docs = "docs"
+        /// Unified fan-out route (default fallthrough).
+        public static let unified = "unified"
+    }
+
     /// Source prefixes used for filtering search queries.
     /// Users can prefix their search with these to filter by source type.
     /// Example: "swift-evolution actors" searches only Swift Evolution for "actors"
@@ -452,17 +541,14 @@ extension Shared.Constants {
             emoji: emojiPackages
         )
 
-        /// All source infos in display order
-        public static let allSourceInfos: [SourceInfo] = [
-            infoAppleDocs,
-            infoArchive,
-            infoSamples,
-            infoHIG,
-            infoSwiftEvolution,
-            infoSwiftOrg,
-            infoSwiftBook,
-            infoPackages,
-        ]
+        // 2026-05-26 audit Finding 9.2: `allSourceInfos: [SourceInfo]`
+        // was a dead-on-prod static literal — zero consumers in
+        // `Packages/Sources/` post-#1042. Deleted along with the
+        // related `Shared.Constants.Search.availableSources` literal.
+        // Each per-source `info<X>` constant is still referenced
+        // individually by SourceProvider definitions via DisplayName
+        // lookups, so they stay; only the joined-list dead static is
+        // gone.
     }
 
     // MARK: - URLs
@@ -852,28 +938,19 @@ extension Shared.Constants {
         `\(schemaParamMinTvOS)`, `\(schemaParamMinWatchOS)`, `\(schemaParamMinVisionOS)`
         """
 
-        /// All available source values (excluding 'all')
-        public static let availableSources: [String] = [
-            SourcePrefix.appleDocs,
-            SourcePrefix.samples,
-            SourcePrefix.hig,
-            SourcePrefix.appleArchive,
-            SourcePrefix.swiftEvolution,
-            SourcePrefix.swiftOrg,
-            SourcePrefix.swiftBook,
-            SourcePrefix.packages,
-        ]
-
-        /// Get all sources except the specified one(s)
-        public static func otherSources(excluding current: String?) -> [String] {
-            let excluded = current ?? ""
-            return availableSources.filter { $0 != excluded }
-        }
-
-        /// Comprehensive tips showing all available search capabilities
-        public static let tipSearchCapabilities = """
-        💡 **Dig deeper:** Use `source` parameter to search: \(availableSources.joined(separator: ", ")), or `all`.
-        """
+        // 2026-05-26 audit Finding 6.0: the static
+        // `availableSources: [String]` literal was a maintenance trap
+        // — every new shipped source had to be appended here in
+        // parallel with the registry. Deleted. Production callers
+        // now thread the registry-derived list from
+        // `CupertinoComposition.makeProductionSourceRegistry().allEnabled.map(\.definition.id)`
+        // (CLI + MCP composition roots already do this), and test
+        // fixtures construct an explicit list in-fixture.
+        //
+        // The two former companions (`otherSources(excluding:)` and
+        // `tipSearchCapabilities`) were inlined at their two callers
+        // — see `Services.Formatter.Footer.Search` for the equivalent
+        // dynamic computation.
 
         /// Tip for semantic code search tools (#81)
         public static let tipSemanticSearch = """
@@ -882,11 +959,11 @@ extension Shared.Constants {
         discovery via AST extraction.
         """
 
-        /// Generate tip showing other sources for a specific search
-        public static func tipOtherSources(excluding current: String?) -> String {
-            let others = otherSources(excluding: current)
-            return "💡 **Other sources:** \(others.joined(separator: ", ")), or `all`"
-        }
+        // 2026-05-26 audit Finding 6.0: `tipOtherSources` deleted
+        // alongside the static `availableSources` literal it consumed.
+        // The single caller (`Services.Formatter.Footer.Search.makeOtherSourcesTip`)
+        // now inlines the equivalent computation against the
+        // caller-supplied registered-sources list.
 
         // MARK: Formatting
 

@@ -65,6 +65,23 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     // package import-contract stays clean.
     private let documentResourceProvider: (any MCP.Core.ResourceProvider)?
 
+    /// #1042 Cluster 7 pluggability anchor: registry-derived list of
+    /// source IDs the MCP `search` tool advertises in its
+    /// `source` enum schema. Composition root supplies
+    /// `["all"] + registry.allEnabled.map(\.definition.id)`; pre-fix
+    /// this list was hardcoded in `listTools` as 10 SourcePrefix
+    /// constants.
+    private let searchToolSourceEnumValues: [String]
+
+    /// 2026-05-26 audit Finding 14.4: registry-derived source-id →
+    /// SearchRoute dispatch map. `handleSearch` consults this dict
+    /// instead of switching on source-id literals. Pre-fix the
+    /// dispatcher hardcoded 9 source-ids in a switch; adding a new
+    /// source required editing this file. Post-fix the route is the
+    /// source's own declared property; new sources plug in via their
+    /// `SourceProvider.searchRoute`.
+    private let searchToolRoutesByID: [String: Search.SearchRoute]
+
     /// Primary init used by the CLI composition root. Each cross-package
     /// surface arrives pre-wired as a protocol-typed value so this file
     /// doesn't have to import the Search / SampleIndex / Services
@@ -78,7 +95,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         unifiedService: (any Services.UnifiedSearcher)?,
         packagesSearcher: (any Search.PackagesSearcher)? = nil,
         documentResourceProvider: (any MCP.Core.ResourceProvider)? = nil,
-        searchIndexDisabledReason: String? = nil
+        searchIndexDisabledReason: String? = nil,
+        searchToolSourceEnumValues: [String] = [],
+        searchToolRoutesByID: [String: Search.SearchRoute] = [:]
     ) {
         self.searchIndex = searchIndex
         self.sampleDatabase = sampleDatabase
@@ -89,6 +108,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         self.packagesSearcher = packagesSearcher
         self.documentResourceProvider = documentResourceProvider
         self.searchIndexDisabledReason = searchIndexDisabledReason
+        self.searchToolSourceEnumValues = searchToolSourceEnumValues
+        self.searchToolRoutesByID = searchToolRoutesByID
     }
 
     /// True when the server should advertise search.db-dependent tools.
@@ -134,18 +155,26 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             ),
             Shared.Constants.Search.schemaParamSource: stringSchema(
                 description: "Optional source filter.",
-                enumValues: [
-                    "all",
-                    Shared.Constants.SourcePrefix.appleDocs,
-                    Shared.Constants.SourcePrefix.samples,
-                    Shared.Constants.SourcePrefix.appleSampleCode,
-                    Shared.Constants.SourcePrefix.hig,
-                    Shared.Constants.SourcePrefix.appleArchive,
-                    Shared.Constants.SourcePrefix.swiftEvolution,
-                    Shared.Constants.SourcePrefix.swiftOrg,
-                    Shared.Constants.SourcePrefix.swiftBook,
-                    Shared.Constants.SourcePrefix.packages,
-                ]
+                // #1042 Cluster 7: list is supplied by the composition root
+                // from the production source registry (plus "all" + the
+                // appleSampleCode alias the existing dispatch accepts).
+                // When the init was called without a list (legacy two-arg
+                // path / tests that don't exercise the search tool),
+                // fall back to the historical 10-element literal.
+                enumValues: !searchToolSourceEnumValues.isEmpty
+                    ? searchToolSourceEnumValues
+                    : [
+                        "all",
+                        Shared.Constants.SourcePrefix.appleDocs,
+                        Shared.Constants.SourcePrefix.samples,
+                        Shared.Constants.SourcePrefix.appleSampleCode,
+                        Shared.Constants.SourcePrefix.hig,
+                        Shared.Constants.SourcePrefix.appleArchive,
+                        Shared.Constants.SourcePrefix.swiftEvolution,
+                        Shared.Constants.SourcePrefix.swiftOrg,
+                        Shared.Constants.SourcePrefix.swiftBook,
+                        Shared.Constants.SourcePrefix.packages,
+                    ]
             ),
             Shared.Constants.Search.schemaParamFramework: stringSchema(
                 description: "Framework filter (e.g. swiftui, foundation)."
@@ -587,18 +616,51 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         // path-dependent fact so the helper knows whether to treat all
         // contributing sources as unfiltered (fan-out) or partition
         // them per `dispatchAppliesFilter` (single-source).
-        let dispatchDecision = Search.PlatformFilterScope.dispatch(for: source)
+        // #1042 Cluster 5 sub-1: thread the registry-derived
+        // fan-out source list through PlatformFilterScope.dispatch.
+        // `searchToolSourceEnumValues` (sans `"all"` + the
+        // appleSampleCode alias) is the production fan-out set
+        // assembled by the Serve composition root from
+        // makeProductionSourceRegistry().allEnabled. When the init was
+        // called without the list (legacy two-arg path), fall back to
+        // the historical 8-element literal.
+        let fanOutSources = !searchToolSourceEnumValues.isEmpty
+            ? searchToolSourceEnumValues.filter { id in
+                id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
+            }
+            : Search.PlatformFilterScope.allFanOutSources
+        let dispatchDecision = Search.PlatformFilterScope.dispatch(for: source, fanOutSources: fanOutSources)
         let notice = Search.PlatformFilterScope.partialNoticeMarkdown(
             platformDescriptions: Self.platformDescriptions(platform: platform, minSwift: minSwift),
             dispatch: dispatchDecision.kind,
             contributingSources: dispatchDecision.sources
         )
 
-        // Route based on source parameter
-        // Default (nil) now searches ALL sources for better results (#81)
+        // 2026-05-26 audit Finding 14.4: dispatch via
+        // `Search.SourceProvider.searchRoute` instead of switching on
+        // source-id literals. Pre-fix this switch hardcoded 9 source
+        // ids; adding a new source required editing this file. The
+        // route map is wired at Serve composition root from
+        // `registry.allEnabled.reduce { $0[$1.definition.id] =
+        // $1.provider.searchRoute }` so a new source plugs in by
+        // declaring its searchRoute and the dispatcher finds it.
+        //
+        // Legacy alias `apple-sample-code` is aliased to `samples`
+        // (one-DB-two-tracks per the SampleCodeSource design).
+        // Empty source / "all" / unrecognised → unified fan-out.
         let raw: MCP.Core.Protocols.CallToolResult
-        switch source {
-        case Shared.Constants.SourcePrefix.samples, Shared.Constants.SourcePrefix.appleSampleCode:
+        let canonicalSourceID = source == Shared.Constants.SourcePrefix.appleSampleCode
+            ? Shared.Constants.SourcePrefix.samples
+            : source
+        let route = canonicalSourceID.flatMap { searchToolRoutesByID[$0] } ?? .unified
+        // 2026-05-26 audit #1055 layer-2: SearchRoute is now an open
+        // RawRepresentable struct. Dispatch via `==` equality chains
+        // so an unrecognised route falls through to the unified
+        // fan-out. Adding a new bucket-tier route is a `static let`
+        // declaration in `Search.SearchRoute` plus a single new
+        // `else if` arm here (and the matching CLI arm); the dispatch
+        // never breaks on a missing case.
+        if route == .samples {
             raw = try await handleSearchSamples(
                 query: query,
                 framework: framework,
@@ -609,18 +671,14 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 minWatchOS: minWatchOS,
                 minVisionOS: minVisionOS
             )
-        case Shared.Constants.SourcePrefix.hig:
+        } else if route == .hig {
             raw = try await handleSearchHIG(
                 query: query,
                 framework: framework,
                 limit: limit
             )
-        case Shared.Constants.SourcePrefix.appleDocs,
-             Shared.Constants.SourcePrefix.appleArchive,
-             Shared.Constants.SourcePrefix.swiftEvolution,
-             Shared.Constants.SourcePrefix.swiftOrg,
-             Shared.Constants.SourcePrefix.swiftBook:
-            // Specific source requested: search only that source
+        } else if route == .docs {
+            // Specific docs-tier source requested: search only that source
             raw = try await handleSearchDocs(
                 query: query,
                 source: source,
@@ -635,7 +693,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 minVisionOS: minVisionOS,
                 minSwift: minSwift
             )
-        case Shared.Constants.SourcePrefix.packages:
+        } else if route == .packages {
             // `#789`-style fix: packages live in `packages.db` with a
             // richer schema (BM25 + chunk + apple_imports_json); the
             // pre-PR-2 fall-through to `handleSearchDocs(source:"packages")`
@@ -647,8 +705,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 limit: limit,
                 appleImports: appleImports
             )
-        default:
-            // Default (nil or "all"): search ALL sources for comprehensive results
+        } else {
+            // Default (nil source / "all" / future registered sources
+            // whose searchRoute is .unified): search ALL sources for comprehensive results
             raw = try await handleSearchAll(
                 query: query,
                 framework: framework,
@@ -770,11 +829,20 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             )
         }
 
+        // #1045 Gap 2 wiring: registry-derived source-id list for the
+        // formatter's footer tips. Strip "all" and the appleSampleCode
+        // alias the schema enum carries but the formatter doesn't display.
+        let docsAvailableSources: [String] = searchToolSourceEnumValues.isEmpty
+            ? []
+            : searchToolSourceEnumValues.filter { id in
+                id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
+            }
         let formatter = Services.Formatter.Markdown(
             query: query,
             filters: filters,
             config: config,
-            teasers: teasers
+            teasers: teasers,
+            availableSources: docsAvailableSources
         )
         let markdown = formatter.format(results)
 
@@ -844,8 +912,18 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             includeArchive: false
         )
 
-        // Use shared formatter
-        let formatter = Sample.Format.Markdown.Search(query: query, framework: framework, teasers: teasers)
+        // Use shared formatter — #1045 Gap 2 wiring.
+        let samplesAvailableSources: [String] = searchToolSourceEnumValues.isEmpty
+            ? []
+            : searchToolSourceEnumValues.filter { id in
+                id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
+            }
+        let formatter = Sample.Format.Markdown.Search(
+            query: query,
+            framework: framework,
+            teasers: teasers,
+            availableSources: samplesAvailableSources
+        )
         let markdown = formatter.format(result)
 
         return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
@@ -923,11 +1001,18 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             minimumWatchOS: nil,
             minimumVisionOS: nil
         )
+        // #1045 Gap 2 wiring: registry-derived source-id list.
+        let packagesAvailableSources: [String] = searchToolSourceEnumValues.isEmpty
+            ? []
+            : searchToolSourceEnumValues.filter { id in
+                id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
+            }
         let formatter = Services.Formatter.Markdown(
             query: query,
             filters: filters,
             config: Self.makeStandardConfig(),
-            teasers: teasers
+            teasers: teasers,
+            availableSources: packagesAvailableSources
         )
         let markdown = formatter.format(results)
 
@@ -963,9 +1048,22 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             includeArchive: false
         )
 
-        // Use shared formatter
+        // Use shared formatter — #1045 Gap 2 wiring: thread registry-
+        // derived source-id list (sans "all" / appleSampleCode alias)
+        // into the formatter so the footer's "narrow with --source" tip
+        // reflects every registered source.
         let higQuery = Services.HIGQuery(text: query, platform: nil, category: nil)
-        let formatter = Services.Formatter.HIG.Markdown(query: higQuery, config: Self.makeStandardConfig(), teasers: teasers)
+        let higAvailableSources: [String] = searchToolSourceEnumValues.isEmpty
+            ? []
+            : searchToolSourceEnumValues.filter { id in
+                id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
+            }
+        let formatter = Services.Formatter.HIG.Markdown(
+            query: higQuery,
+            config: Self.makeStandardConfig(),
+            teasers: teasers,
+            availableSources: higAvailableSources
+        )
         let markdown = formatter.format(results)
 
         return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
@@ -998,6 +1096,15 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         //
         // `#837` PR-2 expansion: `appleImports` is threaded into the
         // packages bucket only. The other 7 sources ignore it.
+        // #1042 Cluster 2 wiring (Services path): thread the registry-
+        // derived source-id list through to the formatter input so a
+        // registered new source appears in the "Searched ALL sources"
+        // header + the footer tip.
+        let unifiedAvailableSources: [String] = searchToolSourceEnumValues.isEmpty
+            ? []
+            : searchToolSourceEnumValues.filter { id in
+                id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
+            }
         let rawInput = await unifiedService.searchAll(
             query: query,
             framework: framework,
@@ -1008,7 +1115,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             minWatchOS: minWatchOS,
             minVisionOS: minVisionOS,
             minSwift: minSwift,
-            appleImports: appleImports
+            appleImports: appleImports,
+            availableSources: unifiedAvailableSources
         )
 
         // #648 (open-time path) — main's post-#642 retest found that the
@@ -1030,7 +1138,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         // the open-time path with no formatter changes.
         let input = Self.injectOpenTimeDegradation(
             into: rawInput,
-            disabledReason: searchIndexDisabledReason
+            disabledReason: searchIndexDisabledReason,
+            searchToolSourceEnumValues: searchToolSourceEnumValues
         )
 
         // Use shared formatter (identical to CLI --format markdown output)
@@ -1052,7 +1161,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     /// entries) without standing up the full `handleSearchAll` pipeline.
     static func injectOpenTimeDegradation(
         into input: Services.Formatter.Unified.Input,
-        disabledReason: String?
+        disabledReason: String?,
+        searchToolSourceEnumValues: [String] = []
     ) -> Services.Formatter.Unified.Input {
         guard let disabledReason else { return input }
 
@@ -1079,6 +1189,16 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             .filter { !existing.contains($0) }
             .map { Search.DegradedSource(name: $0, reason: disabledReason) }
 
+        // #1042 Cluster 2 wiring (MCP path): thread the registry-derived
+        // source-id list through to the formatter so a registered new
+        // source appears in the "Searched ALL sources" header + the
+        // footer tip. Strip the "all" + appleSampleCode alias tokens
+        // the schema enum carries but the formatter doesn't display.
+        let formatterAvailableSources: [String] = searchToolSourceEnumValues.isEmpty
+            ? []
+            : searchToolSourceEnumValues.filter { id in
+                id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
+            }
         return Services.Formatter.Unified.Input(
             docResults: input.docResults,
             archiveResults: input.archiveResults,
@@ -1088,6 +1208,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             swiftOrgResults: input.swiftOrgResults,
             swiftBookResults: input.swiftBookResults,
             packagesResults: input.packagesResults,
+            availableSources: formatterAvailableSources,
             limit: input.limit,
             degradedSources: input.degradedSources + synthesised
         )
@@ -1103,7 +1224,16 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let frameworks = try await searchIndex.listFrameworks()
         let totalDocs = try await searchIndex.documentCount()
 
-        let formatter = Services.Formatter.Frameworks.Markdown(totalDocs: totalDocs)
+        // #1045 Gap 2 wiring: registry-derived source-id list.
+        let frameworksAvailableSources: [String] = searchToolSourceEnumValues.isEmpty
+            ? []
+            : searchToolSourceEnumValues.filter { id in
+                id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
+            }
+        let formatter = Services.Formatter.Frameworks.Markdown(
+            totalDocs: totalDocs,
+            availableSources: frameworksAvailableSources
+        )
         let markdown = formatter.format(frameworks)
 
         return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
@@ -1198,7 +1328,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         }
 
         if projects.isEmpty {
-            markdown += "_No projects found. Run `cupertino save --samples` to index sample code._\n"
+            markdown += "_No projects found. Run `cupertino save --source samples` to index sample code._\n"
         } else {
             markdown += "| Project | Framework | Files |\n"
             markdown += "|---------|-----------|------:|\n"

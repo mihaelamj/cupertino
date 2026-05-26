@@ -1,3 +1,4 @@
+import AppleDocsSource
 import Foundation
 import SearchModels
 import SharedConstants
@@ -5,32 +6,31 @@ import SharedConstants
 // MARK: - SwiftBookSource
 
 /// `Search.SourceProvider` conformer for the `swift-book` source.
-/// Seventh per-source target of the #1007 epic; first **view-source**:
-/// no dedicated strategy or fetch endpoint, because the actual
-/// crawl + page emission lives in `Search.SwiftOrgStrategy` (the
-/// strategy tags individual pages with `source = swift-book` or
-/// `source = swift-org` based on the URL prefix). SwiftBookSource
-/// represents the queryable source identity, contributes the
-/// SourceDefinition (for `cupertino search` ranking and the source
-/// catalog), and supplies the indexer concrete (used by
-/// `Search.IndexBuilder` at `extractCode` time when a page resolves
-/// to `swift-book`).
+/// Post #1038 ("diff db for each source" follow-up to #1037), the
+/// Swift Book has its own DB (`swift-book.db`) and its own active
+/// strategy (`Search.SwiftBookStrategy`) rather than the pre-#1038
+/// view-source pattern (where SwiftOrgStrategy emitted both sub-sources
+/// into `swift-documentation.db` and SwiftBookSource was a no-op).
+///
+/// Pluggability is preserved: SwiftBookSource imports only Foundation
+/// + SearchModels + SharedConstants + SearchStrategyHelpers (the
+/// neutral shared-helper target), per
+/// `mihaela-agents/Rules/swift/per-package-import-contract.md`. No
+/// cross-source-target imports.
 ///
 /// Conformance facets:
 /// - `definition`: lifted from `CLI/CLIImpl.SourceLookup.swift`
-/// - `fetchInfo`: **`nil`** (no dedicated fetch; SwiftOrgStrategy's
-///   crawl over `docs.swift.org` covers the swift-book corpus)
-/// - `destinationDB`: `.search`
-/// - `makeStrategy(env:)`: returns a private no-op
-///   `SwiftBookViewSourceStrategy` that emits zero items and an
-///   empty `IndexStats`. The real strategy emission is owned by
-///   `SwiftOrgSource.makeStrategy(env:)`.
+/// - `fetchInfo`: `nil` (no dedicated fetch; SwiftOrgStrategy's single
+///   crawl over `docs.swift.org` produces both sub-sources' files;
+///   SwiftBookSource just walks the same on-disk corpus directory).
+/// - `destinationDB`: `.swiftBook` (filename `swift-book.db`).
+/// - `makeStrategy(env:)`: returns `Search.SwiftBookStrategy`, which
+///   delegates to `Search.StrategyHelpers.crawlSwiftDocumentation(
+///   scope: .swiftBookOnly)`. The shared helper does the file walk +
+///   per-page decoding + index emission; the scope filter discards
+///   swift-org-tagged pages (those land in `swift-org.db` via
+///   `SwiftOrgSource`'s `.swiftOrgOnly` invocation).
 /// - `makeIndexer()`: returns `Search.SwiftBookIndexer()`.
-///
-/// The view-source pattern is a first-class shape in `Search.SourceProvider`:
-/// a source may not own its own crawl/emit pipeline, but the protocol
-/// still requires it to declare its destination DB + definition +
-/// indexer.
 public struct SwiftBookSource: Search.SourceProvider {
     public init() {}
 
@@ -38,46 +38,58 @@ public struct SwiftBookSource: Search.SourceProvider {
 
     public var fetchInfo: Search.FetchInfo? { nil }
 
-    public var destinationDB: Shared.Models.DatabaseDescriptor { .search }
+    public var destinationDB: Shared.Models.DatabaseDescriptor { .swiftBook }
 
-    public func makeStrategy(env _: Search.IndexEnvironment) -> any Search.SourceIndexingStrategy {
-        SwiftBookViewSourceStrategy()
+    /// Swift Book read-side capabilities. The Book is universal text +
+    /// tutorial-grade code samples; the searcher + metadata matrix is
+    /// a subset of SwiftOrgSource's (no generics-search because the
+    /// Book's code fences aren't type-graph-extractable like Swift.org's
+    /// API references).
+    public var capabilities: Search.Capabilities {
+        .init(
+            searchers: [.text],
+            operations: [.readByURI],
+            metadata: [
+                .hasAvailabilityAttrs: true,
+            ]
+        )
+    }
+
+    public func makeStrategy(env: Search.IndexEnvironment) -> any Search.SourceIndexingStrategy {
+        Search.SwiftBookStrategy(
+            swiftOrgDirectory: env.sourceDirectory,
+            markdownStrategy: env.markdownStrategy,
+            logger: env.logger
+        )
     }
 
     public func makeIndexer() -> any Search.SourceIndexer {
         Search.SwiftBookIndexer()
     }
-}
 
-// MARK: - View-source no-op strategy
-
-/// Private no-op `Search.SourceIndexingStrategy` for the swift-book
-/// view-source. The actual page emission for swift-book content runs
-/// inside `Search.SwiftOrgStrategy`, which tags pages whose URLs sit
-/// under `docs.swift.org/swift-book/` with `source = swift-book`. The
-/// composition root still needs `SwiftBookSource.makeStrategy(env:)`
-/// to return something `Search.SourceIndexingStrategy`-shaped so the
-/// strategies-list iteration in the registry-driven path stays
-/// uniform; this conformer satisfies that with zero side effects.
-private struct SwiftBookViewSourceStrategy: Search.SourceIndexingStrategy {
-    let source = Shared.Constants.SourcePrefix.swiftBook
-
-    func indexItems(
-        into _: any Search.Database & Search.IndexWriter,
-        progress _: (any Search.IndexingProgressReporting)?
-    ) async throws -> Search.IndexStats {
-        // Report wasSkipped so IndexBuilder's per-source breakdown log
-        // emits `[swift-book] skipped (view-source; ...)` instead of
-        // the misleading `[swift-book] indexed: 0, skipped: 0` (the
-        // #671 anti-pattern of implying a failed indexing attempt
-        // when nothing was attempted). Real swift-book rows are
-        // emitted by Search.SwiftOrgStrategy via URL-prefix tagging.
-        Search.IndexStats(
-            source: source,
-            indexed: 0,
-            skipped: 0,
-            wasSkipped: true,
-            skipReason: "view-source; rows emitted by Search.SwiftOrgStrategy"
+    /// 2026-05-26 audit Finding 9.7 + 11.1: per-source fetch strategy.
+    /// SwiftBook is a view-source — its pages live under the swift-org
+    /// crawl. `cupertino fetch --source swift-book` piggy-backs on
+    /// swift-org's crawl (matches pre-fix runStandardCrawl behavior
+    /// where swift-book aliased to swift-org's seed URL). The strategy
+    /// constructed here seeds the crawler with swift-org's URL +
+    /// allowedPrefixes; the SwiftBookStrategy's URL-prefix tagging
+    /// during indexing routes the resulting pages into swift-book.db.
+    public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? {
+        WebCrawlFetchStrategy(
+            defaultCrawlBaseURL: Shared.Constants.BaseURL.swiftOrg,
+            defaultAllowedPrefixes: [
+                Shared.Constants.BaseURL.swiftOrg,
+                Shared.Constants.BaseURL.swiftBook,
+            ],
+            candidateSessionDirectories: []
         )
+    }
+
+    /// 2026-05-26 audit #1055: per-source read strategy. Shared
+    /// `Search.DocsReadStrategy` resolves to this source's per-source
+    /// DB via `env.docsDBURLs[sourceID]`.
+    public func makeReadStrategy() -> (any Search.SourceReadStrategy)? {
+        Search.DocsReadStrategy(sourceID: definition.id)
     }
 }

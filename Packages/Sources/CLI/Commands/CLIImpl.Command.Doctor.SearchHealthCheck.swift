@@ -6,30 +6,65 @@ import SearchAPI
 import SharedConstants
 
 extension CLIImpl.Command.Doctor {
-    /// `Distribution.DatabaseHealthCheck` conformer for `search.db`.
-    /// Hard-required: a missing or unreadable search index fails the
-    /// overall doctor verdict (red exit). The conformer renders the
-    /// same section as the pre-#930 `Doctor.checkSearchDatabase`
-    /// private method, byte-for-byte, and opens `SearchModule.Index`
-    /// to count frameworks + per-source rows.
+    /// `Distribution.DatabaseHealthCheck` conformer for FTS-tier
+    /// databases (the legacy `search.db` plus every per-source DB
+    /// post-#1036: apple-documentation.db / hig.db / apple-archive.db /
+    /// swift-evolution.db / swift-documentation.db).
+    ///
+    /// The legacy `.search` instance is **hard-required** (red exit
+    /// on failure) for back-compat with the pre-#1037 bundle shape.
+    /// Per-source instances are **warning-only** — a missing
+    /// per-source DB is expected for partial scopes (e.g. `cupertino
+    /// save --source hig` only writes `hig.db`).
+    ///
+    /// Post-2026-05-26 audit Finding 7.1: pre-fix the descriptor was
+    /// hardcoded to `.search` so adding a per-source DB to Doctor's
+    /// coverage required either (a) extending the global `healthChecks`
+    /// list with a new conformer type per source, or (b) silently
+    /// skipping the new DB's health probe. Now SearchHealthCheck
+    /// accepts the descriptor at init so the composition root can
+    /// stamp one instance per registered docs-tier destinationDB.
     struct SearchHealthCheck: Distribution.DatabaseHealthCheck {
-        let descriptor: Shared.Models.DatabaseDescriptor = .search
-        let isRequired: Bool = true
+        let descriptor: Shared.Models.DatabaseDescriptor
+        let isRequired: Bool
 
         let searchDBURL: URL
 
-        init(searchDBURL: URL) {
+        init(
+            descriptor: Shared.Models.DatabaseDescriptor = .search,
+            searchDBURL: URL,
+            isRequired: Bool = true
+        ) {
+            self.descriptor = descriptor
             self.searchDBURL = searchDBURL
+            self.isRequired = isRequired
         }
 
         func run(output recording: any Logging.Recording) async -> Bool {
-            recording.output("🔍 Search Index")
+            // Section header reflects the descriptor. Legacy
+            // `.search` keeps the original "Search Index" label;
+            // per-source FTS DBs render with `descriptor.displayName`
+            // so the operator sees what's on disk.
+            if descriptor == .search {
+                recording.output("🔍 Search Index")
+            } else {
+                recording.output("🔍 \(descriptor.displayName) (\(descriptor.filename))")
+            }
 
             guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
-                recording.output("   ✗ Database: \(searchDBURL.path) (not found)")
-                recording.output("     → Run: cupertino setup  (or `cupertino save` if building locally)")
-                recording.output("")
-                return false
+                // Missing-file verdict scales with isRequired: hard
+                // fail for the legacy required `.search`; informational
+                // for per-source DBs the user may not have built yet.
+                if isRequired {
+                    recording.output("   ✗ Database: \(searchDBURL.path) (not found)")
+                    recording.output("     → Run: cupertino setup  (or `cupertino save` if building locally)")
+                    recording.output("")
+                    return false
+                } else {
+                    recording.output("   ⚠  Database: \(searchDBURL.path) (not built — run `cupertino save --source \(descriptor.id)` to populate)")
+                    recording.output("")
+                    return true
+                }
             }
 
             let fileSize = (try? FileManager.default.attributesOfItem(atPath: searchDBURL.path)[.size] as? UInt64) ?? 0
@@ -119,10 +154,21 @@ extension CLIImpl.Command.Doctor {
             recording.output("")
             let totalIndexed = perSource.reduce(0) { $0 + $1.count }
             if totalIndexed == 0 {
-                recording.output("   ✗ Search index is empty (0 rows in docs_metadata)")
-                recording.output("     → Rebuild: rm \(searchDBURL.path) && cupertino setup")
-                recording.output("")
-                return false
+                // Empty-DB verdict scales with isRequired (mirror of the
+                // missing-file branch). The legacy `.search` empties hard;
+                // a fresh per-source DB that hasn't been populated by
+                // `cupertino save --source <id>` yet stays informational.
+                if isRequired {
+                    recording.output("   ✗ Search index is empty (0 rows in docs_metadata)")
+                    recording.output("     → Rebuild: rm \(searchDBURL.path) && cupertino setup")
+                    recording.output("")
+                    return false
+                } else {
+                    recording.output("   ⚠  Index is empty (0 rows in docs_metadata)")
+                    recording.output("     → Populate: cupertino save --source \(descriptor.id)")
+                    recording.output("")
+                    return true
+                }
             }
             return true
         }

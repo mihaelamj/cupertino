@@ -53,27 +53,204 @@ extension Sample.Index {
                 withIntermediateDirectories: true
             )
 
+            // #1037: schema-version tracking moved off `PRAGMA user_version`
+            // onto a per-pipeline `samples_schema_version` table. The
+            // motivation is the one-DB samples collapse: when
+            // Sample.Index.Database and Search.Index share a file (target
+            // state of #1037), the SQLite file-level `user_version` can
+            // hold only one stamp, so the two pipelines would trample each
+            // other's version. The new `samples_schema_version` table is
+            // a regular table holding a single row with our pipeline's
+            // version; Search.Index reads/writes its own state and
+            // ignores ours.
+            //
             // #228 phase 2: samples.db is wipe-and-rebuild on schema
-            // change (no ALTER migrations). If the file on disk is from
-            // an older schema version, delete it and start clean — the
-            // alternative is letting `createTables`'s index-creation
-            // step fail with "no such column" on every server boot
-            // until the user runs `save --samples`. The DB has no
-            // user-authoritative content (it's all derivable from the
-            // sample-code zips), so the wipe is safe.
+            // change (no ALTER migrations). But the wipe MUST be
+            // conditional on the file actually being a samples DB; the
+            // post-#1037 shared-file world has Search.Index creating
+            // its own tables in the same file, and a blind wipe would
+            // destroy them. The new wipe condition is therefore:
+            //   - the file exists on disk, AND
+            //   - a Sample.Index table (`projects`) is present (so this
+            //     IS a samples DB or a shared file that already carries
+            //     samples data), AND
+            //   - the samples schema version we read from the file
+            //     differs from our compiled schemaVersion
+            // When `projects` is absent the file is either fresh OR
+            // a shared file Search.Index seeded with its own tables
+            // first; in both cases we treat it as a fresh-create-our-
+            // tables path with no wipe.
             try await openDatabase()
-            if FileManager.default.fileExists(atPath: dbPath.path),
-               try await readUserVersion() != Self.schemaVersion {
-                disconnect()
-                try? FileManager.default.removeItem(at: dbPath)
-                try await openDatabase()
-            }
+            try await wipeIfStale()
             try await createTables()
+            try await migrateUserVersionStampIfNeeded()
             try await setSchemaVersion()
             isInitialized = true
         }
 
-        /// Read `PRAGMA user_version` from the open DB. Returns `0`
+        /// Decide whether the file on disk represents a stale samples
+        /// schema and wipe-and-rebuild if so. Wipe fires in exactly two
+        /// scenarios:
+        ///
+        ///   1. **`samples_schema_version` table is present and
+        ///      populated**, and its version differs from
+        ///      `Self.schemaVersion` (a genuine post-#1037 schema bump).
+        ///   2. **`samples_schema_version` table is absent**, PRAGMA
+        ///      user_version is non-zero, AND that PRAGMA value differs
+        ///      from `Self.schemaVersion` (the pre-#1037 legacy-upgrade
+        ///      path: user samples.db built by a pre-#1037 binary with
+        ///      `PRAGMA user_version = <old version>` stamped directly).
+        ///
+        /// Wipe is suppressed when:
+        ///   - `projects` table is absent (fresh DB or a shared file
+        ///     Search.Index seeded without samples tables; nothing to
+        ///     wipe).
+        ///   - `samples_schema_version` table exists but is empty (e.g.
+        ///     manual `DELETE FROM samples_schema_version` for debug);
+        ///     the version stamp is unknown, so falling back to PRAGMA
+        ///     could mis-read another pipeline's stamp on a shared file
+        ///     (round-5 critic finding). Restoring the entry happens
+        ///     via the normal `setSchemaVersion()` call after
+        ///     `createTables`.
+        private func wipeIfStale() async throws {
+            guard FileManager.default.fileExists(atPath: dbPath.path),
+                  try await projectsTableExists()
+            else {
+                return
+            }
+            let tablePresence = try await samplesSchemaVersionTablePresence()
+            switch tablePresence {
+            case let .populated(version):
+                if version != Self.schemaVersion {
+                    try await wipeAndReopen()
+                }
+            case .empty:
+                // Empty tracking table: don't wipe (we can't tell the
+                // schema version from PRAGMA on a shared file).
+                return
+            case .absent:
+                let legacyPragma = try await readUserVersion()
+                if legacyPragma > 0, legacyPragma != Self.schemaVersion {
+                    try await wipeAndReopen()
+                }
+            case let .corrupt(reason):
+                // Critic round-6 finding #6: a corrupted DB previously
+                // collapsed into .empty (silent wipe-suppress), so a
+                // half-corrupt file would proceed into createTables +
+                // setSchemaVersion against partially-readable storage
+                // and let queries fail with mysterious "database disk
+                // image is malformed" errors at read time. Throw
+                // explicitly so the user investigates the file (e.g.
+                // restore from backup, re-run save --samples) rather
+                // than silently producing wrong results.
+                throw Sample.Index.Error.sqliteError(
+                    "Sample.Index.Database refused to open \(dbPath.lastPathComponent): " +
+                        "samples_schema_version probe reported \(reason). The file may be " +
+                        "corrupted. Inspect with `sqlite3 \(dbPath.path) 'PRAGMA integrity_check'`, " +
+                        "or move it aside and re-run `cupertino save --source samples` to rebuild."
+                )
+            }
+        }
+
+        /// Tri-state shape used by `wipeIfStale` to disambiguate "no
+        /// tracking row" from "tracking table missing entirely" from
+        /// "tracking table is here but the read failed in a way that
+        /// indicates DB corruption".
+        private enum SchemaVersionTablePresence {
+            case populated(Int32)
+            case empty
+            case absent
+            case corrupt(reason: String)
+        }
+
+        /// Read the presence + value of the `samples_schema_version`
+        /// row. `.populated` if SELECT returned a row; `.empty` if the
+        /// table exists but is empty (SQLITE_DONE); `.absent` if
+        /// prepare failed because the table doesn't exist yet (the
+        /// pre-#1037 legacy DB on first post-#1037 open); `.corrupt`
+        /// if SQLite reports DB-integrity errors at prepare or step
+        /// (`SQLITE_CORRUPT` / `SQLITE_IOERR` / `SQLITE_NOTADB`).
+        /// SQLITE_BUSY / SQLITE_LOCKED collapse into `.empty` (the
+        /// suppress-wipe path) because they are transient and we'd
+        /// rather not destroy data on a race with another reader.
+        private func samplesSchemaVersionTablePresence() async throws -> SchemaVersionTablePresence {
+            guard let database else { return .absent }
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            let select = "SELECT version FROM samples_schema_version LIMIT 1"
+            let prepareResult = sqlite3_prepare_v2(database, select, -1, &stmt, nil)
+            guard prepareResult == SQLITE_OK else {
+                // Most common cause: table doesn't exist yet.
+                // Differentiate "table missing" from "DB integrity
+                // failure on prepare" by examining the result code.
+                switch prepareResult {
+                case SQLITE_CORRUPT, SQLITE_IOERR, SQLITE_NOTADB:
+                    return .corrupt(reason: sqliteResultName(prepareResult) + " at prepare")
+                default:
+                    return .absent
+                }
+            }
+            let stepResult = sqlite3_step(stmt)
+            switch stepResult {
+            case SQLITE_ROW:
+                return .populated(sqlite3_column_int(stmt, 0))
+            case SQLITE_DONE:
+                return .empty
+            case SQLITE_CORRUPT, SQLITE_IOERR, SQLITE_NOTADB:
+                return .corrupt(reason: sqliteResultName(stepResult) + " at step")
+            default:
+                // SQLITE_BUSY / SQLITE_LOCKED / other transient: treat
+                // as empty to suppress wipe (data preservation > probe
+                // accuracy in the face of contention).
+                return .empty
+            }
+        }
+
+        /// Human-readable name for the SQLite result codes we
+        /// distinguish in `samplesSchemaVersionTablePresence`. Used to
+        /// emit a useful message in the `.corrupt` throw path. Not
+        /// exhaustive; only covers the cases we actually surface.
+        private func sqliteResultName(_ code: Int32) -> String {
+            switch code {
+            case SQLITE_CORRUPT: return "SQLITE_CORRUPT"
+            case SQLITE_IOERR: return "SQLITE_IOERR"
+            case SQLITE_NOTADB: return "SQLITE_NOTADB"
+            case SQLITE_BUSY: return "SQLITE_BUSY"
+            case SQLITE_LOCKED: return "SQLITE_LOCKED"
+            default: return "SQLite error \(code)"
+            }
+        }
+
+        /// The wipe step itself: disconnect, remove the file, reopen.
+        /// Called only when `wipeIfStale` has confirmed the file is
+        /// stale per the criteria documented there.
+        private func wipeAndReopen() async throws {
+            disconnect()
+            try? FileManager.default.removeItem(at: dbPath)
+            try await openDatabase()
+        }
+
+        /// Check whether the `projects` table exists in the open DB.
+        /// Used by `init` to distinguish "this is a samples DB" (wipe
+        /// allowed on version mismatch) from "this file has no samples
+        /// data yet" (wipe forbidden because the file may carry tables
+        /// owned by another pipeline, see #1037).
+        private func projectsTableExists() async throws -> Bool {
+            guard let database else { return false }
+            var statement: OpaquePointer?
+            defer { sqlite3_finalize(statement) }
+            let sql = "SELECT name FROM sqlite_master WHERE type='table' AND name='projects' LIMIT 1"
+            guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
+                return false
+            }
+            return sqlite3_step(statement) == SQLITE_ROW
+        }
+
+        /// Read `PRAGMA user_version`. Used by
+        /// `migrateUserVersionStampIfNeeded` to copy the legacy stamp
+        /// into `samples_schema_version` on first post-#1037 open of a
+        /// pre-#1037 user samples.db, and by `wipeIfStale` to detect
+        /// the `.absent` branch's legacy-mismatch case. Returns `0`
         /// when the DB is freshly created (SQLite's default).
         private func readUserVersion() async throws -> Int32 {
             guard let database else { return 0 }
@@ -83,6 +260,46 @@ extension Sample.Index {
                   sqlite3_step(statement) == SQLITE_ROW
             else { return 0 }
             return sqlite3_column_int(statement, 0)
+        }
+
+        /// One-time migration: existing user samples.db files built by
+        /// pre-#1037 binaries carry `PRAGMA user_version = 4` (or
+        /// whichever historical version) but no
+        /// `samples_schema_version` table. On first open by a post-#1037
+        /// binary, after `createTables` runs (which creates the new
+        /// table), populate the new table from the legacy PRAGMA if and
+        /// only if the new table is empty AND the PRAGMA is non-zero.
+        /// Idempotent on every subsequent open (the new table is no
+        /// longer empty after the first run).
+        private func migrateUserVersionStampIfNeeded() async throws {
+            guard let database else { return }
+            // Is samples_schema_version empty?
+            var stmt: OpaquePointer?
+            let countSQL = "SELECT COUNT(*) FROM samples_schema_version"
+            guard sqlite3_prepare_v2(database, countSQL, -1, &stmt, nil) == SQLITE_OK,
+                  sqlite3_step(stmt) == SQLITE_ROW
+            else {
+                sqlite3_finalize(stmt)
+                return
+            }
+            let rowCount = sqlite3_column_int(stmt, 0)
+            sqlite3_finalize(stmt)
+            guard rowCount == 0 else { return }
+            // Empty new table. Read legacy PRAGMA; if non-zero, copy it.
+            let legacyVersion = try await readUserVersion()
+            guard legacyVersion > 0 else { return }
+            // Explicit `id` column for symmetry with `setSchemaVersion()`
+            // and defense against a future schema refactor that adds
+            // `WITHOUT ROWID` or otherwise changes rowid auto-assign
+            // semantics. The CHECK constraint requires id = 1.
+            let sql = "INSERT INTO samples_schema_version (id, version) VALUES (1, \(legacyVersion))"
+            guard sqlite3_exec(database, sql, nil, nil, nil) == SQLITE_OK else {
+                let errorMessage = String(cString: sqlite3_errmsg(database))
+                throw Sample.Index.Error.sqliteError(
+                    "Failed to migrate legacy PRAGMA user_version=\(legacyVersion) " +
+                        "into samples_schema_version: \(errorMessage)"
+                )
+            }
         }
 
         /// Close database connection
@@ -135,7 +352,7 @@ extension Sample.Index {
 
             // #236: WAL journal mode lets readers (`cupertino read-sample`,
             // `cupertino list-samples`, `cupertino doctor`) proceed while
-            // a `cupertino save --samples` writer holds the DB. PRAGMA is
+            // a `cupertino save --source samples` writer holds the DB. PRAGMA is
             // idempotent and persists in the file header. Log and
             // continue on failure.
             if sqlite3_exec(dbPointer, "PRAGMA journal_mode = WAL", nil, nil, nil) != SQLITE_OK {
@@ -171,12 +388,27 @@ extension Sample.Index {
             database = dbPointer
         }
 
+        /// Stamp this pipeline's schema version into the
+        /// `samples_schema_version` table. Post-#1037 we no longer write
+        /// `PRAGMA user_version` from this pipeline: the per-file
+        /// `user_version` is a shared SQLite header byte that the
+        /// Search.Index pipeline also stamps, and once the two pipelines
+        /// share a file (target state of #1037) blind PRAGMA writes
+        /// would trample each other. The single-row `samples_schema_version`
+        /// table is per-pipeline state and never collides with other
+        /// pipelines' tables in the same file.
+        ///
+        /// Idempotent via `INSERT OR REPLACE`. The first call on a
+        /// fresh DB inserts the row; subsequent calls overwrite it with
+        /// the current `schemaVersion`. The table itself is created in
+        /// `createTables`; this method is always called after
+        /// `createTables` in `init`.
         private func setSchemaVersion() async throws {
             guard let database else {
                 throw Sample.Index.Error.databaseNotInitialized
             }
 
-            let sql = "PRAGMA user_version = \(Self.schemaVersion)"
+            let sql = "INSERT OR REPLACE INTO samples_schema_version (id, version) VALUES (1, \(Self.schemaVersion))"
             var errorPointer: UnsafeMutablePointer<CChar>?
             defer { sqlite3_free(errorPointer) }
 
@@ -196,6 +428,18 @@ extension Sample.Index {
             }
 
             let sql = """
+            -- Per-pipeline schema-version tracking (#1037). Replaces the
+            -- file-level `PRAGMA user_version` so this pipeline can share
+            -- a SQLite file with Search.Index without trampling each
+            -- other's version stamps. Single-row design: id always = 1,
+            -- version carries our compiled schemaVersion. Read by
+            -- `samplesSchemaVersionTablePresence()` (tri-state probe),
+            -- written by `setSchemaVersion()`.
+            CREATE TABLE IF NOT EXISTS samples_schema_version (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                version INTEGER NOT NULL
+            );
+
             -- Projects table: metadata about each sample project
             CREATE TABLE IF NOT EXISTS projects (
                 id TEXT PRIMARY KEY,

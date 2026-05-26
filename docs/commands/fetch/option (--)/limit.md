@@ -35,7 +35,7 @@ cupertino fetch --source packages --limit 100 --output-dir ./test-packages
 
 ## Behavior
 
-- For `packages` (stage 1, metadata refresh): stops after fetching N package metadata entries. Has no effect on stage 2 (archive download) — the archive set is driven by `PriorityPackagesCatalog`, not the metadata limit.
+- For `packages` (stage 1, metadata refresh): stops after fetching N package metadata entries. Has no effect on stage 2 (archive download), the archive set is driven by `PriorityPackagesCatalog`, not the metadata limit.
 - For `code`: Stops after downloading N ZIP files
 
 ## Notes

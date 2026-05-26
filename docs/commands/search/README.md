@@ -12,11 +12,11 @@ cupertino search <query> [options]
 
 Searches the local indexes. By default fans the query out across every available source and merges the results with reciprocal-rank fusion (`k = 60`, source-weighted); with `--source <name>` it pins the query to one source and returns that source's native list view. BM25F is the per-source ranker inside `apple-docs`; the top-level user-facing rank in fan-out mode is RRF-fused, not BM25.
 
-This command provides the same search functionality as the MCP `search` tool, allowing AI agents and users to search from the command line. (The pre-#239 per-source MCP tools `search_docs`, `search_hig`, `search_samples`, `search_all` were unified into the single `search` tool — `--source` here mirrors its `source` parameter.)
+This command provides the same search functionality as the MCP `search` tool, allowing AI agents and users to search from the command line. (The pre-#239 per-source MCP tools `search_docs`, `search_hig`, `search_samples`, `search_all` were unified into the single `search` tool, `--source` here mirrors its `source` parameter.)
 
 `search` operates in two modes:
 
-- **Default (no `--source`)**: fans the question out across every available DB in parallel — Apple docs, sample code, HIG, Apple Archive, Swift Evolution, swift.org, the Swift Book, packages, samples — and ranks the merged candidates via reciprocal-rank fusion (k=60). Output is chunked excerpts ready for LLM context. This used to be a separate `cupertino ask` command; it was absorbed into `search` in [#239](https://github.com/mihaelamj/cupertino/issues/239).
+- **Default (no `--source`)**: fans the question out across every available DB in parallel, Apple docs, sample code, HIG, Apple Archive, Swift Evolution, swift.org, the Swift Book, packages, samples, and ranks the merged candidates via reciprocal-rank fusion (k=60). Output is chunked excerpts ready for LLM context. This used to be a separate `cupertino ask` command; it was absorbed into `search` in [#239](https://github.com/mihaelamj/cupertino/issues/239).
 - **`--source <name>`**: queries one source and returns the source-specific list view (URI + summary). Use this when you know exactly which corpus you want.
 
 A failing fetcher (e.g. missing DB) collapses to empty rather than failing the whole query, so partial coverage still returns useful results.
@@ -207,11 +207,11 @@ cupertino search "swift testing fixtures" --packages-db ~/custom/packages.db
 Path to the sample-code index database. Used when `--source samples` (or the default fan-out mode) needs to query sample-code.
 
 **Type:** String
-**Default:** `~/.cupertino/samples.db`
+**Default:** `~/.cupertino/apple-sample-code.db`
 
 **Example:**
 ```bash
-cupertino search "@Observable" --source samples --sample-db ~/custom/samples.db
+cupertino search "@Observable" --source samples --sample-db ~/custom/apple-sample-code.db
 ```
 
 ### --per-source
@@ -254,7 +254,7 @@ Skip the samples source. Fan-out mode only.
 
 ### --brief
 
-Trim each result's excerpt to its first ~12 non-blank lines for triage. The `Read full:` hint, `See also` footer, and tips still print. Fan-out mode + text/markdown only — JSON keeps full chunks for programmatic consumers. ([#239](https://github.com/mihaelamj/cupertino/issues/239) follow-up)
+Trim each result's excerpt to its first ~12 non-blank lines for triage. The `Read full:` hint, `See also` footer, and tips still print. Fan-out mode + text/markdown only, JSON keeps full chunks for programmatic consumers. ([#239](https://github.com/mihaelamj/cupertino/issues/239) follow-up)
 
 **Type:** Flag
 **Default:** false (full chunks)
@@ -273,7 +273,7 @@ Restrict packages, samples, and apple-docs results to the named platform's deplo
 **Type:** String
 **Values:** `iOS`, `macOS`, `tvOS`, `watchOS`, `visionOS` (case-insensitive)
 
-Swift-language-version sources (`swift-evolution`, `swift-org`, `swift-book`) silently drop the filter — their pages don't carry `min_<platform>` columns at all.
+Swift-language-version sources (`swift-evolution`, `swift-org`, `swift-book`) silently drop the filter, their pages don't carry `min_<platform>` columns at all.
 
 **Example:**
 ```bash

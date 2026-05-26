@@ -1,6 +1,7 @@
 import Foundation
 import SampleIndexModels
 import SharedConstants
+
 // MARK: - Sample Search Markdown Formatter
 
 /// Formats sample search results as markdown
@@ -9,11 +10,19 @@ extension Sample.Format.Markdown {
         private let query: String
         private let framework: String?
         private let teasers: Services.Formatter.TeaserResults?
+        /// #1045 Gap 2: registry-derived source-id list for footer tips.
+        private let availableSources: [String]
 
-        public init(query: String, framework: String? = nil, teasers: Services.Formatter.TeaserResults? = nil) {
+        public init(
+            query: String,
+            framework: String? = nil,
+            teasers: Services.Formatter.TeaserResults? = nil,
+            availableSources: [String]
+        ) {
             self.query = query
             self.framework = framework
             self.teasers = teasers
+            self.availableSources = availableSources
         }
 
         public func format(_ result: Sample.Search.Result) -> String {
@@ -59,7 +68,8 @@ extension Sample.Format.Markdown {
             // Footer: tips and guidance
             let footer = Services.Formatter.Footer.Search.singleSource(
                 Shared.Constants.SourcePrefix.samples,
-                teasers: teasers
+                teasers: teasers,
+                availableSources: availableSources
             )
             output += footer.formatMarkdown()
 
@@ -75,10 +85,17 @@ extension Sample.Format.Markdown {
     public struct List: Services.Formatter.Result {
         private let totalCount: Int
         private let framework: String?
+        /// #1045 Gap 2: registry-derived source-id list for footer tips.
+        private let availableSources: [String]
 
-        public init(totalCount: Int, framework: String? = nil) {
+        public init(
+            totalCount: Int,
+            framework: String? = nil,
+            availableSources: [String]
+        ) {
             self.totalCount = totalCount
             self.framework = framework
+            self.availableSources = availableSources
         }
 
         public func format(_ projects: [Sample.Index.Project]) -> String {
@@ -106,7 +123,7 @@ extension Sample.Format.Markdown {
             }
 
             // Footer: tips and guidance
-            let footer = Services.Formatter.Footer.Search.singleSource(Shared.Constants.SourcePrefix.samples)
+            let footer = Services.Formatter.Footer.Search.singleSource(Shared.Constants.SourcePrefix.samples, availableSources: availableSources)
             output += footer.formatMarkdown()
 
             return output
@@ -119,7 +136,12 @@ extension Sample.Format.Markdown {
 /// Formats a single sample project as markdown
 extension Sample.Format.Markdown {
     public struct Project: Services.Formatter.Result {
-        public init() {}
+        /// #1045 Gap 2: registry-derived source-id list for footer tips.
+        private let availableSources: [String]
+
+        public init(availableSources: [String]) {
+            self.availableSources = availableSources
+        }
 
         public func format(_ project: Sample.Index.Project) -> String {
             var output = "# \(project.title)\n\n"
@@ -132,7 +154,7 @@ extension Sample.Format.Markdown {
             }
 
             // Footer: tips and guidance
-            let footer = Services.Formatter.Footer.Search.singleSource(Shared.Constants.SourcePrefix.samples)
+            let footer = Services.Formatter.Footer.Search.singleSource(Shared.Constants.SourcePrefix.samples, availableSources: availableSources)
             output += footer.formatMarkdown()
 
             return output
@@ -145,7 +167,12 @@ extension Sample.Format.Markdown {
 /// Formats a sample file as markdown
 extension Sample.Format.Markdown {
     public struct File: Services.Formatter.Result {
-        public init() {}
+        /// #1045 Gap 2: registry-derived source-id list for footer tips.
+        private let availableSources: [String]
+
+        public init(availableSources: [String]) {
+            self.availableSources = availableSources
+        }
 
         public func format(_ file: Sample.Index.File) -> String {
             // Determine language for syntax highlighting
@@ -161,7 +188,7 @@ extension Sample.Format.Markdown {
             output += "```\(language)\n\(file.content)\n```\n"
 
             // Footer: tips and guidance
-            let footer = Services.Formatter.Footer.Search.singleSource(Shared.Constants.SourcePrefix.samples)
+            let footer = Services.Formatter.Footer.Search.singleSource(Shared.Constants.SourcePrefix.samples, availableSources: availableSources)
             output += footer.formatMarkdown()
 
             return output

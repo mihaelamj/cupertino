@@ -31,7 +31,19 @@ public struct HIGSource: Search.SourceProvider {
 
     public var fetchInfo: Search.FetchInfo? { Self.fetchInfo }
 
-    public var destinationDB: Shared.Models.DatabaseDescriptor { .search }
+    public var destinationDB: Shared.Models.DatabaseDescriptor { .hig }
+
+    public var capabilities: Search.Capabilities {
+        .init(
+            searchers: [.text],
+            operations: [.readByURI],
+            metadata: [
+                .hasMinPlatformVersion: true,
+                .hasDeprecationAttrs: true,
+                .hasAvailabilityAttrs: true,
+            ]
+        )
+    }
 
     public func makeStrategy(env: Search.IndexEnvironment) -> any Search.SourceIndexingStrategy {
         Search.HIGStrategy(
@@ -42,5 +54,24 @@ public struct HIGSource: Search.SourceProvider {
 
     public func makeIndexer() -> any Search.SourceIndexer {
         Search.HIGIndexer()
+    }
+
+    /// #1042 Cluster 8: HIG uses its own search runner (`runHIGSearch`
+    /// in `CLIImpl.Command.Search` / `handleSearchHIG` in
+    /// `CompositeToolProvider`); not the default `.docs` route.
+    public var searchRoute: Search.SearchRoute { .hig }
+
+    /// 2026-05-26 audit Finding 9.7 + 11.1: per-source fetch strategy.
+    /// Lifts `CLIImpl.Command.Fetch.runHIGCrawl` into this target so
+    /// the CLI's dispatch becomes registry-driven.
+    public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? {
+        HIGFetchStrategy()
+    }
+
+    /// 2026-05-26 audit #1055: per-source read strategy. Shared
+    /// `Search.DocsReadStrategy` resolves to this source's per-source
+    /// DB via `env.docsDBURLs[sourceID]`.
+    public func makeReadStrategy() -> (any Search.SourceReadStrategy)? {
+        Search.DocsReadStrategy(sourceID: definition.id)
     }
 }

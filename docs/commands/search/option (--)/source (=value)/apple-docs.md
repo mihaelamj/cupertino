@@ -57,7 +57,7 @@ Examples:
 ## How to Populate
 
 ```bash
-# Full crawl (multi-day on full corpus, auto-resumable — `cupertino setup` is the
+# Full crawl (multi-day on full corpus, auto-resumable, `cupertino setup` is the
 # fast path for end users; use `fetch` only when re-crawling).
 cupertino fetch --source apple-docs
 

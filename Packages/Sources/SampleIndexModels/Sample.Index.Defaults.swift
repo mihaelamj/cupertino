@@ -18,9 +18,27 @@ import SharedConstants
 /// it owns (typically derived from a `Shared.Paths` value resolved at
 /// the composition root).
 extension Sample.Index {
-    /// `<baseDirectory>/samples.db` — the sample-code search index
+    /// `<baseDirectory>/apple-sample-code.db`: the sample-code index
     /// database path, relative to the caller's resolved base directory.
+    /// Post-#1037 this is the shared file that ALSO carries
+    /// SampleCodeSource's docs_metadata + docs_fts rows; the two
+    /// pipelines coexist via per-pipeline schema-version tables (see
+    /// `Sample.Index.Database.samples_schema_version` + Search.Index's
+    /// PRAGMA user_version). Pre-#1037 binaries used
+    /// `Shared.Constants.FileName.samplesDatabase` ("samples.db"); see
+    /// `legacySamplesDatabasePath` for the migration-detection accessor
+    /// that still resolves the old filename.
     public static func databasePath(baseDirectory: URL) -> URL {
+        baseDirectory.appendingPathComponent(Shared.Constants.FileName.appleSampleCodeDatabase)
+    }
+
+    /// `<baseDirectory>/samples.db`: the legacy pre-#1037 filename for
+    /// the sample-code index database. Kept as a separate accessor so
+    /// migration code can detect a user with a leftover samples.db on
+    /// disk after upgrading to the post-#1037 binary. Production reads
+    /// + writes go through `databasePath(baseDirectory:)` which now
+    /// resolves to `apple-sample-code.db`.
+    public static func legacySamplesDatabasePath(baseDirectory: URL) -> URL {
         baseDirectory.appendingPathComponent(Shared.Constants.FileName.samplesDatabase)
     }
 

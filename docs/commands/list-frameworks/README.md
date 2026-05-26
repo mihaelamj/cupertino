@@ -20,7 +20,7 @@ Output format: `text` (default), `json`, or `markdown`.
 
 ### --search-db
 
-Path to search database. Defaults to `~/.cupertino/search.db`.
+Override the apple-docs database path. Defaults to `~/.cupertino/apple-documentation.db` (resolved through the production source registry). The command also reads `apple-archive.db` for archived framework rows; the override applies to apple-docs only.
 
 ## Examples
 
@@ -46,7 +46,7 @@ Available Frameworks (402 total, 277640 documents):
   ...
 ```
 
-Counts depend on which corpus has been saved to `search.db`. Numbers above snapshot the v1.0 bundle; your local DB will vary.
+Counts depend on which corpora have been saved to `apple-documentation.db` (apple-docs) and `apple-archive.db` (apple-archive); other per-source DBs do not carry framework partitioning. Numbers above snapshot the v1.0 bundle; your local DB will vary.
 
 ## See Also
 

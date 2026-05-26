@@ -105,7 +105,13 @@ extension Search {
         /// filter is silently dropped at fetch time so a query like
         /// `--platform iOS --min-version 16` doesn't accidentally
         /// nuke the entire swift-evolution result set.
-        private static let swiftVersionSources: Set<String> = [
+        ///
+        /// #1042 Cluster 4 sub-1: production set is the 3-source default;
+        /// composition roots that have a `Search.SourceLookup` in hand
+        /// derive the set from `Search.Capabilities.metadata[.hasMinSwiftVersion]`
+        /// on each registered provider and pass it as an override at
+        /// init time.
+        public static let defaultSwiftVersionSources: Set<String> = [
             Shared.Constants.SourcePrefix.swiftEvolution,
             Shared.Constants.SourcePrefix.swiftOrg,
             Shared.Constants.SourcePrefix.swiftBook,
@@ -116,10 +122,19 @@ extension Search {
         /// content by Apple framework — `hig`, `swift-evolution`,
         /// `swift-org`, `swift-book` carry framework="" so applying
         /// the filter would zero them out.
-        private static let frameworkScopedSources: Set<String> = [
+        ///
+        /// #1042 Cluster 4 sub-2: same override hook as
+        /// `defaultSwiftVersionSources`. Composition roots that have a
+        /// `Search.SourceLookup` derive the set from
+        /// `Search.Capabilities.metadata[.hasFrameworkColumn]` on each
+        /// registered provider.
+        public static let defaultFrameworkScopedSources: Set<String> = [
             Shared.Constants.SourcePrefix.appleDocs,
             Shared.Constants.SourcePrefix.appleArchive,
         ]
+
+        private let swiftVersionSources: Set<String>
+        private let frameworkScopedSources: Set<String>
 
         /// - Parameters:
         ///   - searchIndex: shared Search.Index instance (fetchers inherit
@@ -143,25 +158,34 @@ extension Search {
             source: String,
             includeArchive: Bool = false,
             availability: Search.AvailabilityFilter? = nil,
-            framework: String? = nil
+            framework: String? = nil,
+            swiftVersionSources: Set<String>? = nil,
+            frameworkScopedSources: Set<String>? = nil
         ) {
             self.searchIndex = searchIndex
             sourceName = source
             self.includeArchive = includeArchive
             self.availability = availability
             self.framework = framework
+            // #1042 Cluster 4 sub-1 + sub-2: composition-root override
+            // for the capability-set lookups. Pre-fix these were private
+            // statics; post-fix they're instance properties defaulting
+            // to the production literals. A registry-aware composition
+            // root passes derived sets here.
+            self.swiftVersionSources = swiftVersionSources ?? Self.defaultSwiftVersionSources
+            self.frameworkScopedSources = frameworkScopedSources ?? Self.defaultFrameworkScopedSources
         }
 
         public func fetch(question: String, limit: Int) async throws -> [SmartCandidate] {
             // Apply availability params only for OS-versioned sources.
-            let effective = Self.swiftVersionSources.contains(sourceName)
+            let effective = swiftVersionSources.contains(sourceName)
                 ? nil
                 : availability
             // Apply framework filter only on the sources whose rows are
             // partitioned by Apple framework. Pre-fix, the unified path
             // dropped `--framework` entirely; #628's apple-docs/hig
             // discrepancy was the user-visible symptom.
-            let effectiveFramework = Self.frameworkScopedSources.contains(sourceName)
+            let effectiveFramework = frameworkScopedSources.contains(sourceName)
                 ? framework
                 : nil
             let rows = try await searchIndex.search(

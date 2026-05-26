@@ -1,6 +1,7 @@
 import CoreProtocols
 import Foundation
 import SharedConstants
+
 // MARK: - Core.PackageIndexing.ResolvedPackage
 
 extension Core.PackageIndexing {

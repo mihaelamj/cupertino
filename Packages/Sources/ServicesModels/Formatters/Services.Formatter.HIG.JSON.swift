@@ -1,5 +1,6 @@
 import Foundation
 import SearchModels
+
 // MARK: - HIG JSON Formatter
 
 extension Services.Formatter.HIG {

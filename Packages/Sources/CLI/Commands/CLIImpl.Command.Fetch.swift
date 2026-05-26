@@ -9,11 +9,10 @@ import CoreProtocols
 import CoreSampleCode
 import CoreSampleCodeModels
 import CoreSampleCodeWebKit
-import Crawler
 import CrawlerModels
 import CrawlerWebKit
+import CupertinoComposition
 import Foundation
-import Ingest
 import Logging
 import LoggingModels
 import SearchAPI
@@ -219,45 +218,126 @@ extension CLIImpl.Command {
             logStartMessage()
 
             // Post-#1031 (Phase 1I.c.2 of epic #1007): dispatch on
-            // canonical source-id strings instead of the dissolved
-            // FetchType enum. Special tokens: "all" (iterate all
-            // fetchable sources sequentially), "availability"
-            // (maintenance op, not a registry source).
+            // 2026-05-26 audit Finding 9.7 + 11.1: dispatch via the
+            // registered provider's `makeFetchStrategy()` for every
+            // source that has a strategy. Special tokens (`"all"` /
+            // `"availability"`) stay above the registry lookup
+            // because they aren't registered providers — `"all"` is
+            // a fan-out alias and `"availability"` is a maintenance
+            // operation that refreshes the bundled SDK availability
+            // data file (not a corpus source).
+            //
+            // The remaining 3 legacy switch arms (packages / samples
+            // / apple-sample-code) are the complex multi-stage
+            // handlers; they're queued for the same lift treatment
+            // in a follow-up (per issue #1051). For NEW sources,
+            // adding a `Search.SourceFetchStrategy` to the
+            // `<X>Source` target is enough — zero edits here.
             switch source {
             case "all":
                 try await runAllFetches()
-            case Shared.Constants.SourcePrefix.packages:
-                try await runPackageFetch()
-            case Shared.Constants.SourcePrefix.appleSampleCode:
-                try await runCodeFetch()
-            case Shared.Constants.SourcePrefix.samples:
-                try await runSamplesFetch()
-            case Shared.Constants.SourcePrefix.appleArchive:
-                try await runArchiveCrawl()
-            case Shared.Constants.SourcePrefix.hig:
-                try await runHIGCrawl()
             case "availability":
                 try await runAvailabilityFetch()
-            case Shared.Constants.SourcePrefix.swiftEvolution:
-                try await runEvolutionCrawl()
-            case Shared.Constants.SourcePrefix.appleDocs,
-                 Shared.Constants.SourcePrefix.swiftOrg,
-                 Shared.Constants.SourcePrefix.swiftBook:
-                // Web-crawl fall-through: apple-docs + swift-org +
-                // swift-book. swift-book is a view-source whose pages
-                // are co-crawled by SwiftOrgStrategy (URL-prefix tagging
-                // at emission time); routing --source swift-book here
-                // means the user gets the swift-org crawl (which also
-                // emits swift-book-tagged pages).
-                try await runStandardCrawl()
             default:
+                // 2026-05-26 audit Finding 9.7 + 11.1: every shipped
+                // source (apple-docs / hig / apple-archive /
+                // swift-evolution / swift-org / swift-book / samples /
+                // apple-sample-code / packages) routes through the
+                // registry dispatch via its `Search.SourceFetchStrategy`.
+                // `apple-sample-code` is the legacy alias for `samples`;
+                // both flow through `SampleCodeFetchStrategy`. Adding
+                // a new source = zero edits to this switch.
+                try await runRegistryFetchStrategy()
+            }
+        }
+
+        /// 2026-05-26 audit Finding 9.7 + 11.1: registry-driven fetch
+        /// dispatch. Resolves the source-id against the production
+        /// registry, asks the provider for its `Search.SourceFetchStrategy`,
+        /// and runs it with the CLI-supplied `FetchEnvironment`. The
+        /// strategy concrete lives in the source's own SPM target
+        /// (`<X>Source/<X>Source.FetchStrategy.swift`); CLI no longer
+        /// owns the per-source fetch dispatch.
+        private mutating func runRegistryFetchStrategy() async throws {
+            let registry = CupertinoComposition.makeProductionSourceRegistry()
+            // Canonicalize legacy `apple-sample-code` alias to `samples`
+            // (SampleCodeSource's registered id) so the lookup hits.
+            let canonicalSourceID = source == Shared.Constants.SourcePrefix.appleSampleCode
+                ? Shared.Constants.SourcePrefix.samples
+                : source
+            guard let entry = registry.entry(for: canonicalSourceID) else {
+                let validIDs = registry.allEnabled.map(\.definition.id).sorted()
+                let validList = (["all", "availability"] + validIDs).joined(separator: ", ")
+                throw ValidationError("Unknown --source value '\(source)'. Valid sources: \(validList).")
+            }
+            guard let strategy = entry.provider.makeFetchStrategy() else {
                 throw ValidationError(
-                    "Unknown --source value '\(source)'. Valid sources: " +
-                        "apple-docs, swift-org, swift-book, swift-evolution, " +
-                        "packages, apple-sample-code, samples, apple-archive, " +
-                        "hig, availability, all."
+                    "Source '\(source)' has no fetch capability — its corpus arrives via "
+                        + "`cupertino setup` or is co-crawled by another source. "
+                        + "Try `cupertino fetch --source <X>` where X is one of the fetchable sources."
                 )
             }
+            let outputURL = try await resolveFetchOutputURL(for: entry.provider)
+            try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
+            let env = await MainActor.run { makeFetchEnvironment(outputDirectory: outputURL) }
+            try await strategy.run(env: env)
+        }
+
+        /// Resolve the output directory for a per-source fetch.
+        /// Respects `--output-dir` when supplied; otherwise reads
+        /// `provider.fetchInfo?.defaultOutputDirKey` and resolves
+        /// against `Shared.Paths.live()`.
+        private func resolveFetchOutputURL(for provider: any SearchModels.Search.SourceProvider) async throws -> URL {
+            if let outputDir {
+                return URL(fileURLWithPath: outputDir).expandingTildeInPath
+            }
+            let paths = Shared.Paths.live()
+            guard let key = provider.fetchInfo?.defaultOutputDirKey else {
+                // Provider has a fetch strategy but no fetchInfo dir
+                // key — unusual but valid (the strategy could fetch
+                // to a baseDirectory-relative location). Default to
+                // baseDirectory.
+                return paths.baseDirectory
+            }
+            return Self.resolveDirectory(forKey: key, paths: paths)
+        }
+
+        /// Build the `Search.FetchEnvironment` value passed to the
+        /// per-source strategy. Reads every CLI flag once at the
+        /// dispatch site; the strategy concretes pick out the fields
+        /// they need and ignore the rest.
+        @MainActor
+        private func makeFetchEnvironment(outputDirectory: URL) -> SearchModels.Search.FetchEnvironment {
+            let recording: any LoggingModels.Logging.Recording =
+                Cupertino.Context.composition.logging.recording
+            return SearchModels.Search.FetchEnvironment(
+                outputDirectory: outputDirectory,
+                maxPages: maxPages,
+                maxDepth: maxDepth,
+                force: force,
+                startClean: startClean,
+                retryErrors: retryErrors,
+                baseline: baseline.map { URL(fileURLWithPath: $0).expandingTildeInPath },
+                urls: urls.map { URL(fileURLWithPath: $0).expandingTildeInPath },
+                startURL: startURL.flatMap { URL(string: $0) },
+                allowedPrefixes: allowedPrefixes.map {
+                    $0.split(separator: ",").map { String($0.trimmingCharacters(in: .whitespaces)) }
+                },
+                discoveryModeRawValue: discoveryMode.rawValue,
+                onlyAccepted: onlyAccepted,
+                limit: limit,
+                skipMetadata: skipMetadata,
+                skipArchives: skipArchives,
+                annotateAvailability: annotateAvailability,
+                recurse: recurse,
+                refresh: refresh,
+                fast: fast,
+                logger: recording,
+                httpFetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
+                htmlParser: LiveHTMLParserStrategy(),
+                appleJSONParser: LiveAppleJSONParserStrategy(),
+                priorityPackageStrategy: LivePriorityPackageStrategy()
+            )
         }
 
         private func logStartMessage() {
@@ -277,23 +357,38 @@ extension CLIImpl.Command {
         /// `--source all` iteration. Mirrors pre-#1031
         /// `FetchType.allTypes` (which was `webCrawlTypes` +
         /// `directFetchTypes` covering 9 cases including BOTH `.code`
-        /// and `.samples`). Includes the 8 fetchable registry sources
-        /// + `availability` maintenance token + `apple-sample-code`
-        /// legacy bundle. `swift-book` view-source is NOT in this list:
-        /// its pages are co-crawled by SwiftOrgStrategy via URL-prefix
-        /// tagging, so iterating `swift-org` already covers them; a
-        /// separate `swift-book` leg would double-fetch.
-        private static let allFetchableSources: [String] = [
-            Shared.Constants.SourcePrefix.appleDocs,
-            Shared.Constants.SourcePrefix.swiftOrg,
-            Shared.Constants.SourcePrefix.swiftEvolution,
-            Shared.Constants.SourcePrefix.packages,
-            Shared.Constants.SourcePrefix.appleSampleCode,
-            Shared.Constants.SourcePrefix.samples,
-            Shared.Constants.SourcePrefix.appleArchive,
-            Shared.Constants.SourcePrefix.hig,
-            "availability",
-        ]
+        /// and `.samples`). #1042 Cluster 8 sub-3: derived from
+        /// the production source registry at call time. Every
+        /// `Search.SourceProvider` with a non-nil `fetchInfo` ships a
+        /// fetch leg; we add the `availability` maintenance token + the
+        /// `apple-sample-code` legacy alias on top. `swift-book`
+        /// view-source remains opted-out (its pages are co-crawled by
+        /// SwiftOrgStrategy via URL-prefix tagging; a separate
+        /// `swift-book` leg would double-fetch) — encoded by checking
+        /// each provider's `fetchInfo != nil`, since SwiftBookSource
+        /// declares `fetchInfo == nil`.
+        ///
+        /// Static helper because `runAllFetches` is called on `self`
+        /// but iterates source-ids without needing instance state.
+        private static func allFetchableSources() -> [String] {
+            let registry = CLIImpl.makeProductionSourceRegistry()
+            var ids = registry.allEnabled
+                .filter { $0.fetchInfo != nil }
+                .map(\.definition.id)
+            // appleSampleCode is the legacy alias for samples; the
+            // dispatch in `fetch --source apple-sample-code` canonicalises
+            // to `samples`. Listing both here preserves the pre-#1042
+            // dual-keyed behaviour for the `--source all` enumerator.
+            if !ids.contains(Shared.Constants.SourcePrefix.appleSampleCode) {
+                ids.append(Shared.Constants.SourcePrefix.appleSampleCode)
+            }
+            // `availability` is a non-source maintenance token (refreshes
+            // the bundled SDK availability data file). Not registered as
+            // a SourceProvider; threaded through the fetch surface as a
+            // sibling leg.
+            ids.append("availability")
+            return ids
+        }
 
         /// Lookup the user-facing display name for a source-id. For
         /// registered providers, reads from the registry's FetchInfo;
@@ -348,16 +443,13 @@ extension CLIImpl.Command {
         /// namespace because `Search` resolves to
         /// `CLIImpl.Command.Search` inside `extension CLIImpl.Command`.
         private static func resolveDirectory(forKey key: SearchModels.Search.FetchInfo.DefaultOutputDirKey, paths: Shared.Paths) -> URL {
-            switch key {
-            case .docs: return paths.docsDirectory
-            case .swiftOrg: return paths.swiftOrgDirectory
-            case .swiftEvolution: return paths.swiftEvolutionDirectory
-            case .packages: return paths.packagesDirectory
-            case .sampleCode: return paths.sampleCodeDirectory
-            case .archive: return paths.archiveDirectory
-            case .hig: return paths.higDirectory
-            case .baseDirectory: return paths.baseDirectory
+            // #1042 Cluster 9+13: the key's rawValue IS the dirname.
+            // `.baseDirectory` is the only edge case — it points at the
+            // base itself, not a sub-directory under it.
+            if key == .baseDirectory {
+                return paths.baseDirectory
             }
+            return paths.directory(named: key.rawValue)
         }
 
         private mutating func runAllFetches() async throws {
@@ -365,7 +457,7 @@ extension CLIImpl.Command {
             let baseCommand = self
 
             try await withThrowingTaskGroup(of: (String, Result<Void, Error>).self) { group in
-                for sourceID in Self.allFetchableSources {
+                for sourceID in Self.allFetchableSources() {
                     group.addTask {
                         await Self.fetchSingleSource(sourceID, baseCommand: baseCommand)
                     }
@@ -424,33 +516,6 @@ extension CLIImpl.Command {
             }
         }
 
-        private mutating func runStandardCrawl() async throws {
-            let url = try validateStartURL()
-            let outputDirectory = try await determineOutputDirectory(for: url)
-            if startClean {
-                try Ingest.Session.clearSavedSession(at: outputDirectory, logger: Cupertino.Context.composition.logging.recording)
-            }
-            if retryErrors {
-                try Ingest.Session.requeueErroredURLs(at: outputDirectory, maxDepth: maxDepth, logger: Cupertino.Context.composition.logging.recording)
-            }
-            if let baselinePath = baseline {
-                let baselineURL = URL(fileURLWithPath: baselinePath).expandingTildeInPath
-                try Ingest.Session.requeueFromBaseline(at: outputDirectory, baselineDir: baselineURL, maxDepth: maxDepth, logger: Cupertino.Context.composition.logging.recording)
-            }
-            if let urlsPath = urls {
-                let urlsURL = URL(fileURLWithPath: urlsPath).expandingTildeInPath
-                try Ingest.Session.enqueueURLsFromFile(
-                    at: outputDirectory,
-                    urlsFile: urlsURL,
-                    maxDepth: maxDepth,
-                    startURL: url,
-                    logger: Cupertino.Context.composition.logging.recording
-                )
-            }
-            let config = createConfiguration(url: url, outputDirectory: outputDirectory)
-            try await executeCrawl(with: config)
-        }
-
         // clearSavedSession lifted to Ingest.Session.clearSavedSession (#247)
 
         // requeueErroredURLs lifted to Ingest.Session.requeueErroredURLs (#247)
@@ -478,755 +543,13 @@ extension CLIImpl.Command {
         //
         // enqueueURLsFromFile + collectBaselineURLs + lowercaseDocPath all lifted
         // to Ingest.Session in #247.
-
-        private func validateStartURL() throws -> URL {
-            let urlString = startURL ?? Self.defaultCrawlBaseURL(forSource: source)
-            guard let url = URL(string: urlString) else {
-                throw ValidationError("Invalid start URL: \(urlString)")
-            }
-            return url
-        }
-
-        /// Map a source-id to the canonical crawl base URL. For
-        /// registered providers reads `fetchInfo.crawlBaseURLs.first`;
-        /// returns empty string for non-web-crawl sources (matches the
-        /// pre-#1031 `FetchType.defaultURL` switch arms).
-        ///
-        /// swift-book special case: SwiftBookSource is a view-source
-        /// with `fetchInfo == nil` (SwiftOrgStrategy owns the crawl);
-        /// `cupertino fetch --source swift-book` reaches this helper
-        /// during `runStandardCrawl`. Falls through to SwiftOrgSource's
-        /// crawl base URL so the swift-org crawl is what actually runs
-        /// (SwiftOrgStrategy then tags swift-book pages via URL-prefix
-        /// during emission). Without this fallthrough, validateStartURL
-        /// would see an empty URL and throw.
-        private static func defaultCrawlBaseURL(forSource source: String) -> String {
-            let registry = CLIImpl.makeProductionSourceRegistry()
-            // swift-book view-source -> piggyback on swift-org's crawl.
-            let effectiveSource = (source == Shared.Constants.SourcePrefix.swiftBook)
-                ? Shared.Constants.SourcePrefix.swiftOrg
-                : source
-            if let provider = registry.allEnabled.first(where: { $0.definition.id == effectiveSource }) {
-                return provider.fetchInfo?.crawlBaseURLs.first ?? ""
-            }
-            return ""
-        }
-
-        /// Map a source-id to its default URL-prefix allowlist for the
-        /// crawler. Returns the full `fetchInfo.crawlBaseURLs` array
-        /// (swift-org spans www.swift.org + docs.swift.org); returns
-        /// nil for sources that should auto-detect from the start URL
-        /// (matches the pre-#1031 `FetchType.defaultAllowedPrefixes`
-        /// switch shape).
-        private static func defaultAllowedPrefixes(forSource source: String) -> [String]? {
-            guard source == Shared.Constants.SourcePrefix.swiftOrg else {
-                // Auto-detect from start URL for non-swift-org sources.
-                return nil
-            }
-            // swift-org needs explicit prefixes covering both www.swift.org
-            // and docs.swift.org (swift-book content lives under the latter).
-            return [
-                Shared.Constants.BaseURL.swiftOrg,
-                Shared.Constants.BaseURL.swiftBook,
-            ]
-        }
-
-        private func determineOutputDirectory(for url: URL) async throws -> URL {
-            if let outputDir {
-                return URL(fileURLWithPath: outputDir).expandingTildeInPath
-            }
-            return try await findExistingSession(for: url)
-                ?? URL(fileURLWithPath: Self.defaultOutputDir(forSource: source, paths: Shared.Paths.live())).expandingTildeInPath
-        }
-
-        private func findExistingSession(for url: URL) async throws -> URL? {
-            // Path-DI composition sub-root (#535).
-            let paths = Shared.Paths.live()
-            let candidates = [
-                paths.docsDirectory,
-                paths.swiftOrgDirectory,
-                paths.swiftBookDirectory,
-            ]
-
-            for candidate in candidates {
-                if let sessionDir = Ingest.Session.checkForSession(at: candidate, matching: url, logger: Cupertino.Context.composition.logging.recording) {
-                    return sessionDir
-                }
-            }
-
-            return try await scanCupertinoDirectory(for: url)
-        }
-
         // checkForSession lifted to Ingest.Session.checkForSession (#247)
-
-        private func scanCupertinoDirectory(for url: URL) async throws -> URL? {
-            let cupertinoDir = Shared.Paths.live().baseDirectory
-
-            guard let contents = try? FileManager.default.contentsOfDirectory(
-                at: cupertinoDir,
-                includingPropertiesForKeys: [.isDirectoryKey],
-                options: [.skipsHiddenFiles]
-            ) else {
-                return nil
-            }
-
-            for dir in contents {
-                let isDirectory = (try? dir.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory
-                guard isDirectory == true else {
-                    continue
-                }
-                if let sessionDir = Ingest.Session.checkForSession(at: dir, matching: url, logger: Cupertino.Context.composition.logging.recording) {
-                    return sessionDir
-                }
-            }
-
-            return nil
-        }
-
-        private func createConfiguration(
-            url: URL,
-            outputDirectory: URL
-        ) -> Shared.Configuration {
-            // Use user-provided prefixes, or fall back to source defaults
-            // (swift-org spans www.swift.org + docs.swift.org per the
-            // pre-#1031 FetchType.swift.defaultAllowedPrefixes arm).
-            let prefixes: [String]? = allowedPrefixes?
-                .split(separator: ",")
-                .map { String($0.trimmingCharacters(in: .whitespaces)) }
-                ?? Self.defaultAllowedPrefixes(forSource: source)
-
-            return Shared.Configuration(
-                crawler: Shared.Configuration.Crawler(
-                    startURL: url,
-                    allowedPrefixes: prefixes,
-                    maxPages: maxPages,
-                    maxDepth: maxDepth,
-                    outputDirectory: outputDirectory,
-                    discoveryMode: discoveryMode
-                ),
-                changeDetection: Shared.Configuration.ChangeDetection(
-                    forceRecrawl: force,
-                    outputDirectory: outputDirectory
-                ),
-                output: Shared.Configuration.Output(format: .markdown)
-            )
-        }
-
-        private func executeCrawl(with config: Shared.Configuration) async throws {
-            // GoF Strategy (1994 p. 315): the crawler's three injected
-            // algorithms (HTML → structured page, Apple-JSON → markdown,
-            // priority-package catalog generation) are constructed here,
-            // at the fetch command's composition sub-root. Each Live
-            // struct is stateless, so per-call construction is the right
-            // shape — Singleton (p. 127) would only be appropriate if a
-            // single-instance invariant mattered, which it doesn't here.
-            let htmlParser: any Crawler.HTMLParserStrategy = LiveHTMLParserStrategy()
-            let appleJSONParser: any Crawler.AppleJSONParserStrategy = LiveAppleJSONParserStrategy()
-            let priorityPackageStrategy: any Crawler.PriorityPackageStrategy = LivePriorityPackageStrategy()
-            // GoF Strategy seam for log emission (1994 p. 315). The
-            // Crawler target imports only LoggingModels (the protocol
-            // surface); the production OSLog + console + file conformer
-            // is wired here at the composition sub-root.
-            let logger: any LoggingModels.Logging.Recording = Cupertino.Context.composition.logging.recording
-
-            let crawler = await Crawler.AppleDocs(
-                configuration: config,
-                htmlParser: htmlParser,
-                appleJSONParser: appleJSONParser,
-                priorityPackageStrategy: priorityPackageStrategy,
-                fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
-                logger: logger
-            )
-            let stats = try await crawler.crawl(progress: AppleDocsCrawlProgressObserver(
-                recording: Cupertino.Context.composition.logging.recording
-            ))
-
-            logCrawlCompletion(stats)
-        }
-
-        /// Closure-free observer for the Apple-docs crawl that prints
-        /// per-URL progress lines through the binary's recorder. Replaces
-        /// the previous trailing-closure pattern.
-        private struct AppleDocsCrawlProgressObserver: Crawler.AppleDocsProgressObserving {
-            let recording: any LoggingModels.Logging.Recording
-
-            func observe(progress: Crawler.AppleDocsProgress) {
-                let percentage = String(format: "%.1f", progress.percentage)
-                let urlComponent = progress.currentURL.lastPathComponent
-                recording.output("   Progress: \(percentage)% - \(urlComponent)")
-            }
-        }
-
-        private func logCrawlCompletion(_ stats: Shared.Models.CrawlStatistics) {
-            Cupertino.Context.composition.logging.recording.output("")
-            Cupertino.Context.composition.logging.recording.info("✅ Crawl completed!")
-            Cupertino.Context.composition.logging.recording.info("   Total: \(stats.totalPages) pages")
-            Cupertino.Context.composition.logging.recording.info("   New: \(stats.newPages)")
-            Cupertino.Context.composition.logging.recording.info("   Updated: \(stats.updatedPages)")
-            Cupertino.Context.composition.logging.recording.info("   Skipped: \(stats.skippedPages)")
-            if let duration = stats.duration {
-                Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(duration))s")
-            }
-        }
-
-        private func runEvolutionCrawl() async throws {
-            let defaultPath = Shared.Paths.live().swiftEvolutionDirectory.path
-            let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
-            let logger: any LoggingModels.Logging.Recording = Cupertino.Context.composition.logging.recording
-
-            let crawler = await Crawler.Evolution(
-                outputDirectory: outputURL,
-                onlyAccepted: onlyAccepted,
-                logger: logger
-            )
-
-            let stats = try await crawler.crawl(progress: EvolutionCrawlProgressObserver(
-                recording: Cupertino.Context.composition.logging.recording
-            ))
-
-            Cupertino.Context.composition.logging.recording.output("")
-            Cupertino.Context.composition.logging.recording.info("✅ Download completed!")
-            Cupertino.Context.composition.logging.recording.info("   Total: \(stats.totalProposals) proposals")
-            Cupertino.Context.composition.logging.recording.info("   New: \(stats.newProposals)")
-            Cupertino.Context.composition.logging.recording.info("   Updated: \(stats.updatedProposals)")
-            Cupertino.Context.composition.logging.recording.info("   Errors: \(stats.errors)")
-            if let duration = stats.duration {
-                Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(duration))s")
-            }
-        }
-
-        /// `--source packages`: runs metadata refresh then archive download in
-        /// sequence. Either stage can be skipped via `--skip-metadata` /
-        /// `--skip-archives`. The two were separate fetch types until #217;
-        /// merged because they always ran back-to-back, shared the output dir,
-        /// and the `package-docs` name was misleading (it fetches whole archives,
-        /// not READMEs). Stage 2 reads `Core.PackageIndexing.PriorityPackagesCatalog`, not the
-        /// metadata catalog, so the stages are independent.
-        private func runPackageFetch() async throws {
-            let defaultPath = Shared.Paths.live().packagesDirectory.path
-            let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
-
-            try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
-
-            if skipMetadata, skipArchives, !annotateAvailability {
-                Cupertino.Context.composition.logging.recording.error(
-                    "❌ Both --skip-metadata and --skip-archives passed without --annotate-availability — nothing to do."
-                )
-                throw ExitCode.failure
-            }
-
-            if ProcessInfo.processInfo.environment[Shared.Constants.EnvVar.githubToken] == nil {
-                Cupertino.Context.composition.logging.recording.info(Shared.Constants.Message.gitHubTokenTip)
-                Cupertino.Context.composition.logging.recording.info("   \(Shared.Constants.Message.rateLimitWithoutToken)")
-                Cupertino.Context.composition.logging.recording.info("   \(Shared.Constants.Message.rateLimitWithToken)")
-                Cupertino.Context.composition.logging.recording.info("   \(Shared.Constants.Message.exportGitHubToken)\n")
-            }
-
-            if !skipMetadata {
-                try await runPackageMetadataStage(outputURL: outputURL)
-            } else {
-                Cupertino.Context.composition.logging.recording.info("⏭  --skip-metadata: skipping Swift Package Index metadata refresh")
-            }
-
-            if !skipArchives {
-                try await runPackageArchivesStage(outputURL: outputURL)
-            } else {
-                Cupertino.Context.composition.logging.recording.info("⏭  --skip-archives: skipping GitHub archive download")
-            }
-
-            if annotateAvailability {
-                try await runPackageAnnotationStage(outputURL: outputURL)
-            }
-        }
-
-        /// Stage 3 (#219): walk every `<owner>/<repo>/` subdir under `outputURL`
-        /// and write `availability.json` capturing `Package.swift` deployment
-        /// targets and every `@available(...)` attribute occurrence in the
-        /// `Sources/` and `Tests/` trees. Pure on-disk pass — runs whether or
-        /// not stage 2 just downloaded fresh archives. Idempotent.
-        private func runPackageAnnotationStage(outputURL: URL) async throws {
-            Cupertino.Context.composition.logging.recording.info("🏷  Stage 3 — Annotating availability metadata (#219)")
-
-            let fm = FileManager.default
-            guard fm.fileExists(atPath: outputURL.path) else {
-                Cupertino.Context.composition.logging.recording.error(
-                    "❌ Packages directory \(outputURL.path) doesn't exist — run with stage 2 first."
-                )
-                throw ExitCode.failure
-            }
-
-            let owners = (try? Shared.Utils.FileSystem.contentsOfDirectory(at: outputURL, includingPropertiesForKeys: nil))?
-                .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
-                .filter { !$0.lastPathComponent.hasPrefix(".") }
-                ?? []
-
-            let annotator = Core.PackageIndexing.PackageAvailabilityAnnotator()
-            var packagesAnnotated = 0
-            var totalAttrs = 0
-            let startedAt = Date()
-
-            for ownerURL in owners.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
-                let repos = (try? Shared.Utils.FileSystem.contentsOfDirectory(at: ownerURL, includingPropertiesForKeys: nil))?
-                    .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
-                    .filter { !$0.lastPathComponent.hasPrefix(".") }
-                    ?? []
-
-                for repoURL in repos.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
-                    let label = "\(ownerURL.lastPathComponent)/\(repoURL.lastPathComponent)"
-                    do {
-                        let result = try await annotator.annotate(packageDirectory: repoURL)
-                        packagesAnnotated += 1
-                        totalAttrs += result.stats.totalAttributes
-                        Cupertino.Context.composition.logging.recording.info(
-                            "  ✅ \(label) — \(result.stats.totalAttributes) @available attrs across "
-                                + "\(result.stats.filesWithAvailability)/\(result.stats.filesScanned) files"
-                        )
-                    } catch {
-                        Cupertino.Context.composition.logging.recording.error("  ✗ \(label) — \(error.localizedDescription)")
-                    }
-                }
-            }
-
-            let duration = Int(Date().timeIntervalSince(startedAt))
-            Cupertino.Context.composition.logging.recording.output("")
-            Cupertino.Context.composition.logging.recording.info("✅ Annotation completed")
-            Cupertino.Context.composition.logging.recording.info("   Packages annotated: \(packagesAnnotated)")
-            Cupertino.Context.composition.logging.recording.info("   Total @available attrs: \(totalAttrs)")
-            Cupertino.Context.composition.logging.recording.info("   Duration: \(duration)s")
-        }
-
-        private func runPackageMetadataStage(outputURL: URL) async throws {
-            Cupertino.Context.composition.logging.recording.info("📇 Stage 1/2 — Refreshing Swift Package Index metadata")
-
-            let fetcher = Core.PackageIndexing.PackageFetcher(
-                outputDirectory: outputURL,
-                limit: limit,
-                resume: !startClean,
-                logger: Cupertino.Context.composition.logging.recording
-            )
-
-            let stats = try await fetcher.fetch(progress: PackageFetcherProgressObserver(
-                recording: Cupertino.Context.composition.logging.recording
-            ))
-
-            Cupertino.Context.composition.logging.recording.output("")
-            Cupertino.Context.composition.logging.recording.info("✅ Metadata refresh completed")
-            Cupertino.Context.composition.logging.recording.info("   Total packages: \(stats.totalPackages)")
-            Cupertino.Context.composition.logging.recording.info("   Successful: \(stats.successfulFetches)")
-            Cupertino.Context.composition.logging.recording.info("   Errors: \(stats.errors)")
-            if let duration = stats.duration {
-                Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(duration))s")
-            }
-            Cupertino.Context.composition.logging.recording.info("   📁 \(outputURL.path)/\(Shared.Constants.FileName.packagesWithStars)\n")
-        }
-
         // #673 Phase D iter-5: 174-line body — Stage 2 of the
         // packages fetch: priority-catalog load → resolve → per-archive
         // download → magic-bytes validation → on-disk catalog write →
         // skip-statistics accounting. Linear pipeline; helpers would
         // need to pass a 6-tuple of state to be useful.
         // swiftlint:disable:next function_body_length
-        private func runPackageArchivesStage(outputURL: URL) async throws {
-            Cupertino.Context.composition.logging.recording.info("📦 Stage 2/2 — Downloading priority package archives")
-
-            // Path-DI arc (#535): construct a `Shared.Paths` at the
-            // function's composition sub-root and pass explicit URLs.
-            let paths = Shared.Paths.live()
-
-            // Construct the priority-packages catalog with the resolved
-            // base directory (#535: catalog is now an actor, not a singleton).
-            let priorityCatalog = Core.PackageIndexing.PriorityPackagesCatalog(baseDirectory: paths.baseDirectory)
-
-            // Load priority packages
-            let priorityPackages = await priorityCatalog.allPackages
-
-            guard !priorityPackages.isEmpty else {
-                let priorityPackagesPath = paths.packagesDirectory
-                    .appendingPathComponent(Shared.Constants.FileName.priorityPackages)
-                    .path
-                Cupertino.Context.composition.logging.recording.error("❌ Error: No priority packages found")
-                Cupertino.Context.composition.logging.recording.error("   Searched:")
-                Cupertino.Context.composition.logging.recording.error("   - \(priorityPackagesPath)")
-                Cupertino.Context.composition.logging.recording.error("   - Shared.Constants.CriticalApplePackages")
-                Cupertino.Context.composition.logging.recording.error("   - Shared.Constants.KnownEcosystemPackages")
-                Cupertino.Context.composition.logging.recording.error("\n   Please ensure at least one package source is configured.")
-                throw ExitCode.failure
-            }
-
-            // Convert to PackageReference format
-            let seedRefs = priorityPackages.compactMap { pkg -> Shared.Models.PackageReference? in
-                // Extract owner from URL if not provided
-                let owner: String
-                if let explicitOwner = pkg.owner, !explicitOwner.isEmpty {
-                    owner = explicitOwner
-                } else {
-                    // Parse from GitHub URL: https://github.com/owner/repo
-                    guard let url = URL(string: pkg.url) else {
-                        return nil
-                    }
-                    let pathComponents = Array(url.pathComponents.dropFirst())
-                    guard pathComponents.count >= 2 else {
-                        return nil
-                    }
-                    owner = pathComponents[0]
-                }
-
-                let isApple = owner == Shared.Constants.GitHubOrg.apple
-                    || owner == Shared.Constants.GitHubOrg.swiftlang
-                    || owner == Shared.Constants.GitHubOrg.swiftServer
-                return Shared.Models.PackageReference(
-                    owner: owner,
-                    repo: pkg.repo,
-                    url: pkg.url,
-                    priority: isApple ? .appleOfficial : .ecosystem
-                )
-            }
-
-            let exclusions = Core.PackageIndexing.ExclusionList.load(from: paths.baseDirectory)
-            let seedChecksum = Core.PackageIndexing.ResolvedPackagesStore.checksum(seeds: seedRefs, exclusions: exclusions)
-            let resolvedStoreURL = paths.baseDirectory
-                .appendingPathComponent(Shared.Constants.FileName.resolvedPackages)
-            let canonicalCacheURL = paths.baseDirectory
-                .appendingPathComponent(".cache")
-                .appendingPathComponent(Shared.Constants.FileName.canonicalOwnersCache)
-
-            let resolvedPackages: [Core.PackageIndexing.ResolvedPackage]
-            if recurse {
-                if !refresh,
-                   let cached = Core.PackageIndexing.ResolvedPackagesStore.load(from: resolvedStoreURL),
-                   cached.seedChecksum == seedChecksum {
-                    Cupertino.Context.composition.logging.recording
-                        .info("🔗 Using cached closure from resolved-packages.json (\(cached.packages.count) packages, generated \(cached.generatedAt))")
-                    resolvedPackages = cached.packages
-                } else {
-                    if refresh {
-                        Cupertino.Context.composition.logging.recording.info("🔗 --refresh: discarding cached closure, re-walking dependency graphs...")
-                    } else {
-                        Cupertino.Context.composition.logging.recording.info("🔗 Resolving transitive dependencies for \(seedRefs.count) seed packages...")
-                    }
-                    if !exclusions.isEmpty {
-                        Cupertino.Context.composition.logging.recording.info("   Exclusion list in effect: \(exclusions.count) entries")
-                    }
-                    let canonicalizer = Core.PackageIndexing.GitHubCanonicalizer(cacheURL: canonicalCacheURL)
-                    let manifestCache = Core.PackageIndexing.ManifestCache(
-                        rootDirectory: paths.baseDirectory
-                            .appendingPathComponent(".cache")
-                            .appendingPathComponent("manifests")
-                    )
-                    let resolver = Core.PackageIndexing.PackageDependencyResolver(
-                        canonicalizer: canonicalizer,
-                        exclusions: exclusions,
-                        manifestCache: manifestCache
-                    )
-                    let (resolved, resolverStats) = await resolver.resolve(
-                        seeds: seedRefs,
-                        progress: PackageDependencyResolverProgressObserver(
-                            recording: Cupertino.Context.composition.logging.recording
-                        )
-                    )
-                    resolvedPackages = resolved
-                    Cupertino.Context.composition.logging.recording.info("   Seeds: \(resolverStats.seedCount)")
-                    Cupertino.Context.composition.logging.recording.info("   Discovered via dependencies: \(resolverStats.discoveredCount)")
-                    Cupertino.Context.composition.logging.recording.info("   Excluded: \(resolverStats.excludedCount)")
-                    Cupertino.Context.composition.logging.recording.info("   Skipped (non-GitHub): \(resolverStats.skippedNonGitHub)")
-                    Cupertino.Context.composition.logging.recording.info("   Skipped (SPM registry id): \(resolverStats.skippedRegistry)")
-                    Cupertino.Context.composition.logging.recording.info("   Missing manifest: \(resolverStats.missingManifest)")
-                    Cupertino.Context.composition.logging.recording.info("   Malformed manifest: \(resolverStats.malformedManifest)")
-                    Cupertino.Context.composition.logging.recording.info("   Resolver duration: \(Int(resolverStats.duration))s")
-
-                    let store = Core.PackageIndexing.ResolvedPackagesStore(
-                        cupertinoVersion: Shared.Constants.App.version,
-                        seedChecksum: seedChecksum,
-                        packages: resolved
-                    )
-                    do {
-                        try store.write(to: resolvedStoreURL)
-                        Cupertino.Context.composition.logging.recording.info("   Saved closure to \(resolvedStoreURL.path)")
-                    } catch {
-                        Cupertino.Context.composition.logging.recording.error("   ⚠️  Could not persist resolved-packages.json: \(error)")
-                    }
-                }
-            } else {
-                resolvedPackages = seedRefs.map { ref in
-                    Core.PackageIndexing.ResolvedPackage(
-                        owner: ref.owner,
-                        repo: ref.repo,
-                        url: ref.url,
-                        priority: ref.priority,
-                        parents: ["\(ref.owner.lowercased())/\(ref.repo.lowercased())"]
-                    )
-                }
-                Cupertino.Context.composition.logging.recording.info("🔗 Skipping dependency resolution (--no-recurse)")
-                if !exclusions.isEmpty {
-                    Cupertino.Context.composition.logging.recording.info("   Exclusion list ignored while --no-recurse is set")
-                }
-            }
-
-            Cupertino.Context.composition.logging.recording.info("📦 Fetching \(resolvedPackages.count) archives into \(outputURL.path)...")
-
-            let extractor = Core.PackageIndexing.PackageArchiveExtractor()
-            let startedAt = Date()
-            var stats = Shared.Models.PackageDownloadStatistics(
-                totalPackages: resolvedPackages.count,
-                startTime: startedAt
-            )
-            for (idx, pkg) in resolvedPackages.enumerated() {
-                let label = "\(pkg.owner)/\(pkg.repo)"
-                let pkgDir = outputURL
-                    .appendingPathComponent(pkg.owner)
-                    .appendingPathComponent(pkg.repo)
-                do {
-                    let extraction = try await extractor.fetchAndExtract(
-                        owner: pkg.owner,
-                        repo: pkg.repo,
-                        destination: pkgDir
-                    )
-                    try writePackageManifest(
-                        resolved: pkg,
-                        extraction: extraction,
-                        destination: pkgDir
-                    )
-                    stats.newPackages += 1
-                    stats.totalFilesSaved += extraction.files.count
-                    stats.totalBytesSaved += extraction.totalBytes
-                    let kb = extraction.totalBytes / 1024
-                    Cupertino.Context.composition.logging.recording.info("  ✅ \(label) — \(extraction.files.count) files, \(kb) KB")
-                } catch Core.PackageIndexing.PackageArchiveExtractor.ExtractError.tarballNotFound {
-                    stats.errors += 1
-                    Cupertino.Context.composition.logging.recording.error("  ✗ \(label) — archive not found on any ref")
-                } catch Core.PackageIndexing.PackageArchiveExtractor.ExtractError.tarballTooLarge(let bytes) {
-                    stats.errors += 1
-                    Cupertino.Context.composition.logging.recording.error("  ✗ \(label) — archive too large (\(bytes / 1024 / 1024) MB)")
-                } catch {
-                    stats.errors += 1
-                    Cupertino.Context.composition.logging.recording.error("  ✗ \(label) — \(error.localizedDescription)")
-                }
-
-                if (idx + 1) % Shared.Constants.Interval.progressLogEvery == 0 || idx + 1 == resolvedPackages.count {
-                    let percent = Double(idx + 1) / Double(resolvedPackages.count) * 100
-                    Cupertino.Context.composition.logging.recording.output(
-                        String(format: "📊 Progress: %.1f%% (%d/%d)", percent, idx + 1, resolvedPackages.count)
-                    )
-                }
-            }
-            stats.endTime = Date()
-
-            Cupertino.Context.composition.logging.recording.output("")
-            Cupertino.Context.composition.logging.recording.info("✅ Archive download completed")
-            Cupertino.Context.composition.logging.recording.info("   New packages: \(stats.newPackages)")
-            Cupertino.Context.composition.logging.recording.info("   Files saved: \(stats.totalFilesSaved)")
-            Cupertino.Context.composition.logging.recording.info("   Bytes saved: \(stats.totalBytesSaved / 1024) KB")
-            Cupertino.Context.composition.logging.recording.info("   Errors: \(stats.errors)")
-            if let duration = stats.duration {
-                Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(duration))s")
-            }
-            Cupertino.Context.composition.logging.recording.info("   📁 \(outputURL.path)")
-            Cupertino.Context.composition.logging.recording.info("   Next: index them into \(paths.packagesDatabase.path) via `save --packages`")
-        }
-
-        private func writePackageManifest(
-            resolved: Core.PackageIndexing.ResolvedPackage,
-            extraction: Core.PackageIndexing.PackageExtractionResult,
-            destination: URL
-        ) throws {
-            struct Manifest: Encodable {
-                let owner: String
-                let repo: String
-                let url: String
-                let fetchedAt: Date
-                let cupertinoVersion: String
-                let branch: String
-                let parents: [String]
-                let savedFileCount: Int
-                let totalBytes: Int64
-                let tarballBytes: Int
-            }
-            let manifest = Manifest(
-                owner: resolved.owner,
-                repo: resolved.repo,
-                url: resolved.url,
-                fetchedAt: Date(),
-                cupertinoVersion: Shared.Constants.App.version,
-                branch: extraction.branch,
-                parents: resolved.parents,
-                savedFileCount: extraction.files.count,
-                totalBytes: extraction.totalBytes,
-                tarballBytes: extraction.tarballBytes
-            )
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(manifest)
-            try data.write(to: destination.appendingPathComponent("manifest.json"))
-        }
-
-        /// Closure-free observer for the legacy code-fetch command that
-        /// prints per-sample progress through the binary's recorder.
-        /// Mirrors `GitHubFetcherProgressObserver` from #567.
-        private struct DownloaderProgressObserver: Sample.Core.DownloaderProgressObserving {
-            let recording: any LoggingModels.Logging.Recording
-
-            func observe(progress: Sample.Core.Progress) {
-                let percent = String(format: "%.1f", progress.percentage)
-                recording.output("   Progress: \(percent)% - \(progress.sampleName)")
-            }
-        }
-
-        private func runCodeFetch() async throws {
-            let defaultPath = Shared.Paths.live().sampleCodeDirectory.path
-            let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
-
-            try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
-
-            let recording = Cupertino.Context.composition.logging.recording
-            let crawler = await Sample.Core.Downloader(
-                outputDirectory: outputURL,
-                maxSamples: limit,
-                forceDownload: force, logger: recording
-            )
-
-            let observer = DownloaderProgressObserver(recording: recording)
-            let stats = try await crawler.download(progress: observer)
-
-            Cupertino.Context.composition.logging.recording.output("")
-            Cupertino.Context.composition.logging.recording.info("✅ Download completed!")
-            Cupertino.Context.composition.logging.recording.info("   Total: \(stats.totalSamples) samples")
-            Cupertino.Context.composition.logging.recording.info("   Downloaded: \(stats.downloadedSamples)")
-            Cupertino.Context.composition.logging.recording.info("   Skipped: \(stats.skippedSamples)")
-            Cupertino.Context.composition.logging.recording.info("   Errors: \(stats.errors)")
-            // #657 — surface the invalid-downloads bucket only when
-            // non-zero so the happy-path output stays unchanged.
-            if stats.invalidDownloads > 0 {
-                Cupertino.Context.composition.logging.recording.info(
-                    "   Invalid downloads (parked as .invalid): \(stats.invalidDownloads)"
-                )
-            }
-            if let duration = stats.duration {
-                Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(duration))s")
-            }
-        }
-
-        /// Closure-free observer for the GitHub samples fetch. Forwards each
-        /// `Sample.Core.GitHubFetcherProgress` message through the binary's
-        /// recorder. Replaces the previous trailing-closure pattern.
-        private struct GitHubFetcherProgressObserver: Sample.Core.GitHubFetcherProgressObserving {
-            let recording: any LoggingModels.Logging.Recording
-
-            func observe(progress: Sample.Core.GitHubFetcherProgress) {
-                recording.output("   \(progress.message)")
-            }
-        }
-
-        private func runSamplesFetch() async throws {
-            let defaultPath = Shared.Paths.live().sampleCodeDirectory.path
-            let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
-
-            let recording = Cupertino.Context.composition.logging.recording
-            let fetcher = Sample.Core.GitHubFetcher(outputDirectory: outputURL, logger: recording)
-            let observer = GitHubFetcherProgressObserver(recording: recording)
-
-            let stats = try await fetcher.fetch(progress: observer)
-
-            Cupertino.Context.composition.logging.recording.output("")
-            Cupertino.Context.composition.logging.recording.info("✅ Fetch completed!")
-            Cupertino.Context.composition.logging.recording.info("   Action: \(stats.action.description)")
-            Cupertino.Context.composition.logging.recording.info("   Projects: \(stats.projectCount)")
-            if let duration = stats.duration {
-                Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(duration))s")
-            }
-            Cupertino.Context.composition.logging.recording.info("\n📁 Output: \(outputURL.path)/cupertino-sample-code")
-        }
-
-        private func runArchiveCrawl() async throws {
-            let defaultPath = Shared.Paths.live().archiveDirectory.path
-            let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
-
-            try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
-
-            // Load guides from bundled manifest or command line
-            let guides = try await loadArchiveGuides()
-
-            guard !guides.isEmpty else {
-                Cupertino.Context.composition.logging.recording.error("❌ No archive guides configured")
-                Cupertino.Context.composition.logging.recording.info("   Use --start-url to specify guide URLs or configure the manifest")
-                throw ExitCode.failure
-            }
-
-            Cupertino.Context.composition.logging.recording.info("📚 Crawling \(guides.count) Apple Archive guides...")
-            Cupertino.Context.composition.logging.recording.info("   Output: \(outputURL.path)\n")
-            let logger: any LoggingModels.Logging.Recording = Cupertino.Context.composition.logging.recording
-
-            let crawler = await Crawler.AppleArchive(
-                outputDirectory: outputURL,
-                guides: guides,
-                forceRecrawl: force,
-                logger: logger
-            )
-
-            let stats = try await crawler.crawl(progress: AppleArchiveCrawlProgressObserver(
-                recording: Cupertino.Context.composition.logging.recording
-            ))
-
-            Cupertino.Context.composition.logging.recording.output("")
-            Cupertino.Context.composition.logging.recording.info("✅ Crawl completed!")
-            Cupertino.Context.composition.logging.recording.info("   Total guides: \(stats.totalGuides)")
-            Cupertino.Context.composition.logging.recording.info("   Total pages: \(stats.totalPages)")
-            Cupertino.Context.composition.logging.recording.info("   New: \(stats.newPages)")
-            Cupertino.Context.composition.logging.recording.info("   Updated: \(stats.updatedPages)")
-            Cupertino.Context.composition.logging.recording.info("   Skipped: \(stats.skippedPages)")
-            Cupertino.Context.composition.logging.recording.info("   Errors: \(stats.errors)")
-            if let duration = stats.duration {
-                Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(duration))s")
-            }
-            Cupertino.Context.composition.logging.recording.info("\n📁 Output: \(outputURL.path)/")
-        }
-
-        private func runHIGCrawl() async throws {
-            let defaultPath = Shared.Paths.live().higDirectory.path
-            let outputURL = URL(fileURLWithPath: outputDir ?? defaultPath).expandingTildeInPath
-
-            try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
-
-            Cupertino.Context.composition.logging.recording.info("📖 Crawling Human Interface Guidelines...")
-            Cupertino.Context.composition.logging.recording.info("   Output: \(outputURL.path)\n")
-            let logger: any LoggingModels.Logging.Recording = Cupertino.Context.composition.logging.recording
-
-            let crawler = await Crawler.HIG(
-                outputDirectory: outputURL,
-                forceRecrawl: force,
-                fetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
-                logger: logger
-            )
-
-            let stats = try await crawler.crawl(progress: HIGCrawlProgressObserver(
-                recording: Cupertino.Context.composition.logging.recording
-            ))
-
-            Cupertino.Context.composition.logging.recording.output("")
-            Cupertino.Context.composition.logging.recording.info("✅ Crawl completed!")
-            Cupertino.Context.composition.logging.recording.info("   Total pages: \(stats.totalPages)")
-            Cupertino.Context.composition.logging.recording.info("   New: \(stats.newPages)")
-            Cupertino.Context.composition.logging.recording.info("   Updated: \(stats.updatedPages)")
-            Cupertino.Context.composition.logging.recording.info("   Skipped: \(stats.skippedPages)")
-            Cupertino.Context.composition.logging.recording.info("   Errors: \(stats.errors)")
-            if let duration = stats.duration {
-                Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(duration))s")
-            }
-            Cupertino.Context.composition.logging.recording.info("\n📁 Output: \(outputURL.path)/")
-        }
-
-        private func loadArchiveGuides() async throws -> [Crawler.AppleArchive.GuideInfo] {
-            // If start URL is provided, use it (no framework info available)
-            if let startURL, let url = URL(string: startURL) {
-                return [Crawler.AppleArchive.GuideInfo(url: url, framework: "")]
-            }
-
-            // Otherwise use the curated list of essential archive guides with framework info
-            return Crawler.ArchiveGuideCatalog.essentialGuidesWithInfo(
-                baseDirectory: Shared.Paths.live().baseDirectory
-            )
-        }
-
         private func runAvailabilityFetch() async throws {
             let docsDir = outputDir.map { URL(fileURLWithPath: $0) }
                 ?? Shared.Paths.live().docsDirectory
@@ -1278,63 +601,6 @@ extension CLIImpl.Command {
             Cupertino.Context.composition.logging.recording.info("   Success rate: \(String(format: "%.1f", stats.successRate))%")
             if let duration = stats.duration {
                 Cupertino.Context.composition.logging.recording.info("   Duration: \(Int(duration))s")
-            }
-        }
-
-        /// Closure-free observer for Swift Evolution crawl progress.
-        private struct EvolutionCrawlProgressObserver: Crawler.EvolutionProgressObserving {
-            let recording: any LoggingModels.Logging.Recording
-
-            func observe(progress: Crawler.EvolutionProgress) {
-                let percentage = String(format: "%.1f", progress.percentage)
-                recording.output("   Progress: \(percentage)% - \(progress.proposalID)")
-            }
-        }
-
-        /// Closure-free observer for Apple Archive crawl progress.
-        private struct AppleArchiveCrawlProgressObserver: Crawler.AppleArchiveProgressObserving {
-            let recording: any LoggingModels.Logging.Recording
-
-            func observe(progress: Crawler.AppleArchiveProgress) {
-                let percent = String(format: "%.1f", progress.percentage)
-                recording.output("   Progress: \(percent)% - \(progress.currentItem)")
-            }
-        }
-
-        /// Closure-free observer for HIG crawl progress.
-        private struct HIGCrawlProgressObserver: Crawler.HIGProgressObserving {
-            let recording: any LoggingModels.Logging.Recording
-
-            func observe(progress: Crawler.HIGProgress) {
-                let percent = String(format: "%.1f", progress.percentage)
-                recording.output("   Progress: \(percent)% - \(progress.currentItem)")
-            }
-        }
-
-        /// Closure-free observer for `Core.PackageIndexing.PackageFetcher`
-        /// progress. Prints per-package progress lines through the
-        /// binary's recorder. Replaces the previous trailing-closure
-        /// pattern at the call site.
-        private struct PackageFetcherProgressObserver: Core.PackageIndexing.PackageFetcherProgressObserving {
-            let recording: any LoggingModels.Logging.Recording
-
-            func observe(progress: Core.PackageIndexing.PackageFetcherProgress) {
-                let percent = String(format: "%.1f", progress.percentage)
-                recording.output("   Progress: \(percent)% - \(progress.packageName)")
-            }
-        }
-
-        /// Closure-free observer for
-        /// `Core.PackageIndexing.PackageDependencyResolver` progress.
-        /// Same throttled-output rule the previous trailing closure had
-        /// (every 1, 10, total).
-        private struct PackageDependencyResolverProgressObserver: Core.PackageIndexing.PackageDependencyResolverProgressObserving {
-            let recording: any LoggingModels.Logging.Recording
-
-            func observe(packageName: String, processed: Int, total: Int) {
-                if processed == 1 || processed % 10 == 0 || processed == total {
-                    recording.output("   Resolving: \(processed)/\(total) (\(packageName))")
-                }
             }
         }
     }

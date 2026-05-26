@@ -14,7 +14,7 @@ Hard cap on the crawler's queue pull. Once `n` pages have been visited, the craw
 
 ## Default
 
-`1,000,000` (effectively uncapped — full Apple-corpus crawls are ~50–80k pages).
+`1,000,000` (effectively uncapped, full Apple-corpus crawls are ~50–80k pages).
 
 ## Example
 

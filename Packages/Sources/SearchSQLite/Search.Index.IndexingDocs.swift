@@ -149,7 +149,14 @@ extension Search.Index {
 
         // Classify (#192 C1). Direct `indexDocument` callers don't have a
         // structured-kind hint, so the classifier uses `source` + `uri`.
-        let classifiedKind = Search.Classify.kind(source: source, uriPath: uri).rawValue
+        // #1045 Gap 3: thread the actor's registry-derived
+        // docKind-by-id dict so new sources route through the
+        // registry-supplied default without editing the legacy switch.
+        let classifiedKind = Search.Classify.kind(
+            source: source,
+            uriPath: uri,
+            docKindByID: sourceLookup.docKindRawValuesByID
+        ).rawValue
 
         // Insert metadata with JSON data, availability, and kind (#192 C).
         // `kind` appended at end so existing bind indexes 1-17 stay stable.
@@ -211,7 +218,7 @@ extension Search.Index {
     /// - Throws: Search.Error if indexing fails
     public func indexItem(_ item: Search.SourceItem, extractSymbols: Bool = true) async throws {
         // Get the indexer for this source
-        guard let indexer = self.indexers[item.source] else {
+        guard let indexer = indexers[item.source] else {
             // Fall back to generic indexing if no specific indexer
             try await indexDocument(Search.IndexDocumentParams(
                 uri: item.uri,
@@ -485,10 +492,14 @@ extension Search.Index {
 
         // Classify (#192 C1). Structured path has `page.kind` available —
         // pass it plus the URI path for sample-code disambiguation.
+        // #1045 Gap 3: registry-derived docKind dict; apple-docs
+        // intentionally absents itself so this call's `structuredKind`
+        // branch keeps firing for its bespoke classification.
         let classifiedKind = Search.Classify.kind(
             source: source,
             structuredKind: page.kind.rawValue,
-            uriPath: uri
+            uriPath: uri,
+            docKindByID: sourceLookup.docKindRawValuesByID
         ).rawValue
 
         // Insert metadata with json_data, availability, kind (#192 C),

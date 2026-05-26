@@ -59,10 +59,10 @@ or
    → Run: cupertino setup  (downloads the pre-built packages index)
 ```
 
-### 3. Sample Code Index (`samples.db`) 🧪
+### 3. Sample Code Index (`apple-sample-code.db`) 🧪
 ```
-🧪 Sample Code Index (samples.db)
-   ✓ Database: ~/.cupertino/samples.db
+🧪 Sample Code Index (apple-sample-code.db)
+   ✓ Database: ~/.cupertino/apple-sample-code.db
    ✓ Size: 184.4 MB
    ✓ Projects: 619
    ✓ Indexed files: 18928
@@ -101,7 +101,7 @@ or
 
    ✓ search.db: 13 (sequential), journal=wal
    ✓ packages.db: 2 (sequential), journal=delete
-   ✓ samples.db: 3 (sequential), journal=wal
+   ✓ apple-sample-code.db: 3 (sequential), journal=wal
 ```
 
 Anything other than `journal=wal` is flagged (the schema-version probe doubles as a WAL sanity check per [#236](https://github.com/mihaelamj/cupertino/issues/236)).
@@ -158,8 +158,8 @@ cupertino doctor --search-db /opt/search.db
    ✓ Indexed files: 20186
    ℹ  Bundled version: 1.1.0
 
-🧪 Sample Code Index (samples.db)
-   ✓ Database: ~/.cupertino/samples.db
+🧪 Sample Code Index (apple-sample-code.db)
+   ✓ Database: ~/.cupertino/apple-sample-code.db
    ✓ Size: 184.4 MB
    ✓ Projects: 619
    ✓ Indexed files: 18928
@@ -187,7 +187,7 @@ cupertino doctor --search-db /opt/search.db
 
    ✓ search.db: 13 (sequential), journal=wal
    ✓ packages.db: 2 (sequential), journal=delete
-   ✓ samples.db: 3 (sequential), journal=wal
+   ✓ apple-sample-code.db: 3 (sequential), journal=wal
 
 ✅ All checks passed - MCP server ready
 ```
@@ -207,9 +207,9 @@ cupertino doctor --search-db /opt/search.db
    ⚠  Database: ~/.cupertino/packages.db (not found)
      → Run: cupertino setup  (downloads the pre-built packages index)
 
-🧪 Sample Code Index (samples.db)
-   ⚠  Database: ~/.cupertino/samples.db (not found)
-     → Run: cupertino fetch --source samples && cupertino cleanup && cupertino save --samples
+🧪 Sample Code Index (apple-sample-code.db)
+   ⚠  Database: ~/.cupertino/apple-sample-code.db (not found)
+     → Run: cupertino fetch --source samples && cupertino cleanup && cupertino save --source samples
 
 🔍 Search Index
    ✗ Database: ~/.cupertino/search.db (not found)

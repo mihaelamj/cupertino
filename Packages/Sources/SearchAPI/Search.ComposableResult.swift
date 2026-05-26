@@ -296,6 +296,16 @@ extension Search {
         public let swiftBookSection: ResultSection<DocAtom>?
         public let packageSection: ResultSection<PackageAtom>?
 
+        /// #1042 Cluster 6 sub-3: open-ended bucket for sources beyond
+        /// the 7 typed Section properties above. A new source stores
+        /// its DocAtom section here keyed by `definition.id` (or any
+        /// stable identifier); `allSections` enumerates these alongside
+        /// the typed sections. Sources whose atoms are not DocAtom
+        /// (e.g. samples → SampleAtom, packages → PackageAtom) still
+        /// need a typed section; the extras dict carries DocAtom-shaped
+        /// sources, which is the common case.
+        public let extras: [String: ResultSection<DocAtom>]
+
         /// Hints about other sources (teasers)
         public let hints: [SourceHint]
 
@@ -317,6 +327,7 @@ extension Search {
             swiftOrgSection: ResultSection<DocAtom>? = nil,
             swiftBookSection: ResultSection<DocAtom>? = nil,
             packageSection: ResultSection<PackageAtom>? = nil,
+            extras: [String: ResultSection<DocAtom>] = [:],
             hints: [SourceHint] = [],
             tips: [Search.Tip] = [],
             quickLinks: [QuickLink] = []
@@ -332,6 +343,7 @@ extension Search {
             self.swiftOrgSection = swiftOrgSection
             self.swiftBookSection = swiftBookSection
             self.packageSection = packageSection
+            self.extras = extras
             self.hints = hints
             self.tips = tips
             self.quickLinks = quickLinks
@@ -348,6 +360,7 @@ extension Search {
             total += swiftOrgSection?.count ?? 0
             total += swiftBookSection?.count ?? 0
             total += packageSection?.count ?? 0
+            total += extras.values.map(\.count).reduce(0, +)
             return total
         }
 
@@ -362,6 +375,11 @@ extension Search {
             if let section = swiftOrgSection, !section.isEmpty { sources.append(section.source) }
             if let section = swiftBookSection, !section.isEmpty { sources.append(section.source) }
             if let section = packageSection, !section.isEmpty { sources.append(section.source) }
+            // #1042 Cluster 6 sub-3: extras for sources beyond the
+            // 7 typed sections. Sorted by key for stable output order.
+            for (_, section) in extras.sorted(by: { $0.key < $1.key }) where !section.isEmpty {
+                sources.append(section.source)
+            }
             return sources
         }
     }

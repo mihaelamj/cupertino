@@ -28,5 +28,5 @@ cupertino fetch --source apple-docs --urls my-urls.txt --max-depth 0
 
 ## Notes
 
-- Combine with `--urls` and `--max-depth 0` to fetch a fixed list with no descent — useful for plugging coverage holes from another corpus.
+- Combine with `--urls` and `--max-depth 0` to fetch a fixed list with no descent, useful for plugging coverage holes from another corpus.
 - Depth is stamped on every saved page (`StructuredDocumentationPage.depth`) for later analysis.

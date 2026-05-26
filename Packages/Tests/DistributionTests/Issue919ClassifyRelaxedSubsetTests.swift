@@ -4,6 +4,7 @@ import SharedConstants
 import Testing
 
 // MARK: - #919 coverage pins: classify(present:required:...) relaxed-subset semantic
+
 //
 // Note on the empty-required precondition: `classify` carries a
 // `precondition(!required.isEmpty, ...)` guard that crashes the process

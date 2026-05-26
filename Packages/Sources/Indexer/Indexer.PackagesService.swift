@@ -4,6 +4,7 @@ import SearchModels
 import SharedConstants
 
 // MARK: - Indexer.PackagesService — concrete `run` orchestrator
+
 //
 // The value types (`Request`, `Outcome`, `Event`) plus the
 // `Indexer.PackagesService.EventObserving` Observer protocol live in the

@@ -1,5 +1,6 @@
 import Foundation
 import SearchModels
+
 // MARK: - JSON Search Result Formatter
 
 extension Services.Formatter {

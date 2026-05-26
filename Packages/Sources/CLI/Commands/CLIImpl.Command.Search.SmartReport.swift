@@ -19,51 +19,85 @@ import SharedConstants
 /// struct body stays under SwiftLint's `type_body_length` ceiling and so
 /// the printers don't need access to instance-level CLI options.
 extension CLIImpl.Command.Search {
-    /// Bundle returned by `buildFetchers`. The `searchIndex` and
-    /// `sampleService` references are kept so the caller can disconnect
-    /// them once the SmartQuery has run — the fetchers don't own those
-    /// connections.
+    /// Bundle returned by `buildFetchers`. Each per-source `Search.Index`
+    /// in `docsIndexes` is keyed by source-id (`apple-docs`, `hig`, …) so
+    /// the caller can pick one for framework validation and disconnect
+    /// them all once the SmartQuery has run -- the fetchers don't own
+    /// those connections.
     struct FetcherPlan {
         let fetchers: [any Search.CandidateFetcher]
-        let searchIndex: SearchModule.Index?
+        /// Per-source DB handles, keyed by `SourceProvider.definition.id`.
+        /// Post-#1037/#1038, every docs source has its own SQLite file
+        /// (apple-documentation.db, hig.db, apple-archive.db,
+        /// swift-evolution.db, swift-org.db, swift-book.db). Each open
+        /// connection lives here until `runUnifiedSearch` disconnects.
+        let docsIndexes: [String: SearchModule.Index]
         let sampleService: Sample.Search.Service?
-        /// Set when `search.db` exists on disk but couldn't be opened
-        /// (schema mismatch, corrupt file, "not a database"). Mirrors
-        /// `CompositeToolProvider.searchIndexDisabledReason` from #645 /
-        /// PR #649 on the MCP side. When non-nil, `runUnifiedSearch`
-        /// synthesises `Search.DegradedSource` entries for the 6 search.
-        /// db-backed sources (apple-docs, apple-archive, hig,
-        /// swift-evolution, swift-org, swift-book) and merges them into
-        /// the `SmartResult.degradedSources` array, so CLI `--format json`
-        /// consumers see the same `degradedSources` payload MCP markdown
-        /// already shows via #650 / PR #652. Nil for "search.db not
-        /// found" (legitimate file-missing path) and the happy case.
-        let searchDBDisabledReason: String?
+        /// Per-source open-time failure reasons. Keyed by source-id;
+        /// populated only for sources whose per-source DB exists on disk
+        /// but couldn't be opened (schema mismatch, corrupt file,
+        /// "not a database"). Mirrors `CompositeToolProvider`'s open-time
+        /// classifier from #645 / PR #649 on the MCP side, lifted to a
+        /// per-source dictionary post-#1037 so a single stale DB
+        /// (e.g. `hig.db` after a partial migration) reports its own
+        /// `DegradedSource` entry rather than synthesising six fakes.
+        /// Empty on the file-missing path (legitimate "samples-only"
+        /// case) and on the happy path.
+        let disabledReasonsBySource: [String: String]
     }
 
     /// Docs-backed sources in a consistent order. `apple-archive` is included
     /// with `includeArchive: true` so the base search path doesn't exclude it.
-    static let docsSources: [(prefix: String, includeArchive: Bool)] = [
-        (Shared.Constants.SourcePrefix.appleDocs, false),
-        (Shared.Constants.SourcePrefix.appleArchive, true),
-        (Shared.Constants.SourcePrefix.hig, false),
-        (Shared.Constants.SourcePrefix.swiftEvolution, false),
-        (Shared.Constants.SourcePrefix.swiftOrg, false),
-        (Shared.Constants.SourcePrefix.swiftBook, false),
-    ]
+    ///
+    /// #1042 audit + wiring batch 3: derived at call time from the
+    /// production source registry. A "docs-tier" source is one whose
+    /// `destinationDB` is in the search.db FTS family. That covers
+    /// apple-docs, hig, apple-archive, swift-evolution, swift-org,
+    /// swift-book today, and any future search-tier source. `searchRoute`
+    /// is NOT the right predicate here — HIG has `.hig` dispatch but
+    /// still lives in the search.db family (Cluster 9 sub-3 test
+    /// showed this regression and was caught by `CLISearchUrlResolutionTests`).
+    /// `includeArchive` is `true` for the apple-archive provider only.
+    ///
+    /// 2026-05-26 audit #1055 layer-2 part 3: filter flipped from a
+    /// hardcoded `excluded: [.appleSampleCode, .packages]` descriptor
+    /// set to `provider.isSearchTier`. Pre-fix any new source with a
+    /// non-FTS backend (its own bespoke index) had to be appended to
+    /// that set; post-fix `SampleCodeSource` and `PackagesSource`
+    /// override `isSearchTier = false` themselves, every other source
+    /// inherits the `true` default and joins the docs-tier fan-out
+    /// automatically.
+    static func docsSources() -> [(prefix: String, includeArchive: Bool)] {
+        let registry = CLIImpl.makeProductionSourceRegistry()
+        return registry.allEnabled
+            .filter(\.isSearchTier)
+            .map { (
+                prefix: $0.definition.id,
+                includeArchive: $0.definition.id == Shared.Constants.SourcePrefix.appleArchive
+            ) }
+    }
 
     /// Sources whose results aren't scoped by `--platform`/`--min-version`.
     /// Only the Swift-language-version-axis sources remain unfiltered (their
-    /// pages don't carry `min_<platform>` columns at all — see #225 for the
+    /// pages don't carry `min_<platform>` columns at all -- see #225 for the
     /// matching `--swift` flag).
-    static let unfilteredSourcesUnderPlatformFlag: [String] = [
-        Shared.Constants.SourcePrefix.swiftEvolution,
-        Shared.Constants.SourcePrefix.swiftOrg,
-        Shared.Constants.SourcePrefix.swiftBook,
-    ]
+    ///
+    /// #1042 audit + wiring batch 3: derived at call time from each
+    /// registered provider's `Search.Capabilities.metadata[.hasMinSwiftVersion]`
+    /// flag (the same source-of-truth Cluster 4's CandidateFetcher
+    /// wiring uses). A new Swift-version-axis source declares the
+    /// metadata flag and lands in this set without touching this file.
+    static func unfilteredSourcesUnderPlatformFlag() -> Set<String> {
+        let registry = CLIImpl.makeProductionSourceRegistry()
+        return Set(
+            registry.allEnabled
+                .filter { $0.capabilities.metadata[.hasMinSwiftVersion] == true }
+                .map(\.definition.id)
+        )
+    }
 
     /// Validate the `--platform` / `--min-version` pair into an
-    /// `AvailabilityFilter`. Either both flags or neither — anything else
+    /// `AvailabilityFilter`. Either both flags or neither -- anything else
     /// errors out with `ExitCode.failure` so the user sees a clean message.
     func resolveAvailabilityFilter() throws -> SearchModels.Search.AvailabilityFilter? {
         switch (platform, minVersion) {
@@ -118,26 +152,74 @@ extension CLIImpl.Command.Search {
 
         return FetcherPlan(
             fetchers: fetchers,
-            searchIndex: docsResult.index,
+            docsIndexes: docsResult.indexes,
             sampleService: sampleService,
-            searchDBDisabledReason: docsResult.disabledReason
+            disabledReasonsBySource: docsResult.disabledReasonsBySource
         )
     }
 
-    /// #648 (CLI JSON path) — pair of `(SearchModule.Index?, String?)`
-    /// returned by `openDocsFetchers`. Distinguishes the three states a
-    /// search.db open can land in:
-    ///   - `(index, nil)`     — happy path, fetchers wired
-    ///   - `(nil, nil)`       — file legitimately missing (skip / samples-only)
-    ///   - `(nil, "<reason>")` — file present but unopenable (schema mismatch,
-    ///     corrupt file, "not a database"); fetchers can't be wired but
-    ///     the CLI should surface the failure to `--format json` consumers
-    ///     via `SmartResult.degradedSources` instead of silently dropping
-    ///     to "no apple-docs match" semantics.
+    /// Result of `openDocsFetchers`. Post-#1037/#1038 each docs source
+    /// owns its own SQLite DB, so the open path returns a per-source
+    /// map of opened indexes plus a per-source map of open-time
+    /// failure reasons. Mirrors the older single-DB `DocsFetchersResult`
+    /// but with `[String: …]` instead of `…?` so a partial failure
+    /// (e.g. `hig.db` stale after migration) reports just its own
+    /// degraded source rather than nuking the entire fan-out.
     struct DocsFetchersResult {
-        let index: SearchModule.Index?
-        let disabledReason: String?
+        /// Source-id → opened `SearchModule.Index`. One entry per
+        /// per-source DB that opened successfully.
+        let indexes: [String: SearchModule.Index]
+        /// Source-id → open-time failure reason. One entry per
+        /// per-source DB that exists on disk but failed to open.
+        /// Source-ids whose DB legitimately doesn't exist on disk
+        /// (samples-only path) DO NOT appear here.
+        let disabledReasonsBySource: [String: String]
     }
+
+    /// Pure URL-resolution helper extracted from `openDocsFetchers` so
+    /// the per-source vs. override mapping can be unit-tested without
+    /// touching SQLite. Returns one entry per docs source whose
+    /// `SourceProvider` exists in `providerByID`; sources without a
+    /// registered provider are dropped (caller logs separately).
+    ///
+    /// - Parameters:
+    ///   - override: when non-nil, every docs source-id maps to this
+    ///     single URL (legacy `--search-db` back-compat path; the
+    ///     openedByPath cache in `openDocsFetchers` collapses the six
+    ///     entries to one Index open).
+    ///   - providerByID: source-id → registered `SourceProvider`.
+    ///     Built from `CLIImpl.makeProductionSourceRegistry()`'s
+    ///     `allEnabled` list.
+    ///   - baseDirectory: cupertino's base directory (resolved at the
+    ///     composition root via `Shared.Paths.live().baseDirectory`).
+    ///   - sources: docs-source prefixes to resolve. Defaults to
+    ///     `docsSources` (the production list).
+    static func urlsByDocsSourceID(
+        override: URL?,
+        providerByID: [String: any Search.SourceProvider],
+        baseDirectory: URL,
+        sources: [(prefix: String, includeArchive: Bool)]? = nil
+    ) -> [String: URL] {
+        let effective = sources ?? Self.docsSources()
+        var result: [String: URL] = [:]
+        for source in effective {
+            if let override {
+                result[source.prefix] = override
+            } else if let provider = providerByID[source.prefix] {
+                result[source.prefix] = baseDirectory.appendingPathComponent(provider.destinationDB.filename)
+            }
+        }
+        return result
+    }
+
+    /// The lookup key the smart-report path uses to find the apple-docs
+    /// `SearchModule.Index` for framework-name validation. Pulled into a
+    /// static constant so tests can pin the contract (`runUnifiedSearch`
+    /// reads `plan.docsIndexes[Search.frameworkValidationSourceID]`;
+    /// swapping the constant to a DB id like "apple-documentation" by
+    /// mistake would silently skip every `--framework` check, and a
+    /// test that asserts the constant catches the regression).
+    static let frameworkValidationSourceID: String = Shared.Constants.SourcePrefix.appleDocs
 
     private static func openDocsFetchers(
         override: String?,
@@ -146,62 +228,148 @@ extension CLIImpl.Command.Search {
         framework: String?,
         into fetchers: inout [any Search.CandidateFetcher]
     ) async -> DocsFetchersResult {
-        guard !skip else { return DocsFetchersResult(index: nil, disabledReason: nil) }
-        let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Shared.Paths.live().searchDatabase
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            // #654 — route the missing-file diagnostic to stderr (.warning
-            // in Logging.Unified.logToConsole, not .info) so it doesn't
-            // pollute stdout when `--format json` is set. Same reasoning
-            // as the schema-mismatch path at the catch-block below
-            // (already `.error()` → stderr). Text + markdown CLI users
-            // still see the line on the same terminal stream interleaved
-            // with the report.
-            Cupertino.Context.composition.logging.recording.warning(
-                "ℹ️  search.db not found at \(url.path) — skipping doc sources."
-            )
-            // File legitimately missing isn't a configuration error —
-            // it's the samples-only path. Mirror #645's distinction:
-            // disabledReason stays nil so the CLI doesn't synthesise
-            // fake degradedSources for users who never set up the
-            // bundle in the first place.
-            return DocsFetchersResult(index: nil, disabledReason: nil)
-        }
-        do {
-            // #932: read-only smart-report path; no `indexItem` dispatch happens.
-            let index = try await SearchModule.Index(dbPath: url, logger: Cupertino.Context.composition.logging.recording, indexers: [:], sourceLookup: .empty)
-            for source in docsSources {
+        guard !skip else { return DocsFetchersResult(indexes: [:], disabledReasonsBySource: [:]) }
+
+        // Resolve per-source DBs via the production source registry:
+        // each `SourceProvider.destinationDB.filename` carries its own
+        // DB filename, so adding a new docs source post-this-refactor
+        // is still a 2-file PR (descriptor + indexer concrete) with
+        // zero edits here.
+        let registry = CLIImpl.makeProductionSourceRegistry()
+        let providerByID: [String: any Search.SourceProvider] = Dictionary(
+            uniqueKeysWithValues: registry.allEnabled.map { ($0.definition.id, $0) }
+        )
+        let baseDirectory = Shared.Paths.live().baseDirectory
+
+        // #1042 Cluster 4 wiring: derive the CandidateFetcher capability
+        // sets from each registered provider's `Search.Capabilities`
+        // metadata, instead of letting the fetchers fall back to the
+        // 5-source hardcoded defaults. A new registered source's
+        // `hasMinSwiftVersion` / `hasFrameworkColumn` flags now reach
+        // the availability + framework filtering paths automatically.
+        let swiftVersionSourceIDs: Set<String> = Set(
+            registry.allEnabled
+                .filter { $0.capabilities.metadata[.hasMinSwiftVersion] == true }
+                .map(\.definition.id)
+        )
+        let frameworkScopedSourceIDs: Set<String> = Set(
+            registry.allEnabled
+                .filter { $0.capabilities.metadata[.hasFrameworkColumn] == true }
+                .map(\.definition.id)
+        )
+
+        // Honour the legacy `--search-db` override for back-compat:
+        // when set, every docs source points at that single DB. Useful
+        // for tests + the migration window when a user hasn't re-run
+        // `cupertino save` post-#1037 yet. When nil (the common case),
+        // each source resolves to its own per-source DB.
+        let overrideURL = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+
+        // Pure URL resolution: per-source filename via the registry,
+        // or the override URL applied uniformly. Tested directly in
+        // `CLISearchUrlResolutionTests`.
+        let urlsBySource = urlsByDocsSourceID(
+            override: overrideURL,
+            providerByID: providerByID,
+            baseDirectory: baseDirectory
+        )
+
+        var indexes: [String: SearchModule.Index] = [:]
+        var disabledReasons: [String: String] = [:]
+
+        // Cache opens by URL path so the override path opens a single
+        // Index reused across all 6 source-prefixes; per-source path
+        // opens one Index per file (one per source). `missingPaths`
+        // dedups the file-missing warning so an override pointing at
+        // a non-existent file emits one diagnostic instead of six
+        // (the override path collapses every source-prefix to the
+        // same URL).
+        var openedByPath: [String: SearchModule.Index] = [:]
+        var failedByPath: [String: String] = [:]
+        var missingPaths: Set<String> = []
+
+        for source in Self.docsSources() {
+            guard let url = urlsBySource[source.prefix] else {
+                // Unknown source-id (shouldn't happen for built-in
+                // sources; defensive log + skip).
+                Cupertino.Context.composition.logging.recording.warning(
+                    "ℹ️  No registered SourceProvider for '\(source.prefix)' -- skipping."
+                )
+                continue
+            }
+
+            if let existing = openedByPath[url.path] {
+                fetchers.append(Search.DocsSourceCandidateFetcher(
+                    searchIndex: existing,
+                    source: source.prefix,
+                    includeArchive: source.includeArchive,
+                    availability: availability,
+                    framework: framework,
+                    swiftVersionSources: swiftVersionSourceIDs,
+                    frameworkScopedSources: frameworkScopedSourceIDs
+                ))
+                indexes[source.prefix] = existing
+                continue
+            }
+
+            if let reason = failedByPath[url.path] {
+                disabledReasons[source.prefix] = reason
+                continue
+            }
+
+            if missingPaths.contains(url.path) {
+                continue
+            }
+
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                // #654 -- file-missing diagnostic goes to stderr so
+                // `--format json` stdout stays pure for `jq` consumers.
+                Cupertino.Context.composition.logging.recording.warning(
+                    "ℹ️  \(url.lastPathComponent) not found at \(url.path) -- skipping \(source.prefix)."
+                )
+                missingPaths.insert(url.path)
+                continue
+            }
+
+            do {
+                // #932: read-only smart-report path; no `indexItem` dispatch happens.
+                let index = try await SearchModule.Index(
+                    dbPath: url,
+                    logger: Cupertino.Context.composition.logging.recording,
+                    indexers: [:],
+                    sourceLookup: .empty
+                )
                 fetchers.append(Search.DocsSourceCandidateFetcher(
                     searchIndex: index,
                     source: source.prefix,
                     includeArchive: source.includeArchive,
                     availability: availability,
-                    framework: framework
+                    framework: framework,
+                    swiftVersionSources: swiftVersionSourceIDs,
+                    frameworkScopedSources: frameworkScopedSourceIDs
                 ))
+                indexes[source.prefix] = index
+                openedByPath[url.path] = index
+            } catch {
+                Cupertino.Context.composition.logging.recording.error(
+                    "⚠️  Could not open \(url.lastPathComponent): \(error.localizedDescription)"
+                )
+                // #648 (CLI JSON path) -- file present + open failed is
+                // a configuration error per-source. Classify with the
+                // same patterns SmartQuery / UnifiedSearchService use
+                // (#640 / #642) and record per-source so
+                // `augmentWithOpenTimeDegradation` synthesises the
+                // matching `DegradedSource` entry. Mirrors #648
+                // (open-time) / PR #652 on the MCP side, lifted
+                // post-#1037 to per-source granularity.
+                let reason = SearchModule.SmartQuery.classifyDegradation(error)
+                    ?? "search index initialisation failed: \(error.localizedDescription)"
+                disabledReasons[source.prefix] = reason
+                failedByPath[url.path] = reason
             }
-            return DocsFetchersResult(index: index, disabledReason: nil)
-        } catch {
-            Cupertino.Context.composition.logging.recording.error(
-                "⚠️  Could not open search.db: \(error.localizedDescription)"
-            )
-            // #648 (CLI JSON path) — file present + open failed
-            // is a configuration error. Pre-fix the catch returned nil
-            // alongside the file-missing path and the downstream
-            // SmartQuery saw zero docs fetchers in the fan-out, which
-            // its `classifyDegradation` plumbing couldn't pin to a
-            // schema-mismatch (no per-fetcher throw fired — they
-            // never ran). Result: `SmartResult.degradedSources` stayed
-            // empty + the CLI `--format json` payload had an empty
-            // `degradedSources` array even though 6 sources had
-            // actually failed to open. Classify with the same patterns
-            // SmartQuery / UnifiedSearchService use (#640 / #642) and
-            // return the reason so the caller can synthesise the
-            // open-time `DegradedSource` entries — mirrors #648 (open-
-            // time) / PR #652 on the MCP side.
-            let reason = SearchModule.SmartQuery.classifyDegradation(error)
-                ?? "search index initialisation failed: \(error.localizedDescription)"
-            return DocsFetchersResult(index: nil, disabledReason: reason)
         }
+
+        return DocsFetchersResult(indexes: indexes, disabledReasonsBySource: disabledReasons)
     }
 
     private static func openPackagesFetcher(
@@ -215,10 +383,10 @@ extension CLIImpl.Command.Search {
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? Shared.Paths.live().packagesDatabase
         guard FileManager.default.fileExists(atPath: url.path) else {
-            // #654 — see openDocsFetchers above. Stderr keeps `--format
+            // #654 -- see openDocsFetchers above. Stderr keeps `--format
             // json` stdout pure for `jq` consumers.
             Cupertino.Context.composition.logging.recording.warning(
-                "ℹ️  packages.db not found at \(url.path) — skipping packages."
+                "ℹ️  packages.db not found at \(url.path) -- skipping packages."
             )
             return
         }
@@ -239,10 +407,10 @@ extension CLIImpl.Command.Search {
         let url = override.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? Sample.Index.databasePath(baseDirectory: Shared.Paths.live().baseDirectory)
         guard FileManager.default.fileExists(atPath: url.path) else {
-            // #654 — see openDocsFetchers above. Stderr keeps `--format
+            // #654 -- see openDocsFetchers above. Stderr keeps `--format
             // json` stdout pure for `jq` consumers.
             Cupertino.Context.composition.logging.recording.warning(
-                "ℹ️  samples.db not found at \(url.path) — skipping samples."
+                "ℹ️  samples.db not found at \(url.path) -- skipping samples."
             )
             return nil
         }
@@ -294,13 +462,13 @@ extension CLIImpl.Command.Search {
             )
         case .json:
             // JSON keeps full chunks so programmatic consumers (LLMs, scripts)
-            // never lose data — they can truncate themselves if needed.
+            // never lose data -- they can truncate themselves if needed.
             printSmartReportJSON(result: result, question: question)
         }
     }
 
     /// First N non-blank lines of a chunk, used by `--brief` mode. Default
-    /// 12 — enough context to actually understand what each result is about
+    /// 12 -- enough context to actually understand what each result is about
     /// (covers a full overview paragraph + start of the meat) without burying
     /// the next result. Drop smaller via `lines:` if a future flag wants
     /// triage-density output.
@@ -322,7 +490,7 @@ extension CLIImpl.Command.Search {
         minVersion: String?,
         brief: Bool
     ) {
-        // #640 — surface configuration-error sources before the body so
+        // #640 -- surface configuration-error sources before the body so
         // the user sees the schema-mismatch warning whether the query
         // matched anything or not. Prints to stderr-equivalent
         // (`print` here goes to stdout for CLI piping; the warning
@@ -375,7 +543,7 @@ extension CLIImpl.Command.Search {
     ) {
         guard !result.contributingSources.isEmpty else { return }
         print(String(repeating: "─", count: 70))
-        print("See also — drill into one source:")
+        print("See also -- drill into one source:")
         for source in result.contributingSources {
             print("  cupertino search \"\(question)\" --source \(source)")
         }
@@ -406,7 +574,7 @@ extension CLIImpl.Command.Search {
 
     private static func printTipsFooterText(availabilityFilterActive: Bool) {
         print("💡 Narrow with --source <name>: "
-            + Shared.Constants.Search.availableSources.joined(separator: ", "))
+            + CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition.id).joined(separator: ", "))
         if !availabilityFilterActive {
             print("💡 Filter by platform: --platform iOS --min-version 16.0  "
                 + "(or macOS / tvOS / watchOS / visionOS)")
@@ -423,13 +591,13 @@ extension CLIImpl.Command.Search {
               let platform,
               let minVersion else { return }
         let unfiltered = result.contributingSources.filter {
-            unfilteredSourcesUnderPlatformFlag.contains($0)
+            Self.unfilteredSourcesUnderPlatformFlag().contains($0)
         }
         guard !unfiltered.isEmpty else { return }
         print(
             "ℹ️  --platform \(platform) --min-version \(minVersion) doesn't apply to "
                 + unfiltered.joined(separator: ", ")
-                + " — those sources use a different availability axis "
+                + " -- those sources use a different availability axis "
                 + "(Swift language version). apple-docs / apple-archive / hig / "
                 + "packages / samples results ARE filtered."
         )
@@ -445,7 +613,7 @@ extension CLIImpl.Command.Search {
     ) {
         print("# Results for `\(question)`")
         print("")
-        // #640 — schema-mismatch / DB-unopenable warning at the top so
+        // #640 -- schema-mismatch / DB-unopenable warning at the top so
         // AI agents reading the markdown body see it before the
         // candidate list. Uses a blockquote so MCP clients render it
         // distinctly.
@@ -493,7 +661,7 @@ extension CLIImpl.Command.Search {
         guard !result.contributingSources.isEmpty else { return }
         print("---")
         print("")
-        print("**See also — drill into one source:**")
+        print("**See also -- drill into one source:**")
         print("")
         for source in result.contributingSources {
             print("- `cupertino search \"\(question)\" --source \(source)`")
@@ -502,7 +670,7 @@ extension CLIImpl.Command.Search {
     }
 
     private static func printTipsFooterMarkdown(availabilityFilterActive: Bool) {
-        let sources = Shared.Constants.Search.availableSources.joined(separator: ", ")
+        let sources = CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition.id).joined(separator: ", ")
         print("> 💡 **Narrow with `--source <name>`:** \(sources)")
         if !availabilityFilterActive {
             print(
@@ -522,7 +690,7 @@ extension CLIImpl.Command.Search {
               let platform,
               let minVersion else { return }
         let unfiltered = result.contributingSources.filter {
-            unfilteredSourcesUnderPlatformFlag.contains($0)
+            Self.unfilteredSourcesUnderPlatformFlag().contains($0)
         }
         guard !unfiltered.isEmpty else { return }
         print(
@@ -547,7 +715,7 @@ extension CLIImpl.Command.Search {
             let metadata: [String: String]
             /// CLI command an LLM should run to read the full document.
             /// Nil for sources without a first-party read command (packages
-            /// today — read directly from `~/.cupertino/packages/<id>`).
+            /// today -- read directly from `~/.cupertino/packages/<id>`).
             let readFullCommand: String?
         }
         // `degradedSources` (#640) field next to `contributingSources`
@@ -602,20 +770,15 @@ extension CLIImpl.Command.Search {
     /// disambiguates sample-file vs. package paths (both have shape
     /// `<seg>/<seg>/<seg>`). Returns nil only for unknown sources.
     static func readFullCommand(for candidate: Search.SmartCandidate) -> String? {
-        let source: String
-        switch candidate.source {
-        case Shared.Constants.SourcePrefix.appleDocs,
-             Shared.Constants.SourcePrefix.appleArchive,
-             Shared.Constants.SourcePrefix.hig,
-             Shared.Constants.SourcePrefix.swiftEvolution,
-             Shared.Constants.SourcePrefix.swiftOrg,
-             Shared.Constants.SourcePrefix.swiftBook,
-             Shared.Constants.SourcePrefix.samples,
-             Shared.Constants.SourcePrefix.packages:
-            source = candidate.source
-        default:
-            return nil
-        }
-        return "cupertino read \(candidate.identifier) --source \(source)"
+        // #1042 audit + wiring batch 3: registry-derived "is this a
+        // known source?" gate. Pre-fix the switch enumerated 8
+        // hardcoded source-ids; a new registered source would fall
+        // through to `default → nil` (no read command generated). Now
+        // any source-id appearing in the production registry generates
+        // a `cupertino read <id> --source <name>` command.
+        let registry = CLIImpl.makeProductionSourceRegistry()
+        let knownIDs = Set(registry.allEnabled.map(\.definition.id))
+        guard knownIDs.contains(candidate.source) else { return nil }
+        return "cupertino read \(candidate.identifier) --source \(candidate.source)"
     }
 }

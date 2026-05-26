@@ -24,6 +24,6 @@ cupertino resolve-refs --input ~/.cupertino/docs --use-network --use-webview
 
 ## Notes
 
-- macOS only — WKWebView isn't available on other platforms.
+- macOS only, WKWebView isn't available on other platforms.
 - Slow. Each fallback render takes seconds; only use when JSON API coverage is insufficient.
 - Without `--use-network`, this flag is a no-op.

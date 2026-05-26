@@ -12,7 +12,7 @@ cupertino search "actors" --source swift-evolution --swift 5.5
 
 The `--swift` option scopes search results by the Swift toolchain version a swift-evolution proposal landed in (parsed from each proposal's `Implementation: Swift X.Y` line, or its `Status: Implemented (Swift X.Y)` line as fallback).
 
-Rows from every other source (`apple-docs`, `samples`, `hig`, `swift-org`, `swift-book`, `packages`) are filtered out when this is set — the same `NULL` rejection semantic the per-platform filters (`--min-ios`, `--min-macos`, etc.) use. Pair it with `--source swift-evolution` to make the scope explicit; without `--source`, any non-evolution row mixed into the result set is dropped silently.
+Rows from every other source (`apple-docs`, `samples`, `hig`, `swift-org`, `swift-book`, `packages`) are filtered out when this is set, the same `NULL` rejection semantic the per-platform filters (`--min-ios`, `--min-macos`, etc.) use. Pair it with `--source swift-evolution` to make the scope explicit; without `--source`, any non-evolution row mixed into the result set is dropped silently.
 
 ## Arguments
 
@@ -51,7 +51,7 @@ When using via MCP, use the `min_swift` parameter:
 
 ## Notes
 
-- Comparison is semver-aware over the dotted-decimal version, NOT string compare — `5.10` correctly compares as **greater** than `5.2` (string compare would mistakenly accept the row).
+- Comparison is semver-aware over the dotted-decimal version, NOT string compare, `5.10` correctly compares as **greater** than `5.2` (string compare would mistakenly accept the row).
 - Single-component versions in proposal markdown (e.g. `Swift 6`) are stored normalised as `6.0`.
-- Swift-evolution rows whose markdown the parser couldn't read a version from (e.g. `Status: Accepted` without an `Implementation:` line) are rejected when this filter is set — they reappear in unfiltered searches.
+- Swift-evolution rows whose markdown the parser couldn't read a version from (e.g. `Status: Accepted` without an `Implementation:` line) are rejected when this filter is set, they reappear in unfiltered searches.
 - Companion to `--swift-tools` on `cupertino package-search`, which filters the packages corpus by each repo's `swift-tools-version` declaration.

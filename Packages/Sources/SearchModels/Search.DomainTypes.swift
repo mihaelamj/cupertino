@@ -281,8 +281,32 @@ extension Search {
         /// Is it focused on language features? (0.0-1.0)
         public let languageFocus: Double
 
-        /// Base search quality for this source (0.0-1.0)
+        /// Base search quality for this source (0.0-1.0). Documents the
+        /// general "how good is this source?" signal; separate from
+        /// `rankWeight` (which is RRF-tuned for SmartQuery fusion).
         public let searchQuality: Double
+
+        /// RRF fusion weight for `Search.SmartQuery`. Pre-#1042 the
+        /// weights lived in `SmartQuery.sourceWeights` as a hardcoded
+        /// 9-entry literal (`apple-docs: 3.0`, `swift-evolution: 1.5`,
+        /// …, `hig: 0.5`). Post-fix each source declares its own
+        /// weight here; the CLI composition root reads
+        /// `provider.definition.properties.rankWeight` from every
+        /// registered provider and threads the resulting dict to
+        /// `SmartQuery.init(sourceWeightsOverride:)`. Closes #1045 Gap 1.
+        ///
+        /// Convention: the SmartQuery scale (0.5–3.0), not the
+        /// normalized 0–1 scale used by `searchQuality`. The two
+        /// fields document different signals: `searchQuality` is a
+        /// general source-quality metric (also appears in the YAML
+        /// manifest's `searchProperties.searchQuality`); `rankWeight`
+        /// is the RRF-tuned multiplier specific to SmartQuery's fusion
+        /// math (the YAML manifest's `searchProperties.rankWeight` is
+        /// the human-readable cross-reference).
+        ///
+        /// Default 1.0 keeps existing call-sites compiling; explicit
+        /// in-tree sources declare their pre-#1042 value below.
+        public let rankWeight: Double
 
         public init(
             authority: Double,
@@ -292,7 +316,8 @@ extension Search {
             hasAvailability: Double,
             designFocus: Double,
             languageFocus: Double,
-            searchQuality: Double
+            searchQuality: Double,
+            rankWeight: Double = 1.0
         ) {
             self.authority = authority
             self.freshness = freshness
@@ -302,6 +327,7 @@ extension Search {
             self.designFocus = designFocus
             self.languageFocus = languageFocus
             self.searchQuality = searchQuality
+            self.rankWeight = rankWeight
         }
 
         /// Combined score for a given intent

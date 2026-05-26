@@ -27,10 +27,19 @@ struct Issue1021SwiftBookSourceShapeTests {
         #expect(provider.fetchInfo == nil)
     }
 
-    @Test("SwiftBookSource.destinationDB == .search")
+    @Test("SwiftBookSource.destinationDB == .swiftBook (post #1038 'diff db for each source'; swift-book owns swift-book.db)")
     func destinationDBExplicit() {
+        // Pre-#1038 SwiftBookSource was a view-source: no active
+        // strategy, `.swiftDocumentation` destination, rows emitted
+        // by SwiftOrgStrategy. Post-#1038 SwiftBookSource owns
+        // `swift-book.db` and an active `Search.SwiftBookStrategy`
+        // that filters per-page emission via the shared
+        // `Search.StrategyHelpers.crawlSwiftDocumentation` helper
+        // with `.swiftBookOnly`.
         let provider = SwiftBookSource()
-        #expect(provider.destinationDB == .search)
+        #expect(provider.destinationDB == .swiftBook)
+        #expect(provider.destinationDB.id == "swift-book")
+        #expect(provider.destinationDB.filename == "swift-book.db")
     }
 
     @Test("SwiftBookSource.makeIndexer produces a Search.SwiftBookIndexer carrying the expected sourceID")

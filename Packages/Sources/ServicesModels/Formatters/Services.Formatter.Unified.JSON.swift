@@ -2,6 +2,7 @@ import Foundation
 import SampleIndexModels
 import SearchModels
 import SharedConstants
+
 // MARK: - Unified Search JSON Formatter
 
 extension Services.Formatter.Unified {

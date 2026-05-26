@@ -48,4 +48,4 @@ The HTML link augmentation in `auto` mode is controlled by two `CrawlerConfigura
 
 When augmentation runs and adds at least one link, the crawler logs `🔗 HTML augmentation: +N links (page had M JSON refs)`.
 
-See [`fetch` README — HTML link augmentation](../README.md#html-link-augmentation-in---discovery-mode-auto-v102) for the full description.
+See [`fetch` README, HTML link augmentation](../README.md#html-link-augmentation-in---discovery-mode-auto-v102) for the full description.

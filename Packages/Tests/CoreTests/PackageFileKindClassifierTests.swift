@@ -7,101 +7,101 @@ import Testing
 
 @Test("classify: top-level README.md → .readme")
 func classifyTopLevelReadme() {
-    let r = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "README.md")
-    #expect(r?.kind == .readme)
-    #expect(r?.module == nil)
+    let result = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "README.md")
+    #expect(result?.kind == .readme)
+    #expect(result?.module == nil)
 }
 
 @Test("classify: top-level readme (lowercase) → .readme")
 func classifyTopLevelReadmeLowercase() {
-    let r = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "readme.md")
-    #expect(r?.kind == .readme)
+    let result = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "readme.md")
+    #expect(result?.kind == .readme)
 }
 
 @Test("classify: top-level CHANGELOG.md → .changelog")
 func classifyChangelog() {
-    let r = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "CHANGELOG.md")
-    #expect(r?.kind == .changelog)
+    let result = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "CHANGELOG.md")
+    #expect(result?.kind == .changelog)
 }
 
 @Test("classify: LICENSE.txt → .license")
 func classifyLicense() {
-    let r = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "LICENSE.txt")
-    #expect(r?.kind == .license)
+    let result = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "LICENSE.txt")
+    #expect(result?.kind == .license)
 }
 
 @Test("classify: Package.swift → .packageManifest")
 func classifyPackageManifest() {
-    let r = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "Package.swift")
-    #expect(r?.kind == .packageManifest)
+    let result = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "Package.swift")
+    #expect(result?.kind == .packageManifest)
 }
 
 @Test("classify: Package.resolved → .packageResolved")
 func classifyPackageResolved() {
-    let r = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "Package.resolved")
-    #expect(r?.kind == .packageResolved)
+    let result = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "Package.resolved")
+    #expect(result?.kind == .packageResolved)
 }
 
 @Test("classify: MIGRATING.md top-level → .projectDoc")
 func classifyProjectDocTopLevel() {
-    let r = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "MIGRATING.md")
-    #expect(r?.kind == .projectDoc)
+    let result = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "MIGRATING.md")
+    #expect(result?.kind == .projectDoc)
 }
 
 // MARK: - DocC catalogs
 
 @Test("classify: Sources/Module/Module.docc/Article.md → .doccArticle + module")
 func classifyDoccArticle() {
-    let r = Core.PackageIndexing.PackageFileKindClassifier.classify(
+    let result = Core.PackageIndexing.PackageFileKindClassifier.classify(
         relpath: "Sources/Logging/Docs.docc/BestPractices/002-StructuredLogging.md"
     )
-    #expect(r?.kind == .doccArticle)
-    #expect(r?.module == "Logging")
+    #expect(result?.kind == .doccArticle)
+    #expect(result?.module == "Logging")
 }
 
 @Test("classify: .docc/*.tutorial → .doccTutorial")
 func classifyDoccTutorial() {
-    let r = Core.PackageIndexing.PackageFileKindClassifier.classify(
+    let result = Core.PackageIndexing.PackageFileKindClassifier.classify(
         relpath: "Sources/MyModule/Docs.docc/Tutorials/Step1.tutorial"
     )
-    #expect(r?.kind == .doccTutorial)
-    #expect(r?.module == "MyModule")
+    #expect(result?.kind == .doccTutorial)
+    #expect(result?.module == "MyModule")
 }
 
 // MARK: - Sources / Tests
 
 @Test("classify: Sources/Module/File.swift → .source + module")
 func classifySource() {
-    let r = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "Sources/NIOCore/EventLoop.swift")
-    #expect(r?.kind == .source)
-    #expect(r?.module == "NIOCore")
+    let result = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "Sources/NIOCore/EventLoop.swift")
+    #expect(result?.kind == .source)
+    #expect(result?.module == "NIOCore")
 }
 
 @Test("classify: Tests/ModuleTests/File.swift → .test + module")
 func classifyTest() {
-    let r = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "Tests/NIOCoreTests/EventLoopTests.swift")
-    #expect(r?.kind == .test)
-    #expect(r?.module == "NIOCoreTests")
+    let result = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "Tests/NIOCoreTests/EventLoopTests.swift")
+    #expect(result?.kind == .test)
+    #expect(result?.module == "NIOCoreTests")
 }
 
 // MARK: - Examples
 
 @Test("classify: Examples/foo.swift → .example")
 func classifyExampleSwift() {
-    let r = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "Examples/TodoApp/main.swift")
-    #expect(r?.kind == .example)
+    let result = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "Examples/TodoApp/main.swift")
+    #expect(result?.kind == .example)
 }
 
 @Test("classify: Demo/foo.md → .example")
 func classifyExampleMarkdown() {
-    let r = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "Demo/README.md")
-    #expect(r?.kind == .example)
+    let result = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "Demo/README.md")
+    #expect(result?.kind == .example)
 }
 
 @Test("classify: Examples/ image file → nil (non-text)")
 func classifyExampleBinary() {
-    let r = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "Examples/TodoApp/logo.png")
-    #expect(r == nil)
+    let result = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "Examples/TodoApp/logo.png")
+    #expect(result == nil)
 }
 
 // MARK: - Rejections
@@ -123,6 +123,6 @@ func classifyEmptyPath() {
 
 @Test("classify: Documentation/Article.md (non-docc, nested) → .projectDoc")
 func classifyDocumentationArticle() {
-    let r = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "Documentation/Architecture.md")
-    #expect(r?.kind == .projectDoc)
+    let result = Core.PackageIndexing.PackageFileKindClassifier.classify(relpath: "Documentation/Architecture.md")
+    #expect(result?.kind == .projectDoc)
 }

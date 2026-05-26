@@ -25,6 +25,31 @@ import Testing
 
 @Suite("Services.Formatter.Unified.Markdown searched-sources honesty (#648)")
 struct Issue648SearchedSourcesHonestyTests {
+    /// Post-2026-05-26 audit Finding 6.0: `availableSources` is
+    /// non-optional. The tests pass an explicit fixture list that
+    /// matches the canonical 8 shipped sources so the existing
+    /// assertions ("every shipped source appears in the rendered
+    /// list") still pass against the now-mandatory caller-supplied
+    /// list. This is a SourcesModelsTests-tier test target; we cannot
+    /// reach into `CupertinoComposition.makeProductionSourceRegistry()`
+    /// from here without inverting the dependency direction (the
+    /// composition root imports per-source targets which depend on
+    /// SearchModels; pulling the composition root back into
+    /// ServicesModelsTests would cycle). The list mirrors what
+    /// `CupertinoComposition.makeProductionSourceRegistry().allEnabled.map(\.definition.id)`
+    /// returns; production CLI/MCP threads that registry-derived
+    /// list, this fixture matches it.
+    private static let canonicalSourceIDs: [String] = [
+        Shared.Constants.SourcePrefix.appleDocs,
+        Shared.Constants.SourcePrefix.hig,
+        Shared.Constants.SourcePrefix.samples,
+        Shared.Constants.SourcePrefix.appleArchive,
+        Shared.Constants.SourcePrefix.swiftEvolution,
+        Shared.Constants.SourcePrefix.swiftOrg,
+        Shared.Constants.SourcePrefix.swiftBook,
+        Shared.Constants.SourcePrefix.packages,
+    ]
+
     private func makeInput(degradedSources: [Search.DegradedSource] = []) -> Services.Formatter.Unified.Input {
         Services.Formatter.Unified.Input(
             docResults: [],
@@ -35,6 +60,7 @@ struct Issue648SearchedSourcesHonestyTests {
             swiftOrgResults: [],
             swiftBookResults: [],
             packagesResults: [],
+            availableSources: Self.canonicalSourceIDs,
             limit: 20,
             degradedSources: degradedSources
         )
@@ -50,7 +76,7 @@ struct Issue648SearchedSourcesHonestyTests {
         let output = render([])
         #expect(output.contains("_Searched ALL sources:"))
         // The full list of sources from SharedConstants should appear.
-        for source in Shared.Constants.Search.availableSources {
+        for source in Self.canonicalSourceIDs {
             #expect(output.contains(source))
         }
         // The honest-list wording must NOT appear on the happy path —
@@ -74,7 +100,7 @@ struct Issue648SearchedSourcesHonestyTests {
             .first(where: { $0.contains("_Searched: ") }) ?? ""
         #expect(!searchedLine.contains(appleDocs))
         // The remaining sources must still appear in the honest list.
-        for source in Shared.Constants.Search.availableSources where source != appleDocs {
+        for source in Self.canonicalSourceIDs where source != appleDocs {
             #expect(searchedLine.contains(source))
         }
     }
@@ -101,7 +127,7 @@ struct Issue648SearchedSourcesHonestyTests {
 
     @Test("All sources degraded renders the literal '(none)' placeholder, not the ALL claim")
     func allSourcesDegraded() {
-        let degraded = Shared.Constants.Search.availableSources.map {
+        let degraded = Self.canonicalSourceIDs.map {
             Search.DegradedSource(name: $0, reason: "schema mismatch")
         }
         let output = render(degraded)

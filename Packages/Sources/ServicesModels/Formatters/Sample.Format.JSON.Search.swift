@@ -1,6 +1,7 @@
 import Foundation
 import SampleIndexModels
 import SharedConstants
+
 // MARK: - Shared JSON Output Types
 
 /// Shared project output for JSON encoding

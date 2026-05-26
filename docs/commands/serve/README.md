@@ -57,7 +57,7 @@ cupertino
 
 The server will use default database paths:
 - Search DB: `~/.cupertino/search.db`
-- Samples DB: `~/.cupertino/samples.db`
+- Samples DB: `~/.cupertino/apple-sample-code.db`
 - Packages DB: `~/.cupertino/packages.db`
 
 ## MCP Client Configuration
@@ -101,7 +101,7 @@ command = "/opt/homebrew/bin/cupertino"
 args = ["serve", "--no-reap"]
 ```
 
-**Why `--no-reap`?** Codex spawns a fresh `cupertino serve` per tool call. Without `--no-reap`, each new instance kills its predecessor as a stale sibling and the in-flight transport closes (`Transport closed` error on every tool call — see #280). Equivalent env-var form: `CUPERTINO_DISABLE_REAPER=1` in `[mcp_servers.cupertino.env]`. Claude Desktop / Cursor users keep the default (reap on).
+**Why `--no-reap`?** Codex spawns a fresh `cupertino serve` per tool call. Without `--no-reap`, each new instance kills its predecessor as a stale sibling and the in-flight transport closes (`Transport closed` error on every tool call, see #280). Equivalent env-var form: `CUPERTINO_DISABLE_REAPER=1` in `[mcp_servers.cupertino.env]`. Claude Desktop / Cursor users keep the default (reap on).
 
 ### Cursor
 
@@ -193,7 +193,7 @@ When the server starts successfully:
 ```
 🚀 Cupertino MCP Server starting...
    Search DB: /Users/username/.cupertino/search.db
-   Samples DB: /Users/username/.cupertino/samples.db
+   Samples DB: /Users/username/.cupertino/apple-sample-code.db
    Waiting for client connection...
 ```
 
@@ -271,7 +271,7 @@ Read a document by URI. Returns the full document content in the requested forma
 
 ## Sample Code Tools
 
-If sample code is indexed (via `cupertino save --samples`), the server provides these additional tools (and the unified `search` tool above accepts `source: "samples"`):
+If sample code is indexed (via `cupertino save --source samples`), the server provides these additional tools (and the unified `search` tool above accepts `source: "samples"`):
 
 ### list_samples
 

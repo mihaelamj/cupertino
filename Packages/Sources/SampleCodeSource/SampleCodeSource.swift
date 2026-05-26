@@ -30,7 +30,27 @@ public struct SampleCodeSource: Search.SourceProvider {
 
     public var fetchInfo: Search.FetchInfo? { Self.fetchInfo }
 
-    public var destinationDB: Shared.Models.DatabaseDescriptor { .search }
+    public var destinationDB: Shared.Models.DatabaseDescriptor { .appleSampleCode }
+
+    /// SampleCodeStrategy emits rows tagged `source = "sample-code"`
+    /// (a literal at `Search.Strategies.SampleCode.swift`, distinct
+    /// from `definition.id = "samples"`). Without this alias, the
+    /// step-6 migrator would surface those legacy rows as
+    /// `unknownSourceIDs(["sample-code"])` and abort. The alias lets
+    /// the migrator route `"sample-code"`-tagged rows to
+    /// SampleCodeSource → `.appleSampleCode` correctly.
+    public var legacySourceIDAliases: Set<String> { ["sample-code"] }
+
+    public var capabilities: Search.Capabilities {
+        .init(
+            searchers: [.text, .sampleFiles],
+            operations: [.readByURI, .listSamples],
+            metadata: [
+                .hasMinPlatformVersion: true,
+                .hasSampleCode: true,
+            ]
+        )
+    }
 
     public func makeStrategy(env: Search.IndexEnvironment) -> any Search.SourceIndexingStrategy {
         guard let sampleCatalogProvider = env.sampleCatalogProvider else {
@@ -49,4 +69,28 @@ public struct SampleCodeSource: Search.SourceProvider {
     public func makeIndexer() -> any Search.SourceIndexer {
         Search.SampleCodeIndexer()
     }
+
+    /// #1042 Cluster 8: samples use their own search runner
+    /// (`runSampleSearch` / `handleSearchSamples`); not the default
+    /// `.docs` route.
+    public var searchRoute: Search.SearchRoute { .samples }
+
+    /// 2026-05-26 audit Finding 9.7 + 11.1: per-source fetch strategy.
+    public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? {
+        SampleCodeFetchStrategy()
+    }
+
+    /// 2026-05-26 audit #1055: per-source read strategy. Returns nil
+    /// when the identifier doesn't match a sample project / file so
+    /// `Services.ReadService`'s auto-source flow can try other
+    /// sources.
+    public func makeReadStrategy() -> (any Search.SourceReadStrategy)? {
+        SamplesReadStrategy()
+    }
+
+    /// 2026-05-26 audit #1055 layer-2 part 3: samples live in
+    /// `apple-sample-code.db` with the catalog schema, NOT in the
+    /// search.db FTS family. `SmartReport.docsSources()` filters
+    /// non-search-tier providers out of the unified docs fan-out.
+    public var isSearchTier: Bool { false }
 }

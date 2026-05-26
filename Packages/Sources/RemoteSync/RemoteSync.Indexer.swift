@@ -43,16 +43,28 @@ extension RemoteSync {
         /// App version for state tracking
         private let appVersion: String
 
+        /// #1042 Cluster 11 sub-2: composition-root-supplied URI-scheme
+        /// dispatch map. Pre-fix the dict was a static `phaseURIPrefixes`
+        /// hardcoding 5 schemes; new sources required editing the static.
+        /// Post-fix the composition root supplies a Phase→scheme dict
+        /// derived from the production source registry (each
+        /// SourceProvider's `definition.id` is the canonical scheme for
+        /// its phase). Defaults to the historical 5-entry literal so
+        /// callers that don't supply one stay green.
+        private let phaseURIPrefixesOverride: [IndexState.Phase: String]
+
         // MARK: - Initialization
 
         public init(
             fetcher: GitHubFetcher = GitHubFetcher(),
             stateFileURL: URL,
-            appVersion: String
+            appVersion: String,
+            phaseURIPrefixes: [IndexState.Phase: String] = [:]
         ) {
             self.fetcher = fetcher
             self.stateFileURL = stateFileURL
             self.appVersion = appVersion
+            phaseURIPrefixesOverride = phaseURIPrefixes
             startTime = Date()
             state = IndexState(version: appVersion)
         }
@@ -136,15 +148,11 @@ extension RemoteSync {
             let path = phasePath(phase)
             let source = phaseSource(phase)
 
-            // Get list of items (frameworks or files depending on phase)
-            let items: [String]
-            switch phase {
-            case .docs:
-                items = try await fetcher.fetchDirectoryList(path: path)
-            case .evolution, .archive, .swiftOrg, .packages:
-                // These phases may have different structures
-                items = try await fetcher.fetchDirectoryList(path: path)
-            }
+            // #1042 Cluster 11 sub-1: every phase calls
+            // fetchDirectoryList today; the switch on Phase was
+            // structural only. Phase is now an open struct, so we
+            // collapse the no-op switch to the single call.
+            let items: [String] = try await fetcher.fetchDirectoryList(path: path)
 
             // Update state with phase info
             state = state.startingPhase(phase, frameworksTotal: items.count)
@@ -251,26 +259,43 @@ extension RemoteSync {
 
         // MARK: - Helpers
 
+        // #1042 Cluster 11 sub-1: Phase became a RawRepresentable
+        // struct in RemoteSyncModels; the 3 mapping switches below
+        // are dict lookups keyed by phase. Unknown phases (a future
+        // source that registers a Phase outside the production set)
+        // resolve to empty strings; the indexer surfaces this as a
+        // structural error at fetch time rather than crashing in a
+        // switch arm.
+        private static let phaseDirs: [IndexState.Phase: String] = [
+            .docs: Shared.Constants.Directory.docs,
+            .evolution: Shared.Constants.Directory.swiftEvolution,
+            .archive: Shared.Constants.Directory.archive,
+            .swiftOrg: Shared.Constants.Directory.swiftOrg,
+            .packages: Shared.Constants.Directory.packages,
+        ]
+
+        private static let phaseSources: [IndexState.Phase: String] = [
+            .docs: Shared.Constants.SourcePrefix.appleDocs,
+            .evolution: Shared.Constants.SourcePrefix.swiftEvolution,
+            .archive: Shared.Constants.SourcePrefix.appleArchive,
+            .swiftOrg: Shared.Constants.SourcePrefix.swiftOrg,
+            .packages: Shared.Constants.SourcePrefix.packages,
+        ]
+
+        private static let phaseURIPrefixes: [IndexState.Phase: String] = [
+            .docs: "apple-docs",
+            .evolution: "swift-evolution",
+            .archive: "apple-archive",
+            .swiftOrg: "swift-org",
+            .packages: "packages",
+        ]
+
         private func phasePath(_ phase: IndexState.Phase) -> String {
-            typealias Dir = Shared.Constants.Directory
-            switch phase {
-            case .docs: return Dir.docs
-            case .evolution: return Dir.swiftEvolution
-            case .archive: return Dir.archive
-            case .swiftOrg: return Dir.swiftOrg
-            case .packages: return Dir.packages
-            }
+            Self.phaseDirs[phase] ?? ""
         }
 
         private func phaseSource(_ phase: IndexState.Phase) -> String {
-            typealias SP = Shared.Constants.SourcePrefix
-            switch phase {
-            case .docs: return SP.appleDocs
-            case .evolution: return SP.swiftEvolution
-            case .archive: return SP.appleArchive
-            case .swiftOrg: return SP.swiftOrg
-            case .packages: return SP.packages
-            }
+            Self.phaseSources[phase] ?? phase.rawValue
         }
 
         private func buildURI(phase: IndexState.Phase, item: String, filename: String) -> String {
@@ -278,18 +303,23 @@ extension RemoteSync {
                 .replacingOccurrences(of: ".json", with: "")
                 .replacingOccurrences(of: ".md", with: "")
 
-            switch phase {
-            case .docs:
-                return "apple-docs://\(item)/\(baseName)"
-            case .evolution:
-                return "swift-evolution://\(baseName)"
-            case .archive:
-                return "apple-archive://\(item)/\(baseName)"
-            case .swiftOrg:
-                return "swift-org://\(baseName)"
-            case .packages:
-                return "packages://\(item)/\(baseName)"
+            // #1042 Cluster 11 sub-2: composition-root override wins;
+            // falls back to the static default; ultimate fallback is
+            // the phase's rawValue (so unknown phases produce a
+            // semi-sane URI rather than crashing).
+            let scheme = phaseURIPrefixesOverride[phase]
+                ?? Self.phaseURIPrefixes[phase]
+                ?? phase.rawValue
+            // Two URI shapes pre-#1042: frameworked sources (docs,
+            // archive, packages) carry `<scheme>://<item>/<baseName>`;
+            // single-tree sources (evolution, swiftOrg) carry just
+            // `<scheme>://<baseName>`. Encode the second shape via the
+            // small set known to be single-tree.
+            let singleTreePhases: Set<IndexState.Phase> = [.evolution, .swiftOrg]
+            if singleTreePhases.contains(phase) {
+                return "\(scheme)://\(baseName)"
             }
+            return "\(scheme)://\(item)/\(baseName)"
         }
 
         private func extractTitle(from content: String, filename: String) -> String {

@@ -111,18 +111,18 @@ extension Search.Index {
         // and (rarer) plain
         //   `### Inherits From`
         // — accept both. Compare with case-insensitive prefix.
-        var i = 0
+        var idx = 0
         var foundIdx = -1
         let plainHeading = "### \(sectionTitle)"
         let bracketHeading = "### [\(sectionTitle)]"
-        while i < lines.count {
-            let trimmed = lines[i].trimmingCharacters(in: .whitespaces)
+        while idx < lines.count {
+            let trimmed = lines[idx].trimmingCharacters(in: .whitespaces)
             if trimmed.lowercased().hasPrefix(plainHeading.lowercased())
                 || trimmed.lowercased().hasPrefix(bracketHeading.lowercased()) {
-                foundIdx = i
+                foundIdx = idx
                 break
             }
-            i += 1
+            idx += 1
         }
         guard foundIdx >= 0 else { return [] }
 

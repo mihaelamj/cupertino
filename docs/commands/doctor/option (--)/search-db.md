@@ -89,7 +89,7 @@ Approximate, snapshot of the v1.0.2 corpus (your local DB will vary):
 | ~500 proposals (Swift Evolution) | ~2-3 MB |
 | Combined `search.db` | ~2.4 GB |
 
-(`packages.db` and `samples.db` are separate from `search.db` and aren't sized in by `--search-db`.)
+(`packages.db` and `apple-sample-code.db` are separate from `search.db` and aren't sized in by `--search-db`.)
 
 ## Notes
 

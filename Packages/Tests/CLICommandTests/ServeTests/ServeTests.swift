@@ -1,8 +1,8 @@
 import AppKit
+import AppleArchiveSource
 import AppleDocsSource
 @testable import Core
 import CoreProtocols
-import Crawler
 import CrawlerModels
 import CrawlerWebKit
 import Foundation
@@ -13,8 +13,31 @@ import LoggingModels
 import SearchModels
 @testable import SearchToolProvider
 import SharedConstants
+import SwiftEvolutionSource
 import Testing
 import TestSupport
+
+// 2026-05-26 audit Cluster 12 follow-up: file-local helper to build the
+// canonical 3-strategy bundle the production composition root wires.
+// Tests construct `MCP.Support.DocsResourceProvider` with the same
+// strategy concretes that ship in prod (one URI scheme per source).
+private func makeURIResourceTestBundle(
+    crawlOutputDirectory: URL,
+    evolutionDir: URL,
+    archiveDir: URL
+) -> (strategies: [any SearchModels.Search.URIResourceStrategy], directoriesByScheme: [String: URL]) {
+    let appleDocs = AppleDocsURIResourceStrategy()
+    let evolution = SwiftEvolutionURIResourceStrategy()
+    let archive = AppleArchiveURIResourceStrategy()
+    return (
+        strategies: [appleDocs, evolution, archive],
+        directoriesByScheme: [
+            appleDocs.scheme: crawlOutputDirectory,
+            evolution.scheme: evolutionDir,
+            archive.scheme: archiveDir,
+        ]
+    )
+}
 
 // MARK: - Test Doubles
 
@@ -85,10 +108,15 @@ struct MCPCommandTests {
             changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
+        let uriBundle = makeURIResourceTestBundle(
+            crawlOutputDirectory: tempDir,
+            evolutionDir: tempDir,
+            archiveDir: tempDir
+        )
         let provider = MCP.Support.DocsResourceProvider(
             configuration: config,
-            evolutionDirectory: tempDir,
-            archiveDirectory: tempDir,
+            resourceStrategies: uriBundle.strategies,
+            directoriesByScheme: uriBundle.directoriesByScheme,
             logger: Logging.NoopRecording()
         )
 
@@ -134,10 +162,15 @@ struct MCPCommandTests {
             changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
+        let uriBundle = makeURIResourceTestBundle(
+            crawlOutputDirectory: tempDir,
+            evolutionDir: tempDir,
+            archiveDir: tempDir
+        )
         let provider = MCP.Support.DocsResourceProvider(
             configuration: config,
-            evolutionDirectory: tempDir,
-            archiveDirectory: tempDir,
+            resourceStrategies: uriBundle.strategies,
+            directoriesByScheme: uriBundle.directoriesByScheme,
             logger: Logging.NoopRecording()
         )
 
@@ -284,10 +317,15 @@ struct MCPCommandTests {
             changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
+        let uriBundle = makeURIResourceTestBundle(
+            crawlOutputDirectory: tempDir,
+            evolutionDir: tempDir,
+            archiveDir: tempDir
+        )
         let provider = MCP.Support.DocsResourceProvider(
             configuration: config,
-            evolutionDirectory: tempDir,
-            archiveDirectory: tempDir,
+            resourceStrategies: uriBundle.strategies,
+            directoriesByScheme: uriBundle.directoriesByScheme,
             logger: Logging.NoopRecording()
         )
 
@@ -341,10 +379,15 @@ struct MCPCommandTests {
             changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
+        let uriBundle = makeURIResourceTestBundle(
+            crawlOutputDirectory: tempDir,
+            evolutionDir: tempDir,
+            archiveDir: tempDir
+        )
         let provider = MCP.Support.DocsResourceProvider(
             configuration: config,
-            evolutionDirectory: tempDir,
-            archiveDirectory: tempDir,
+            resourceStrategies: uriBundle.strategies,
+            directoriesByScheme: uriBundle.directoriesByScheme,
             logger: Logging.NoopRecording()
         )
 
@@ -382,10 +425,15 @@ struct MCPCommandTests {
             changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
             output: Shared.Configuration.Output()
         )
+        let uriBundle = makeURIResourceTestBundle(
+            crawlOutputDirectory: tempDir,
+            evolutionDir: tempDir,
+            archiveDir: tempDir
+        )
         let provider = MCP.Support.DocsResourceProvider(
             configuration: config,
-            evolutionDirectory: tempDir,
-            archiveDirectory: tempDir,
+            resourceStrategies: uriBundle.strategies,
+            directoriesByScheme: uriBundle.directoriesByScheme,
             logger: Logging.NoopRecording()
         )
 
@@ -502,10 +550,15 @@ struct MCPServerIntegrationTests {
             atomically: true,
             encoding: .utf8
         )
+        let docsUriBundle = makeURIResourceTestBundle(
+            crawlOutputDirectory: tempDir,
+            evolutionDir: tempDir.appendingPathComponent("nonexistent-evolution"),
+            archiveDir: tempDir.appendingPathComponent("nonexistent-archive")
+        )
         let docsProvider = MCP.Support.DocsResourceProvider(
             configuration: mcpConfig,
-            evolutionDirectory: tempDir.appendingPathComponent("nonexistent-evolution"),
-            archiveDirectory: tempDir.appendingPathComponent("nonexistent-archive"),
+            resourceStrategies: docsUriBundle.strategies,
+            directoriesByScheme: docsUriBundle.directoriesByScheme,
             logger: Logging.NoopRecording()
         )
         let searchProvider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: nil)

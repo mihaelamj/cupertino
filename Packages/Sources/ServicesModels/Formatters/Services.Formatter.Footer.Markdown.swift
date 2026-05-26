@@ -23,6 +23,16 @@ extension Services.Formatter.Footer {
                 case .sourceTip, .semanticTip, .platformTip:
                     output += item.content + "\n\n"
 
+                case .allSourcesDiscovery:
+                    // #1045 Gap 2: rendered as a small italicized note
+                    // at the bottom — discovery only, not actionable
+                    // (the actionable tip is `.sourceTip` above).
+                    if let emoji = item.emoji {
+                        output += "_\(emoji) \(item.content)_\n\n"
+                    } else {
+                        output += "_\(item.content)_\n\n"
+                    }
+
                 case .custom:
                     if let title = item.title {
                         output += "**\(title):** "

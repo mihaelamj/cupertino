@@ -671,7 +671,7 @@ extension Search.Index {
     /// constraint-form data out of 351,495 because most Apple HTML
     /// snippets carry bare `<T>` declarations. The schema-v17
     /// migration adds `generic_constraints`; the column is populated
-    /// by the next `cupertino save --docs` re-index.
+    /// by the next `cupertino save --source apple-docs` re-index.
     ///
     /// Mirrors `searchConformances`: same WHERE/ORDER/LIMIT shape,
     /// same `Search.SymbolSearchResult` return type, but populates

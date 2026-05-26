@@ -85,14 +85,18 @@ struct Issue930SearchHealthCheckTests {
 
 @Suite("#930: SamplesHealthCheck conformer")
 struct Issue930SamplesHealthCheckTests {
-    @Test("descriptor identity is `.samples`; isRequired is false (warning-only)")
+    @Test("descriptor identity is `.appleSampleCode` (#1037 rename); isRequired is false (warning-only)")
     func descriptorAndRequiredness() {
         let check = CLIImpl.Command.Doctor.SamplesHealthCheck(
             samplesDBURL: URL(fileURLWithPath: "/tmp/does-not-exist.db")
         )
-        #expect(check.descriptor.id == Shared.Constants.SourcePrefix.samples)
-        #expect(check.descriptor.filename == Shared.Constants.FileName.samplesDatabase)
-        #expect(check.descriptor == .samples)
+        // #1037: descriptor flipped from `.samples` to `.appleSampleCode`
+        // so the section label matches the on-disk filename
+        // (`apple-sample-code.db`) that `Sample.Index.databasePath`
+        // resolves to.
+        #expect(check.descriptor.id == "apple-sample-code")
+        #expect(check.descriptor.filename == Shared.Constants.FileName.appleSampleCodeDatabase)
+        #expect(check.descriptor == .appleSampleCode)
         #expect(check.isRequired == false)
     }
 
@@ -104,9 +108,10 @@ struct Issue930SamplesHealthCheckTests {
         let ok = await check.run(output: recorder)
         #expect(ok == true, "samples check is warning-only; must return true even on missing file")
         #expect(recorder.records == [
-            "🧪 Sample Code Index (samples.db)",
+            // #1037: label flips to `apple-sample-code.db` (descriptor.filename)
+            "🧪 Sample Code Index (apple-sample-code.db)",
             "   ⚠  Database: \(url.path) (not found)",
-            "     → Run: cupertino fetch --source samples && cupertino cleanup && cupertino save --samples",
+            "     → Run: cupertino fetch --source samples && cupertino cleanup && cupertino save --source samples",
             "",
         ])
     }
@@ -118,7 +123,7 @@ struct Issue930SamplesHealthCheckTests {
         let recorder = CapturingRecording()
         let ok = await check.run(output: recorder)
         #expect(ok == true)
-        #expect(check.descriptor == .samples)
+        #expect(check.descriptor == .appleSampleCode)
         #expect(check.isRequired == false)
     }
 }
@@ -292,7 +297,9 @@ struct Issue930CrossConformerInvariantsTests {
         let required = conformers.filter(\.isRequired).map(\.descriptor)
         #expect(required == [.search])
         let warningOnly = conformers.filter { !$0.isRequired }.map(\.descriptor)
-        #expect(Set(warningOnly) == Set([.samples, .packages]))
+        // #1037: SamplesHealthCheck descriptor flipped from .samples to
+        // .appleSampleCode (filename `apple-sample-code.db`).
+        #expect(Set(warningOnly) == Set([.appleSampleCode, .packages]))
     }
 
     @Test("descriptor.id values match canonical descriptor constants; the two content-source ids match SourcePrefix")
@@ -307,10 +314,16 @@ struct Issue930CrossConformerInvariantsTests {
             packagesDBURL: URL(fileURLWithPath: "/tmp/z")
         )
         // Search has no SourcePrefix constant (it is a DB, not a content
-        // source). Samples + Packages double as both DB ids AND content
-        // sources, so they round-trip through SourcePrefix.
+        // source). #1037: SamplesHealthCheck's descriptor is now
+        // `.appleSampleCode` (id `apple-sample-code`), which no longer
+        // round-trips through `SourcePrefix.samples` because the DB id
+        // is a per-source descriptor, not a SourcePrefix value. Packages
+        // still round-trips. The Samples-side coupling that the
+        // pre-#1037 invariant pinned now lives at the source-provider
+        // level: `SampleCodeSource.definition.id ==
+        // SourcePrefix.samples` (pinned by Issue1012SampleCodeSourceShapeTests).
         #expect(search.descriptor.id == "search")
-        #expect(samples.descriptor.id == Shared.Constants.SourcePrefix.samples)
+        #expect(samples.descriptor.id == "apple-sample-code")
         #expect(packages.descriptor.id == Shared.Constants.SourcePrefix.packages)
     }
 }

@@ -10,7 +10,7 @@ cupertino fetch --source apple-docs --retry-errors
 
 ## Description
 
-Re-queues URLs that the crawler visited but never wrote to the `pages` dict — typically pages whose save failed (filename too long, write errors, etc.). They get removed from the visited set and prepended to the queue at `--max-depth`, so the resumed crawl retries them without re-discovering their children. Use after a save-bug fix to retry only the affected pages without recrawling the whole corpus.
+Re-queues URLs that the crawler visited but never wrote to the `pages` dict, typically pages whose save failed (filename too long, write errors, etc.). They get removed from the visited set and prepended to the queue at `--max-depth`, so the resumed crawl retries them without re-discovering their children. Use after a save-bug fix to retry only the affected pages without recrawling the whole corpus.
 
 ## Default
 

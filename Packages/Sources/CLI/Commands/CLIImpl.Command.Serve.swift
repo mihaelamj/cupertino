@@ -30,7 +30,7 @@ extension CLIImpl.Command {
 
             The server communicates via stdio using JSON-RPC and provides:
 
-            Unified Search (requires 'cupertino save' or 'cupertino save --samples'):
+            Unified Search (requires 'cupertino save' or 'cupertino save --source samples'):
             • search - Smart query fanned out across every available source
                        (apple-docs, samples, swift-evolution, swift-org, swift-book,
                        packages, hig, apple-archive), reciprocal-rank fused.
@@ -39,7 +39,7 @@ extension CLIImpl.Command {
             • list_frameworks - List available frameworks with document counts
             • read_document   - Read full document content by URI
 
-            Sample Code Tools (requires 'cupertino save --samples'):
+            Sample Code Tools (requires 'cupertino save --source samples'):
             • list_samples     - List all indexed sample projects
             • read_sample      - Read sample project README and metadata
             • read_sample_file - Read a specific source file from a sample
@@ -141,6 +141,7 @@ extension CLIImpl.Command {
             await registerProviders(
                 server: server,
                 config: config,
+                paths: paths,
                 evolutionURL: evolutionURL,
                 archiveURL: archiveURL,
                 searchDBURL: searchDBURL,
@@ -174,9 +175,11 @@ extension CLIImpl.Command {
             await server.waitForCompletion()
         }
 
+        // swiftlint:disable:next function_parameter_count
         private func registerProviders(
             server: MCP.Core.Server,
             config: Shared.Configuration,
+            paths: Shared.Paths,
             evolutionURL: URL,
             archiveURL: URL,
             searchDBURL: URL,
@@ -203,10 +206,41 @@ extension CLIImpl.Command {
             } else {
                 markdownLookup = nil
             }
+            // 2026-05-26 audit Cluster 12 follow-up: collect each
+            // registered provider's `Search.URIResourceStrategy` (the
+            // 3 source-specific MCP-resource concretes today —
+            // apple-docs / swift-evolution / apple-archive; nil for
+            // every other source by the protocol's default extension)
+            // and the matching on-disk corpus directory per scheme.
+            // The dispatcher in `MCP.Support.DocsResourceProvider`
+            // iterates the strategy list; adding a new MCP-resource
+            // source is one `makeURIResourceStrategy()` override on
+            // the provider, no edits to Serve or the dispatcher.
+            //
+            // Directory resolution: apple-docs honours the `--docs-dir`
+            // override (paths.docsDirectory at construction time);
+            // swift-evolution honours `--evolution-dir`; other schemes
+            // resolve via `Shared.Paths.directory(named:)` keyed by
+            // the source's `fetchInfo.defaultOutputDirKey.rawValue`.
+            let resourceRegistry = CLIImpl.makeProductionSourceRegistry()
+            var resourceStrategies: [any SearchModels.Search.URIResourceStrategy] = []
+            var directoriesByScheme: [String: URL] = [:]
+            for provider in resourceRegistry.allEnabled {
+                guard let strategy = provider.makeURIResourceStrategy() else { continue }
+                resourceStrategies.append(strategy)
+                let dirKey = provider.fetchInfo?.defaultOutputDirKey.rawValue
+                let directory: URL = switch provider.definition.id {
+                case Shared.Constants.SourcePrefix.appleDocs: paths.docsDirectory
+                case Shared.Constants.SourcePrefix.swiftEvolution: evolutionURL
+                case Shared.Constants.SourcePrefix.appleArchive: archiveURL
+                default: paths.directory(named: dirKey ?? provider.definition.id)
+                }
+                directoriesByScheme[strategy.scheme] = directory
+            }
             let resourceProvider = MCP.Support.DocsResourceProvider(
                 configuration: config,
-                evolutionDirectory: evolutionURL,
-                archiveDirectory: archiveURL,
+                resourceStrategies: resourceStrategies,
+                directoriesByScheme: directoriesByScheme,
                 markdownLookup: markdownLookup,
                 logger: Cupertino.Context.composition.logging.recording
             )
@@ -248,6 +282,30 @@ extension CLIImpl.Command {
             // `resources/read` successfully read off disk (typical with
             // bundles whose indexer-written URIs use the pre-#293
             // `.lastPathComponent` shape).
+            // #1042 Cluster 7: derive the search tool's `source` enum
+            // schema from the production source registry. Adding a new
+            // source (one `.register(<X>Source())` call below) extends
+            // the MCP schema automatically. `"all"` + the appleSampleCode
+            // alias join the registered IDs to keep the existing
+            // dispatch contract (samples is the canonical id; clients
+            // historically also pass `apple-sample-code`).
+            let registry = CLIImpl.makeProductionSourceRegistry()
+            var searchToolSourceEnumValues = ["all"]
+            searchToolSourceEnumValues.append(contentsOf: registry.allEnabled.map(\.definition.id))
+            if !searchToolSourceEnumValues.contains(Shared.Constants.SourcePrefix.appleSampleCode) {
+                searchToolSourceEnumValues.append(Shared.Constants.SourcePrefix.appleSampleCode)
+            }
+
+            // 2026-05-26 audit Finding 14.4: derive source-id →
+            // searchRoute dispatch map from the production source
+            // registry. CompositeToolProvider.handleSearch consults
+            // this dict instead of switching on source-id literals
+            // (pre-fix the switch hardcoded 9 source ids).
+            var searchToolRoutesByID: [String: SearchModels.Search.SearchRoute] = [:]
+            for provider in registry.allEnabled {
+                searchToolRoutesByID[provider.definition.id] = provider.searchRoute
+            }
+
             let toolProvider = CompositeToolProvider(
                 searchIndex: searchIndex,
                 sampleDatabase: sampleIndex,
@@ -257,7 +315,9 @@ extension CLIImpl.Command {
                 unifiedService: unifiedService,
                 packagesSearcher: packagesSearcher,
                 documentResourceProvider: resourceProvider,
-                searchIndexDisabledReason: searchIndexDisabledReason
+                searchIndexDisabledReason: searchIndexDisabledReason,
+                searchToolSourceEnumValues: searchToolSourceEnumValues,
+                searchToolRoutesByID: searchToolRoutesByID
             )
             await server.registerToolProvider(toolProvider)
 

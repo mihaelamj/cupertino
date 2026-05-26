@@ -162,7 +162,7 @@ struct LoggingNoopRecordingTests {
         let noop = Logging.NoopRecording()
         noop.output("a")
         noop.output("")
-        noop.output(String(repeating: "x", count: 10_000))
+        noop.output(String(repeating: "x", count: 10000))
     }
 
     @Test("Conforms to Logging.Recording (witness check)")

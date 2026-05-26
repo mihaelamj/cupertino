@@ -10,7 +10,7 @@ cupertino fetch --source samples
 
 ## Description
 
-Crawls sample code projects directly from GitHub. This is the **recommended** way to populate sample-code data — it pulls live sources (Sources/, Tests/, Package.swift, README, .docc/) from each project's GitHub repository.
+Crawls sample code projects directly from GitHub. This is the **recommended** way to populate sample-code data, it pulls live sources (Sources/, Tests/, Package.swift, README, .docc/) from each project's GitHub repository.
 
 Different from `--source apple-sample-code`, which scrapes Apple's bundled sample-code catalog at `developer.apple.com/sample-code` (HTML + zip downloads). `samples` is the GitHub path; `code` is the Apple-catalog path.
 
@@ -28,7 +28,7 @@ Each project directory contains:
 ## Typical Size
 
 - Hundreds of projects, tens of MB to single-digit GB depending on which projects are crawled.
-- Source code only — no compiled artifacts.
+- Source code only, no compiled artifacts.
 
 ## Examples
 
@@ -39,7 +39,7 @@ cupertino fetch --source samples
 
 ### Then build the index
 ```bash
-cupertino save --samples
+cupertino save --source samples
 ```
 
 ## Notes
@@ -47,4 +47,4 @@ cupertino save --samples
 - Replaces the older `--source apple-sample-code` Apple-catalog path for everyday use.
 - Project list is bundled in `Resources` (priority-package catalog).
 - Resumable: re-running picks up where the last fetch left off.
-- Pair with `cupertino save --samples` to populate `samples.db`.
+- Pair with `cupertino save --source samples` to populate `apple-sample-code.db`.

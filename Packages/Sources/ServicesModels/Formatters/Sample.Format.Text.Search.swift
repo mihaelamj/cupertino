@@ -1,6 +1,7 @@
 import Foundation
 import SampleIndexModels
 import SharedConstants
+
 // MARK: - Sample Search Text Formatter
 
 /// Formats sample search results as plain text for CLI output
@@ -9,11 +10,19 @@ extension Sample.Format.Text {
         private let query: String
         private let framework: String?
         private let teasers: Services.Formatter.TeaserResults?
+        /// #1045 Gap 2: registry-derived source-id list for footer tips.
+        private let availableSources: [String]
 
-        public init(query: String, framework: String? = nil, teasers: Services.Formatter.TeaserResults? = nil) {
+        public init(
+            query: String,
+            framework: String? = nil,
+            teasers: Services.Formatter.TeaserResults? = nil,
+            availableSources: [String]
+        ) {
             self.query = query
             self.framework = framework
             self.teasers = teasers
+            self.availableSources = availableSources
         }
 
         public func format(_ result: Sample.Search.Result) -> String {
@@ -62,7 +71,11 @@ extension Sample.Format.Text {
             }
 
             // Footer: teasers, tips, and guidance
-            let footer = Services.Formatter.Footer.Search.singleSource(Shared.Constants.SourcePrefix.samples, teasers: teasers)
+            let footer = Services.Formatter.Footer.Search.singleSource(
+                Shared.Constants.SourcePrefix.samples,
+                teasers: teasers,
+                availableSources: availableSources
+            )
             output += footer.formatText()
 
             return output
@@ -76,14 +89,17 @@ extension Sample.Format.Text {
 extension Sample.Format.Text {
     public struct List: Services.Formatter.Result {
         private let totalCount: Int
+        /// #1045 Gap 2: registry-derived source-id list for footer tips.
+        private let availableSources: [String]
 
-        public init(totalCount: Int) {
+        public init(totalCount: Int, availableSources: [String]) {
             self.totalCount = totalCount
+            self.availableSources = availableSources
         }
 
         public func format(_ projects: [Sample.Index.Project]) -> String {
             if projects.isEmpty {
-                return "No sample projects found. Run 'cupertino save --samples' to build the sample index."
+                return "No sample projects found. Run 'cupertino save --source samples' to build the sample index."
             }
 
             var output = "Sample Projects (\(projects.count) of \(totalCount) total):\n\n"
@@ -96,7 +112,10 @@ extension Sample.Format.Text {
             }
 
             // Footer: tips and guidance
-            let footer = Services.Formatter.Footer.Search.singleSource(Shared.Constants.SourcePrefix.samples)
+            let footer = Services.Formatter.Footer.Search.singleSource(
+                Shared.Constants.SourcePrefix.samples,
+                availableSources: availableSources
+            )
             output += footer.formatText()
 
             return output
@@ -109,7 +128,12 @@ extension Sample.Format.Text {
 /// Formats a single sample project as plain text
 extension Sample.Format.Text {
     public struct Project: Services.Formatter.Result {
-        public init() {}
+        /// #1045 Gap 2: registry-derived source-id list for footer tips.
+        private let availableSources: [String]
+
+        public init(availableSources: [String]) {
+            self.availableSources = availableSources
+        }
 
         public func format(_ project: Sample.Index.Project) -> String {
             var output = "Project: \(project.title)\n"
@@ -122,7 +146,10 @@ extension Sample.Format.Text {
             }
 
             // Footer: tips and guidance
-            let footer = Services.Formatter.Footer.Search.singleSource(Shared.Constants.SourcePrefix.samples)
+            let footer = Services.Formatter.Footer.Search.singleSource(
+                Shared.Constants.SourcePrefix.samples,
+                availableSources: availableSources
+            )
             output += footer.formatText()
 
             return output

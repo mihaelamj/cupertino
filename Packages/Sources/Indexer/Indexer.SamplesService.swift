@@ -4,6 +4,7 @@ import SampleIndexModels
 import SharedConstants
 
 // MARK: - Indexer.SamplesService — concrete `run` orchestrator
+
 //
 // The value types (`Request`, `Outcome`, `Event`, `Phase`,
 // `ServiceError`) plus the `Indexer.SamplesService.EventObserving`
@@ -83,9 +84,9 @@ extension Indexer.SamplesService {
                 events.observe(event: .catalogLoaded(entryCount: entryCount))
             case .indexingStart:
                 events.observe(event: .indexingStart)
-            case .projectProgress(let name, let percent, let p):
+            case .projectProgress(let name, let percent, let phase):
                 let mapped: Event.Phase
-                switch p {
+                switch phase {
                 case .extracting: mapped = .extracting
                 case .indexingFiles: mapped = .indexingFiles
                 case .completed: mapped = .completed

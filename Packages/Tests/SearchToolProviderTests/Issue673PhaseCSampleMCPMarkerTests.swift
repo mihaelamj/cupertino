@@ -18,7 +18,7 @@ import Testing
 ///
 /// - `list_samples` — title `"# Indexed Sample Code Projects"`,
 ///   totals lines `"Total projects:"` + `"Total files:"`, empty marker
-///   `"_No projects found. Run \`cupertino save --samples\`..."`,
+///   `"_No projects found. Run \`cupertino save --source samples\`..."`,
 ///   table header `"| Project | Framework | Files |"`.
 /// - `read_sample` — title `"# \(project.title)"`, sections
 ///   `"## Description"` / `"## Metadata"` / `"## README"` / `"## Files"`,
@@ -103,7 +103,7 @@ struct Issue673PhaseCSampleMCPMarkerTests {
         #expect(textNode.text.contains("Total projects:"))
         #expect(textNode.text.contains("Total files:"))
         #expect(
-            textNode.text.contains("_No projects found. Run `cupertino save --samples`"),
+            textNode.text.contains("_No projects found. Run `cupertino save --source samples`"),
             "empty-projects marker missing — body: \(textNode.text.prefix(300))"
         )
         // Negative: empty path must NOT emit the populated-table header.

@@ -71,14 +71,19 @@ extension RemoteSync {
             return "[\(filledStr)\(emptyStr)]"
         }
 
+        // #1042 Cluster 11 sub-1: Phase is an open RawRepresentable
+        // struct; emojis live in a dict keyed by phase. Unknown
+        // phases get a generic "•" so the dispatch path doesn't crash.
+        private static let phaseEmojis: [RemoteSync.IndexState.Phase: String] = [
+            .docs: "📚",
+            .evolution: "📋",
+            .archive: "📜",
+            .swiftOrg: "🔶",
+            .packages: "📦",
+        ]
+
         private func phaseEmoji(_ phase: RemoteSync.IndexState.Phase) -> String {
-            switch phase {
-            case .docs: return "📚"
-            case .evolution: return "📋"
-            case .archive: return "📜"
-            case .swiftOrg: return "🔶"
-            case .packages: return "📦"
-            }
+            Self.phaseEmojis[phase] ?? "•"
         }
     }
 }

@@ -3,6 +3,7 @@ import IndexerModels
 import Testing
 
 // MARK: - IndexerModels public surface smoke tests
+
 //
 // IndexerModels is the foundation-only seam target for the three
 // `Indexer.<Service>` orchestrators (extracted in PR #558 during the
@@ -120,7 +121,7 @@ struct PackagesServiceModelTests {
             durationSeconds: 12.5,
             totalPackagesInDB: 500,
             totalFilesInDB: 9999,
-            totalBytesInDB: 123_456_789
+            totalBytesInDB: 123456789
         )
         #expect(outcome.packagesIndexed == 100)
         #expect(outcome.packagesFailed == 2)
@@ -129,7 +130,7 @@ struct PackagesServiceModelTests {
         #expect(outcome.durationSeconds == 12.5)
         #expect(outcome.totalPackagesInDB == 500)
         #expect(outcome.totalFilesInDB == 9999)
-        #expect(outcome.totalBytesInDB == 123_456_789)
+        #expect(outcome.totalBytesInDB == 123456789)
     }
 }
 

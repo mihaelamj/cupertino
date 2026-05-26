@@ -1,6 +1,6 @@
 # samples
 
-Sample code projects source (samples.db, populated by `cupertino save --samples`)
+Sample code projects source (apple-sample-code.db, populated by `cupertino save --source samples`)
 
 ## Synopsis
 
@@ -10,7 +10,7 @@ cupertino search <query> --source samples
 
 ## Description
 
-Filters search results to only include sample code projects. Searches the dedicated `samples.db` (built by `cupertino save --samples`) which holds README text + per-source-file content for every sample project crawled from GitHub via `cupertino fetch --source samples`.
+Filters search results to only include sample code projects. Searches the dedicated `apple-sample-code.db` (built by `cupertino save --source samples`) which holds README text + per-source-file content for every sample project crawled from GitHub via `cupertino fetch --source samples`.
 
 ## Content
 
@@ -22,7 +22,7 @@ Filters search results to only include sample code projects. Searches the dedica
 ## Typical Size
 
 - Driven by which projects are crawled, see `cupertino fetch --source samples`
-- `~/.cupertino/samples.db` schema v3
+- `~/.cupertino/apple-sample-code.db` schema v3
 - Hundreds of projects → tens of thousands of indexed files
 
 ## Examples
@@ -52,8 +52,8 @@ Results use the `samples://` URI scheme. The CLI's `cupertino read --source samp
 # Fetch sample projects from GitHub (uses bundled priority list)
 cupertino fetch --source samples
 
-# Build samples.db
-cupertino save --samples
+# Build apple-sample-code.db
+cupertino save --source samples
 ```
 
 ## Use Cases
@@ -65,4 +65,4 @@ cupertino save --samples
 ## Notes
 
 - Different from `--source apple-archive` (legacy programming guides) and `--source apple-docs` (modern API reference).
-- Skipped automatically if `samples.db` is missing, see `cupertino doctor`.
+- Skipped automatically if `apple-sample-code.db` is missing, see `cupertino doctor`.

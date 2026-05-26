@@ -4,6 +4,35 @@ import PackageDescription
 
 // -------------------------------------------------------------
 
+// MARK: - Per-source target enumeration (#1042 Cluster 14 pluggability anchor)
+
+// Single source-of-truth list of the 8 per-source SPM target names.
+// Adding a new source means appending its target name here ONCE; the
+// `.singleTargetLibrary` product list + every test-target dependency
+// array that ships the full source set is derived from this list.
+// Before #1042 the same 8 names were enumerated 4 times across this
+// file (singleTargetLibrary block + SearchTests + SearchStrategiesTests
+// + cupertinoMacOSBinary); the per-source DB split epic's contract test
+// asserts this list is helper-based now (`Issue1042PluggabilityContractTests`
+// Cluster 14).
+
+let allSourceTargetNames: [String] = [
+    "AppleDocsSource",
+    "HIGSource",
+    "SampleCodeSource",
+    "SwiftEvolutionSource",
+    "SwiftOrgSource",
+    "SwiftBookSource",
+    "PackagesSource",
+    "AppleArchiveSource",
+]
+
+let allSourceTargetDeps: [Target.Dependency] = allSourceTargetNames.map { .target(name: $0) }
+
+let allSourceProducts: [Product] = allSourceTargetNames.map { .singleTargetLibrary($0) }
+
+// -------------------------------------------------------------
+
 // MARK: Products
 
 // -------------------------------------------------------------
@@ -31,14 +60,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("SearchSchema"),
     .singleTargetLibrary("SearchSQLite"),
     .singleTargetLibrary("SearchStrategyHelpers"),
-    .singleTargetLibrary("AppleDocsSource"),
-    .singleTargetLibrary("HIGSource"),
-    .singleTargetLibrary("SampleCodeSource"),
-    .singleTargetLibrary("SwiftEvolutionSource"),
-    .singleTargetLibrary("SwiftOrgSource"),
-    .singleTargetLibrary("SwiftBookSource"),
-    .singleTargetLibrary("PackagesSource"),
-    .singleTargetLibrary("AppleArchiveSource"),
+    // .singleTargetLibrary("<X>Source") rows live in allSourceProducts (#1042 Cluster 14).
     .singleTargetLibrary("SampleIndex"),
     .singleTargetLibrary("SampleIndexSQLite"),
     .singleTargetLibrary("Services"),
@@ -55,7 +77,6 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("PackagesAppleImportsPass"),
     .singleTargetLibrary("SamplesAppleConstraintsPass"),
     .singleTargetLibrary("SynonymsPass"),
-    .singleTargetLibrary("Ingest"),
     .singleTargetLibrary("Resources"),
     .singleTargetLibrary("AvailabilityModels"),
     .singleTargetLibrary("Availability"),
@@ -80,7 +101,11 @@ let macOSOnlyProducts: [Product] = [
 let macOSOnlyProducts: [Product] = []
 #endif
 
+#if os(macOS)
+let allProducts = baseProducts + macOSOnlyProducts + allSourceProducts
+#else
 let allProducts = baseProducts + macOSOnlyProducts
+#endif
 
 // -------------------------------------------------------------
 
@@ -265,7 +290,8 @@ let targets: [Target] = {
     let coreJSONParserTarget = Target.target(
         name: "CoreJSONParser",
         dependencies: ["CoreProtocols", "SharedConstants"],
-        path: "Sources/Core/JSONParser"
+        path: "Sources/Core/JSONParser",
+        exclude: ["WebKit"]
     )
 
     // #904: CoreJSONParserWebKit sibling carries the WKWebView-backed
@@ -310,7 +336,8 @@ let targets: [Target] = {
     let corePackageIndexingTarget = Target.target(
         name: "CorePackageIndexing",
         dependencies: ["CorePackageIndexingModels", "CoreProtocols", "SharedConstants", "LoggingModels", "ASTIndexer", "Resources"],
-        path: "Sources/Core/PackageIndexing"
+        path: "Sources/Core/PackageIndexing",
+        exclude: ["Model"]
     )
     let corePackageIndexingTestsTarget = Target.testTarget(
         name: "CorePackageIndexingTests",
@@ -368,7 +395,12 @@ let targets: [Target] = {
             "CoreProtocols",
             "SharedConstants",
         ],
-        exclude: ["JSONParser", "PackageIndexing"]
+        // Core has multi-folder content (Core/ + HTMLParser/) that
+        // both belong to the same target post-#... merge. Re-rooting
+        // at the family folder + excluding the subfolders that have
+        // their own targets keeps everything compiling.
+        path: "Sources/Core",
+        exclude: ["Protocols", "JSONParser", "PackageIndexing", "SampleCode"]
     )
     let coreTestsTarget = Target.testTarget(
         name: "CoreTests",
@@ -384,7 +416,7 @@ let targets: [Target] = {
         resources: [.copy("Resources/AppleJSON")]
     )
 
-    // ---------- Crawler (v1.2 refactor 2.5: extracted from Core — web crawlers + WebKit fetcher) ----------
+    // ---------- Crawler family (Sources/Crawler/{Core,Model,WebKit}) ----------
     let crawlerModelsTarget = Target.target(
         name: "CrawlerModels",
         dependencies: ["CoreProtocols", "SharedConstants"]
@@ -393,17 +425,6 @@ let targets: [Target] = {
         name: "CrawlerModelsTests",
         dependencies: ["CrawlerModels", "SharedConstants"]
     )
-    let crawlerTarget = Target.target(
-        name: "Crawler",
-        dependencies: [
-            "CrawlerModels",
-            "CoreProtocols",
-            "SharedConstants",
-            "LoggingModels",
-            "Resources",
-        ]
-    )
-
     // #903: CrawlerWebKit sibling target carrying the WebKit-backed
     // concretes (`Crawler.WebKit.ContentFetcher`, `Crawler.WebKit.Engine`)
     // + `LiveHTTPFetcherFactory`. The Crawler producer is foundation-only
@@ -418,10 +439,15 @@ let targets: [Target] = {
             "SharedConstants",
         ]
     )
+    // 2026-05-26 audit Finding 9.7+11.1: CrawlerTests now depends on
+    // the per-source targets where the `Crawler.<X>` concretes live
+    // (HIGSource / SwiftEvolutionSource / AppleArchiveSource /
+    // AppleDocsSource). The empty `Crawler` producer target was deleted.
+    // Per-source deps spread via the `allSourceTargetDeps` helper per
+    // the Cluster-14 anti-co-location contract.
     let crawlerTestsTarget = Target.testTarget(
         name: "CrawlerTests",
         dependencies: [
-            "Crawler",
             "CrawlerModels",
             "CrawlerWebKit",
             "Core",
@@ -429,10 +455,10 @@ let targets: [Target] = {
             "CorePackageIndexing",
             "SharedConstants",
             "TestSupport",
-        ]
+        ] + allSourceTargetDeps
     )
 
-    // ---------- CleanupModels (foundation-only seam — Observer protocol for Sample.Cleanup.Cleaner) ----------
+    // ---------- Cleanup family (Sources/Cleanup/{Core,Model}) ----------
     let cleanupModelsTarget = Target.target(
         name: "CleanupModels",
         dependencies: ["SharedConstants"]
@@ -457,7 +483,11 @@ let targets: [Target] = {
     // Search.Result, Search.MatchedSymbol, Search.PlatformAvailability, Search.DocumentFormat.
     let searchModelsTarget = Target.target(
         name: "SearchModels",
-        dependencies: ["SharedConstants", "ASTIndexer", "LoggingModels"]
+        // 2026-05-26 audit Finding 9.7 + 11.1: CrawlerModels carries
+        // the `Crawler.HTTPFetcherFactory` strategy seam consumed by
+        // `Search.FetchEnvironment`. Foundation-only dep — CrawlerModels
+        // is the seam tier, not the producer.
+        dependencies: ["SharedConstants", "ASTIndexer", "LoggingModels", "CrawlerModels"]
     )
     let searchModelsTestsTarget = Target.testTarget(
         name: "SearchModelsTests",
@@ -465,15 +495,8 @@ let targets: [Target] = {
             "SearchModels",
             "SharedConstants",
             "TestSupport",
-            "HIGSource",
-            "SampleCodeSource",
-            "AppleArchiveSource",
-            "SwiftEvolutionSource",
-            "SwiftOrgSource",
-            "SwiftBookSource",
-            "PackagesSource",
             "LoggingModels",
-        ]
+        ] + allSourceTargetDeps
     )
 
     // ---------- SampleIndexModels (#408 partial: value types + Reader protocol lifted out of
@@ -555,14 +578,7 @@ let targets: [Target] = {
         dependencies: [
             "SearchAPI",
             "SearchSQLite",
-            "AppleDocsSource",
-            "HIGSource",
-            "SampleCodeSource",
-            "SwiftEvolutionSource",
-            "SwiftOrgSource",
-            "SwiftBookSource",
-            "PackagesSource",
-            "AppleArchiveSource",
+        ] + allSourceTargetDeps + [
             "AppleConstraintsPass",
             "SearchModels",
             "SharedConstants",
@@ -595,6 +611,7 @@ let targets: [Target] = {
     let searchStrategyHelpersTarget = Target.target(
         name: "SearchStrategyHelpers",
         dependencies: [
+            "LoggingModels",
             "SearchModels",
             "SharedConstants",
         ]
@@ -607,15 +624,7 @@ let targets: [Target] = {
     // but depends only on the 6 sibling targets now.
     let searchStrategiesTestsTarget = Target.testTarget(
         name: "SearchStrategiesTests",
-        dependencies: [
-            "AppleDocsSource",
-            "HIGSource",
-            "SampleCodeSource",
-            "SwiftEvolutionSource",
-            "SwiftOrgSource",
-            "SwiftBookSource",
-            "PackagesSource",
-            "AppleArchiveSource",
+        dependencies: allSourceTargetDeps + [
             "AppleConstraintsPass",
             "SearchModels",
             "SearchSQLite",
@@ -640,6 +649,10 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
+            // 2026-05-26 audit Finding 9.7 + 11.1: WebCrawlFetchStrategy
+            // wraps `Crawler.AppleDocs` + delegates to `Ingest.Session`
+            // for resume / requeue / baseline / urls-file plumbing.
+            "CrawlerModels",
         ]
     )
 
@@ -656,6 +669,10 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
+            // 2026-05-26 audit Finding 9.7 + 11.1: HIGFetchStrategy
+            // wraps `Crawler.HIG`. Per-source target owns its fetch
+            // strategy; `Crawler` stays as shared crawl infrastructure.
+            "CrawlerModels",
         ]
     )
 
@@ -671,6 +688,11 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
+            // 2026-05-26 audit Finding 9.7 + 11.1: SampleCodeFetchStrategy
+            // wraps `Sample.Core.GitHubFetcher`.
+            "CoreSampleCode",
+            "CoreSampleCodeModels",
+            "CrawlerModels",
         ]
     )
 
@@ -687,6 +709,9 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
+            // 2026-05-26 audit Finding 9.7 + 11.1: SwiftEvolutionFetchStrategy
+            // wraps `Crawler.Evolution`.
+            "CrawlerModels",
         ]
     )
 
@@ -702,6 +727,13 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
+            // 2026-05-26 audit Finding 9.7 + 11.1: SwiftOrgSource +
+            // SwiftBookSource share AppleDocsSource's
+            // `WebCrawlFetchStrategy` concrete (different config per
+            // source). Inter-source-target dep accepted because the
+            // 3 web-crawl-tier sources have always shared the
+            // `runStandardCrawl` codepath pre-fix.
+            "AppleDocsSource",
         ]
     )
 
@@ -722,6 +754,11 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
+            // 2026-05-26 audit Finding 9.7 + 11.1: SwiftBookSource is
+            // a view-source over swift-org's crawl — its fetch
+            // strategy delegates to AppleDocsSource's shared
+            // `WebCrawlFetchStrategy` seeded with swift-org's URL.
+            "AppleDocsSource",
         ]
     )
 
@@ -740,6 +777,14 @@ let targets: [Target] = {
         dependencies: [
             "SearchModels",
             "SharedConstants",
+            // 2026-05-26 audit Finding 9.7 + 11.1: PackagesFetchStrategy
+            // wraps the 3-stage Core.PackageIndexing pipeline.
+            "Core",
+            "CorePackageIndexing",
+            "CorePackageIndexingModels",
+            "CoreProtocols", // declares the `Core` namespace anchor that CorePackageIndexingModels extends with `PackageIndexing`.
+            "CrawlerModels",
+            "LoggingModels",
         ]
     )
 
@@ -757,7 +802,24 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
+            // 2026-05-26 audit Finding 9.7 + 11.1: AppleArchiveFetchStrategy
+            // wraps `Crawler.AppleArchive` + `Crawler.ArchiveGuideCatalog`
+            // (both physically moved into this target).
+            "CrawlerModels",
+            "Resources",
         ]
+    )
+
+    // 2026-05-26 audit follow-up: single canonical declaration of the
+    // production source set. Both CLI's CLIImpl.makeProductionSourceRegistry
+    // and SearchToolProviderTests' MCP route-map fixture delegate
+    // here so adding a new source = one register-call in
+    // Cupertino.CompositionRoot.swift, and no test fixture drifts.
+    let cupertinoCompositionTarget = Target.target(
+        name: "CupertinoComposition",
+        dependencies: [
+            "SearchModels",
+        ] + allSourceTargetDeps
     )
 
     let sampleIndexTarget = Target.target(
@@ -815,8 +877,7 @@ let targets: [Target] = {
 
     let servicesTarget = Target.target(
         name: "Services",
-        dependencies: ["ServicesModels", "SearchModels", "SampleIndexModels", "SharedConstants"],
-        exclude: ["README.md"]
+        dependencies: ["ServicesModels", "SearchModels", "SampleIndexModels", "SharedConstants"]
     )
     let servicesTestsTarget = Target.testTarget(
         name: "ServicesTests",
@@ -825,12 +886,31 @@ let targets: [Target] = {
 
     let mcpSupportTarget = Target.target(
         name: "MCPSupport",
-        dependencies: ["MCPCore", "MCPSharedTools", "SharedConstants", "LoggingModels"],
+        // 2026-05-26 audit Cluster 12 follow-up: SearchModels carries
+        // `Search.URIResourceStrategy` + `Search.URIResourceEnvironment`
+        // — the seam the per-source URI dispatch consumes. Foundation
+        // tier import (gof-di-rules § 4-8 allows it).
+        dependencies: ["MCPCore", "MCPSharedTools", "SearchModels", "SharedConstants", "LoggingModels"],
         path: "Sources/MCP/Support"
     )
     let mcpSupportTestsTarget = Target.testTarget(
         name: "MCPSupportTests",
-        dependencies: ["MCPSupport", "MCPCore", "MCPSharedTools", "SharedConstants", "TestSupport"],
+        // 2026-05-26 audit Cluster 12 follow-up: per-source URI
+        // strategy concretes live in their owning source targets
+        // (AppleDocsSource / SwiftEvolutionSource / AppleArchiveSource);
+        // tests that build a DocsResourceProvider need access to
+        // instantiate them.
+        dependencies: [
+            "AppleDocsSource",
+            "AppleArchiveSource",
+            "MCPSupport",
+            "MCPCore",
+            "MCPSharedTools",
+            "SearchModels",
+            "SharedConstants",
+            "SwiftEvolutionSource",
+            "TestSupport",
+        ],
         path: "Tests/MCP/SupportTests"
     )
 
@@ -853,6 +933,11 @@ let targets: [Target] = {
             "MCPSharedTools",
             "ASTIndexer",
             "TestSupport",
+            // 2026-05-26 audit Finding 14.4: convenience-init fixture
+            // sources the canonical route map from the production
+            // composition root so adding a new <X>Source automatically
+            // extends the test fixture's route dispatch.
+            "CupertinoComposition",
         ]
     )
 
@@ -921,7 +1006,9 @@ let targets: [Target] = {
         dependencies: ["ASTIndexer", "TestSupport"]
     )
 
-    // ---------- DistributionModels (foundation-only seam — value types + Observer protocols) ----------
+    // ---------- Distribution family (Sources/Distribution/{Core,Model}) ----------
+    // Per folder-grouping.md: family root with Core/ (live concrete)
+    // + Model/ (foundation-only seam). Subfolder names singular.
     let distributionModelsTarget = Target.target(
         name: "DistributionModels",
         // LoggingModels added in #930 so Distribution.DatabaseHealthCheck
@@ -934,14 +1021,13 @@ let targets: [Target] = {
         dependencies: ["DistributionModels", "TestSupport"]
     )
 
-    // ---------- Distribution (#246: SetupCommand lift) ----------
     let distributionTarget = Target.target(
         name: "Distribution",
-        dependencies: ["DistributionModels", "SharedConstants"]
+        dependencies: ["DistributionModels", "SearchModels", "SharedConstants"]
     )
     let distributionTestsTarget = Target.testTarget(
         name: "DistributionTests",
-        dependencies: ["Distribution", "DistributionModels", "TestSupport"]
+        dependencies: ["Distribution", "DistributionModels", "SearchModels", "TestSupport"]
     )
 
     // ---------- Diagnostics (#245: DoctorCommand probe lift) ----------
@@ -964,10 +1050,14 @@ let targets: [Target] = {
         dependencies: ["IndexerModels", "TestSupport"]
     )
 
-    // ---------- EnrichmentModels (#837: foundation-only seam for the postprocessor
-    // pipeline — EnrichmentPass protocol + Target/Result value types. Per epic #769,
-    // the live passes and the cupertino-postprocessor CLI binary both build against
-    // this target without dragging in Search / SampleIndex / CorePackageIndexing).
+    // ---------- Enrichment family (#1042 follow-up: folder-grouping.md
+    // restructure). All Enrichment-related targets live under
+    // Sources/Enrichment/ with subfolders: Core/ (runtime LiveRunner),
+    // Models/ (foundation-only seam), Passes/ (6 single-file
+    // per-pass targets). Per folder-grouping.md the single-file pass
+    // targets share one parent folder via explicit `path:` + `sources:`
+    // so the filesystem flattens to one folder of 6 sibling files
+    // while SPM target identity stays separate (lift-out preservation).
     let enrichmentModelsTarget = Target.target(
         name: "EnrichmentModels",
         dependencies: []
@@ -977,13 +1067,6 @@ let targets: [Target] = {
         dependencies: ["EnrichmentModels", "TestSupport"]
     )
 
-    // ---------- Enrichment (#837 phase 1B: live concrete EnrichmentRunner + the
-    // 6 pass implementations that moved out of `Search.IndexBuilder`).
-    // After #906 the passes take `any Search.IndexWriter` /
-    // `any Search.PackageWriter` / `any Sample.Index.Writer` via init
-    // injection, so the target's deps shrink to the foundation-only
-    // Models seams + SharedConstants and audit clean against
-    // STRICT_PRODUCERS.
     let enrichmentTarget = Target.target(
         name: "Enrichment",
         dependencies: ["EnrichmentModels", "SearchModels", "SampleIndexModels", "SharedConstants"]
@@ -993,9 +1076,12 @@ let targets: [Target] = {
         dependencies: ["Enrichment", "EnrichmentModels", "AppleConstraintsPass", "TestSupport"]
     )
 
-    // #906 sub-PR B: extract AppleConstraintsPass. Pattern-setter for
-    // the remaining 5 per-pass extractions (Hierarchy, PackagesAppleConstraints,
-    // PackagesAppleImports, SamplesAppleConstraints, Synonyms).
+    // Per-pass single-file targets, co-located under
+    // Sources/Enrichment/Passes/ via shared `path:` + per-target
+    // disjoint `sources:` lists. Target identity preserved; consumers
+    // still import `AppleConstraintsPass` / etc. unchanged. Adding a
+    // 7th pass = one more append below + one new `.swift` file in
+    // the same directory.
     let appleConstraintsPassTarget = Target.target(
         name: "AppleConstraintsPass",
         dependencies: [
@@ -1005,8 +1091,6 @@ let targets: [Target] = {
         ]
     )
 
-    // #906 sub-PR C: extract HierarchyPass. Same shape as the AppleConstraintsPass
-    // pattern-setter above. Foundation-only deps; no Search / SearchSQLite link.
     let hierarchyPassTarget = Target.target(
         name: "HierarchyPass",
         dependencies: [
@@ -1015,7 +1099,6 @@ let targets: [Target] = {
         ]
     )
 
-    // #906 sub-PR D: extract PackagesAppleConstraintsPass.
     let packagesAppleConstraintsPassTarget = Target.target(
         name: "PackagesAppleConstraintsPass",
         dependencies: [
@@ -1024,7 +1107,6 @@ let targets: [Target] = {
         ]
     )
 
-    // #906 sub-PR E: extract PackagesAppleImportsPass.
     let packagesAppleImportsPassTarget = Target.target(
         name: "PackagesAppleImportsPass",
         dependencies: [
@@ -1033,7 +1115,6 @@ let targets: [Target] = {
         ]
     )
 
-    // #906 sub-PR F: extract SamplesAppleConstraintsPass.
     let samplesAppleConstraintsPassTarget = Target.target(
         name: "SamplesAppleConstraintsPass",
         dependencies: [
@@ -1044,8 +1125,6 @@ let targets: [Target] = {
         ]
     )
 
-    // #906 sub-PR G: extract SynonymsPass. Final per-pass extraction; after
-    // this lands the Enrichment package retains only the LiveRunner orchestrator.
     let synonymsPassTarget = Target.target(
         name: "SynonymsPass",
         dependencies: [
@@ -1064,34 +1143,26 @@ let targets: [Target] = {
         dependencies: ["Indexer", "IndexerModels", "TestSupport"]
     )
 
-    // ---------- Ingest (#247: FetchCommand session + pipelines lift) ----------
-    let ingestTarget = Target.target(
-        name: "Ingest",
-        dependencies: ["SharedConstants", "LoggingModels"]
-    )
-    let ingestTestsTarget = Target.testTarget(
-        name: "IngestTests",
-        dependencies: ["Ingest", "TestSupport"]
-    )
+    // 2026-05-26 audit Finding 9.7 + 11.1: the Ingest target's contents
+    // (`Ingest.Session.swift` + `Ingest.swift` — session resume / requeue /
+    // baseline / urls-file helpers) lifted into `AppleDocsSource` (the
+    // only consumer post-lift). The empty Ingest target + IngestTests
+    // were dropped; existing tests cover the same surface via
+    // `Tests/IngestTests/` which now lives under AppleDocsSourceTests
+    // (TODO follow-up). Pre-lift was `#247: FetchCommand session +
+    // pipelines lift`; today the pipelines themselves are per-source.
 
     let cliTarget = Target.executableTarget(
         name: "CLI",
         dependencies: [
             "SharedConstants",
             "CoreProtocols", "CoreJSONParser", "CoreJSONParserWebKit", "CorePackageIndexing", "CorePackageIndexingModels", "Core", "CoreSampleCode", "CoreSampleCodeWebKit",
-            "Crawler",
             "CrawlerWebKit",
             "Cleanup",
             "SearchAPI",
             "SearchSQLite",
-            "AppleDocsSource",
-            "HIGSource",
-            "SampleCodeSource",
-            "SwiftEvolutionSource",
-            "SwiftOrgSource",
-            "SwiftBookSource",
-            "PackagesSource",
-            "AppleArchiveSource",
+        ] + allSourceTargetDeps + [
+            "CupertinoComposition",
             "AppleConstraintsPass",
             "HierarchyPass",
             "PackagesAppleConstraintsPass",
@@ -1106,7 +1177,6 @@ let targets: [Target] = {
             "DistributionModels",
             "Diagnostics",
             "Indexer",
-            "Ingest",
             "Logging",
             "RemoteSync",
             "Availability",
@@ -1192,9 +1262,9 @@ let targets: [Target] = {
     let serveTestsTarget = Target.testTarget(
         name: "ServeTests",
         dependencies: [
+            "AppleArchiveSource",
             "AppleDocsSource",
             "CLI",
-            "Crawler",
             "CrawlerWebKit",
             "MCPCore",
             "MCPSupport",
@@ -1207,6 +1277,7 @@ let targets: [Target] = {
             "Services",
             "ServicesModels",
             "SharedConstants",
+            "SwiftEvolutionSource",
             "TestSupport",
         ],
         path: "Tests/CLICommandTests/ServeTests"
@@ -1220,7 +1291,18 @@ let targets: [Target] = {
 
     let fetchTestsTarget = Target.testTarget(
         name: "FetchTests",
-        dependencies: ["CLI", "CoreProtocols", "CorePackageIndexing", "CoreJSONParser", "Core", "Crawler", "CrawlerModels", "CrawlerWebKit", "Ingest", "TestSupport"],
+        // 2026-05-26 audit 9.7+11.1: Crawler.X concretes + Ingest.Session
+        // moved into per-source targets. FetchTests depends on the per-source
+        // targets (spread via the `allSourceTargetDeps` helper per the
+        // Cluster-14 anti-co-location contract) + CrawlerModels (foundation)
+        // + CrawlerWebKit (Live factory). The empty Crawler/Ingest packages
+        // were deleted.
+        dependencies: [
+            "CLI",
+            "CoreProtocols", "CorePackageIndexing", "CoreJSONParser", "Core",
+            "CrawlerModels", "CrawlerWebKit",
+            "TestSupport",
+        ] + allSourceTargetDeps,
         path: "Tests/CLICommandTests/FetchTests"
     )
 
@@ -1233,7 +1315,6 @@ let targets: [Target] = {
             "Core",
             "CoreJSONParser",
             "CorePackageIndexing",
-            "Crawler",
             "CrawlerModels",
             "CrawlerWebKit",
             "Indexer",
@@ -1258,7 +1339,32 @@ let targets: [Target] = {
         // DistributionModels added in #930 so tests can name
         // `Distribution.DatabaseHealthCheck` for the strategy-seam
         // conformance checks on the 3 CLI conformers.
-        dependencies: ["CLI", "DistributionModels"]
+        // Distribution added by the per-source-db-split epic so
+        // ConstantsAuditTests can pin PerSourceDBSplitMigrator.legacyRenameSuffix.
+        // Diagnostics added so PerSourceDestinationRoundtripTests can read
+        // the per-DB PRAGMA user_version stamp via Diagnostics.Probes.
+        // Services + ServicesModels added in #1042 so
+        // Issue1042PluggabilityContractTests can assert against
+        // Services.ReadService.Source (Cluster 9 sub-3). The same
+        // pattern is used in Issue1039ReadHigRoundtripTests.
+        // RemoteSyncModels added so the contract test can reference
+        // RemoteSync.IndexState.Phase (Cluster 11 sub-1).
+        // SearchSQLite added so the contract test can reference
+        // Search.DocsSourceCandidateFetcher.defaultSwiftVersionSources +
+        // defaultFrameworkScopedSources (Cluster 4 sub-1 + sub-2).
+        // 2026-05-26 audit Cluster 12 follow-up: AppleDocsSource +
+        // AppleArchiveSource + SwiftEvolutionSource added so the
+        // contract test in Issue1042PluggabilityContractTests can
+        // build a DocsResourceProvider with the per-source URI
+        // strategy concretes.
+        dependencies: [
+            "AppleArchiveSource",
+            "AppleDocsSource",
+            "CLI", "CupertinoComposition", "Diagnostics", "Distribution", "DistributionModels",
+            "MCPSupport",
+            "Services", "ServicesModels", "RemoteSyncModels", "SearchSQLite",
+            "SwiftEvolutionSource",
+        ]
     )
     let mockAIAgentTestsTarget = Target.testTarget(
         name: "MockAIAgentTests",
@@ -1303,7 +1409,6 @@ let targets: [Target] = {
         coreTestsTarget,
         crawlerModelsTarget,
         crawlerModelsTestsTarget,
-        crawlerTarget,
         crawlerWebKitTarget,
         crawlerTestsTarget,
         cleanupModelsTarget,
@@ -1330,6 +1435,7 @@ let targets: [Target] = {
         swiftBookSourceTarget,
         packagesSourceTarget,
         appleArchiveSourceTarget,
+        cupertinoCompositionTarget,
         sampleIndexTarget,
         sampleIndexTestsTarget,
         sampleIndexSQLiteTarget,
@@ -1358,8 +1464,6 @@ let targets: [Target] = {
         enrichmentTestsTarget,
         indexerTarget,
         indexerTestsTarget,
-        ingestTarget,
-        ingestTestsTarget,
         mcpSupportTarget,
         mcpSupportTestsTarget,
         searchToolProviderTarget,

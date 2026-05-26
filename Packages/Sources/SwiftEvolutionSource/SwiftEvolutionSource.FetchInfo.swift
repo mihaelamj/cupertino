@@ -13,6 +13,7 @@ extension SwiftEvolutionSource {
         sourceID: Shared.Constants.SourcePrefix.swiftEvolution,
         crawlBaseURLs: [Shared.Constants.BaseURL.swiftEvolution],
         defaultOutputDirKey: .swiftEvolution,
-        isWebCrawlable: true
+        isWebCrawlable: true,
+        corpusFileSuffix: "proposals"
     )
 }

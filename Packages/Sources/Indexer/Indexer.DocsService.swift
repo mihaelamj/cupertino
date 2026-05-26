@@ -63,6 +63,10 @@ extension Indexer.DocsService {
             events.observe(event: .availabilityMissing)
         }
 
+        // #1045 Gap 4: thread the registry-derived per-source dir map
+        // through to the indexer Input so the dispatcher's
+        // resolveSourceDirectory can route arbitrary new sources by
+        // their definition.id without a typed-field-or-switch-arm edit.
         let input = Search.DocsIndexingInput(
             searchDBPath: searchDBURL,
             docsDirectory: docsURL,
@@ -72,7 +76,8 @@ extension Indexer.DocsService {
             higDirectory: higDirToUse,
             clearExisting: request.clear,
             markdownStrategy: markdownStrategy,
-            sampleCatalogProvider: sampleCatalogProvider
+            sampleCatalogProvider: sampleCatalogProvider,
+            directoryByKey: request.directoryByKey
         )
 
         let reporter = EventsToProgressReporter(events: events)

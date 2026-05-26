@@ -37,7 +37,9 @@ struct Issue1023PackagesSourceShapeTests {
         let provider = PackagesSource()
         #expect(provider.destinationDB == .packages)
         #expect(provider.destinationDB.id == "packages")
-        #expect(provider.destinationDB != .search) // explicit divergence from the 7 prior phases
+        // PackagesSource targets the non-search-style .packages descriptor.
+        // Post step 4 of per-source-db-split.md, only SampleCodeSource is still at .search.
+        #expect(provider.destinationDB != .search)
     }
 
     @Test("PackagesSource.makeIndexer returns a no-op indexer advertising source-id packages")

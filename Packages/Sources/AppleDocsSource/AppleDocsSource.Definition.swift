@@ -22,7 +22,8 @@ extension AppleDocsSource {
             hasAvailability: 1.0,
             designFocus: 0.2,
             languageFocus: 0.2,
-            searchQuality: 0.5
+            searchQuality: 0.5,
+            rankWeight: 3.0
         ),
         intents: [.apiReference, .conceptual, .howTo, .troubleshooting],
         intentPriority: [

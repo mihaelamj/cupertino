@@ -1,0 +1,68 @@
+# Apple Developer Documentation source manifest.
+# Schema: docs/design/corpus-structure.md §3
+# Step 2 of per-source DB split epic: declared contract; no Swift code
+# parses this at runtime yet. CI's scripts/check-source-manifests.sh
+# validates the shape against the schema.
+
+sourceId: apple-docs
+displayName: Apple Documentation
+description: |
+  Apple's official developer documentation for every framework, type,
+  and symbol exposed via developer.apple.com/documentation. The
+  largest source in the cupertino bundle (~379k rows at v1.2.0).
+
+# Production corpus folder name (Shared.Constants.Directory.docs).
+# Sources are not required to use sourceId as the corpus folder name;
+# this manifest's `corpusFolder` is the authoritative on-disk binding.
+corpusFolder: docs
+
+# Per-source DB split target (Shared.Models.DatabaseDescriptor.appleDocumentation).
+# Today AppleDocsSource still writes to .search; the flip lands in
+# step 4 of docs/design/per-source-db-split.md.
+destinationDB: apple-documentation
+
+fetcher:
+  kind: apple-docs-api
+  options:
+    rootURL: "https://developer.apple.com/tutorials/data/index"
+    requestDelaySeconds: "0.05"
+
+indexer:
+  fileGlobs:
+    - "documentation/**/*.json"
+    - "tutorials/**/*.json"
+  excludes:
+    - "**/_metadata.json"
+  entryPoints:
+    - "documentation/*.json"
+  extractor: Search.AppleDocsStrategy
+
+snapshotPolicy:
+  staleAfterDays: 30
+  refetchOn:
+    - schema-bump
+    - explicit-recrawl
+
+searchProperties:
+  searchQuality: 1.0
+  intentDefault: reference
+  rankWeight: 1.0
+
+capabilities:
+  searchers:
+    - text
+    - symbols
+    - property-wrappers
+    - concurrency
+    - conformances
+    - generics
+  operations:
+    - read-by-uri
+    - list-frameworks
+    - resolve-refs
+  metadata:
+    hasMinPlatformVersion: true
+    hasGenerics: true
+    hasDeprecationAttrs: true
+    hasAvailabilityAttrs: true
+    hasFrameworkColumn: true

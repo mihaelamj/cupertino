@@ -42,7 +42,7 @@ cupertino fetch --source hig
 
 ### Resume Interrupted Download (automatic)
 ```bash
-# Auto-resumes from metadata.json — no flag needed
+# Auto-resumes from metadata.json, no flag needed
 cupertino fetch --source hig
 ```
 

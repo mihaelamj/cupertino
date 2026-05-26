@@ -4,6 +4,7 @@ import SharedConstants
 import Testing
 
 // MARK: - #593 — samples indexer relative-path computation
+
 //
 // Pre-fix, `Sample.Index.Builder` computed file paths via
 // `fileURL.path.replacingOccurrences(of: projectRoot.path + "/", ...)`.

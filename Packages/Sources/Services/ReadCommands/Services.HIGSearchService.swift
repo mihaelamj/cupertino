@@ -2,6 +2,7 @@ import Foundation
 import SearchModels
 import ServicesModels
 import SharedConstants
+
 // `Services.HIGQuery` value type lifted to the `ServicesModels` target
 // so callers can construct HIG queries without importing the full
 // `Services` target.

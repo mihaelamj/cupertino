@@ -1,3 +1,4 @@
+import CupertinoComposition
 import Foundation
 import MCPCore
 import SearchModels
@@ -36,7 +37,14 @@ struct Issue648OpenTimeDegradationTests {
         sampleResults: [Sample.Index.Project] = [],
         existingDegraded: [Search.DegradedSource] = []
     ) -> Services.Formatter.Unified.Input {
-        Services.Formatter.Unified.Input(
+        // 2026-05-26 audit Finding 6.0: `availableSources` is
+        // non-optional. Pull the canonical 8-source list from the
+        // production composition root so the rendered output reflects
+        // what the live MCP server sees.
+        let canonical = CupertinoComposition
+            .makeProductionSourceRegistry()
+            .allEnabled.map(\.definition.id)
+        return Services.Formatter.Unified.Input(
             docResults: docResults,
             archiveResults: [],
             sampleResults: sampleResults,
@@ -45,6 +53,7 @@ struct Issue648OpenTimeDegradationTests {
             swiftOrgResults: [],
             swiftBookResults: [],
             packagesResults: [],
+            availableSources: canonical,
             limit: 20,
             degradedSources: existingDegraded
         )
@@ -162,9 +171,18 @@ struct Issue648OpenTimeDegradationTests {
 
     @Test("Markdown render shows the warning + honest 'Searched:' line when reason is set")
     func endToEndMarkdownRenderTriggersBothSignals() {
+        // Production MCP path passes searchToolSourceEnumValues
+        // (the registry-derived list). The post-#1042 / 6.0 fix made
+        // injectOpenTimeDegradation REPLACE input.availableSources
+        // with the schema-derived list — so the test fixture must
+        // also pass it.
+        let canonical = CupertinoComposition
+            .makeProductionSourceRegistry()
+            .allEnabled.map(\.definition.id)
         let input = CompositeToolProvider.injectOpenTimeDegradation(
             into: makeInput(),
-            disabledReason: "schema mismatch; run `cupertino setup` to redownload a matching bundle"
+            disabledReason: "schema mismatch; run `cupertino setup` to redownload a matching bundle",
+            searchToolSourceEnumValues: canonical
         )
         let formatter = Services.Formatter.Unified.Markdown(query: "SwiftUI")
         let output = formatter.format(input)

@@ -8,7 +8,7 @@ CLI commands for the Cupertino documentation server.
 |---------|-------------|
 | [setup](setup/) | **Download pre-built databases from GitHub (fastest)** |
 | [fetch](fetch/) | Download documentation from Apple, Swift Evolution, Swift.org, HIG, and Apple Archive |
-| [save](save/) | Build FTS5 search indexes from downloaded documentation (search.db, samples.db, packages.db) |
+| [save](save/) | Build FTS5 search indexes from downloaded documentation (search.db, apple-sample-code.db, packages.db) |
 | [serve](serve/) | Start MCP server for AI agent access |
 | [search](search/) | Search documentation from the command line. Default fan-out across every source (replaces former `ask`); `--source <name>` filters to a single source |
 | [package-search](package-search/) | Hidden: smart query scoped to packages.db only |
@@ -100,12 +100,12 @@ cupertino search "your query"  # For CLI usage
 ```bash
 # Option 1: From GitHub (recommended - faster, no auth)
 cupertino fetch --source samples
-cupertino save --samples
+cupertino save --source samples
 
 # Option 2: From Apple (slower, requires Apple ID)
 cupertino fetch --source apple-sample-code
 cupertino cleanup
-cupertino save --samples
+cupertino save --source samples
 ```
 
 ### Search and Read

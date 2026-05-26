@@ -40,4 +40,4 @@ https://developer.apple.com/documentation/foundation/url
 
 - Lifted to `Ingest.Session.enqueueURLsFromFile` in #247 sub-PR 4a.
 - Each line is validated against `URL(string:)` + scheme presence; bad lines fail the run with `Ingest.FetchURLsError.invalidURL`.
-- Initialises `crawlState` if missing — works against a fresh corpus too.
+- Initialises `crawlState` if missing, works against a fresh corpus too.

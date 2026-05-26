@@ -1,0 +1,54 @@
+# Swift.org documentation source manifest.
+# Schema: docs/design/corpus-structure.md §3
+#
+# Post #1038 ("diff db for each source"): swift-org and swift-book each
+# own their own DB. SwiftOrgStrategy filters per-page emission via the
+# shared Search.StrategyHelpers.crawlSwiftDocumentation helper with
+# scope=.swiftOrgOnly so only pages whose URL-prefix tag is "swift-org"
+# land in swift-org.db. Swift-book pages are emitted by
+# Search.SwiftBookStrategy (lives in the SwiftBookSource target, calls
+# the same shared helper with scope=.swiftBookOnly into swift-book.db).
+# Pre-#1038 swift-book was a view-source companion sharing
+# swift-documentation.db with swift-org; see docs/sources/swift-book/.
+
+sourceId: swift-org
+displayName: Swift.org
+description: |
+  Swift.org documentation tree (swift.org/documentation/*). Post #1038
+  swift-org rows write to swift-org.db; the Swift Programming Language
+  book is its own source/DB (see docs/sources/swift-book/manifest.yaml).
+
+corpusFolder: swift-org
+destinationDB: swift-org
+
+fetcher:
+  kind: web-crawl
+  options:
+    rootURL: "https://www.swift.org/documentation/"
+    requestDelaySeconds: "0.1"
+
+indexer:
+  fileGlobs:
+    - "swift-org/**/*"
+  extractor: Search.SwiftOrgStrategy
+
+snapshotPolicy:
+  staleAfterDays: 30
+  refetchOn:
+    - schema-bump
+
+searchProperties:
+  searchQuality: 0.95
+  intentDefault: reference
+  rankWeight: 0.95
+
+capabilities:
+  searchers:
+    - text
+    - symbols
+    - generics
+  operations:
+    - read-by-uri
+  metadata:
+    hasGenerics: true
+    hasAvailabilityAttrs: true

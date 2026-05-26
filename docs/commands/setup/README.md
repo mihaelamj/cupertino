@@ -1,6 +1,6 @@
 # cupertino setup
 
-Download every cupertino database (search.db, samples.db, packages.db) in one go.
+Download every cupertino database (search.db, apple-sample-code.db, packages.db) in one go.
 
 ## Synopsis
 
@@ -23,7 +23,7 @@ A single zip from the [`cupertino-docs`](https://github.com/mihaelamj/cupertino-
 | Database | Contents | Size |
 |----------|----------|------|
 | `search.db` | ~277,000 documentation pages across Apple frameworks + Swift Evolution + Swift.org + HIG + Apple Archive + Swift Book (post-#283 dedup; was ~405k in v1.0.0 / v1.0.1 with case-axis duplicates) | ~2.4 GB |
-| `samples.db` | Indexed Apple sample-code catalog and crawled GitHub sample projects (READMEs + source files + AST symbols) | ~150-200 MB |
+| `apple-sample-code.db` | Indexed Apple sample-code catalog and crawled GitHub sample projects (READMEs + source files + AST symbols) | ~150-200 MB |
 | `packages.db` | 183 Apple-official Swift packages with README, Package.swift, Sources/, Tests/, .docc/ extracted | ~940 MB |
 
 Numbers above are approximate and snapshot the v1.0.2 bundle; check the corresponding GitHub Release for the per-release totals.
@@ -82,7 +82,7 @@ cupertino setup --keep-existing
 
 ✅ Setup complete!
    Documentation: /Users/you/.cupertino/search.db
-   Sample code:   /Users/you/.cupertino/samples.db
+   Sample code:   /Users/you/.cupertino/apple-sample-code.db
    Packages:      /Users/you/.cupertino/packages.db
 
 💡 Start the server with: cupertino serve

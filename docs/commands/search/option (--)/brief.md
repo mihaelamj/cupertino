@@ -50,5 +50,5 @@ cupertino search "View" --format json --brief   # full chunks anyway
 
 ## Notes
 
-- Backed by `SearchCommand+SmartReport.briefExcerpt(of:lines:)` — first N non-blank lines, default N=12.
+- Backed by `SearchCommand+SmartReport.briefExcerpt(of:lines:)`, first N non-blank lines, default N=12.
 - The threshold (12) was chosen to surface a doc's overview paragraph + first heading, not single-sentence triage.

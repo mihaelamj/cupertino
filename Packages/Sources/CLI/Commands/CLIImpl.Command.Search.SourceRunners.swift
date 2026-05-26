@@ -16,6 +16,25 @@ import SharedConstants
 /// (no `--source`) fan-out + chunked report lives in
 /// `CLIImpl.Command.Search+SmartReport.swift` (#239).
 extension CLIImpl.Command.Search {
+    /// Resolve a docs source-id (`apple-docs`, `hig`, `apple-archive`,
+    /// `swift-evolution`, `swift-org`, `swift-book`) to its per-source
+    /// SQLite path. Post-#1037/#1038 every docs source owns its own DB
+    /// file (no more monolithic `search.db`); the production source
+    /// registry's `SourceProvider.destinationDB.filename` is the
+    /// canonical mapping. `--search-db` override wins when set (legacy
+    /// debug path; opens that single file for any source).
+    func resolveDocsDBURL(for sourceID: String) -> URL? {
+        if let searchDb {
+            return URL(fileURLWithPath: searchDb).expandingTildeInPath
+        }
+        let registry = CLIImpl.makeProductionSourceRegistry()
+        guard let provider = registry.allEnabled.first(where: { $0.definition.id == sourceID }) else {
+            return nil
+        }
+        let baseDirectory = Shared.Paths.live().baseDirectory
+        return baseDirectory.appendingPathComponent(provider.destinationDB.filename)
+    }
+
     func runDocsSearch() async throws {
         // GoF Factory Method (1994 p. 107): the search command's
         // composition sub-root. Each per-source runner constructs its
@@ -24,9 +43,17 @@ extension CLIImpl.Command.Search {
         let searchDatabaseFactory: any SearchModule.DatabaseFactory = LiveSearchDatabaseFactory()
         let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
 
-        // Path-DI composition sub-root (#535).
-        let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Shared.Paths.live().searchDatabase
+        // Path-DI composition sub-root (#535). Post-#1037/#1038 the
+        // docs source's DB is per-source (apple-documentation.db /
+        // apple-archive.db / swift-evolution.db / swift-org.db /
+        // swift-book.db); resolve through the source registry.
+        guard let sourceID = source,
+              let searchDBURL = resolveDocsDBURL(for: sourceID) else {
+            Cupertino.Context.composition.logging.recording.error(
+                "❌ Unknown docs source: '\(source ?? "<nil>")'."
+            )
+            throw ExitCode.failure
+        }
 
         let results = try await Services.ServiceContainer.withDocsService(searchDB: searchDBURL, searchDatabaseFactory: searchDatabaseFactory) { service in
             try await service.search(Services.SearchQuery(
@@ -45,8 +72,23 @@ extension CLIImpl.Command.Search {
             ))
         }
 
+        // Teaser fetch: cross-source surface comes from apple-docs by
+        // convention. Pre-#1037 the per-source runners passed their
+        // own `searchDBURL`; post-#1037 each per-source DB only
+        // contains its own source's rows, so a teaser fetch filtered
+        // by source='apple-docs' against (say) apple-archive.db
+        // returned zero results and silently dropped the cross-source
+        // block. Pin at apple-documentation.db explicitly so the
+        // surface survives the per-source split. Fan-out across every
+        // docs DB is a follow-up (would need a TeaserService refactor
+        // to take a per-source index map, not a single Index handle).
+        let teaserSearchDBURL = resolveDocsDBURL(
+            for: Shared.Constants.SourcePrefix.appleDocs
+        ) ?? Shared.Paths.live().baseDirectory.appendingPathComponent(
+            Shared.Models.DatabaseDescriptor.appleDocumentation.filename
+        )
         let teasers = try await Services.ServiceContainer.withTeaserService(
-            searchDB: searchDBURL,
+            searchDB: teaserSearchDBURL,
             samplesDB: resolveSampleDbPath(),
             searchDatabaseFactory: searchDatabaseFactory,
             sampleDatabaseFactory: sampleDatabaseFactory
@@ -59,12 +101,21 @@ extension CLIImpl.Command.Search {
             )
         }
 
+        // #1045 Gap 2 wiring: registry-derived source-id list for the
+        // formatter's footer tips. Threaded through all 3 formatters.
+        // Production call site uses `CLIImpl.makeFormatterAvailableSources(...)`
+        // so the assembly logic is single-sourced.
+        let registeredSources = CLIImpl.makeFormatterAvailableSources(
+            registry: CLIImpl.makeProductionSourceRegistry()
+        )
+
         switch format {
         case .text:
             let formatter = Services.Formatter.Text(
                 query: query,
                 source: source,
-                teasers: teasers
+                teasers: teasers,
+                availableSources: registeredSources
             )
             Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         case .json:
@@ -84,7 +135,8 @@ extension CLIImpl.Command.Search {
                     minimumVisionOS: minVisionos
                 ),
                 config: Self.makeStandardConfig(),
-                teasers: teasers
+                teasers: teasers,
+                availableSources: registeredSources
             )
             Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         }
@@ -106,14 +158,22 @@ extension CLIImpl.Command.Search {
             ))
         }
 
-        // Best-effort teaser fetch: when search.db is locked (typically
-        // another process running `cupertino save --docs`) or missing, log
-        // and fall back to empty teasers rather than aborting the samples
-        // query (#237).
+        // Best-effort teaser fetch: when the apple-docs DB is locked
+        // (typically another process running
+        // `cupertino save --source apple-docs`) or missing, log and
+        // fall back to empty teasers rather than aborting the samples
+        // query (#237). Teasers come from apple-docs by convention --
+        // that's the dominant docs corpus and the cross-source teaser
+        // surface the samples-search runner has always emitted; with
+        // per-source DBs post-#1037, point at apple-documentation.db
+        // (or the override) explicitly.
         let teasers: Services.Formatter.TeaserResults
         do {
-            let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-                ?? Shared.Paths.live().searchDatabase
+            let searchDBURL = resolveDocsDBURL(
+                for: Shared.Constants.SourcePrefix.appleDocs
+            ) ?? Shared.Paths.live().baseDirectory.appendingPathComponent(
+                Shared.Models.DatabaseDescriptor.appleDocumentation.filename
+            )
             teasers = try await Services.ServiceContainer.withTeaserService(
                 searchDB: searchDBURL,
                 samplesDB: resolveSampleDbPath(),
@@ -136,15 +196,30 @@ extension CLIImpl.Command.Search {
             teasers = Services.Formatter.TeaserResults()
         }
 
+        // #1045 Gap 2 wiring: registry-derived source-id list.
+        let samplesRegisteredSources = CLIImpl.makeFormatterAvailableSources(
+            registry: CLIImpl.makeProductionSourceRegistry()
+        )
+
         switch format {
         case .text:
-            let formatter = Sample.Format.Text.Search(query: query, framework: framework, teasers: teasers)
+            let formatter = Sample.Format.Text.Search(
+                query: query,
+                framework: framework,
+                teasers: teasers,
+                availableSources: samplesRegisteredSources
+            )
             Cupertino.Context.composition.logging.recording.output(formatter.format(result))
         case .json:
             let formatter = Sample.Format.JSON.Search(query: query, framework: framework)
             Cupertino.Context.composition.logging.recording.output(formatter.format(result))
         case .markdown:
-            let formatter = Sample.Format.Markdown.Search(query: query, framework: framework, teasers: teasers)
+            let formatter = Sample.Format.Markdown.Search(
+                query: query,
+                framework: framework,
+                teasers: teasers,
+                availableSources: samplesRegisteredSources
+            )
             Cupertino.Context.composition.logging.recording.output(formatter.format(result))
         }
     }
@@ -169,7 +244,7 @@ extension CLIImpl.Command.Search {
 
         guard FileManager.default.fileExists(atPath: dbURL.path) else {
             Cupertino.Context.composition.logging.recording.error("❌ packages.db not found at \(dbURL.path)")
-            Cupertino.Context.composition.logging.recording.error("   Run `cupertino setup` to download it, or `cupertino save --packages` to build locally.")
+            Cupertino.Context.composition.logging.recording.error("   Run `cupertino setup` to download it, or `cupertino save --source packages` to build locally.")
             throw ExitCode.failure
         }
 
@@ -202,9 +277,16 @@ extension CLIImpl.Command.Search {
         let searchDatabaseFactory: any SearchModule.DatabaseFactory = LiveSearchDatabaseFactory()
         let sampleDatabaseFactory: any Sample.Index.DatabaseFactory = LiveSampleIndexDatabaseFactory()
 
-        // Path-DI composition sub-root (#535).
-        let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? Shared.Paths.live().searchDatabase
+        // Path-DI composition sub-root (#535). Post-#1037 HIG lives in
+        // its own `hig.db`.
+        guard let searchDBURL = resolveDocsDBURL(
+            for: Shared.Constants.SourcePrefix.hig
+        ) else {
+            Cupertino.Context.composition.logging.recording.error(
+                "❌ HIG source not registered in production source registry."
+            )
+            throw ExitCode.failure
+        }
 
         let results = try await Services.ServiceContainer.withDocsService(searchDB: searchDBURL, searchDatabaseFactory: searchDatabaseFactory) { service in
             try await service.search(Services.SearchQuery(
@@ -217,8 +299,18 @@ extension CLIImpl.Command.Search {
             ))
         }
 
+        // Teaser fetch: cross-source surface comes from apple-docs by
+        // convention (same rationale as runDocsSearch above). Querying
+        // hig.db for `source = 'apple-docs'` etc. would return zero
+        // rows post-#1037 since each per-source DB only carries its
+        // own source's content.
+        let teaserSearchDBURL = resolveDocsDBURL(
+            for: Shared.Constants.SourcePrefix.appleDocs
+        ) ?? Shared.Paths.live().baseDirectory.appendingPathComponent(
+            Shared.Models.DatabaseDescriptor.appleDocumentation.filename
+        )
         let teasers = try await Services.ServiceContainer.withTeaserService(
-            searchDB: searchDBURL,
+            searchDB: teaserSearchDBURL,
             samplesDB: resolveSampleDbPath(),
             searchDatabaseFactory: searchDatabaseFactory,
             sampleDatabaseFactory: sampleDatabaseFactory
@@ -233,15 +325,30 @@ extension CLIImpl.Command.Search {
 
         let higQuery = Services.HIGQuery(text: query, platform: nil, category: nil)
 
+        // #1045 Gap 2 wiring: registry-derived source-id list for the
+        // footer's "narrow with --source" tip.
+        let higAvailableSources = CLIImpl.makeFormatterAvailableSources(
+            registry: CLIImpl.makeProductionSourceRegistry()
+        )
+
         switch format {
         case .text:
-            let formatter = Services.Formatter.HIG.Text(query: higQuery, teasers: teasers)
+            let formatter = Services.Formatter.HIG.Text(
+                query: higQuery,
+                teasers: teasers,
+                availableSources: higAvailableSources
+            )
             Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         case .json:
             let formatter = Services.Formatter.HIG.JSON(query: higQuery)
             Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         case .markdown:
-            let formatter = Services.Formatter.HIG.Markdown(query: higQuery, config: Self.makeStandardConfig(), teasers: teasers)
+            let formatter = Services.Formatter.HIG.Markdown(
+                query: higQuery,
+                config: Self.makeStandardConfig(),
+                teasers: teasers,
+                availableSources: higAvailableSources
+            )
             Cupertino.Context.composition.logging.recording.output(formatter.format(results))
         }
     }

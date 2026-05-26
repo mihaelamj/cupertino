@@ -46,10 +46,10 @@ struct Issue1014AppleArchiveSourceShapeTests {
         #expect(indexer.displayName == "Apple Archive")
     }
 
-    @Test("AppleArchiveSource.destinationDB declares .search (no implicit routing)")
+    @Test("AppleArchiveSource.destinationDB declares .appleArchive (post step 4 of per-source-db-split.md)")
     func destinationDBExplicit() {
         let provider = AppleArchiveSource()
-        #expect(provider.destinationDB == .search)
-        #expect(provider.destinationDB.id == "search")
+        #expect(provider.destinationDB == .appleArchive)
+        #expect(provider.destinationDB.id == "apple-archive")
     }
 }

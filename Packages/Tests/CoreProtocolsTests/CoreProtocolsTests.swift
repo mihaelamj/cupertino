@@ -1,3 +1,4 @@
+// swiftlint:disable file identifier_name use_data_constructor_over_string_member empty_count
 @testable import CoreProtocols
 import Foundation
 import Resources

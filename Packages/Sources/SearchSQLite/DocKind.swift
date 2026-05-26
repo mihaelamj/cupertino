@@ -56,11 +56,30 @@ extension Search {
         ///   - uriPath: the URI path component (e.g. `/documentation/swiftui/view` or
         ///     `/samplecode/swiftui/robust-nav`). Used to disambiguate sample-code
         ///     pages which share `source == apple-docs` with symbol pages.
+        ///   - docKindByID: #1045 Gap 3 — registry-supplied map from
+        ///     source-id to `Search.DocKind` rawValue. Each per-source
+        ///     target declares its `defaultDocKindRawValue` on its
+        ///     `Search.SourceDefinition` (in SearchModels foundation
+        ///     tier); the composition root flattens that to
+        ///     `[String: String]` (via `SourceLookup.docKindRawValuesByID`)
+        ///     and passes it here. The classifier resolves the string to
+        ///     `DocKind(rawValue:)`. Sources absent from the dict fall
+        ///     through to the legacy switch (for the 6 in-tree sources)
+        ///     or to `.unknown` (for unknown sources). Default empty
+        ///     keeps legacy callers compiling.
         public static func kind(
             source: String,
             structuredKind: String? = nil,
-            uriPath: String = ""
+            uriPath: String = "",
+            docKindByID: [String: String] = [:]
         ) -> Search.DocKind {
+            // #1045 Gap 3: registry-supplied map wins. `apple-docs`
+            // intentionally absents itself from the map (its bespoke
+            // classifier partitions by `structuredKind` / `uriPath`),
+            // so its legacy switch arm below stays load-bearing.
+            if let rawValue = docKindByID[source], let resolved = Search.DocKind(rawValue: rawValue) {
+                return resolved
+            }
             switch source {
             case Shared.Constants.SourcePrefix.swiftEvolution:
                 return .evolutionProposal

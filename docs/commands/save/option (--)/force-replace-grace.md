@@ -15,11 +15,11 @@ The `--force-replace` termination ladder is:
 1. `SIGTERM` to each (re-verified) sibling PID
 2. Poll every 1 second for up to `--force-replace-grace` seconds
 3. `SIGKILL` any PID still alive after grace expires
-4. One final `kill(pid, 0)` poll — if anything still answers, abort the calling `save` cleanly with `❌ Refusing to proceed`
+4. One final `kill(pid, 0)` poll, if anything still answers, abort the calling `save` cleanly with `❌ Refusing to proceed`
 
-The grace window matters because SIGKILL mid-INSERT leaves the DB in a `database is locked` / `database disk image is malformed` state — exactly the corruption class this gate exists to prevent. SIGTERM-then-wait gives SQLite time to flush its WAL + checkpoint cleanly.
+The grace window matters because SIGKILL mid-INSERT leaves the DB in a `database is locked` / `database disk image is malformed` state, exactly the corruption class this gate exists to prevent. SIGTERM-then-wait gives SQLite time to flush its WAL + checkpoint cleanly.
 
-**Default: 30 seconds.** That's a practical floor for a moderately-sized WAL (the `samples.db` checkpoint case observed during #513 took ~5s; `search.db` near-end-of-day-builds with multi-GB WAL can need 60+).
+**Default: 30 seconds.** That's a practical floor for a moderately-sized WAL (the `apple-sample-code.db` checkpoint case observed during #513 took ~5s; `search.db` near-end-of-day-builds with multi-GB WAL can need 60+).
 
 ## Values
 
@@ -27,7 +27,7 @@ A positive integer (seconds).
 
 ## Examples
 
-### Default — fine for most cases
+### Default, fine for most cases
 
 ```bash
 cupertino save --force-replace --yes
@@ -52,6 +52,6 @@ Only when you've already confirmed the sibling is stuck (e.g. via `ps -p <pid>` 
 
 ## See Also
 
-- [`--force-replace`](force-replace.md) — the flag this option configures
-- [`--yes`](yes.md) — bypass the typed-confirmation gate (orthogonal to grace)
-- Issue [#722](https://github.com/mihaelamj/cupertino/issues/722) — why the grace window is configurable
+- [`--force-replace`](force-replace.md), the flag this option configures
+- [`--yes`](yes.md), bypass the typed-confirmation gate (orthogonal to grace)
+- Issue [#722](https://github.com/mihaelamj/cupertino/issues/722), why the grace window is configurable

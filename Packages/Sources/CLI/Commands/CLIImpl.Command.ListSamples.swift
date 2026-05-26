@@ -6,6 +6,7 @@ import SampleIndex
 import Services
 import ServicesModels
 import SharedConstants
+
 // MARK: - List Samples Command
 
 /// CLI command for listing sample code projects - mirrors MCP tool functionality.
@@ -92,7 +93,7 @@ extension CLIImpl.Command {
             Cupertino.Context.composition.logging.recording.output("")
 
             if projects.isEmpty {
-                Cupertino.Context.composition.logging.recording.output("No projects found. Run 'cupertino save --samples' to index sample code.")
+                Cupertino.Context.composition.logging.recording.output("No projects found. Run 'cupertino save --source samples' to index sample code.")
                 return
             }
 
@@ -158,7 +159,7 @@ extension CLIImpl.Command {
             }
 
             if projects.isEmpty {
-                Cupertino.Context.composition.logging.recording.output("_No projects found. Run `cupertino save --samples` to index sample code._")
+                Cupertino.Context.composition.logging.recording.output("_No projects found. Run `cupertino save --source samples` to index sample code._")
                 return
             }
 

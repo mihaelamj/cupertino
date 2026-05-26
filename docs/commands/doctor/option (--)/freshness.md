@@ -16,7 +16,7 @@ Per the [#275](https://github.com/mihaelamj/cupertino/issues/275) design discuss
 
 ## Default
 
-`false` — freshness report not run by default. The default doctor surface is binary health (server + DBs + MCP).
+`false`, freshness report not run by default. The default doctor surface is binary health (server + DBs + MCP).
 
 ## Examples
 
@@ -57,19 +57,19 @@ One row per source, sorted alphabetically by source name:
    <source-padded-18>  <count-padded-8>  <YYYY-MM-DD>    <YYYY-MM-DD>    <YYYY-MM-DD>    <YYYY-MM-DD>
 ```
 
-Quantile rule: nearest-rank (no interpolation) — `p50` and `p90` are always real observations, not synthetic averages. Avoids the `percentile_cont` vs `percentile_disc` ambiguity that bites SQL-side percentile work.
+Quantile rule: nearest-rank (no interpolation), `p50` and `p90` are always real observations, not synthetic averages. Avoids the `percentile_cont` vs `percentile_disc` ambiguity that bites SQL-side percentile work.
 
 ## Notes
 
 - **Read-only**; no DB writes.
-- **Doesn't gate the doctor verdict** — purely informational signal.
+- **Doesn't gate the doctor verdict**, purely informational signal.
 - Skipped silently when `search.db` is missing or schema-mismatched (the regular `checkSearchDatabase` already surfaced that).
 - Rows where `last_crawled == 0` (never stamped) are excluded from the quantile computation so they don't pull the oldest down to epoch 0.
-- **No thresholds** — raw ages only. Per [#275](https://github.com/mihaelamj/cupertino/issues/275)'s design discussion, "fresh / aging / stale" labels are deferred so users can set their own thresholds (a v1.2 bundle may be perfectly current for one user and ancient for another, depending on how often they reset).
+- **No thresholds**, raw ages only. Per [#275](https://github.com/mihaelamj/cupertino/issues/275)'s design discussion, "fresh / aging / stale" labels are deferred so users can set their own thresholds (a v1.2 bundle may be perfectly current for one user and ancient for another, depending on how often they reset).
 
 ## See also
 
-- [#275](https://github.com/mihaelamj/cupertino/issues/275) — issue tracking the freshness/drift surface
-- [#78](https://github.com/mihaelamj/cupertino/issues/78) — parent ticket (`cupertino stats` content inventory)
-- `--kind-coverage` — sibling informational flag (kind distribution audit)
-- `--save` — different doctor surface (maintenance health check)
+- [#275](https://github.com/mihaelamj/cupertino/issues/275), issue tracking the freshness/drift surface
+- [#78](https://github.com/mihaelamj/cupertino/issues/78), parent ticket (`cupertino stats` content inventory)
+- `--kind-coverage`, sibling informational flag (kind distribution audit)
+- `--save`, different doctor surface (maintenance health check)

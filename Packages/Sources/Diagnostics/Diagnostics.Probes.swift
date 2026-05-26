@@ -54,6 +54,74 @@ extension Diagnostics {
             return sqlite3_column_int(stmt, 0)
         }
 
+        /// Read the `Sample.Index.Database` schema version from the
+        /// per-pipeline `samples_schema_version` table (#1037).
+        /// Returns nil when the file isn't a samples DB at all (no
+        /// tracking table AND no `projects` table); callers render
+        /// "not built" rather than leaking a foreign PRAGMA stamp.
+        ///
+        /// **Pre-#1037 backward compat**: when the tracking table is
+        /// missing AND a `projects` table IS present (so this IS a
+        /// samples DB built by a pre-#1037 binary, not a
+        /// Search.Index-only file masquerading as one), fall back to
+        /// `PRAGMA user_version` because that's how pre-#1037
+        /// binaries stamped the version. Without the projects-table
+        /// guard the fallback would return Search.Index's stamp (18)
+        /// on a shared-file edge case and Doctor would display 18 as
+        /// the sample-code schema version, which is wrong.
+        ///
+        /// Companion to `userVersion(at:)`. Use this probe for the
+        /// sample-code DB: post-#1037 the Sample.Index pipeline does
+        /// not write `PRAGMA user_version`, so reading the PRAGMA on
+        /// the post-rename `apple-sample-code.db` returns 0 (fresh
+        /// file) or Search.Index's stamp (shared file), neither of
+        /// which reflects the Sample.Index pipeline's actual schema
+        /// version.
+        public static func samplesSchemaVersion(at dbPath: URL) -> Int32? {
+            var db: OpaquePointer?
+            guard sqlite3_open_v2(dbPath.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+                return nil
+            }
+            defer { sqlite3_close(db) }
+
+            // Try the per-pipeline tracking table first.
+            var stmt: OpaquePointer?
+            let select = "SELECT version FROM samples_schema_version LIMIT 1"
+            if sqlite3_prepare_v2(db, select, -1, &stmt, nil) == SQLITE_OK,
+               sqlite3_step(stmt) == SQLITE_ROW {
+                let version = sqlite3_column_int(stmt, 0)
+                sqlite3_finalize(stmt)
+                return version
+            }
+            sqlite3_finalize(stmt)
+
+            // Tracking table missing or empty. Differentiate "this IS
+            // a pre-#1037 samples DB" from "this is a Search.Index-only
+            // file or anything else" by checking for the canonical
+            // marker table.
+            var projectsStmt: OpaquePointer?
+            defer { sqlite3_finalize(projectsStmt) }
+            let projectsSQL = "SELECT name FROM sqlite_master WHERE type='table' AND name='projects' LIMIT 1"
+            guard sqlite3_prepare_v2(db, projectsSQL, -1, &projectsStmt, nil) == SQLITE_OK,
+                  sqlite3_step(projectsStmt) == SQLITE_ROW
+            else {
+                // No projects table → not a samples DB. Don't leak
+                // any foreign PRAGMA stamp.
+                return nil
+            }
+
+            // Confirmed samples DB without a tracking table. Fall back
+            // to legacy PRAGMA user_version (pre-#1037 stamp).
+            var legacy: OpaquePointer?
+            defer { sqlite3_finalize(legacy) }
+            guard sqlite3_prepare_v2(db, "PRAGMA user_version;", -1, &legacy, nil) == SQLITE_OK,
+                  sqlite3_step(legacy) == SQLITE_ROW
+            else {
+                return nil
+            }
+            return sqlite3_column_int(legacy, 0)
+        }
+
         /// Read `PRAGMA journal_mode` from a SQLite file using a
         /// read-only connection. Used by `cupertino doctor` to verify
         /// each local DB is in WAL mode (#236) — anything else (`delete`,

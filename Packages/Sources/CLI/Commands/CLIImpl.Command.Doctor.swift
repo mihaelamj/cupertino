@@ -125,13 +125,55 @@ extension CLIImpl.Command {
             // changes. Every element of the list is iterated (no `prefix`,
             // no out-of-loop calls), so a new conformer cannot silently
             // disappear from `cupertino doctor`'s output.
+            //
+            // Post-2026-05-26 audit Finding 7.1: extend coverage to every
+            // per-source destinationDB declared by the registry. Pre-fix
+            // only the legacy 3-DB shape (packages / samples / search)
+            // got a health probe; the 5-6 per-source FTS DBs landed by
+            // #1036 (apple-documentation.db, hig.db, apple-archive.db,
+            // swift-evolution.db, swift-documentation.db) were SILENTLY
+            // un-probed — a corrupt per-source DB would let doctor
+            // report "healthy" while MCP returned partial results.
+            //
+            // Composition: 2 dedicated conformers for the two non-FTS
+            // DB families (PackagesHealthCheck for packages.db's
+            // BM25+chunk schema; SamplesHealthCheck for apple-sample-code.db's
+            // catalog-metadata tables which use a different schema_version
+            // probe) + the legacy `.search` SearchHealthCheck (transitional)
+            // + one SearchHealthCheck per registered FTS-tier destinationDB.
             let recording = Cupertino.Context.composition.logging.recording
             let paths = Shared.Paths.live()
-            let healthChecks: [any Distribution.DatabaseHealthCheck] = [
+            let registry = CLIImpl.makeProductionSourceRegistry()
+            var healthChecks: [any Distribution.DatabaseHealthCheck] = [
                 PackagesHealthCheck(packagesDBURL: paths.packagesDatabase),
                 SamplesHealthCheck(samplesDBURL: Sample.Index.databasePath(baseDirectory: paths.baseDirectory)),
-                SearchHealthCheck(searchDBURL: URL(fileURLWithPath: searchDB).expandingTildeInPath),
+                SearchHealthCheck(
+                    descriptor: .search,
+                    searchDBURL: URL(fileURLWithPath: searchDB).expandingTildeInPath,
+                    isRequired: true
+                ),
             ]
+            // One conformer per FTS-tier per-source destinationDB.
+            // Excluded: .search (already added above as legacy required),
+            // .packages (its own non-FTS conformer), .appleSampleCode
+            // (its own dual-schema conformer). Uniquify by descriptor.id
+            // because view-source pairs (swift-org + swift-book) share
+            // `.swiftDocumentation`.
+            var seen: Set<String> = [
+                Shared.Models.DatabaseDescriptor.search.id,
+                Shared.Models.DatabaseDescriptor.packages.id,
+                Shared.Models.DatabaseDescriptor.appleSampleCode.id,
+            ]
+            for provider in registry.allEnabled {
+                let descriptor = provider.destinationDB
+                guard !seen.contains(descriptor.id) else { continue }
+                seen.insert(descriptor.id)
+                healthChecks.append(SearchHealthCheck(
+                    descriptor: descriptor,
+                    searchDBURL: paths.baseDirectory.appendingPathComponent(descriptor.filename),
+                    isRequired: false
+                ))
+            }
             for check in healthChecks {
                 let ok = await check.run(output: recording)
                 if check.isRequired { allChecks = ok && allChecks }
@@ -237,18 +279,63 @@ extension CLIImpl.Command {
             Cupertino.Context.composition.logging.recording.output("")
             // Path-DI composition sub-root (#535).
             let paths = Shared.Paths.live()
-            let entries: [(Shared.Models.DatabaseDescriptor, URL)] = [
+            // Per-source DB sections (post-#1037 split + #1038
+            // swift-org/swift-book separation). Each descriptor's
+            // filename is the on-disk path under the base directory;
+            // the legacy `.search` descriptor (pre-#1037 monolithic
+            // search.db) is kept for transition-period visibility but
+            // post-migration users see "not built" for it once the
+            // per-source DBs are populated.
+            //
+            // `.appleSampleCode` uses the per-pipeline
+            // `samples_schema_version` table probe instead of PRAGMA
+            // user_version (post-#1037 the Sample.Index pipeline does
+            // not stamp the PRAGMA so it can coexist with Search.Index
+            // tables in the same file).
+            //
+            // Post-2026-05-26 audit (Finding 7.2): derive the entries
+            // list from the production source registry so adding a new
+            // source automatically extends Doctor's schema-version
+            // output without an edit here. The legacy `.search`
+            // descriptor stays as a leading transitional entry for
+            // pre-#1037 users; the 2 non-uniform path resolvers
+            // (`.packages` → `paths.packagesDatabase`; `.appleSampleCode`
+            // → `Sample.Index.databasePath`) handle the special cases.
+            // Every other descriptor's path is `baseDirectory + filename`.
+            let docsBase = paths.baseDirectory
+            let registry = CLIImpl.makeProductionSourceRegistry()
+            var entries: [(Shared.Models.DatabaseDescriptor, URL)] = [
                 (.search, URL(fileURLWithPath: searchDB).expandingTildeInPath),
-                (.packages, paths.packagesDatabase),
-                (.samples, Sample.Index.databasePath(baseDirectory: paths.baseDirectory)),
             ]
+            // Each registered destination — uniquify via Set since
+            // view-source pairs (swift-org + swift-book) share a
+            // destinationDB.
+            var seenDescriptors: Set<String> = [Shared.Models.DatabaseDescriptor.search.id]
+            for provider in registry.allEnabled {
+                let descriptor = provider.destinationDB
+                guard !seenDescriptors.contains(descriptor.id) else { continue }
+                seenDescriptors.insert(descriptor.id)
+                let url: URL
+                if descriptor == .packages {
+                    url = paths.packagesDatabase
+                } else if descriptor == .appleSampleCode {
+                    url = Sample.Index.databasePath(baseDirectory: docsBase)
+                } else {
+                    url = docsBase.appendingPathComponent(descriptor.filename)
+                }
+                entries.append((descriptor, url))
+            }
             for (descriptor, url) in entries {
                 let label = descriptor.filename
                 guard FileManager.default.fileExists(atPath: url.path) else {
                     Cupertino.Context.composition.logging.recording.output("   ⚠ \(label): not built")
                     continue
                 }
-                let version = Diagnostics.Probes.userVersion(at: url) ?? 0
+                let version: Int32 = if descriptor == .appleSampleCode {
+                    Diagnostics.Probes.samplesSchemaVersion(at: url) ?? 0
+                } else {
+                    Diagnostics.Probes.userVersion(at: url) ?? 0
+                }
                 let formatted = Diagnostics.SchemaVersion.format(version)
                 // #236: surface the journal mode alongside the schema
                 // version so a DB stuck in default rollback mode jumps
@@ -395,7 +482,7 @@ extension CLIImpl.Command {
             // its own line for actionability) / orange / green.
             if usage.freeBytes < savedNeed {
                 Cupertino.Context.composition.logging.recording.output(
-                    "   ✗ Volume \(target.path): \(free) free of \(total) (\(pct) %) — `cupertino save --docs` would REFUSE (needs \(savedNeedStr))"
+                    "   ✗ Volume \(target.path): \(free) free of \(total) (\(pct) %); `cupertino save --source apple-docs` would REFUSE (needs \(savedNeedStr))"
                 )
                 Cupertino.Context.composition.logging.recording.output(
                     "     → Free at least \(formatter.string(fromByteCount: savedNeed - usage.freeBytes)) on this volume before the next save / setup"
@@ -428,27 +515,49 @@ extension CLIImpl.Command {
         /// Filesystem check for raw corpus directories. These are *inputs* for
         /// `cupertino save`; they're optional once `search.db` is built (a user
         /// who ran `cupertino setup` has the DB but no source dirs, and that's
-        /// fine). All five directories are warnings-only — missing dirs don't
+        /// fine). All directories are warnings-only — missing dirs don't
         /// fail doctor. The query-correctness truth lives in `search.db` and is
         /// reported by `checkSearchDatabase`.
+        ///
+        /// 2026-05-26 audit follow-up: pre-fix the entries list was a
+        /// hardcoded 5-element literal naming `(label, url, suffix,
+        /// fetchType)` inline; adding a new web-crawlable source meant
+        /// editing Doctor AND the `fetchType` values had drifted —
+        /// `"docs"` / `"evolution"` / `"swift"` / `"archive"` were not
+        /// valid `--source` values post-#1007 registry-driven dispatch,
+        /// so Doctor's "→ Run: cupertino fetch --source X" guidance
+        /// pointed at commands that would error out with "Unknown
+        /// --source value 'docs'". Post-fix the list is derived from
+        /// the production registry — every FTS-tier source with a
+        /// non-nil `fetchInfo` contributes one entry, each pulling its
+        /// label from `fetchInfo.displayName`, its URL from
+        /// `Shared.Paths.directory(named: fetchInfo.defaultOutputDirKey.rawValue)`,
+        /// its `suffix` from `fetchInfo.corpusFileSuffix`, and its
+        /// `fetchType` from `fetchInfo.sourceID` (the canonical
+        /// `--source` flag value).
         private func checkDocumentationDirectories() -> Bool {
-            // Path-DI composition sub-root (#535).
             let paths = Shared.Paths.live()
-            let docsURL = URL(fileURLWithPath: docsDir).expandingTildeInPath
-            let evolutionURL = URL(fileURLWithPath: evolutionDir).expandingTildeInPath
-            let higURL = paths.higDirectory
-            let swiftOrgURL = paths.swiftOrgDirectory
-            let archiveURL = paths.archiveDirectory
+            let registry = CLIImpl.makeProductionSourceRegistry()
+            let cliDocsURL = URL(fileURLWithPath: docsDir).expandingTildeInPath
+            let cliEvolutionURL = URL(fileURLWithPath: evolutionDir).expandingTildeInPath
 
             Cupertino.Context.composition.logging.recording.output("📂 Raw corpus directories (input for `cupertino save`)")
 
-            let entries: [CorpusEntry] = [
-                CorpusEntry(label: "Apple docs", url: docsURL, suffix: "files", fetchType: "docs"),
-                CorpusEntry(label: "Swift Evolution", url: evolutionURL, suffix: "proposals", fetchType: "evolution"),
-                CorpusEntry(label: "Swift.org", url: swiftOrgURL, suffix: "pages", fetchType: "swift"),
-                CorpusEntry(label: "HIG", url: higURL, suffix: "pages", fetchType: "hig"),
-                CorpusEntry(label: "Apple Archive", url: archiveURL, suffix: "guides", fetchType: "archive"),
-            ]
+            let entries: [CorpusEntry] = registry.allEnabled.compactMap { provider in
+                guard provider.isSearchTier, let info = provider.fetchInfo else { return nil }
+                let dirKey = info.defaultOutputDirKey.rawValue
+                let url: URL = switch info.sourceID {
+                case Shared.Constants.SourcePrefix.appleDocs: cliDocsURL
+                case Shared.Constants.SourcePrefix.swiftEvolution: cliEvolutionURL
+                default: paths.directory(named: dirKey)
+                }
+                return CorpusEntry(
+                    label: info.displayName,
+                    url: url,
+                    suffix: info.corpusFileSuffix,
+                    fetchType: info.sourceID
+                )
+            }
 
             for entry in entries {
                 if FileManager.default.fileExists(atPath: entry.url.path) {

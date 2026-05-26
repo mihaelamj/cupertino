@@ -16,6 +16,37 @@ extension Services.Formatter.Unified {
         public let swiftOrgResults: [Search.Result]
         public let swiftBookResults: [Search.Result]
         public let packagesResults: [Search.Result]
+        /// #1042 Cluster 6 sub-2: open-ended bucket for sources beyond
+        /// the 8 typed properties above. A new source (e.g. WWDC
+        /// transcripts) stores its results here keyed by
+        /// `definition.id`; `allSources` enumerates these alongside
+        /// the typed properties. Each entry carries the source's own
+        /// SourceInfo (displayName + sourceKey + emoji) — no parallel
+        /// `Prefix.infoX` constant required.
+        public let extras: [String: ExtraSource]
+
+        public struct ExtraSource: Sendable {
+            public let info: Shared.Constants.SourcePrefix.SourceInfo
+            public let results: [Search.Result]
+
+            public init(info: Shared.Constants.SourcePrefix.SourceInfo, results: [Search.Result]) {
+                self.info = info
+                self.results = results
+            }
+        }
+
+        /// 2026-05-26 audit Finding 6.0: registry-supplied list of
+        /// source IDs for the formatter's footer tip ("_To narrow
+        /// results, use `source` parameter: …_") + the "Searched ALL
+        /// sources" header. Non-optional — every caller MUST supply
+        /// the list from `CupertinoComposition.makeProductionSourceRegistry().allEnabled.map(\.definition.id)`
+        /// (or equivalent). Pre-fix this was optional and the
+        /// formatters silently fell back to the
+        /// `Shared.Constants.Search.availableSources` static literal
+        /// — a future PR that forgot to wire the list would silently
+        /// omit any new shipped source from the rendered output.
+        public let availableSources: [String]
+
         public let limit: Int // The limit used per source, for teaser calculation
         /// Per-source configuration errors (#640). Empty on the happy
         /// path; populated when a source returned 0 because it failed
@@ -36,6 +67,8 @@ extension Services.Formatter.Unified {
             swiftOrgResults: [Search.Result] = [],
             swiftBookResults: [Search.Result] = [],
             packagesResults: [Search.Result] = [],
+            extras: [String: ExtraSource] = [:],
+            availableSources: [String],
             limit: Int = 10,
             degradedSources: [Search.DegradedSource] = []
         ) {
@@ -47,6 +80,8 @@ extension Services.Formatter.Unified {
             self.swiftOrgResults = swiftOrgResults
             self.swiftBookResults = swiftBookResults
             self.packagesResults = packagesResults
+            self.extras = extras
+            self.availableSources = availableSources
             self.limit = limit
             self.degradedSources = degradedSources
         }
@@ -55,7 +90,8 @@ extension Services.Formatter.Unified {
         public var totalCount: Int {
             docResults.count + archiveResults.count + sampleResults.count +
                 higResults.count + swiftEvolutionResults.count + swiftOrgResults.count +
-                swiftBookResults.count + packagesResults.count
+                swiftBookResults.count + packagesResults.count +
+                extras.values.map(\.results.count).reduce(0, +)
         }
 
         /// Number of sources that returned results
@@ -105,8 +141,8 @@ extension Services.Formatter.Unified {
             typealias Info = Shared.Constants.SourcePrefix
             typealias Section = SourceSection
 
-            // Order: Apple Docs, Archive, Samples, HIG, Swift Evolution, Swift.org, Swift Book, Packages
-            return [
+            // Order: Apple Docs, Archive, Samples, HIG, Swift Evolution, Swift.org, Swift Book, Packages, …extras
+            var sections: [SourceSection] = [
                 Section.fromDocs(Info.infoAppleDocs, docResults),
                 Section.fromDocs(Info.infoArchive, archiveResults),
                 Section.fromSamples(Info.infoSamples, sampleResults),
@@ -116,6 +152,15 @@ extension Services.Formatter.Unified {
                 Section.fromDocs(Info.infoSwiftBook, swiftBookResults),
                 Section.fromDocs(Info.infoPackages, packagesResults),
             ].compactMap { $0 }
+            // #1042 Cluster 6 sub-2: extras for sources beyond the 8
+            // typed properties. Sorted by source key for stable output
+            // order across runs.
+            for (_, extra) in extras.sorted(by: { $0.key < $1.key }) {
+                if let section = Section.fromDocs(extra.info, extra.results) {
+                    sections.append(section)
+                }
+            }
+            return sections
         }
 
         /// Teaser info for sources that hit the limit (likely have more results)

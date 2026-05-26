@@ -48,11 +48,11 @@ The `fetch` command is the unified fetching command that handles both web crawli
 
 #### HTML link augmentation in `--discovery-mode auto` (v1.0.2+)
 
-In `auto` mode, after a successful JSON API fetch, the crawler additionally fetches the rendered HTML and unions its `<a href>` links with the JSON `references`-walker output. Catches URL patterns Apple's DocC JSON omits — operator overloads (`Int.&` slugified as `int_amp_<hash>`), legacy numeric-ID symbols (`1418511-iskindofclass`), `data.dictionary` REST sub-paths, and entire framework dirs Apple serves only as HTML (`apple_pay_on_the_web`, `applepencil`, `docc`, `samplecode`, `sign_in_with_apple`). ([#203](https://github.com/mihaelamj/cupertino/issues/203))
+In `auto` mode, after a successful JSON API fetch, the crawler additionally fetches the rendered HTML and unions its `<a href>` links with the JSON `references`-walker output. Catches URL patterns Apple's DocC JSON omits, operator overloads (`Int.&` slugified as `int_amp_<hash>`), legacy numeric-ID symbols (`1418511-iskindofclass`), `data.dictionary` REST sub-paths, and entire framework dirs Apple serves only as HTML (`apple_pay_on_the_web`, `applepencil`, `docc`, `samplecode`, `sign_in_with_apple`). ([#203](https://github.com/mihaelamj/cupertino/issues/203))
 
 A sparse-references skip heuristic keeps the per-page cost bounded: augmentation only runs when the JSON-extracted link count is below `htmlLinkAugmentationMaxRefs`. Pages with rich JSON references already cover the URL graph; HTML adds nothing for them. Roughly the sparse third of Apple's corpus runs through augmentation in practice, matching the issue's stated performance budget.
 
-Two `CrawlerConfiguration` fields control the behavior — there are no CLI flags. Set them in your config JSON:
+Two `CrawlerConfiguration` fields control the behavior, there are no CLI flags. Set them in your config JSON:
 
 | field | type | default | meaning |
 |---|---|---|---|
@@ -67,7 +67,7 @@ Backwards-compatible: legacy JSON configs without these fields decode with the d
 
 No-op in `--discovery-mode json-only` and `--discovery-mode webview-only`.
 
-> **Resume is automatic.** If a previous `fetch` was interrupted, just re-run the same command — the crawler picks up its `metadata.json` and continues from where it left off. No flag needed. Use `--start-clean` to override and start over.
+> **Resume is automatic.** If a previous `fetch` was interrupted, just re-run the same command, the crawler picks up its `metadata.json` and continues from where it left off. No flag needed. Use `--start-clean` to override and start over.
 
 ### Direct Fetch Options
 
@@ -139,7 +139,7 @@ cupertino fetch --start-url https://developer.apple.com/documentation/swiftui \
 
 ### Resume Interrupted Crawl (automatic)
 ```bash
-# Just re-run the same command — fetch auto-resumes from metadata.json
+# Just re-run the same command, fetch auto-resumes from metadata.json
 cupertino fetch --source apple-docs
 ```
 
@@ -195,7 +195,7 @@ Web crawl types use content hashing to detect changes:
 
 ### Session Resume
 
-All types resume interrupted operations automatically — just re-run the same command:
+All types resume interrupted operations automatically, just re-run the same command:
 - **Web crawls**: `metadata.json` is saved every 30 seconds with the queue + visited set, written atomically (`.atomic`) so a kill mid-save can never corrupt it.
 - **Direct fetches**: `checkpoint.json` is updated after each item.
 - Use `--start-clean` to override auto-resume and start fresh from the seed URL.

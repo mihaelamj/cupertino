@@ -10,6 +10,9 @@ extension Services.Formatter.HIG {
         private let query: Services.HIGQuery
         private let config: Services.Formatter.Config
         private let teasers: Services.Formatter.TeaserResults?
+        /// #1045 Gap 2: registry-derived source-id list for the
+        /// footer's tip. nil falls back to the foundation-tier static.
+        private let availableSources: [String]
 
         public init(
             query: Services.HIGQuery,
@@ -21,11 +24,13 @@ extension Services.Formatter.HIG {
                 showSeparators: true,
                 emptyMessage: "_No results found. Try broader search terms._"
             ),
-            teasers: Services.Formatter.TeaserResults? = nil
+            teasers: Services.Formatter.TeaserResults? = nil,
+            availableSources: [String]
         ) {
             self.query = query
             self.config = config
             self.teasers = teasers
+            self.availableSources = availableSources
         }
 
         public func format(_ results: [Search.Result]) -> String {
@@ -49,7 +54,11 @@ extension Services.Formatter.HIG {
                 output += "- Try broader design terms (e.g., 'buttons', 'typography', 'navigation')\n"
                 output += "- Specify a platform: iOS, macOS, watchOS, visionOS, tvOS\n"
                 output += "- Specify a category: foundations, patterns, components, technologies, inputs\n\n"
-                output += Shared.Constants.Search.tipSearchCapabilities
+                // 2026-05-26 audit Finding 6.0: tipSearchCapabilities
+                // previously joined a static source-id list. Inline
+                // against the caller-supplied availableSources.
+                let sourceList = availableSources.joined(separator: ", ")
+                output += "💡 **Dig deeper:** Use `source` parameter to search: \(sourceList), or `all`.\n"
                 return output
             }
 
@@ -79,7 +88,8 @@ extension Services.Formatter.HIG {
             // Footer: tips and guidance
             let footer = Services.Formatter.Footer.Search.singleSource(
                 Shared.Constants.SourcePrefix.hig,
-                teasers: teasers
+                teasers: teasers,
+                availableSources: availableSources
             )
             output += footer.formatMarkdown()
 

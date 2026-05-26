@@ -2,7 +2,7 @@
 #
 # scripts/smoke-reindex.sh (#643) — minimal-corpus reindex validation.
 #
-# Runs the full `cupertino save --docs` pipeline against a 7-page fixture
+# Runs the full `cupertino save --source apple-docs` pipeline against a 7-page fixture
 # corpus committed to `Packages/Tests/Fixtures/SmokeCorpus/`. Validates the
 # resulting `search.db` carries the right shape for every shipped indexer-
 # side feature (#77 CamelCase, #274 inheritance edges, #634/#637 schema
@@ -73,13 +73,13 @@ echo ""
 
 t0=$(date +%s)
 if [ "$VERBOSE" = "1" ]; then
-    "$BIN" save --docs \
+    "$BIN" save --source apple-docs \
         --base-dir "$TMP_BASE" \
         --docs-dir "$FIXTURES" \
         --yes
     rc=$?
 else
-    "$BIN" save --docs \
+    "$BIN" save --source apple-docs \
         --base-dir "$TMP_BASE" \
         --docs-dir "$FIXTURES" \
         --yes \

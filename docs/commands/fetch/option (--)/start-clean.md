@@ -12,7 +12,7 @@ cupertino fetch --source <id> --start-clean
 
 `cupertino fetch` auto-resumes by default. If `metadata.json` (or `checkpoint.json`, for packages) records an active session matching the start URL, the next run picks up from where the previous one left off.
 
-`--start-clean` overrides that: the saved queue + visited-URL state is wiped before the crawl begins, so the run starts from the seed URL with an empty queue. Page files already on disk are **kept** — change detection still skips pages whose content hasn't changed. Combine with `--force` if you also want to re-fetch unchanged pages.
+`--start-clean` overrides that: the saved queue + visited-URL state is wiped before the crawl begins, so the run starts from the seed URL with an empty queue. Page files already on disk are **kept**, change detection still skips pages whose content hasn't changed. Combine with `--force` if you also want to re-fetch unchanged pages.
 
 ## How It Works
 
@@ -55,4 +55,4 @@ cupertino fetch --source packages --start-clean
 
 - Auto-resume is the default. Don't pass `--start-clean` unless you actually want to discard progress.
 - Compatible with `--force`. `--start-clean` clears the queue; `--force` re-fetches pages on disk. They address different layers.
-- Safe to run on a non-existent metadata.json — logs a no-op message and proceeds.
+- Safe to run on a non-existent metadata.json, logs a no-op message and proceeds.

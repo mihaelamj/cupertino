@@ -1,5 +1,6 @@
 import Foundation
 import SharedConstants
+
 // MARK: - Content Transformer Protocol
 
 /// Protocol for transforming raw content into Markdown

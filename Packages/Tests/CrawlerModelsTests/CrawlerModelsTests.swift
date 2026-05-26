@@ -42,8 +42,8 @@ struct PriorityPackageOutcomeTests {
 
     @Test("Accepts large counts")
     func acceptsLargeCount() {
-        let outcome = Crawler.PriorityPackageOutcome(totalUniqueReposFound: 100_000)
-        #expect(outcome.totalUniqueReposFound == 100_000)
+        let outcome = Crawler.PriorityPackageOutcome(totalUniqueReposFound: 100000)
+        #expect(outcome.totalUniqueReposFound == 100000)
     }
 }
 

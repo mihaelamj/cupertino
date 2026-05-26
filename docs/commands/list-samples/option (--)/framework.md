@@ -11,7 +11,7 @@ cupertino list-samples -f <framework>
 
 ## Description
 
-Restrict the listing to projects that use the named framework (e.g., `swiftui`, `uikit`, `appkit`). Match is case-insensitive against the framework names extracted from each project's `import` statements during `cupertino save --samples`.
+Restrict the listing to projects that use the named framework (e.g., `swiftui`, `uikit`, `appkit`). Match is case-insensitive against the framework names extracted from each project's `import` statements during `cupertino save --source samples`.
 
 ## Examples
 

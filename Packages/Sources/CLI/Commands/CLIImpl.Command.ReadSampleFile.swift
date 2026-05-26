@@ -6,6 +6,7 @@ import SampleIndex
 import Services
 import ServicesModels
 import SharedConstants
+
 // MARK: - Read Sample File Command
 
 /// CLI command for reading a specific file from a sample project - mirrors MCP tool functionality.
@@ -69,7 +70,10 @@ extension CLIImpl.Command {
                 let formatter = Sample.Format.JSON.File()
                 Cupertino.Context.composition.logging.recording.output(formatter.format(file))
             case .markdown:
-                let formatter = Sample.Format.Markdown.File()
+                let availableSources = CLIImpl.makeFormatterAvailableSources(
+                    registry: CLIImpl.makeProductionSourceRegistry()
+                )
+                let formatter = Sample.Format.Markdown.File(availableSources: availableSources)
                 Cupertino.Context.composition.logging.recording.output(formatter.format(file))
             }
         }

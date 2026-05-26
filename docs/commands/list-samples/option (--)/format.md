@@ -36,7 +36,7 @@ cupertino list-samples
 cupertino list-samples --format json | jq '.projects[] | select(.frameworks | index("swiftui"))'
 ```
 
-(Top-level is an object — iterate `.projects[]`. Per-project field is `frameworks` (array, lowercase values), not `framework` singular.)
+(Top-level is an object, iterate `.projects[]`. Per-project field is `frameworks` (array, lowercase values), not `framework` singular.)
 
 ### Filter + markdown
 ```bash

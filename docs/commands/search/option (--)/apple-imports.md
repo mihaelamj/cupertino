@@ -79,7 +79,7 @@ The MCP `search` tool accepts the same filter as the `apple_imports` argument:
 
 ## Notes
 
-- The `apple_imports_json` column is populated by the `cupertino save --packages` enrichment pass introduced in v1.2.0. Bundles built against older binaries (pre-v1.2.0) carry NULL `apple_imports_json` and `--apple-imports` filters to zero rows. Run `cupertino setup` to fetch a v1.2.0+ bundle.
+- The `apple_imports_json` column is populated by the `cupertino save --source packages` enrichment pass introduced in v1.2.0. Bundles built against older binaries (pre-v1.2.0) carry NULL `apple_imports_json` and `--apple-imports` filters to zero rows. Run `cupertino setup` to fetch a v1.2.0+ bundle.
 - The filter is one-dimensional: it asserts the module **is** in the package's apple-imports set. There's no exclusion form. Pass a single module per query.
 - When combined with `--apple-imports <non-Apple-module>` (e.g. `Vapor`), the filter still applies the LIKE pattern but no rows match because `apple_imports_json` only stores Apple-framework slugs.
 - Set on a source other than `packages` is silently ignored: `cupertino search "View" --source apple-docs --apple-imports SwiftUI` returns the same rows as without the filter.

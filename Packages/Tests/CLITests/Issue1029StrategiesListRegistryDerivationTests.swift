@@ -42,10 +42,10 @@ struct Issue1029StrategiesListRegistryDerivationTests {
         #expect(resolved?.path == "/dev/null")
     }
 
-    @Test("PackagesSource is filtered out by destinationDB == .search (not in strategies list)")
+    @Test("PackagesSource is filtered out by destinationDB != .packages (not in strategies list)")
     func packagesSourceExcludedByDestinationDB() {
         let registry = CLIImpl.makeProductionSourceRegistry()
-        let searchOnlyProviders = registry.allEnabled.filter { $0.destinationDB == .search }
+        let searchOnlyProviders = registry.allEnabled.filter { $0.destinationDB != .packages }
         let searchOnlyIDs = Set(searchOnlyProviders.map(\.definition.id))
         #expect(!searchOnlyIDs.contains(Shared.Constants.SourcePrefix.packages))
         #expect(searchOnlyProviders.count == 7) // 8 total - 1 PackagesSource
@@ -57,7 +57,7 @@ struct Issue1029StrategiesListRegistryDerivationTests {
         let registry = CLIImpl.makeProductionSourceRegistry()
         let logger = LoggingModels.Logging.NoopRecording()
         let strategies = registry.allEnabled
-            .filter { $0.destinationDB == .search }
+            .filter { $0.destinationDB != .packages }
             .compactMap { provider -> (any Search.SourceIndexingStrategy)? in
                 guard let dir = CLIImpl.Command.Save.LiveDocsIndexingRunner.resolveSourceDirectory(for: provider, input: input) else {
                     return nil
@@ -80,7 +80,7 @@ struct Issue1029StrategiesListRegistryDerivationTests {
         let registry = CLIImpl.makeProductionSourceRegistry()
         let logger = LoggingModels.Logging.NoopRecording()
         let strategies = registry.allEnabled
-            .filter { $0.destinationDB == .search }
+            .filter { $0.destinationDB != .packages }
             .compactMap { provider -> (any Search.SourceIndexingStrategy)? in
                 guard let dir = CLIImpl.Command.Save.LiveDocsIndexingRunner.resolveSourceDirectory(for: provider, input: input) else {
                     return nil
@@ -103,6 +103,13 @@ struct Issue1029StrategiesListRegistryDerivationTests {
 // MARK: - Test fixtures
 
 extension Issue1029StrategiesListRegistryDerivationTests {
+    // Post-#1045 Gap-4 + post-cull (2026-05-26 audit Finding 14.5):
+    // `resolveSourceDirectory` no longer reads typed fields — every
+    // per-source directory flows through `directoryByKey`. The
+    // typed `*Directory` fields remain on the Input struct for
+    // back-compat with existing callers but are not consulted by
+    // the dispatcher. Tests construct the dict directly so the
+    // assertions exercise the production code path.
     static let fullInput = Search.DocsIndexingInput(
         searchDBPath: URL(fileURLWithPath: "/tmp/search.db"),
         docsDirectory: URL(fileURLWithPath: "/tmp/docs"),
@@ -112,7 +119,19 @@ extension Issue1029StrategiesListRegistryDerivationTests {
         higDirectory: URL(fileURLWithPath: "/tmp/hig"),
         clearExisting: false,
         markdownStrategy: NoopMarkdownStrategy(),
-        sampleCatalogProvider: NoopSampleCatalogProvider()
+        sampleCatalogProvider: NoopSampleCatalogProvider(),
+        directoryByKey: [
+            Shared.Constants.SourcePrefix.appleDocs: URL(fileURLWithPath: "/tmp/docs"),
+            Shared.Constants.SourcePrefix.swiftEvolution: URL(fileURLWithPath: "/tmp/evo"),
+            Shared.Constants.SourcePrefix.swiftOrg: URL(fileURLWithPath: "/tmp/swift-org"),
+            Shared.Constants.SourcePrefix.appleArchive: URL(fileURLWithPath: "/tmp/archive"),
+            Shared.Constants.SourcePrefix.hig: URL(fileURLWithPath: "/tmp/hig"),
+            // swiftBook + samples deliberately nil — dispatcher returns
+            // the /dev/null sentinel for them so their makeStrategy
+            // still gets invoked (each strategy doesn't consume sourceDirectory).
+            Shared.Constants.SourcePrefix.swiftBook: nil,
+            Shared.Constants.SourcePrefix.samples: nil,
+        ]
     )
 
     static let minimalInput = Search.DocsIndexingInput(
@@ -124,7 +143,16 @@ extension Issue1029StrategiesListRegistryDerivationTests {
         higDirectory: nil,
         clearExisting: false,
         markdownStrategy: NoopMarkdownStrategy(),
-        sampleCatalogProvider: NoopSampleCatalogProvider()
+        sampleCatalogProvider: NoopSampleCatalogProvider(),
+        directoryByKey: [
+            Shared.Constants.SourcePrefix.appleDocs: URL(fileURLWithPath: "/tmp/docs"),
+            // Other docs sources absent from dict → resolveSourceDirectory
+            // returns nil for them, makeStrategy compactMap drops them.
+            // samples + swift-book sentinel via the dispatcher's
+            // /dev/null fallback case.
+            Shared.Constants.SourcePrefix.swiftBook: nil,
+            Shared.Constants.SourcePrefix.samples: nil,
+        ]
     )
 }
 

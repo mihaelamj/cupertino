@@ -21,7 +21,8 @@ extension PackagesSource {
             hasAvailability: 0.2,
             designFocus: 0.1,
             languageFocus: 0.3,
-            searchQuality: 0.6
+            searchQuality: 0.6,
+            rankWeight: 1.5
         ),
         intents: [.packageDiscovery],
         intentPriority: [.packageDiscovery: 100],

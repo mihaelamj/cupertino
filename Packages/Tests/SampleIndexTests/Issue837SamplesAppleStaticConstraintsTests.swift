@@ -2,8 +2,8 @@ import ASTIndexer
 import Foundation
 import LoggingModels
 @testable import SampleIndex
-import SampleIndexSQLite
 import SampleIndexModels
+import SampleIndexSQLite
 import SearchModels
 import SharedConstants
 import SQLite3

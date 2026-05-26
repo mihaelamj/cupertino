@@ -85,10 +85,25 @@ extension Search {
         public static func partitionForNotice(
             contributingSources: [String]
         ) -> (filtered: [String], unfiltered: [String]) {
+            partitionForNotice(
+                contributingSources: contributingSources,
+                appliesFilter: dispatchAppliesFilter
+            )
+        }
+
+        /// #1042 Cluster 5 sub-1: registry-aware variant accepting a
+        /// composition-root-supplied set of sources whose dispatch
+        /// handler threads the platform filter. The legacy static
+        /// `partitionForNotice` (above) forwards to this with
+        /// `dispatchAppliesFilter` so existing callers stay green.
+        public static func partitionForNotice(
+            contributingSources: [String],
+            appliesFilter: Set<String>
+        ) -> (filtered: [String], unfiltered: [String]) {
             var filtered: [String] = []
             var unfiltered: [String] = []
             for source in contributingSources {
-                if dispatchAppliesFilter.contains(source) {
+                if appliesFilter.contains(source) {
                     filtered.append(source)
                 } else {
                     unfiltered.append(source)
@@ -135,16 +150,21 @@ extension Search {
         /// the result set. Used by the notice helper to decide what to
         /// say.
         ///
-        /// - `nil`, `"all"`, empty string → `.fanOut` over all 8 sources
+        /// - `nil`, `"all"`, empty string → `.fanOut` over the supplied
+        ///   `fanOutSources` (pre-#1042 Cluster 5 this defaulted to the
+        ///   8-element hardcoded `allFanOutSources` literal; post-fix
+        ///   the registry-aware caller supplies its own list derived
+        ///   from `Search.SourceLookup`)
         /// - `appleSampleCode` alias → `.singleSource(samples)` (canonicalised)
         /// - any known specific source → `.singleSource(source)`
         /// - unknown source → `.singleSource(source)` returned verbatim
         ///   (the tool throws later; the notice would be moot)
         public static func dispatch(
-            for source: String?
+            for source: String?,
+            fanOutSources: [String]
         ) -> (kind: Dispatch, sources: [String]) {
             guard let source, !source.isEmpty, source != "all" else {
-                return (.fanOut, allFanOutSources)
+                return (.fanOut, fanOutSources)
             }
             // Canonicalise sample-code alias to its prefix.
             if source == Shared.Constants.SourcePrefix.appleSampleCode {
@@ -154,6 +174,16 @@ extension Search {
                 )
             }
             return (.singleSource(source), [source])
+        }
+
+        /// Back-compat overload used by callers that haven't migrated
+        /// to the registry-aware `fanOutSources:` parameter. Defaults
+        /// to the v1.2.0 hardcoded `allFanOutSources` literal.
+        @available(*, deprecated, message: "Pass `fanOutSources:` explicitly; derive from Search.SourceLookup at composition time.")
+        public static func dispatch(
+            for source: String?
+        ) -> (kind: Dispatch, sources: [String]) {
+            dispatch(for: source, fanOutSources: allFanOutSources)
         }
 
         /// Deprecated alias used during the critic-pass rename. Returns
@@ -211,6 +241,7 @@ extension Search {
             // literal newline semantics — Swift trims the trailing newline
             // before the closing `"""`, so a literal-only build produces
             // `\n` not `\n\n`.
+            // swiftlint:disable:next line_length
             let line = "> ℹ️ **platform_filter_partial** — Your platform filter (\(platformDescriptions.joined(separator: ", "))) was honoured for: \(appliedTo). The following sources do not honour platform filters and are included unfiltered in this response: \(notHonoured)."
             return line + "\n\n"
         }

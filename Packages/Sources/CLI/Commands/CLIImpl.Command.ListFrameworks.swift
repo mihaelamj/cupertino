@@ -5,6 +5,7 @@ import LoggingModels
 import Services
 import ServicesModels
 import SharedConstants
+
 // MARK: - List Frameworks Command
 
 /// CLI command for listing available frameworks - mirrors MCP tool functionality.
@@ -24,39 +25,103 @@ extension CLIImpl.Command {
 
         @Option(
             name: .long,
-            help: "Path to search database"
+            help: """
+            Override the apple-docs database path. Default: \
+            apple-documentation.db (resolved through the production source \
+            registry). Override applies to apple-docs only; apple-archive \
+            still resolves through its own per-source DB.
+            """
         )
         var searchDb: String?
 
         mutating func run() async throws {
             // GoF Factory Method (1994 p. 107): construct the concrete
             // Creator at the command's composition sub-root. Stateless
-            // structs need no singleton handle — per GoF p. 127, the
-            // Singleton pattern is reserved for "exactly one instance"
-            // semantics that stateless empty structs don't require.
+            // structs need no singleton handle per GoF p. 127.
             let searchDatabaseFactory: any SearchModule.DatabaseFactory = LiveSearchDatabaseFactory()
 
-            // Path-DI composition sub-root (#535).
-            let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-                ?? Shared.Paths.live().searchDatabase
+            // Path-DI composition sub-root (#535). Source Independence
+            // Day pattern: iterate the production source registry and
+            // open every source whose `capabilities.operations`
+            // contains `.listFrameworks`. Today: apple-docs +
+            // apple-archive. Adding a new source that declares
+            // `.listFrameworks` adds it to this fan-out with zero
+            // edits here (the "2-file PR" standard).
+            //
+            // The `--search-db` override applies only to the apple-docs
+            // source (this command's legacy override semantic).
+            // Other framework-scoped sources resolve through their
+            // own per-source DB filenames declared by each
+            // `SourceProvider.destinationDB.filename`.
+            let baseDirectory = Shared.Paths.live().baseDirectory
+            let registry = CLIImpl.makeProductionSourceRegistry()
+            let frameworkSources = registry.allEnabled.filter {
+                $0.capabilities.operations.contains(.listFrameworks)
+            }
+            let appleDocsURL = CLIImpl.resolveAppleDocsDBURL(override: searchDb)
 
-            // Use Services.ServiceContainer for managed lifecycle
-            let (frameworks, totalDocs) = try await Services.ServiceContainer.withDocsService(searchDB: searchDBURL, searchDatabaseFactory: searchDatabaseFactory) { service in
-                let frameworks = try await service.listFrameworks()
-                let totalDocs = try await service.documentCount()
-                return (frameworks, totalDocs)
+            // Fail-fast: surface the apple-docs missing-DB diagnostic
+            // before opening any other DB. Pre-#1037 the user was
+            // either set up or not; the apple-docs DB is the canonical
+            // floor for whether this command can run at all.
+            guard FileManager.default.fileExists(atPath: appleDocsURL.path) else {
+                CLIImpl.printUserFacingDiagnostic(
+                    CLIImpl.perSourceDBMissingMessage(url: appleDocsURL),
+                    recording: Cupertino.Context.composition.logging.recording
+                )
+                throw ExitCode.failure
             }
 
-            // Output results using formatters
+            var frameworks: [String: Int] = [:]
+            var totalDocs = 0
+
+            for provider in frameworkSources {
+                let dbURL: URL
+                if provider.definition.id == Shared.Constants.SourcePrefix.appleDocs {
+                    // Honour --search-db for apple-docs only.
+                    dbURL = appleDocsURL
+                } else {
+                    dbURL = baseDirectory.appendingPathComponent(provider.destinationDB.filename)
+                }
+                guard FileManager.default.fileExists(atPath: dbURL.path) else {
+                    // Missing non-apple-docs DB is non-fatal: a user
+                    // who never set up the bundle's archive DB still
+                    // sees apple-docs frameworks.
+                    continue
+                }
+                let perDB = try await Services.ServiceContainer.withDocsService(
+                    searchDB: dbURL,
+                    searchDatabaseFactory: searchDatabaseFactory
+                ) { service in
+                    let perDBFrameworks = try await service.listFrameworks()
+                    let perDBCount = try await service.documentCount()
+                    return (perDBFrameworks, perDBCount)
+                }
+                frameworks.merge(perDB.0, uniquingKeysWith: +)
+                totalDocs += perDB.1
+            }
+
+            // Output results using formatters.
+            // #1045 Gap 2 wiring: registry-derived source-id list for
+            // the footer's "all sources" discovery block.
+            let frameworksRegisteredSources = CLIImpl.makeFormatterAvailableSources(
+                registry: CLIImpl.makeProductionSourceRegistry()
+            )
             switch format {
             case .text:
-                let formatter = Services.Formatter.Frameworks.Text(totalDocs: totalDocs)
+                let formatter = Services.Formatter.Frameworks.Text(
+                    totalDocs: totalDocs,
+                    availableSources: frameworksRegisteredSources
+                )
                 Cupertino.Context.composition.logging.recording.output(formatter.format(frameworks))
             case .json:
                 let formatter = Services.Formatter.Frameworks.JSON()
                 Cupertino.Context.composition.logging.recording.output(formatter.format(frameworks))
             case .markdown:
-                let formatter = Services.Formatter.Frameworks.Markdown(totalDocs: totalDocs)
+                let formatter = Services.Formatter.Frameworks.Markdown(
+                    totalDocs: totalDocs,
+                    availableSources: frameworksRegisteredSources
+                )
                 Cupertino.Context.composition.logging.recording.output(formatter.format(frameworks))
             }
         }

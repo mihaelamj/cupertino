@@ -30,4 +30,4 @@ cupertino fetch --source swift-evolution --no-only-accepted
 ## Notes
 
 - Status is parsed from the proposal's frontmatter via regex; both SE-prefixed and ST-prefixed (Swift Testing) proposals work.
-- The default makes search ranking better — withdrawn / returned-for-revision proposals create noise.
+- The default makes search ranking better, withdrawn / returned-for-revision proposals create noise.

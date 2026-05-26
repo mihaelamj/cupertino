@@ -12,7 +12,7 @@ extension Logging {
         case warning = 2
         case error = 3
 
-        public static func < (lhs: Level, rhs: Level) -> Bool {
+        public static func <(lhs: Level, rhs: Level) -> Bool {
             lhs.rawValue < rhs.rawValue
         }
 

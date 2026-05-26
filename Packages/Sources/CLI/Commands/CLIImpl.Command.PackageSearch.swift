@@ -77,7 +77,7 @@ extension CLIImpl.Command {
 
             guard FileManager.default.fileExists(atPath: dbURL.path) else {
                 Cupertino.Context.composition.logging.recording.error("❌ packages.db not found at \(dbURL.path)")
-                Cupertino.Context.composition.logging.recording.error("   Run `cupertino fetch --source packages` then `cupertino save --packages` first.")
+                Cupertino.Context.composition.logging.recording.error("   Run `cupertino fetch --source packages` then `cupertino save --source packages` first.")
                 throw ExitCode.failure
             }
 

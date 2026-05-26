@@ -10,9 +10,9 @@ cupertino save --docs-dir <path>
 
 ## Description
 
-Specifies the directory containing crawled documentation files from a previous `cupertino fetch` run. Pointing at an absent or empty directory is fine — the apple-docs source is then skipped cleanly with `[apple-docs] skipped (no local corpus)`, and the rest of `save` runs against whichever other sources happen to be on disk ([#671](https://github.com/mihaelamj/cupertino/issues/671)).
+Specifies the directory containing crawled documentation files from a previous `cupertino fetch` run. Pointing at an absent or empty directory is fine, the apple-docs source is then skipped cleanly with `[apple-docs] skipped (no local corpus)`, and the rest of `save` runs against whichever other sources happen to be on disk ([#671](https://github.com/mihaelamj/cupertino/issues/671)).
 
-Most users do not have a crawled docs directory — they download the pre-built bundle via `cupertino setup` and never use `cupertino save` at all.
+Most users do not have a crawled docs directory, they download the pre-built bundle via `cupertino setup` and never use `cupertino save` at all.
 
 ## Default
 
@@ -55,7 +55,7 @@ docs-dir/
 
 ## Notes
 
-- Directory may be absent — `save` skips the apple-docs source cleanly when it is ([#671](https://github.com/mihaelamj/cupertino/issues/671))
+- Directory may be absent, `save` skips the apple-docs source cleanly when it is ([#671](https://github.com/mihaelamj/cupertino/issues/671))
 - Should contain Markdown (`.md`) files or structured `.json` pages
 - Works with output from `cupertino fetch`
 - Tilde (`~`) expansion is supported

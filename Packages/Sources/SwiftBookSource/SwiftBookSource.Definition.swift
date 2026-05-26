@@ -27,6 +27,7 @@ extension SwiftBookSource {
             .conceptual: 90,
             .howTo: 60,
         ],
-        baseURL: URL(string: Shared.Constants.BaseURL.swiftBookBase)
+        baseURL: URL(string: Shared.Constants.BaseURL.swiftBookBase),
+        defaultDocKindRawValue: "swiftBook"
     )
 }

@@ -22,7 +22,8 @@ extension AppleArchiveSource {
             hasAvailability: 0.4,
             designFocus: 0.3,
             languageFocus: 0.2,
-            searchQuality: 0.6
+            searchQuality: 0.6,
+            rankWeight: 0.5
         ),
         intents: [.legacy, .migration, .troubleshooting],
         intentPriority: [
@@ -30,6 +31,7 @@ extension AppleArchiveSource {
             .migration: 80,
             .troubleshooting: 60,
         ],
-        baseURL: URL(string: Shared.Constants.BaseURL.appleDeveloper + "/library/archive")
+        baseURL: URL(string: Shared.Constants.BaseURL.appleDeveloper + "/library/archive"),
+        defaultDocKindRawValue: "archive"
     )
 }

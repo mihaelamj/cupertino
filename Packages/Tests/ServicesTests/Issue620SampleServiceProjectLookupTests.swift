@@ -1,8 +1,8 @@
 import Foundation
 import LoggingModels
 import SampleIndex
-import SampleIndexSQLite
 import SampleIndexModels
+import SampleIndexSQLite
 @testable import Services
 import SharedConstants
 import Testing

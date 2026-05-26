@@ -47,7 +47,7 @@ cupertino fetch --source swift-evolution --only-accepted
 
 ### Resume Interrupted Download (automatic)
 ```bash
-# Auto-resumes from metadata.json — no flag needed
+# Auto-resumes from metadata.json, no flag needed
 cupertino fetch --source swift-evolution
 ```
 

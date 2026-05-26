@@ -10,17 +10,17 @@ cupertino list-samples --sample-db <path>
 
 ## Description
 
-Override the default `samples.db` location. Useful when running against a non-default base directory (e.g., a `~/.cupertino-dev/` development instance).
+Override the default `apple-sample-code.db` location. Useful when running against a non-default base directory (e.g., a `~/.cupertino-dev/` development instance).
 
 ## Default
 
-`~/.cupertino/samples.db` (or the override resolved via `cupertino.config.json` next to the running binary).
+`~/.cupertino/apple-sample-code.db` (or the override resolved via `cupertino.config.json` next to the running binary).
 
 ## Examples
 
 ### Run against a development DB
 ```bash
-cupertino list-samples --sample-db ~/.cupertino-dev/samples.db
+cupertino list-samples --sample-db ~/.cupertino-dev/apple-sample-code.db
 ```
 
 ### Run against a snapshot

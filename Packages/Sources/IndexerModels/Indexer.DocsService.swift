@@ -21,6 +21,19 @@ extension Indexer {
             public let searchDB: URL?
             public let clear: Bool
 
+            /// #1045 Gap 4: registry-derived per-source directory map.
+            /// CLI composition root populates from `provider.fetchInfo?.outputDir`
+            /// for every registered provider; threaded into
+            /// `Search.DocsIndexingInput` so
+            /// `CLIImpl.Command.Save.Indexers.resolveSourceDirectory(for:input:)`
+            /// can dispatch by source-id WITHOUT the per-source switch
+            /// for sources beyond the 5 typed `*Dir` fields above.
+            ///
+            /// Default empty for back-compat with legacy callers that
+            /// don't supply the dict; resolveSourceDirectory's
+            /// fallback switch handles the 5 historical sources.
+            public let directoryByKey: [String: URL?]
+
             public init(
                 baseDir: URL,
                 docsDir: URL? = nil,
@@ -29,7 +42,8 @@ extension Indexer {
                 archiveDir: URL? = nil,
                 higDir: URL? = nil,
                 searchDB: URL? = nil,
-                clear: Bool = false
+                clear: Bool = false,
+                directoryByKey: [String: URL?] = [:]
             ) {
                 self.baseDir = baseDir
                 self.docsDir = docsDir
@@ -39,6 +53,7 @@ extension Indexer {
                 self.higDir = higDir
                 self.searchDB = searchDB
                 self.clear = clear
+                self.directoryByKey = directoryByKey
             }
         }
 
@@ -88,7 +103,7 @@ extension Indexer {
         /// `handler: @escaping @Sendable (Event) -> Void` closure
         /// parameter previously taken by `Indexer.DocsService.run`.
         ///
-        /// The CLI binary's `cupertino save --docs` composition root
+        /// The CLI binary's `cupertino save --source apple-docs` composition root
         /// builds a named struct conformer that translates events into
         /// progress-bar updates and log lines. A test stub can return a
         /// non-blocking observer that collects events into an array for

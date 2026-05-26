@@ -105,7 +105,7 @@ extension Core.Protocols {
             //
             // * `Search.Strategies.SwiftPackages` hits its existing
             //   `guard !packages.isEmpty` clean-skip path (#671), so
-            //   `cupertino save --packages` cleanly skips with reason
+            //   `cupertino save --source packages` cleanly skips with reason
             //   "catalog empty" — the indexer-side rebuild of
             //   `search.db`'s swift-packages source is deferred to a
             //   follow-up PR that rewires it to read from packages.db.

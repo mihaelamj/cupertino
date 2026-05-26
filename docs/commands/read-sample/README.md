@@ -26,7 +26,7 @@ Output format: `text` (default), `json`, or `markdown`.
 
 ### --sample-db
 
-Path to sample index database. Defaults to `~/.cupertino/samples.db`.
+Path to sample index database. Defaults to `~/.cupertino/apple-sample-code.db`.
 
 ## Examples
 
@@ -70,6 +70,6 @@ Tip: Use 'cupertino read-sample-file building-a-document-based-app-with-swiftui 
 
 ## See Also
 
-- [list-samples](../list-samples/) — list all projects
-- [search](../search/) — search projects with `cupertino search "<query>" --source samples`
-- [read-sample-file](../read-sample-file/) — read source file
+- [list-samples](../list-samples/), list all projects
+- [search](../search/), search projects with `cupertino search "<query>" --source samples`
+- [read-sample-file](../read-sample-file/), read source file

@@ -1,8 +1,12 @@
+import AppleArchiveSource
+import AppleDocsSource
 import Foundation
 import LoggingModels
 import MCPCore
 @testable import MCPSupport
+import SearchModels
 import SharedConstants
+import SwiftEvolutionSource
 import Testing
 
 // Covers the framework-root filter + cursor pagination + loud-metadata-
@@ -30,10 +34,18 @@ struct DocsResourceProviderListResourcesFilterAndPagingTests {
             crawler: Shared.Configuration.Crawler(outputDirectory: tempRoot),
             changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempRoot)
         )
+        // 2026-05-26 audit Cluster 12 follow-up: strategies + scheme map.
+        let appleDocs = AppleDocsURIResourceStrategy()
+        let evolution = SwiftEvolutionURIResourceStrategy()
+        let archive = AppleArchiveURIResourceStrategy()
         return MCP.Support.DocsResourceProvider(
             configuration: config,
-            evolutionDirectory: evolutionDir,
-            archiveDirectory: archiveDir,
+            resourceStrategies: [appleDocs, evolution, archive],
+            directoriesByScheme: [
+                appleDocs.scheme: tempRoot,
+                evolution.scheme: evolutionDir,
+                archive.scheme: archiveDir,
+            ],
             markdownLookup: nil,
             logger: Logging.NoopRecording()
         )
@@ -76,8 +88,8 @@ struct DocsResourceProviderListResourcesFilterAndPagingTests {
         let (rootKey, rootPage) = framework(name: "swiftui")
         pages[rootKey] = rootPage
         for slug in ["list", "view", "init(_:)", "anonymous-field-0", "unnamed-struct"] {
-            let (k, p) = deepPage(framework: "swiftui", slug: slug)
-            pages[k] = p
+            let (key, page) = deepPage(framework: "swiftui", slug: slug)
+            pages[key] = page
         }
 
         let provider = makeProvider(in: tempRoot)
@@ -155,11 +167,11 @@ struct DocsResourceProviderListResourcesFilterAndPagingTests {
         var pages: [String: Shared.Models.PageMetadata] = [:]
         for frameworkIndex in 0..<100 {
             let frameworkName = "framework\(frameworkIndex)"
-            let (k, p) = framework(name: frameworkName)
-            pages[k] = p
+            let (rootKey, rootPage) = framework(name: frameworkName)
+            pages[rootKey] = rootPage
             for slug in 0..<599 {
-                let (dk, dp) = deepPage(framework: frameworkName, slug: "deep-\(slug)")
-                pages[dk] = dp
+                let (deepKey, deepPageMeta) = deepPage(framework: frameworkName, slug: "deep-\(slug)")
+                pages[deepKey] = deepPageMeta
             }
         }
         #expect(pages.count == 100 * 600, "fixture should be exactly 60,000 pages")
@@ -195,9 +207,9 @@ struct DocsResourceProviderListResourcesFilterAndPagingTests {
         var pages: [String: Shared.Models.PageMetadata] = [:]
         let pageSize = MCP.Support.DocsResourceProvider.pageSize
         let total = pageSize + 50
-        for i in 0..<total {
-            let (k, p) = framework(name: "framework\(String(format: "%04d", i))")
-            pages[k] = p
+        for index in 0..<total {
+            let (key, page) = framework(name: "framework\(String(format: "%04d", index))")
+            pages[key] = page
         }
 
         let provider = makeProvider(in: tempRoot)
@@ -218,9 +230,9 @@ struct DocsResourceProviderListResourcesFilterAndPagingTests {
         var pages: [String: Shared.Models.PageMetadata] = [:]
         let pageSize = MCP.Support.DocsResourceProvider.pageSize
         let total = pageSize + 50
-        for i in 0..<total {
-            let (k, p) = framework(name: "framework\(String(format: "%04d", i))")
-            pages[k] = p
+        for index in 0..<total {
+            let (key, page) = framework(name: "framework\(String(format: "%04d", index))")
+            pages[key] = page
         }
 
         let provider = makeProvider(in: tempRoot)
@@ -240,9 +252,9 @@ struct DocsResourceProviderListResourcesFilterAndPagingTests {
         try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempRoot) }
 
-        let (k, p) = framework(name: "swiftui")
+        let (key, page) = framework(name: "swiftui")
         let provider = makeProvider(in: tempRoot)
-        await provider.injectMetadataForTesting(Shared.Models.CrawlMetadata(pages: [k: p]))
+        await provider.injectMetadataForTesting(Shared.Models.CrawlMetadata(pages: [key: page]))
 
         // Pre-#595 this silently returned page 1, trapping paginating
         // clients in an infinite re-fetch loop. Post-#595 it throws
@@ -258,9 +270,9 @@ struct DocsResourceProviderListResourcesFilterAndPagingTests {
             .appendingPathComponent("cupertino-listres-emptycursor-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempRoot) }
-        let (k, p) = framework(name: "swiftui")
+        let (key, page) = framework(name: "swiftui")
         let provider = makeProvider(in: tempRoot)
-        await provider.injectMetadataForTesting(Shared.Models.CrawlMetadata(pages: [k: p]))
+        await provider.injectMetadataForTesting(Shared.Models.CrawlMetadata(pages: [key: page]))
         let emptyResult = try await provider.listResources(cursor: "")
         #expect(emptyResult.resources.count == 1)
         let nilResult = try await provider.listResources(cursor: nil as String?)

@@ -14,7 +14,7 @@ Acts as a domain/path firewall: links whose URL doesn't start with any of these 
 
 ## Default
 
-Auto-derived from `--start-url` when not set — the host + first path segment becomes the implicit prefix.
+Auto-derived from `--start-url` when not set, the host + first path segment becomes the implicit prefix.
 
 ## Example
 
@@ -26,5 +26,5 @@ cupertino fetch --source apple-docs --start-url https://developer.apple.com/docu
 ## Notes
 
 - Comma-separated, no spaces.
-- Case-sensitive on the path (case normalization happens elsewhere — see `URLUtilities.normalize`, #200).
+- Case-sensitive on the path (case normalization happens elsewhere, see `URLUtilities.normalize`, #200).
 - An empty list (omit the flag) lets the auto-derive take over.
