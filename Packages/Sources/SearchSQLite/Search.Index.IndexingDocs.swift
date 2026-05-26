@@ -149,14 +149,7 @@ extension Search.Index {
 
         // Classify (#192 C1). Direct `indexDocument` callers don't have a
         // structured-kind hint, so the classifier uses `source` + `uri`.
-        // #1045 Gap 3 wiring: pass the actor's sourceLookup so dispatch
-        // goes through each registered provider's `docKind(...)` method
-        // instead of the foundation-tier fallback switch.
-        let classifiedKind = Search.Classify.kind(
-            source: source,
-            uriPath: uri,
-            lookup: sourceLookup
-        ).rawValue
+        let classifiedKind = Search.Classify.kind(source: source, uriPath: uri).rawValue
 
         // Insert metadata with JSON data, availability, and kind (#192 C).
         // `kind` appended at end so existing bind indexes 1-17 stay stable.
@@ -492,12 +485,10 @@ extension Search.Index {
 
         // Classify (#192 C1). Structured path has `page.kind` available —
         // pass it plus the URI path for sample-code disambiguation.
-        // #1045 Gap 3 wiring: registry-driven dispatch via sourceLookup.
         let classifiedKind = Search.Classify.kind(
             source: source,
             structuredKind: page.kind.rawValue,
-            uriPath: uri,
-            lookup: sourceLookup
+            uriPath: uri
         ).rawValue
 
         // Insert metadata with json_data, availability, kind (#192 C),

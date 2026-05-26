@@ -44,7 +44,4 @@ public struct SwiftOrgSource: Search.SourceProvider {
     public func makeIndexer() -> any Search.SourceIndexer {
         Search.SwiftOrgIndexer()
     }
-
-    /// #1045 Gap 3: every swift-org row classifies as `.swiftOrgDoc`.
-    public func docKind(structuredKind _: String?, uriPath _: String) -> Search.DocKind { .swiftOrgDoc }
 }

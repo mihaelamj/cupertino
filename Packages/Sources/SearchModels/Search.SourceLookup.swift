@@ -24,30 +24,8 @@ extension Search {
         /// composition root supplied them.
         public let definitions: [Search.SourceDefinition]
 
-        /// #1045 Gap 3 wiring: per-source `Search.SourceProvider`
-        /// conformers keyed by `definition.id`. When populated, callers
-        /// like `Search.Classify.kind(...)` can dispatch directly to
-        /// `provider.docKind(structuredKind:uriPath:)` instead of
-        /// falling back to the foundation-tier static switch. Optional
-        /// because legacy lookups (built from `definitions` only) stay
-        /// supported; the composition root in
-        /// `CLIImpl.Command.Save.Indexers` populates this dict from
-        /// `productionRegistry.allEnabled`.
-        public let providers: [String: any Search.SourceProvider]
-
-        public init(
-            definitions: [Search.SourceDefinition],
-            providers: [String: any Search.SourceProvider] = [:]
-        ) {
+        public init(definitions: [Search.SourceDefinition]) {
             self.definitions = definitions
-            self.providers = providers
-        }
-
-        /// Lookup the registered provider for a source-id. Returns
-        /// `nil` when the lookup was built without providers (legacy
-        /// callers) or the id has no matching provider.
-        public func provider(for id: String) -> (any Search.SourceProvider)? {
-            providers[id]
         }
 
         /// Empty lookup. Used by tests that never exercise the

@@ -1,60 +1,85 @@
 # How to add a new content source
 
-**State**: living doc. Reflects the post-#1042 pluggability arc + the 2026-05-26 audit + 6 wiring batches (commits 1adb8bc5 → b01ca44d + Gap 3 wiring). The "What touches what" + "Step-by-step" + "Honest status" sections below are the authoritative answer. Open gaps are tracked in [#1045](https://github.com/mihaelamj/cupertino/issues/1045).
+**State**: living doc. Reflects the post-#1042 pluggability arc as of 2026-05-26. Contract status: **26 of 26 assertions green** + 5 batches of post-contract production wiring.
 
----
+**HONEST STATUS**: the 26/26 contract assertions verify that *structural seams exist*. A 2026-05-26 post-contract audit found that 6 of 7 override parameters declared by the contract test were never supplied at production call sites — the registry-aware seam existed, but the live `cupertino serve` / `cupertino save` / `cupertino search` paths still ran on the static-literal defaults. Five wiring batches landed after the audit to plumb the production composition root through:
+- Batch 1: `MCP.Support.DocsResourceProvider.knownURISchemes`, `Search.DocsSourceCandidateFetcher.{swiftVersionSources, frameworkScopedSources}`, `RemoteSync.Indexer.phaseURIPrefixes`
+- Batch 2: MCP path threads registry-derived `availableSources` end-to-end through `Services.UnifiedSearchService → Services.Formatter.Unified.Input → Markdown + Text formatters`
+- Batch 3: `SmartReport.docsSources` + `unfilteredSourcesUnderPlatformFlag` registry-derived
+- Batch 4: `SmartReport` CLI footer tips + `readFullCommand` registry-derived
+- Batch 5: `Services.Formatter.Footer.Search.{singleSource, unified}` factories accept `availableSources`
 
-## Step-by-step: adding a new source (e.g. WWDC transcripts #58)
+**Still TODO (production wiring gaps from the audit)** — tracked at [#1045](https://github.com/mihaelamj/cupertino/issues/1045) with explicit acceptance criteria so these don't slide through the cracks behind the false "26/26 green" claim:
 
-The 8 steps below are the **complete** recipe today. If a step seems missing or unnecessary, cross-reference with [#1045](https://github.com/mihaelamj/cupertino/issues/1045) — the gaps section tracks every place the contract has not yet collapsed to a smaller step count.
+- `Search.SmartQuery.sourceWeightsOverride` is declared on the protocol but never supplied at the production composition site (the hand-tuned RRF weights in the static literal stay live). Wiring requires either a derivation rule from `Search.SourceProperties.searchQuality` or a new `Search.SourceProperties.fusionWeight` field. (Acceptance #1 in #1045)
+- 13 `Footer.Search.singleSource` call sites in HIG/Samples/Frameworks formatters still pass `availableSources: nil`. Wiring each requires the calling formatter's input type to carry the list. (Acceptance #2 in #1045)
+- `SearchSQLite.DocKind.kind(source:…)` switch has 6 hardcoded source-id arms with a `.unknown` fallback for new sources. Fix: each `Search.SourceProvider` declares its `Search.DocKind`. (Acceptance #3 in #1045)
+- `CLIImpl.Command.Save.Indexers.resolveSourceDirectory(for:input:)` 7-arm switch on `provider.definition.id` maps to 5 typed fields on `Search.DocsIndexingInput`. Adding a new source needs both a new input field and a new switch arm. Fix: `DocsIndexingInput.directoryByKey: [String: URL?]` keyed by `provider.fetchInfo?.defaultOutputDirKey.rawValue`. (Acceptance #4 in #1045)
 
-### Step 1: Add the source-id constant
+**Naming asymmetry to remember**: `SampleCodeSource.destinationDB == .appleSampleCode` (not `.samples`), and `PackagesSource.destinationDB == .packages` (not `.swiftPackages` — the rename target). Consumer code that needs to identify "search.db-family sources" MUST exclude both `.appleSampleCode` and `.packages` to skip the two non-search-tier destinations.
 
-`Packages/Sources/Shared/Constants/Shared.Constants.swift` → `SourcePrefix` enum:
+This page is the contract a contributor follows when wiring a new content source (e.g. WWDC transcripts #58, Swift Forums #89, Tech Talks #273) into cupertino. It names every file the new source MUST touch and distinguishes them from surfaces that pick the source up automatically once it is registered.
+
+The shape is "what is true today", not "what will be true after the pluggability epic closes". The "Still required edits" section names the surfaces still hardcoded against the 8 shipped sources; each is tracked by an OUTSTANDING assertion in `Packages/Tests/CLITests/Issue1042PluggabilityContractTests.swift` and shrinks as cluster-flip PRs land.
+
+## Required: the four lines that register a new source
+
+A new source's minimum surface area today is:
+
+1. **A new SPM target** named `<X>Source` under `Packages/Sources/<X>Source/` carrying the `Search.SourceProvider` conformer, the indexer concrete, and the strategy concrete.
+2. **One line appended to `allSourceTargetNames`** in `Packages/Package.swift` (#1042 Cluster 14 closed this; before, the same name was repeated across 4 lists).
+3. **One `.register(<X>Source())` line** in `CLIImpl.makeProductionSourceRegistry()` (`Packages/Sources/CLI/CLIImpl.SourceRegistry.swift`).
+4. **A `Shared.Models.DatabaseDescriptor` row** for the new source's destination DB (this is where the indexed rows land). Today every shipped source has its own descriptor post per-source DB split #1036.
+
+Plus the per-source manifest documentation page at `docs/sources/<source-id>/manifest.yaml` (corpus shape, not code).
+
+## The `Search.SourceProvider` protocol
+
+Declared in `Packages/Sources/SearchModels/Search.SourceProvider.swift`. The 7 required surfaces:
 
 ```swift
-public static let wwdc = "wwdc"
-```
-
-Also append to `allPrefixes` (still a foundation-tier static; Cluster 2 sub-1 routed the one production consumer to `Search.SourceLookup.allIDs`, but the literal stays for back-compat).
-
-### Step 2: Add a `DatabaseDescriptor`
-
-`Packages/Sources/Shared/Models/Shared.Models.DatabaseDescriptor.swift`:
-
-```swift
-public static let wwdc: DatabaseDescriptor = .init(
-    id: "wwdc",
-    filename: "wwdc.db",
-    displayName: "WWDC Transcripts"
-)
-```
-
-Append to `allKnown` immediately after declaring (the audit script enforces this).
-
-### Step 3: Create the per-source SPM target
-
-`Packages/Sources/WWDCSource/WWDCSource.swift` carrying the `Search.SourceProvider` conformer. Match the layout of `Packages/Sources/AppleDocsSource/` — one file per: `WWDCSource.swift` (the protocol conformer), `WWDCSource.Definition.swift` (the SourceDefinition static), `WWDCSource.FetchInfo.swift` (the FetchInfo static), `Search.WWDCStrategy.swift` (the indexing strategy), `Search.WWDCIndexer.swift` (the indexer concrete).
-
-The conformer looks like this:
-
-```swift
-import Foundation
-import SearchModels
-import SharedConstants
-
 public struct WWDCSource: Search.SourceProvider {
     public init() {}
 
-    public var definition: Search.SourceDefinition { Self.definition }
-    public var fetchInfo: Search.FetchInfo? { Self.fetchInfo }
+    public var definition: Search.SourceDefinition {
+        Search.SourceDefinition(
+            id: "wwdc",
+            displayName: "WWDC Transcripts",
+            emoji: "🎬",
+            properties: Search.SourceProperties(
+                authority: 0.9,         // 0...1 — Apple-published = 1.0; community = 0.3
+                freshness: 0.7,
+                comprehensiveness: 0.6,
+                codeExamples: 0.4,
+                hasAvailability: 0.0,    // no API version axis on a transcript
+                designFocus: 0.5,
+                languageFocus: 0.3,
+                searchQuality: 0.7       // used by SmartQuery fusion (still hardcoded; see Cluster 3)
+            ),
+            intents: [.howTo, .api]      // which query intents this source serves
+        )
+    }
+
+    public var fetchInfo: Search.FetchInfo? {
+        Search.FetchInfo(
+            displayName: "WWDC Transcripts",
+            sourceID: "wwdc",
+            crawlBaseURLs: ["https://developer.apple.com/wwdc/"],
+            defaultOutputDirKey: Search.FetchInfo.DefaultOutputDirKey(rawValue: "wwdc"),
+            // ... see existing concretes
+        )
+    }
+
     public var destinationDB: Shared.Models.DatabaseDescriptor { .wwdc }
 
     public var capabilities: Search.Capabilities {
         .init(
             searchers: [.text],
             operations: [.readByURI],
-            metadata: [.hasMinPlatformVersion: false, .hasFrameworkColumn: false]
+            metadata: [
+                .hasMinPlatformVersion: false,
+                .hasFrameworkColumn: false,
+            ]
         )
     }
 
@@ -72,211 +97,69 @@ public struct WWDCSource: Search.SourceProvider {
     public func makeIndexer() -> any Search.SourceIndexer {
         Search.WWDCIndexer()
     }
-
-    // #1042 Cluster 8 — CLI/MCP search-dispatch runner. `.docs` is the
-    // safe default; pick `.hig` / `.samples` / `.packages` only if your
-    // source goes through one of those bespoke handlers, else `.unified`
-    // for fan-out fallback.
-    public var searchRoute: Search.SearchRoute { .docs }
-
-    // #1045 Gap 3 — how rows from this source classify in `docs_metadata.kind`.
-    // For most sources this returns a constant Search.DocKind value.
-    // apple-docs is the only shipped source that overrides with a
-    // structured-kind classifier.
-    public func docKind(structuredKind _: String?, uriPath _: String) -> Search.DocKind {
-        .article  // or .symbolPage / .tutorial / .sampleCode / .evolutionProposal / .hig / .archive / etc.
-    }
 }
 ```
 
-`SourceDefinition` carries the source's metadata (id, displayName, emoji, search properties, intents). See `Packages/Sources/AppleDocsSource/AppleDocsSource.Definition.swift` for the reference shape.
+The strategy + indexer concretes live in the same target. Look at `Packages/Sources/AppleDocsSource/` for the reference layout (Strategy.swift, Indexer.swift, FetchInfo.swift, Definition.swift, Provider.swift).
 
-### Step 4: Wire the SPM target into `Package.swift`
+## Pluggable today (no edits when adding a new source)
 
-Append the target name to `allSourceTargetNames` at the top of `Packages/Package.swift`:
+These surfaces pick up the new source automatically once it is registered. Each row corresponds to a now-green cluster in the #1042 pluggability contract:
 
-```swift
-let allSourceTargetNames: [String] = [
-    "AppleDocsSource",
-    "HIGSource",
-    // ...
-    "WWDCSource",  // ← append
-]
-```
-
-Then declare the actual target later in the file (mirror the existing `<X>Source` Target.target declarations).
-
-Cluster 14 already routed `.singleTargetLibrary` products + `SearchTests` / `SearchStrategiesTests` / `SearchModelsTests` / cupertino CLI deps through this list, so no other Package.swift edits are needed.
-
-### Step 5: Register the source at the composition root
-
-`Packages/Sources/CLI/CLIImpl.SourceRegistry.swift`:
-
-```swift
-public static func makeProductionSourceRegistry() -> Search.SourceRegistry {
-    var registry = Search.SourceRegistry()
-    registry.register(AppleDocsSource())
-    // ...
-    registry.register(WWDCSource())  // ← append
-    return registry
-}
-```
-
-Add `import WWDCSource` at the top.
-
-### Step 6: Ship the per-source manifest
-
-Create `docs/sources/wwdc/manifest.yaml`. Schema documented at `docs/design/corpus-structure.md` §3. Minimum:
-
-```yaml
-sourceId: wwdc
-displayName: WWDC Transcripts
-description: |
-  Apple's WWDC session transcripts, indexed for full-text search.
-corpusFolder: wwdc
-destinationDB: wwdc
-
-fetcher:
-  kind: web-crawl
-  options:
-    rootURL: "https://developer.apple.com/wwdc/"
-
-indexer:
-  fileGlobs:
-    - "wwdc/**/*.md"
-  extractor: Search.WWDCStrategy
-
-snapshotPolicy:
-  staleAfterDays: 365
-  refetchOn:
-    - schema-bump
-
-searchProperties:
-  searchQuality: 0.7
-  intentDefault: conceptual
-  rankWeight: 0.7
-
-# #1042 Cluster 8: matches WWDCSource.searchRoute
-searchRoute: docs
-
-# #1045 Gap 3: matches WWDCSource.docKind(...). Constant value or
-# `dynamic` if your per-source target overrides docKind with a
-# structured-kind classifier.
-docKind: article
-
-capabilities:
-  searchers:
-    - text
-  operations:
-    - read-by-uri
-  metadata:
-    hasMinPlatformVersion: false
-```
-
-Each `<X>Source.destinationDB` declared in Swift MUST match the manifest's `destinationDB` literal; `scripts/check-source-manifests.sh` catches drift.
-
-### Step 7: Cover with tests
-
-At minimum, a roundtrip test that registers `WWDCSource` in a `Search.SourceRegistry`, exercises the indexer write path (per the #935 acceptance), and verifies the URI-route read path returns the indexed row.
-
-Look at `Packages/Tests/SearchModelsTests/Issue1008SourceProviderProtocolShapeTests.swift` for the SourceProvider shape pin, and `Packages/Tests/CLITests/Issue1039ReadHigRoundtripTests.swift` for the per-source URI roundtrip pattern (instantiate a Search.Index against `wwdc.db`, write a row via `indexDocument`, read back via `cupertino read wwdc://…`).
-
-### Step 8: Verify the new source flows end-to-end
-
-```bash
-cd Packages
-xcrun swift build                        # all targets compile
-xcrun swift test                         # 2753 + new tests green
-bash scripts/check-source-manifests.sh   # manifest schema valid
-bash scripts/check-package-purity.sh     # import contract holds
-```
-
-Then a smoke run against a real corpus directory:
-
-```bash
-cupertino fetch --source wwdc            # crawl
-cupertino save --source wwdc             # index
-cupertino search "WWDC keynote" --source wwdc
-cupertino serve                          # MCP server picks up new source
-```
-
----
-
-## What touches what — the registry-aware contract
-
-| Concern | What you write | Where it propagates automatically |
+| Surface | Cluster | What is automatic |
 |---|---|---|
-| Source identity | `WWDCSource.definition` static literal | Setup required-list (#1042 Cluster 1), MCP search-tool schema (#1042 Cluster 7), CLI footer tips (audit batch 4), `readFullCommand` validation (audit batch 4) |
-| Destination DB | `WWDCSource.destinationDB` | Setup post-extract hard-fail (#1042 Cluster 1), SmartReport docs-tier filter (audit batch 3), per-source DB grouping (`Search.SourceRegistry.groupedByDestinationDB`) |
-| Capabilities | `WWDCSource.capabilities.metadata` | CandidateFetcher's `swiftVersionSources` + `frameworkScopedSources` (audit batch 1; derives from `.hasMinSwiftVersion` + `.hasFrameworkColumn`), SmartReport's `unfilteredSourcesUnderPlatformFlag` (audit batch 3, same source-of-truth) |
-| URI scheme | `definition.id` (= URI scheme) | MCP DocsResourceProvider's `knownURISchemes` (audit batch 1), RemoteSync's `phaseURIPrefixes` (audit batch 1) |
-| Search dispatch | `searchRoute` property | Cluster 8 structural seam (full dispatch rewire is the queued follow-up; today the CLI/MCP switches still use legacy `default:` arms with safe fall-back) |
-| Document classification | `docKind(structuredKind:uriPath:)` | `Search.Classify.kind` dispatches via `sourceLookup.provider(for:)?.docKind(...)` (Gap 3 wiring); fall back to legacy switch when no lookup |
-| Fan-out display | `definition.id` | `Services.Formatter.Unified.Input.availableSources` end-to-end via `Services.UnifiedSearcher` protocol + the MCP composition (audit batch 2); CLI SmartReport footer (audit batch 4); SearchByAttribute's `knownSourcePrefixes` (Cluster 2 sub-1) |
+| `Distribution.SetupService.Request.required` | 1 | Setup's required-DB list is derived from the registry's `allEnabled.map(\.destinationDB)`. |
+| MCP `search` tool's `source` enum schema | 7 | `CompositeToolProvider.searchToolSourceEnumValues` is supplied by the Serve composition root from `makeProductionSourceRegistry().allEnabled.map(\.definition.id)`. |
+| `Search.FetchInfo.DefaultOutputDirKey` | 9 sub-1 | Closed enum became `struct DefaultOutputDirKey: RawRepresentable`. New keys are `static let` declarations; the CLI's `resolveDirectory(forKey:paths:)` delegates to `Shared.Paths.directory(named: key.rawValue)`. |
+| `SaveSiblingGate.Target` | 9 sub-2 | Closed enum became `struct Target: RawRepresentable`; `dbFilename` is `"\(rawValue).db"`. |
+| `Services.ReadService.Source` | 9 sub-3 | Closed enum became `struct Source: RawRepresentable`. The dispatcher's exhaustive switch became `if source == .docs / .samples / .packages` with `.unknownSource(rawValue)` fallthrough. |
+| `LoggingModels.Logging.Category` | 10 | Closed enum became `struct Category: RawRepresentable`. `Logging.LiveRecording.mapCategory`'s exhaustive switch became a dict lookup with `.cli` fallback for unknown categories. |
+| `RemoteSync.IndexState.Phase` | 11 sub-1 | Closed enum became `struct Phase: RawRepresentable, Codable` (Codable preserved so on-disk `index-state.json` files keep loading). The 3 dispatch switches in `RemoteSync.Indexer` (`phasePath`, `phaseSource`, `buildURI`) became static-dict lookups keyed by Phase. |
+| `Shared.Paths.directory(named:)` | 13 | Generic accessor; the 8 per-source typed accessors (`docsDirectory`, …) now delegate. Consumers should migrate to the generic + the source's own `fetchInfo.outputDir`. |
+| Package.swift test/binary dep lists | 14 | `allSourceTargetNames` is the single source of truth; `allSourceTargetDeps` + `allSourceProducts` derive from it. `SearchTests`, `SearchStrategiesTests`, `SearchModelsTests`, and the cupertino CLI binary all spread the helper. |
+| Platform-filter dispatch fan-out partition | 5 sub-2 | `Search.PlatformFilterScope.dispatch(for:fanOutSources:)` accepts a registry-derived list; the legacy `dispatch(for:)` static is deprecated. |
+| Platform-filter applies-filter partition | 5 sub-1 | `Search.PlatformFilterScope.partitionForNotice(contributingSources:appliesFilter:)` accepts a registry-derived `Set<String>`; the legacy single-arg overload forwards to the static `dispatchAppliesFilter` as default. |
+| `Services.Formatter.TeaserResults` | 6 sub-1 | Gained an `extras: [String: ExtraSource]` dict alongside the 8 typed properties. New sources store teaser results keyed by id; each entry carries its own displayName + emoji. `allSources` enumerates them. |
+| `Services.Formatter.Unified.Input` | 6 sub-2 | Same `extras` pattern as TeaserResults; `[String: ExtraSource]` carries source-keyed result buckets with per-entry `SourceInfo`. |
+| `SearchAPI.ComposedSearchResult` | 6 sub-3 | Gained `extras: [String: ResultSection<DocAtom>]` for DocAtom-shaped sources; SampleAtom / PackageAtom sources still need typed Section properties. |
+| `SearchAPI.SmartQuery` | 3 | Gained `sourceWeightsOverride: [String: Double]` init parameter; composition root supplies registry-derived fusion weights. The `weight(forSource:)` instance method consults the override first, then the static literal, then 1.0 fallback. |
+| `SearchSQLite.CandidateFetcher` | 4 sub-1 + sub-2 | Gained `swiftVersionSources: Set<String>?` + `frameworkScopedSources: Set<String>?` init parameters. Composition root derives both sets from `Search.Capabilities.metadata[.hasMinSwiftVersion]` and `.hasFrameworkColumn` on each registered SourceProvider. |
+| `LoggingModels.Logging.Category` | 10 | Closed enum became `struct Category: RawRepresentable`. `Logging.LiveRecording.mapCategory`'s exhaustive switch became a dict lookup with `.cli` fallback for unknown categories. |
+| `Shared.Constants.SourcePrefix.allPrefixes` (production consumer) | 2 sub-1 | `Search.Index.knownSourcePrefixes` derives from `sourceLookup.allIDs + ["all"]` instead of reading the foundation-tier static. New registered sources appear in source-prefix detection automatically. |
+| `Shared.Constants.Search.availableSources` (formatter consumer) | 2 sub-2 | `Services.Formatter.Footer.Search` accepts an optional `availableSources: [String]` init parameter; defaults to the foundation-tier static for back-compat. |
+| `RemoteSync.Indexer` URI scheme dispatch | 11 sub-2 | Gained `phaseURIPrefixes: [IndexState.Phase: String]` init parameter; `buildURI` consults the override first, then the static default, then `phase.rawValue` as fallback. |
+| MCP `DocsResourceProvider.knownURISchemes` | 12 partial | Gained `knownURISchemes: Set<String>` init parameter populated from the production source registry. The bespoke if/elseif arms still carry production probing logic (the fully registry-driven dispatch needs a `URIResourceStrategy` protocol on `SourceProvider`). |
+| `Search.SourceProvider.searchRoute` | 8 sub-1 + sub-2 | New `var searchRoute: Search.SearchRoute { get }` protocol property carries each source's CLI/MCP search route (default `.docs`; `HIGSource → .hig`, `SampleCodeSource → .samples`, `PackagesSource → .packages`). The CLI + MCP dispatchers will consume this property to route registered sources; full dispatch rewire is queued as the Cluster 8 follow-up. |
 
----
+## Architectural follow-ups (NOT blocking the contract)
 
-## Honest status — what's still hardcoded today (open in [#1045](https://github.com/mihaelamj/cupertino/issues/1045))
+The 26-of-26 contract assertion suite is green. Two architectural follow-ups remain queued; each completes a structural seam that already landed:
 
-A 2026-05-26 audit of post-#1042 production code found that the "26/26 contract assertions green" headline was misleading: 6 of 7 override parameters declared on the contract were never supplied at production call sites. Six wiring batches landed afterwards (CHANGELOG entries from 2026-05-26 are the audit-trail). 
+1. **Cluster 8 dispatch rewire**: the CLI `Search.run` + MCP `CompositeToolProvider.handleSearch` switches still hardcode 8-arm dispatch over source-ids. The new `Search.SourceProvider.searchRoute` property is the seam the dispatchers will consume; the follow-up extracts each bespoke runner into a per-source target method and rewires both dispatchers to iterate the registry. Estimated 3-4 hours.
 
-**Still open** (each is an acceptance criterion in #1045):
+2. **Cluster 12 URIResourceStrategy protocol**: `MCP.Support.DocsResourceProvider.readResource` still has 3 bespoke if/elseif arms (apple-docs, swift-evolution, apple-archive) carrying source-specific filesystem-probing logic. The new `knownURISchemes` set is the seam the registry-driven dispatch will consume; the follow-up adds a `URIResourceStrategy` protocol on `Search.SourceProvider` so each per-source target ships its own probing strategy. Estimated 2-3 hours.
 
-1. **`Search.SmartQuery.sourceWeightsOverride` never wired at production**: the RRF fusion-weight literal at `SearchAPI/SmartQuery.swift:60-70` is the live source of truth. A new source's weight falls back to 1.0 (the `?? 1.0` arm). Fix: add `Search.SourceProperties.fusionWeight: Double` field on the protocol; each shipped source declares its current weight; SmartQuery composition root supplies `[String: Double]` to the override parameter. Preserves existing tuned weights when each shipped source declares the matching number.
+Both follow-ups share the same architectural shape: extend `Search.SourceProvider` with a new method, add concrete impls to each of the 8 per-source targets, collapse the central switches. They are queued separately because they touch different surfaces (CLI dispatch vs MCP resource handling) and can ship independently.
 
-2. **13 `Footer.Search.singleSource` call sites in HIG / Samples / Frameworks / single-source formatters still pass `availableSources: nil`**: the factory-level seam landed (audit batch 5), but each call site lives inside another formatter whose Input type doesn't yet carry the list. Fix: thread `availableSources: [String]?` through each formatter's Input type; CLI/MCP entrypoints populate from the registry.
-
-3. **`CLIImpl.Command.Save.Indexers.resolveSourceDirectory(for:input:)` 7-arm switch** maps `provider.definition.id` to 5 typed `*Directory: URL?` fields on `Search.DocsIndexingInput`. Adding a new source needs both a new input field and a new switch arm. Fix: replace typed fields with `directoryByKey: [String: URL?]`; the switch collapses to a dict lookup. Samples + swiftBook keep their sentinel paths as explicit nil/`/dev/null` entries.
-
-**Naming asymmetry to remember**: `SampleCodeSource.destinationDB == .appleSampleCode` (legacy descriptor, not `.samples`), and `PackagesSource.destinationDB == .packages` (not `.swiftPackages` — the rename target). Consumer code that needs to identify "search.db-family sources" MUST exclude both `.appleSampleCode` AND `.packages` to skip the two non-search-tier destinations. The pre-#1042 audit-batch-3 commit went green on the second attempt because of this trap; documented at `Shared.Models.DatabaseDescriptor.appleSampleCode`.
-
----
-
-## Architectural follow-ups (NOT blocking adding a new source)
-
-These complete structural seams that already landed; a new source today does not need them.
-
-1. **Cluster 8 dispatch rewire**: CLI `Search.run` + MCP `CompositeToolProvider.handleSearch` switches still hardcode 8-arm dispatch over source-ids. The new `Search.SourceProvider.searchRoute` is the seam they'll consume; the follow-up extracts each bespoke runner into a per-source target method. Estimated 3-4 hours.
-
-2. **Cluster 12 URIResourceStrategy protocol**: `MCP.Support.DocsResourceProvider.readResource` has 3 bespoke if/elseif arms (apple-docs / swift-evolution / apple-archive) with source-specific filesystem-probing logic. The new `knownURISchemes` set is the seam; follow-up adds a `URIResourceStrategy` protocol on `Search.SourceProvider`. Estimated 2-3 hours.
-
-A new source added today works without either follow-up: the legacy switches' `default:` arms cover unknown sources with graceful fall-back (unified fan-out + `notFound` respectively).
-
----
+A new source added today **does not require either follow-up to land** — the source's `searchRoute` property + `knownURISchemes` set already plug into the registry; the legacy switches' `default` arms cover unknown sources with a graceful fall-back (unified fan-out + `notFound` respectively).
+| 14 | `MCP.Support.DocsResourceProvider`'s fallback filesystem dispatch (6 `hasPrefix(scheme)` arms) | 12 | +1 if/else arm OR add `SourceProvider.resourceProbing` strategy |
 
 ## How to verify the new source is wired correctly
 
-After completing Steps 1-7:
+After registering the new source:
 
-```bash
-cd Packages
-xcrun swift build                                              # all targets compile
-xcrun swift test                                                # 2753 + new tests green
-xcrun swift test --filter Issue1042PluggabilityContractTests   # 26/26 still pass
-bash scripts/check-source-manifests.sh                          # manifest schema valid
-bash scripts/check-package-purity.sh                            # import contract holds
-```
+1. **Build**: `cd Packages && xcrun swift build` (or `make build-release` for the brew-style isolated binary)
+2. **Test sweep**: `cd Packages && xcrun swift test` — expect green, including the 10 already-passing pluggability contract assertions
+3. **Contract test** specifically: `xcrun swift test --filter Issue1042PluggabilityContractTests` — confirms automatic surfaces include the new source. The OUTSTANDING-marked assertions stay `.disabled` until their cluster lands; the new source's id should NOT appear in `SourcePrefix.allPrefixes` (proving Cluster 2 is still outstanding for a fresh source).
+4. **Setup check**: `cupertino setup` against a release bundle that ships the new source's DB. The setup post-extract hard-fail check derives the required-DB list from the production registry (Cluster 1); a new source whose DB is missing from the zip will fail loudly.
+5. **MCP schema check**: `cupertino serve` then `tools/list` shows the new source in the `search` tool's `source` enum (Cluster 7).
 
-Smoke-test against a real corpus:
-
-```bash
-cupertino fetch --source wwdc                                   # crawl
-cupertino save --source wwdc                                    # index
-cupertino search "WWDC keynote" --source wwdc                   # source-scoped search
-cupertino search "WWDC keynote"                                 # unified fan-out includes wwdc
-cupertino serve                                                 # MCP server picks up the new source-id in tools/list's schema enum
-```
-
-If a smoke step fails on a gap listed in [#1045](https://github.com/mihaelamj/cupertino/issues/1045), that's expected — the named acceptance criterion is the action item. If it fails on a row in the "What touches what" table, that's a regression; bisect against the corresponding commit.
-
----
+If a step fails on a cluster that's listed under "Still required edits", that's expected — the edit at the named file is the action item. If it fails on a cluster listed under "Pluggable today", that's a regression; bisect against the cluster's PR.
 
 ## Related design docs
 
-- [#1045](https://github.com/mihaelamj/cupertino/issues/1045) — pluggability audit + 4 production wiring gaps (acceptance-checklisted)
-- `docs/plans/2026-05-22-source-independence-day.md` — original plan; 4 days older and pre-audit. Kept as historical context.
-- `docs/research/source-unification-2026-05-24.md` — research notes on the SourceProvider seam
-- `docs/research/pluggability-analysis-2026-05-22.md` — pluggability analysis that informed the contract test
-- `docs/design/per-source-db-split.md` — #1036's per-source DB split, which created the `destinationDB` field's modern semantics
-- `docs/design/corpus-structure.md` — manifest YAML schema (§3) + corpus on-disk layout (§2)
-- `Packages/Tests/CLITests/Issue1042PluggabilityContractTests.swift` — the machine-checkable structural contract. Top-of-file comment names the structural-vs-behavioural distinction explicitly.
+- `docs/plans/2026-05-22-source-independence-day.md` — original plan; 4 days older and pre-audit. Carried the initial 6-edit-points goal that #1042 refined into the 14-cluster audit. Kept as historical context.
+- `docs/research/source-unification-2026-05-24.md` — research notes on the SourceProvider seam.
+- `docs/research/pluggability-analysis-2026-05-22.md` — pluggability analysis that informed the contract test.
+- `docs/design/per-source-db-split.md` — #1036's per-source DB split, which created the `destinationDB` field's modern semantics.
+- `Packages/Tests/CLITests/Issue1042PluggabilityContractTests.swift` — the machine-checkable contract this doc tracks.

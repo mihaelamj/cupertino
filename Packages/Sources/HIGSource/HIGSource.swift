@@ -60,9 +60,4 @@ public struct HIGSource: Search.SourceProvider {
     /// in `CLIImpl.Command.Search` / `handleSearchHIG` in
     /// `CompositeToolProvider`); not the default `.docs` route.
     public var searchRoute: Search.SearchRoute { .hig }
-
-    /// #1045 Gap 3: every HIG-tier row classifies as `.hig`. The
-    /// previous `switch source` arm in `SearchSQLite.Search.Classify.kind`
-    /// returned this constant; per-source override moves it here.
-    public func docKind(structuredKind _: String?, uriPath _: String) -> Search.DocKind { .hig }
 }

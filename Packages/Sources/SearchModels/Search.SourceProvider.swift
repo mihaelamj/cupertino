@@ -152,24 +152,4 @@ extension Search.SourceProvider {
     /// dispatch differs (HIGSource, SampleCodeSource, PackagesSource)
     /// override.
     public var searchRoute: Search.SearchRoute { .docs }
-
-    /// Classify a document from this source given the optional
-    /// structured-doc kind + URI path. Pre-#1045 Gap 3 this lived as
-    /// a `switch source` in `Search.Classify.kind` and was the
-    /// docs-tier classifier's single point of pluggability friction
-    /// (adding a new source required a new switch arm). Post-fix each
-    /// per-source target overrides this method to return its
-    /// `Search.DocKind` constant (or its own classifier for sources
-    /// like apple-docs that partition by structuredKind).
-    ///
-    /// The default extension returns `.unknown`. Each in-tree per-source
-    /// target overrides; external conformers that don't override get the
-    /// safe default. The `Search.Classify.kind(source:…lookup:)`
-    /// dispatcher consults this method when a `Search.SourceLookup` is
-    /// supplied; without a lookup it falls back to the pre-#1045
-    /// hardcoded switch (back-compat for tests + callers that haven't
-    /// migrated).
-    public func docKind(structuredKind _: String?, uriPath _: String) -> Search.DocKind {
-        .unknown
-    }
 }

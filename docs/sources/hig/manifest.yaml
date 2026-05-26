@@ -34,14 +34,6 @@ searchProperties:
   intentDefault: conceptual
   rankWeight: 0.9
 
-# #1042 Cluster 8: HIG uses its own search-dispatch runner
-# (`runHIGSearch` in CLI / `handleSearchHIG` in MCP).
-searchRoute: hig
-
-# #1045 Gap 3: every HIG row classifies as `.hig` in
-# `docs_metadata.kind`.
-docKind: hig
-
 capabilities:
   searchers:
     - text

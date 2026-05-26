@@ -47,16 +47,6 @@ searchProperties:
   intentDefault: sample
   rankWeight: 0.7
 
-# #1042 Cluster 8: samples use their own search-dispatch runner
-# (`runSampleSearch` in CLI / `handleSearchSamples` in MCP).
-searchRoute: samples
-
-# #1045 Gap 3: samples don't appear in `docs_metadata.kind` today —
-# rows live in samples.db (project / file tracks), not search.db.
-# Default `.unknown` is preserved; only set this when sample-code
-# rows leak into the search.db family.
-docKind: unknown
-
 capabilities:
   searchers:
     - text

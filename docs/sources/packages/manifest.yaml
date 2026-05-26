@@ -49,16 +49,6 @@ searchProperties:
   intentDefault: reference
   rankWeight: 0.7
 
-# #1042 Cluster 8: packages live in their own DB (packages.db) and use
-# their own search-dispatch runner (`runPackageSearch` in CLI /
-# `handleSearchPackages` in MCP).
-searchRoute: packages
-
-# #1045 Gap 3: packages rows live in packages.db's FTS table, not
-# search.db's `docs_metadata`. The `kind` taxonomy doesn't apply;
-# `.unknown` is the safe default.
-docKind: unknown
-
 capabilities:
   searchers:
     - text

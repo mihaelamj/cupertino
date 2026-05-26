@@ -65,7 +65,4 @@ public struct SwiftBookSource: Search.SourceProvider {
     public func makeIndexer() -> any Search.SourceIndexer {
         Search.SwiftBookIndexer()
     }
-
-    /// #1045 Gap 3: every swift-book row is part of the Swift book.
-    public func docKind(structuredKind _: String?, uriPath _: String) -> Search.DocKind { .swiftBook }
 }

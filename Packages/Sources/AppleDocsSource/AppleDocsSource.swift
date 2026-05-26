@@ -57,32 +57,4 @@ public struct AppleDocsSource: Search.SourceProvider {
     public func makeIndexer() -> any Search.SourceIndexer {
         Search.AppleDocsIndexer()
     }
-
-    /// #1045 Gap 3: apple-docs rows partition by `StructuredDocumentationPage.Kind`.
-    /// `protocol/class/struct/...` → `.symbolPage`; `article/collection`
-    /// → `.article`; `tutorial` → `.tutorial`; `sample code` →
-    /// `.sampleCode`. URIs containing `/samplecode/` short-circuit to
-    /// `.sampleCode` regardless of structuredKind — historically those
-    /// pages were emitted under the apple-docs source but are
-    /// conceptually sample code.
-    public func docKind(structuredKind: String?, uriPath: String) -> Search.DocKind {
-        if uriPath.lowercased().contains("/samplecode/") {
-            return .sampleCode
-        }
-        switch structuredKind {
-        case "protocol", "class", "struct", "enum", "actor",
-             "function", "property", "method", "operator",
-             "typealias", "macro", "framework",
-             "case", "initializer", "subscript":
-            return .symbolPage
-        case "article", "collection":
-            return .article
-        case "tutorial":
-            return .tutorial
-        case "sample code":
-            return .sampleCode
-        default:
-            return .unknown
-        }
-    }
 }

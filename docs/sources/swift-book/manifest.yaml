@@ -49,12 +49,6 @@ searchProperties:
   intentDefault: reference
   rankWeight: 0.92
 
-# #1042 Cluster 8: shared docs runner.
-searchRoute: docs
-
-# #1045 Gap 3: every swift-book row is part of "The Swift Programming Language".
-docKind: swiftBook
-
 capabilities:
   searchers:
     - text
