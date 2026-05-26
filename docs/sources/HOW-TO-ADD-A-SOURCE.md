@@ -1,6 +1,21 @@
 # How to add a new content source
 
-**State**: living doc. Reflects the post-#1042 pluggability arc as of 2026-05-26. Contract status: **26 of 26 assertions green**. Two architectural follow-ups remain queued but are not blocking the structural pluggability claim: rewiring the CLI + MCP search dispatch switches to iterate the new `Search.SourceProvider.searchRoute` property (Cluster 8 follow-up); and threading per-source `URIResourceStrategy` conformers through `MCP.Support.DocsResourceProvider` (Cluster 12 follow-up). Both are queued as a single focused PR.
+**State**: living doc. Reflects the post-#1042 pluggability arc as of 2026-05-26. Contract status: **26 of 26 assertions green** + 5 batches of post-contract production wiring.
+
+**HONEST STATUS**: the 26/26 contract assertions verify that *structural seams exist*. A 2026-05-26 post-contract audit found that 6 of 7 override parameters declared by the contract test were never supplied at production call sites — the registry-aware seam existed, but the live `cupertino serve` / `cupertino save` / `cupertino search` paths still ran on the static-literal defaults. Five wiring batches landed after the audit to plumb the production composition root through:
+- Batch 1: `MCP.Support.DocsResourceProvider.knownURISchemes`, `Search.DocsSourceCandidateFetcher.{swiftVersionSources, frameworkScopedSources}`, `RemoteSync.Indexer.phaseURIPrefixes`
+- Batch 2: MCP path threads registry-derived `availableSources` end-to-end through `Services.UnifiedSearchService → Services.Formatter.Unified.Input → Markdown + Text formatters`
+- Batch 3: `SmartReport.docsSources` + `unfilteredSourcesUnderPlatformFlag` registry-derived
+- Batch 4: `SmartReport` CLI footer tips + `readFullCommand` registry-derived
+- Batch 5: `Services.Formatter.Footer.Search.{singleSource, unified}` factories accept `availableSources`
+
+**Still TODO (production wiring gaps from the audit):**
+- `Search.SmartQuery.sourceWeightsOverride` is declared on the protocol but never supplied at the production composition site (the hand-tuned RRF weights in the static literal stay live). Wiring requires either a derivation rule from `Search.SourceProperties.searchQuality` or a new `Search.SourceProperties.fusionWeight` field.
+- 13 `Footer.Search.singleSource` call sites in HIG/Samples/Frameworks formatters still pass `availableSources: nil`. Wiring each requires the calling formatter's input type to carry the list.
+- `SearchSQLite.DocKind.kind(source:…)` switch has 6 hardcoded source-id arms with a `.unknown` fallback for new sources. Fix: each `Search.SourceProvider` declares its `Search.DocKind`.
+- `CLIImpl.Command.Save.Indexers.resolveSourceDirectory(for:input:)` 7-arm switch on `provider.definition.id` maps to 5 typed fields on `Search.DocsIndexingInput`. Adding a new source needs both a new input field and a new switch arm. Fix: `DocsIndexingInput.directoryByKey: [String: URL?]` keyed by `provider.fetchInfo?.defaultOutputDirKey.rawValue`.
+
+**Naming asymmetry to remember**: `SampleCodeSource.destinationDB == .appleSampleCode` (not `.samples`), and `PackagesSource.destinationDB == .packages` (not `.swiftPackages` — the rename target). Consumer code that needs to identify "search.db-family sources" MUST exclude both `.appleSampleCode` and `.packages` to skip the two non-search-tier destinations.
 
 This page is the contract a contributor follows when wiring a new content source (e.g. WWDC transcripts #58, Swift Forums #89, Tech Talks #273) into cupertino. It names every file the new source MUST touch and distinguishes them from surfaces that pick the source up automatically once it is registered.
 
