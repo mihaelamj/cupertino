@@ -432,10 +432,11 @@ let targets: [Target] = {
         ]
     )
 
-    // ---------- CleanupModels (foundation-only seam — Observer protocol for Sample.Cleanup.Cleaner) ----------
+    // ---------- Cleanup family (Sources/Cleanup/{Core,Model}) ----------
     let cleanupModelsTarget = Target.target(
         name: "CleanupModels",
-        dependencies: ["SharedConstants"]
+        dependencies: ["SharedConstants"],
+        path: "Sources/Cleanup/Model"
     )
     let cleanupModelsTestsTarget = Target.testTarget(
         name: "CleanupModelsTests",
@@ -444,7 +445,8 @@ let targets: [Target] = {
 
     let cleanupTarget = Target.target(
         name: "Cleanup",
-        dependencies: ["CleanupModels", "SharedConstants", "LoggingModels"]
+        dependencies: ["CleanupModels", "SharedConstants", "LoggingModels"],
+        path: "Sources/Cleanup/Core"
     )
     let cleanupTestsTarget = Target.testTarget(
         name: "CleanupTests",
@@ -641,7 +643,8 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
-        ]
+        ],
+        path: "Sources/Source/AppleDocs"
     )
 
     // #899 sub-PR C: extract HIGStrategy (renamed to HIGSource in #1010).
@@ -657,7 +660,8 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
-        ]
+        ],
+        path: "Sources/Source/HIG"
     )
 
     // #899 sub-PR D: extract SampleCodeStrategy (renamed to SampleCodeSource in #1012).
@@ -672,7 +676,8 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
-        ]
+        ],
+        path: "Sources/Source/SampleCode"
     )
 
     // #899 sub-PR E: extract SwiftEvolutionStrategy (renamed to SwiftEvolutionSource in #1017).
@@ -688,7 +693,8 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
-        ]
+        ],
+        path: "Sources/Source/SwiftEvolution"
     )
 
     // #899 sub-PR F: extract SwiftOrgStrategy (renamed to SwiftOrgSource in #1019).
@@ -703,7 +709,8 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
-        ]
+        ],
+        path: "Sources/Source/SwiftOrg"
     )
 
     // #1021 (Phase 1G of epic #1007): SwiftBookSource is the first view-source
@@ -723,7 +730,8 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
-        ]
+        ],
+        path: "Sources/Source/SwiftBook"
     )
 
     // #1023 (Phase 1H of epic #1007; FINAL): PackagesSource is the
@@ -741,7 +749,8 @@ let targets: [Target] = {
         dependencies: [
             "SearchModels",
             "SharedConstants",
-        ]
+        ],
+        path: "Sources/Source/Packages"
     )
 
     // #899 sub-PR G: extract AppleArchiveStrategy (renamed to AppleArchiveSource in #1014).
@@ -758,7 +767,8 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
-        ]
+        ],
+        path: "Sources/Source/AppleArchive"
     )
 
     let sampleIndexTarget = Target.target(

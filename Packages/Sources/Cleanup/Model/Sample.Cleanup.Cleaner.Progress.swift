@@ -2,6 +2,7 @@ import Foundation
 import SharedConstants
 
 // MARK: - Sample.Cleanup.CleanerProgressObserving
+
 //
 // Naming note: the producer-target `Sample.Cleanup.Cleaner` is a
 // `public actor` declared in the `Cleanup` SPM target's
