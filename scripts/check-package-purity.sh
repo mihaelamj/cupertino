@@ -168,6 +168,16 @@ while IFS= read -r -d '' target_dir; do
     if [ "$target" = "MCP" ]; then
         continue
     fi
+    # Family-folder umbrellas (post-#1042 folder-grouping restructure):
+    # Sources/<Family>/ holds multiple sub-targets. Skip the umbrella
+    # walk; the per-target walk below handles each sub-target by its
+    # actual path: declaration. See `folder-grouping.md` § "Per-target
+    # import audit must still work".
+    case "$target" in
+        Core|Search|Source|Enrichment|Distribution|Cleanup|Logging|Crawler|Availability|SampleIndex|RemoteSync|Services|Indexer)
+            continue
+            ;;
+    esac
 
     # grep -rE returns non-zero when no match; capture and continue
     # rather than letting `set -e` kill us.
@@ -187,6 +197,85 @@ while IFS= read -r -d '' target_dir; do
         fi
     fi
 done < <(find "$SOURCES_DIR" -mindepth 1 -maxdepth 1 -type d -print0)
+
+# Family-folder sub-targets (post-#1042 restructure). Each entry is
+# (subfolder, target-name); the target name is checked against
+# EXEMPT_TARGETS + GRANDFATHERED_TARGETS just like the top-level walk.
+declare -a FAMILY_SUBTARGETS=(
+    "Sources/Core/Core:Core"
+    "Sources/Core/Protocols:CoreProtocols"
+    "Sources/Core/JSONParser:CoreJSONParser"
+    "Sources/Core/JSONParser/WebKit:CoreJSONParserWebKit"
+    "Sources/Core/PackageIndexing:CorePackageIndexing"
+    "Sources/Core/PackageIndexing/Model:CorePackageIndexingModels"
+    "Sources/Core/SampleCode/Core:CoreSampleCode"
+    "Sources/Core/SampleCode/Model:CoreSampleCodeModels"
+    "Sources/Core/SampleCode/WebKit:CoreSampleCodeWebKit"
+    "Sources/Search/API:SearchAPI"
+    "Sources/Search/Model:SearchModels"
+    "Sources/Search/Schema:SearchSchema"
+    "Sources/Search/SQLite:SearchSQLite"
+    "Sources/Search/StrategyHelpers:SearchStrategyHelpers"
+    "Sources/Search/ToolProvider:SearchToolProvider"
+    "Sources/Source/AppleArchive:AppleArchiveSource"
+    "Sources/Source/AppleDocs:AppleDocsSource"
+    "Sources/Source/HIG:HIGSource"
+    "Sources/Source/Packages:PackagesSource"
+    "Sources/Source/SampleCode:SampleCodeSource"
+    "Sources/Source/SwiftBook:SwiftBookSource"
+    "Sources/Source/SwiftEvolution:SwiftEvolutionSource"
+    "Sources/Source/SwiftOrg:SwiftOrgSource"
+    "Sources/Enrichment/Core:Enrichment"
+    "Sources/Enrichment/Model:EnrichmentModels"
+    "Sources/Enrichment/Pass:EnrichmentPasses"
+    "Sources/Distribution/Core:Distribution"
+    "Sources/Distribution/Model:DistributionModels"
+    "Sources/Cleanup/Core:Cleanup"
+    "Sources/Cleanup/Model:CleanupModels"
+    "Sources/Logging/Core:Logging"
+    "Sources/Logging/Model:LoggingModels"
+    "Sources/Crawler/Core:Crawler"
+    "Sources/Crawler/Model:CrawlerModels"
+    "Sources/Crawler/WebKit:CrawlerWebKit"
+    "Sources/Availability/Core:Availability"
+    "Sources/Availability/Model:AvailabilityModels"
+    "Sources/Availability/FoundationNetworking:AvailabilityFoundationNetworking"
+    "Sources/SampleIndex/Core:SampleIndex"
+    "Sources/SampleIndex/Model:SampleIndexModels"
+    "Sources/SampleIndex/SQLite:SampleIndexSQLite"
+    "Sources/RemoteSync/Core:RemoteSync"
+    "Sources/RemoteSync/Model:RemoteSyncModels"
+    "Sources/Services/Core:Services"
+    "Sources/Services/Model:ServicesModels"
+    "Sources/Indexer/Core:Indexer"
+    "Sources/Indexer/Model:IndexerModels"
+)
+
+repo_root="$(cd "$SOURCES_DIR/.." && pwd)"
+for entry in "${FAMILY_SUBTARGETS[@]}"; do
+    sub_path="${entry%%:*}"
+    sub_target="${entry##*:}"
+    if is_exempt "$sub_target"; then
+        continue
+    fi
+    sub_dir="$repo_root/$sub_path"
+    [ -d "$sub_dir" ] || continue
+    set +e
+    matches="$(grep -REn "$PATTERN" "$sub_dir" --include='*.swift' 2>/dev/null --exclude-dir=Core --exclude-dir=Model --exclude-dir=Pass --exclude-dir=Schema --exclude-dir=SQLite --exclude-dir=API --exclude-dir=StrategyHelpers --exclude-dir=ToolProvider --exclude-dir=WebKit --exclude-dir=Protocols --exclude-dir=FoundationNetworking --exclude-dir=JSONParser --exclude-dir=PackageIndexing --exclude-dir=SampleCode --exclude-dir=HTMLParser || true)"
+    set -e
+    if [ -n "$matches" ]; then
+        if is_grandfathered "$sub_target"; then
+            while IFS= read -r line; do
+                grandfathered_lines+=("$line")
+            done <<< "$matches"
+        else
+            while IFS= read -r line; do
+                violation_lines+=("$line")
+                violations=$((violations + 1))
+            done <<< "$matches"
+        fi
+    fi
+done
 
 # MCP sub-targets sit one level deeper.
 for mcp_sub in Client Core Support SharedTools; do
