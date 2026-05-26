@@ -199,14 +199,39 @@ struct Issue1042PluggabilityContractTests {
 
     // MARK: - Cluster 6: TeaserResults typed-per-source struct
 
-    @Test(
-        "Services.Formatter.TeaserResults can hold a teaser bucket for any registered source",
-        .disabled(
-            "OUTSTANDING — Cluster 6: ServicesModels/Services.Formatter.TeaserResults.swift is a closed struct with one typed property per source. Refactor: [String: [Search.Result]] keyed by sourceID."
-        )
-    )
+    @Test("Services.Formatter.TeaserResults can hold a teaser bucket for any registered source via the `extras` dict")
     func teaserResultsAcceptsFakeSource() {
-        #expect(Bool(false), "see disabled note")
+        // STATUS: PASSES (post-Cluster-6 sub-1). TeaserResults now
+        // exposes an `extras: [String: ExtraSource]` dict alongside
+        // the 8 typed-per-source properties. A new source stores its
+        // teaser results in `extras` keyed by `definition.id`; each
+        // entry carries displayName + emoji declared at the source
+        // (no Prefix.emojiX lookup). `allSources` iterates the typed
+        // properties first, then the extras, so a registered fake
+        // source's teasers participate in the formatter output.
+        let fakeResult = Search.Result(
+            uri: "pluggability-contract-fake://example",
+            source: ContractFakeSourceProvider.fakeID,
+            framework: "",
+            title: "Fake teaser title",
+            summary: "",
+            filePath: "",
+            wordCount: 0,
+            rank: 0
+        )
+        let teasers = Services.Formatter.TeaserResults(
+            extras: [
+                ContractFakeSourceProvider.fakeID: .init(
+                    sourceID: ContractFakeSourceProvider.fakeID,
+                    displayName: "Pluggability Contract Fake",
+                    emoji: "🧪",
+                    results: [fakeResult]
+                ),
+            ]
+        )
+        #expect(!teasers.isEmpty)
+        let sources = teasers.allSources
+        #expect(sources.contains(where: { $0.sourcePrefix == ContractFakeSourceProvider.fakeID }))
     }
 
     @Test(
