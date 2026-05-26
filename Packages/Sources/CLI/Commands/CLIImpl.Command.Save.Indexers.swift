@@ -171,6 +171,8 @@ extension CLIImpl.Command.Save {
         }
         Self.printDocsSummary(
             outcome: outcome,
+            selectedSourceIDs: selectedSourceIDs ?? [],
+            baseDirectory: effectiveBase,
             breakdown: breakdownCapture.breakdown,
             importLogPath: logPathCapture.path
         )
@@ -588,6 +590,8 @@ extension CLIImpl.Command.Save {
 
     static func printDocsSummary(
         outcome: Indexer.DocsService.Outcome,
+        selectedSourceIDs: Set<String>,
+        baseDirectory: URL,
         breakdown: Search.ImportDiligenceBreakdown = .zero,
         importLogPath: URL? = nil
     ) {
@@ -596,8 +600,40 @@ extension CLIImpl.Command.Save {
         recording.info("✅ Search index built successfully!")
         recording.info("   Total documents: \(outcome.documentCount)")
         recording.info("   Frameworks: \(outcome.frameworkCount)")
-        recording.info("   Database: \(outcome.searchDBPath.path)")
-        recording.info("   Size: \(CLIImpl.Command.Save.formatFileSize(outcome.searchDBPath))")
+
+        // #1047: post-#1036 each source writes to its OWN per-source DB
+        // (apple-documentation.db / hig.db / etc.), not the legacy
+        // monolithic search.db that `outcome.searchDBPath` still names.
+        // Derive the actual destinations from the registry + the
+        // selected source-ids. For `--all` we list every registered
+        // source's destination DB; for `--source <id>` we list only
+        // that one. Both cases print the actual file the save wrote.
+        let registry = CLIImpl.makeProductionSourceRegistry()
+        let dbFilenames: [String] = Array(
+            Set(
+                registry.allEnabled
+                    .filter { selectedSourceIDs.contains($0.definition.id) }
+                    .map(\.destinationDB.filename)
+            )
+        ).sorted()
+        if dbFilenames.isEmpty {
+            // Defensive: an empty selectedSourceIDs (or one with no
+            // registered match) should never reach here, but fall back
+            // to the legacy outcome.searchDBPath so the summary stays
+            // non-empty rather than silently dropping the line.
+            recording.info("   Database: \(outcome.searchDBPath.path)")
+            recording.info("   Size: \(CLIImpl.Command.Save.formatFileSize(outcome.searchDBPath))")
+        } else if dbFilenames.count == 1 {
+            let path = baseDirectory.appendingPathComponent(dbFilenames[0])
+            recording.info("   Database: \(path.path)")
+            recording.info("   Size: \(CLIImpl.Command.Save.formatFileSize(path))")
+        } else {
+            recording.info("   Databases (\(dbFilenames.count) in \(baseDirectory.path)):")
+            for filename in dbFilenames {
+                let path = baseDirectory.appendingPathComponent(filename)
+                recording.info("     - \(filename) (\(CLIImpl.Command.Save.formatFileSize(path)))")
+            }
+        }
 
         // #588 import-diligence breakdown.
         // Print the block whenever apple-docs ran (signalled by a
