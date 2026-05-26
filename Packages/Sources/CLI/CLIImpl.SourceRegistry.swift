@@ -5,6 +5,7 @@ import HIGSource
 import PackagesSource
 import SampleCodeSource
 import SearchModels
+import SharedConstants
 import SwiftBookSource
 import SwiftEvolutionSource
 import SwiftOrgSource
@@ -60,5 +61,28 @@ extension CLIImpl {
         // Step 5 replaces the transitional filter with
         // `Dictionary(grouping: by: \.destinationDB)`.
         return registry
+    }
+
+    /// Set of database descriptors the production `cupertino-docs` bundle
+    /// ships at the current binary's version. Derived from the production
+    /// source registry's `allEnabled` providers — each source declares its
+    /// own `destinationDB`, and the bundle must ship one zip-extractable
+    /// SQLite file per declared destination.
+    ///
+    /// **Pluggability anchor**: adding a new source (one new
+    /// `<X>Source.swift` + one `.register(<X>Source())` line above)
+    /// automatically extends this list. The `cupertino setup` post-extract
+    /// hard-fail check then verifies the new source's DB landed in the
+    /// extracted bundle without any further CLI-side edits.
+    ///
+    /// **Bundle-release coupling**: the ReleaseTool that builds
+    /// `cupertino-databases-vX.Y.Z.zip` must include every descriptor in
+    /// this list in the zip. Adding a new source therefore couples
+    /// (a) the cupertino source-tree PR (1 source file + 1 register line)
+    /// with (b) the ReleaseTool's bundle-build manifest update. The CLI
+    /// side stays pluggable on its own; the bundle side is a sibling
+    /// concern owned by ReleaseTool.
+    public static func bundleRequiredDescriptors() -> [Shared.Models.DatabaseDescriptor] {
+        makeProductionSourceRegistry().allEnabled.map(\.destinationDB)
     }
 }

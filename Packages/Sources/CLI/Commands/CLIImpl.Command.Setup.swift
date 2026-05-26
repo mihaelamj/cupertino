@@ -113,10 +113,17 @@ extension CLIImpl.Command {
             // `migrateLegacySamplesDatabaseIfNeeded` below) detects and
             // renames that filename to the new one on first post-#1037
             // setup invocation.
+            // Pluggability anchor: the bundle's required-descriptor list
+            // is derived from `CLIImpl.makeProductionSourceRegistry()`
+            // (every enabled source's `destinationDB`). Adding a new
+            // source = one register call + one source file, with this
+            // setup hard-fail check picking up the new DB automatically.
+            // Pre-rename this line hardcoded `[.search, .appleSampleCode,
+            // .packages]` — the pre-#1037 3-DB bundle shape.
             let request = Distribution.SetupService.Request(
                 baseDir: baseURL,
                 keepExisting: keepExisting,
-                required: [.search, .appleSampleCode, .packages]
+                required: CLIImpl.bundleRequiredDescriptors()
             )
 
             do {
