@@ -75,10 +75,9 @@ extension CLIImpl.Command {
         @Option(
             name: .long,
             help: """
-            Override the apple-docs database path. Post-#1037 this command \
-            opens `apple-documentation.db` by default (resolved through the \
-            production source registry); pass this flag to point at a \
-            different SQLite file.
+            Override the apple-docs database path. Default: \
+            apple-documentation.db (resolved through the production source \
+            registry).
             """
         )
         var searchDb: String?
@@ -94,7 +93,7 @@ extension CLIImpl.Command {
 
             guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
                 CLIImpl.printUserFacingDiagnostic(
-                    "❌ \(searchDBURL.lastPathComponent) not found at \(searchDBURL.path). Run `cupertino setup` first.",
+                    CLIImpl.appleDocsDBMissingMessage(url: searchDBURL),
                     recording: recording
                 )
                 throw ExitCode.failure

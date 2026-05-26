@@ -57,7 +57,11 @@ extension CLIImpl.Command {
 
         @Option(
             name: .long,
-            help: "Path to search database"
+            help: """
+            Override the apple-docs database path. Default: 
+            apple-documentation.db (resolved through the production source 
+            registry).
+            """
         )
         var searchDb: String?
 
@@ -75,7 +79,7 @@ extension CLIImpl.Command {
             let searchDBURL = CLIImpl.resolveAppleDocsDBURL(override: searchDb)
             guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
                 CLIImpl.printUserFacingDiagnostic(
-                    "❌ \(searchDBURL.lastPathComponent) not found at \(searchDBURL.path). Run `cupertino setup` first.",
+                    CLIImpl.appleDocsDBMissingMessage(url: searchDBURL),
                     recording: recording
                 )
                 throw ExitCode.failure
