@@ -99,6 +99,21 @@ EXEMPT_TARGETS=(
     # only the composition root binaries link them.
     CoreJSONParserWebKit
     CoreSampleCodeWebKit
+    # 2026-05-26 audit Finding 9.7 + 11.1: per-source targets that
+    # ship a `Search.SourceFetchStrategy` concrete. Each is a mini
+    # composition-root for its fetch concern — it owns the per-source
+    # FetchStrategy that wraps the matching `Crawler.<X>` concrete
+    # (HIGSource → Crawler.HIG; AppleArchiveSource → Crawler.AppleArchive;
+    # SwiftEvolutionSource → Crawler.Evolution; AppleDocsSource →
+    # Crawler.AppleDocs + Ingest.Session). The "different concern"
+    # filter in Phase B (#503) was meant to block e.g. ServicesModels
+    # (search-result-shape concern) from reaching for Crawler
+    # (HTTP-fetch concern). Per-source targets and their crawlers
+    # are the SAME concern: the source owns its fetch.
+    AppleDocsSource
+    HIGSource
+    AppleArchiveSource
+    SwiftEvolutionSource
 )
 
 # Grandfathered targets — pre-existing leaks acknowledged here so

@@ -60,4 +60,11 @@ public struct HIGSource: Search.SourceProvider {
     /// in `CLIImpl.Command.Search` / `handleSearchHIG` in
     /// `CompositeToolProvider`); not the default `.docs` route.
     public var searchRoute: Search.SearchRoute { .hig }
+
+    /// 2026-05-26 audit Finding 9.7 + 11.1: per-source fetch strategy.
+    /// Lifts `CLIImpl.Command.Fetch.runHIGCrawl` into this target so
+    /// the CLI's dispatch becomes registry-driven.
+    public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? {
+        HIGFetchStrategy()
+    }
 }

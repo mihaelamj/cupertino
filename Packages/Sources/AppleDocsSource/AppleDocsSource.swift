@@ -57,4 +57,16 @@ public struct AppleDocsSource: Search.SourceProvider {
     public func makeIndexer() -> any Search.SourceIndexer {
         Search.AppleDocsIndexer()
     }
+
+    /// 2026-05-26 audit Finding 9.7 + 11.1: per-source fetch strategy.
+    /// `WebCrawlFetchStrategy` is shared with `SwiftOrgSource` +
+    /// `SwiftBookSource` — each constructs its own instance with its
+    /// own seed URL + allowedPrefixes.
+    public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? {
+        WebCrawlFetchStrategy(
+            defaultCrawlBaseURL: Self.fetchInfo.crawlBaseURLs.first ?? "",
+            defaultAllowedPrefixes: nil,
+            candidateSessionDirectories: []
+        )
+    }
 }

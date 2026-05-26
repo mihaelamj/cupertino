@@ -1,3 +1,4 @@
+import AppleDocsSource
 import Foundation
 import SearchModels
 import SharedConstants
@@ -43,5 +44,21 @@ public struct SwiftOrgSource: Search.SourceProvider {
 
     public func makeIndexer() -> any Search.SourceIndexer {
         Search.SwiftOrgIndexer()
+    }
+
+    /// 2026-05-26 audit Finding 9.7 + 11.1: per-source fetch strategy.
+    /// Constructs `AppleDocsSource.WebCrawlFetchStrategy` with
+    /// swift-org's canonical seed + the multi-host prefix allowlist
+    /// (covers both `www.swift.org` and `docs.swift.org` so the
+    /// view-source `swift-book` pages get crawled in the same pass).
+    public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? {
+        WebCrawlFetchStrategy(
+            defaultCrawlBaseURL: Self.fetchInfo.crawlBaseURLs.first ?? Shared.Constants.BaseURL.swiftOrg,
+            defaultAllowedPrefixes: [
+                Shared.Constants.BaseURL.swiftOrg,
+                Shared.Constants.BaseURL.swiftBook,
+            ],
+            candidateSessionDirectories: []
+        )
     }
 }

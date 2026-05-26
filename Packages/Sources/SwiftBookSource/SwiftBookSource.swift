@@ -1,3 +1,4 @@
+import AppleDocsSource
 import Foundation
 import SearchModels
 import SharedConstants
@@ -64,5 +65,24 @@ public struct SwiftBookSource: Search.SourceProvider {
 
     public func makeIndexer() -> any Search.SourceIndexer {
         Search.SwiftBookIndexer()
+    }
+
+    /// 2026-05-26 audit Finding 9.7 + 11.1: per-source fetch strategy.
+    /// SwiftBook is a view-source — its pages live under the swift-org
+    /// crawl. `cupertino fetch --source swift-book` piggy-backs on
+    /// swift-org's crawl (matches pre-fix runStandardCrawl behavior
+    /// where swift-book aliased to swift-org's seed URL). The strategy
+    /// constructed here seeds the crawler with swift-org's URL +
+    /// allowedPrefixes; the SwiftBookStrategy's URL-prefix tagging
+    /// during indexing routes the resulting pages into swift-book.db.
+    public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? {
+        WebCrawlFetchStrategy(
+            defaultCrawlBaseURL: Shared.Constants.BaseURL.swiftOrg,
+            defaultAllowedPrefixes: [
+                Shared.Constants.BaseURL.swiftOrg,
+                Shared.Constants.BaseURL.swiftBook,
+            ],
+            candidateSessionDirectories: []
+        )
     }
 }

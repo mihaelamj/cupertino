@@ -12,6 +12,7 @@ import CoreSampleCodeWebKit
 import Crawler
 import CrawlerModels
 import CrawlerWebKit
+import CupertinoComposition
 import Foundation
 import Ingest
 import Logging
@@ -219,45 +220,119 @@ extension CLIImpl.Command {
             logStartMessage()
 
             // Post-#1031 (Phase 1I.c.2 of epic #1007): dispatch on
-            // canonical source-id strings instead of the dissolved
-            // FetchType enum. Special tokens: "all" (iterate all
-            // fetchable sources sequentially), "availability"
-            // (maintenance op, not a registry source).
+            // 2026-05-26 audit Finding 9.7 + 11.1: dispatch via the
+            // registered provider's `makeFetchStrategy()` for every
+            // source that has a strategy. Special tokens (`"all"` /
+            // `"availability"`) stay above the registry lookup
+            // because they aren't registered providers — `"all"` is
+            // a fan-out alias and `"availability"` is a maintenance
+            // operation that refreshes the bundled SDK availability
+            // data file (not a corpus source).
+            //
+            // The remaining 3 legacy switch arms (packages / samples
+            // / apple-sample-code) are the complex multi-stage
+            // handlers; they're queued for the same lift treatment
+            // in a follow-up (per issue #1051). For NEW sources,
+            // adding a `Search.SourceFetchStrategy` to the
+            // `<X>Source` target is enough — zero edits here.
             switch source {
             case "all":
                 try await runAllFetches()
+            case "availability":
+                try await runAvailabilityFetch()
             case Shared.Constants.SourcePrefix.packages:
                 try await runPackageFetch()
             case Shared.Constants.SourcePrefix.appleSampleCode:
                 try await runCodeFetch()
             case Shared.Constants.SourcePrefix.samples:
                 try await runSamplesFetch()
-            case Shared.Constants.SourcePrefix.appleArchive:
-                try await runArchiveCrawl()
-            case Shared.Constants.SourcePrefix.hig:
-                try await runHIGCrawl()
-            case "availability":
-                try await runAvailabilityFetch()
-            case Shared.Constants.SourcePrefix.swiftEvolution:
-                try await runEvolutionCrawl()
-            case Shared.Constants.SourcePrefix.appleDocs,
-                 Shared.Constants.SourcePrefix.swiftOrg,
-                 Shared.Constants.SourcePrefix.swiftBook:
-                // Web-crawl fall-through: apple-docs + swift-org +
-                // swift-book. swift-book is a view-source whose pages
-                // are co-crawled by SwiftOrgStrategy (URL-prefix tagging
-                // at emission time); routing --source swift-book here
-                // means the user gets the swift-org crawl (which also
-                // emits swift-book-tagged pages).
-                try await runStandardCrawl()
             default:
+                try await runRegistryFetchStrategy()
+            }
+        }
+
+        /// 2026-05-26 audit Finding 9.7 + 11.1: registry-driven fetch
+        /// dispatch. Resolves the source-id against the production
+        /// registry, asks the provider for its `Search.SourceFetchStrategy`,
+        /// and runs it with the CLI-supplied `FetchEnvironment`. The
+        /// strategy concrete lives in the source's own SPM target
+        /// (`<X>Source/<X>Source.FetchStrategy.swift`); CLI no longer
+        /// owns the per-source fetch dispatch.
+        private mutating func runRegistryFetchStrategy() async throws {
+            let registry = CupertinoComposition.makeProductionSourceRegistry()
+            guard let entry = registry.entry(for: source) else {
+                let validIDs = registry.allEnabled.map(\.definition.id).sorted()
+                let validList = (["all", "availability"] + validIDs).joined(separator: ", ")
+                throw ValidationError("Unknown --source value '\(source)'. Valid sources: \(validList).")
+            }
+            guard let strategy = entry.provider.makeFetchStrategy() else {
                 throw ValidationError(
-                    "Unknown --source value '\(source)'. Valid sources: " +
-                        "apple-docs, swift-org, swift-book, swift-evolution, " +
-                        "packages, apple-sample-code, samples, apple-archive, " +
-                        "hig, availability, all."
+                    "Source '\(source)' has no fetch capability — its corpus arrives via "
+                        + "`cupertino setup` or is co-crawled by another source. "
+                        + "Try `cupertino fetch --source <X>` where X is one of the fetchable sources."
                 )
             }
+            let outputURL = try await resolveFetchOutputURL(for: entry.provider)
+            try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
+            let env = await MainActor.run { makeFetchEnvironment(outputDirectory: outputURL) }
+            try await strategy.run(env: env)
+        }
+
+        /// Resolve the output directory for a per-source fetch.
+        /// Respects `--output-dir` when supplied; otherwise reads
+        /// `provider.fetchInfo?.defaultOutputDirKey` and resolves
+        /// against `Shared.Paths.live()`.
+        private func resolveFetchOutputURL(for provider: any SearchModels.Search.SourceProvider) async throws -> URL {
+            if let outputDir {
+                return URL(fileURLWithPath: outputDir).expandingTildeInPath
+            }
+            let paths = Shared.Paths.live()
+            guard let key = provider.fetchInfo?.defaultOutputDirKey else {
+                // Provider has a fetch strategy but no fetchInfo dir
+                // key — unusual but valid (the strategy could fetch
+                // to a baseDirectory-relative location). Default to
+                // baseDirectory.
+                return paths.baseDirectory
+            }
+            return Self.resolveDirectory(forKey: key, paths: paths)
+        }
+
+        /// Build the `Search.FetchEnvironment` value passed to the
+        /// per-source strategy. Reads every CLI flag once at the
+        /// dispatch site; the strategy concretes pick out the fields
+        /// they need and ignore the rest.
+        @MainActor
+        private func makeFetchEnvironment(outputDirectory: URL) -> SearchModels.Search.FetchEnvironment {
+            let recording: any LoggingModels.Logging.Recording =
+                Cupertino.Context.composition.logging.recording
+            return SearchModels.Search.FetchEnvironment(
+                outputDirectory: outputDirectory,
+                maxPages: maxPages,
+                maxDepth: maxDepth,
+                force: force,
+                startClean: startClean,
+                retryErrors: retryErrors,
+                baseline: baseline.map { URL(fileURLWithPath: $0).expandingTildeInPath },
+                urls: urls.map { URL(fileURLWithPath: $0).expandingTildeInPath },
+                startURL: startURL.flatMap { URL(string: $0) },
+                allowedPrefixes: allowedPrefixes.map {
+                    $0.split(separator: ",").map { String($0.trimmingCharacters(in: .whitespaces)) }
+                },
+                discoveryModeRawValue: discoveryMode.rawValue,
+                onlyAccepted: onlyAccepted,
+                limit: limit,
+                skipMetadata: skipMetadata,
+                skipArchives: skipArchives,
+                annotateAvailability: annotateAvailability,
+                recurse: recurse,
+                refresh: refresh,
+                fast: fast,
+                logger: recording,
+                httpFetcherFactory: Crawler.WebKit.LiveHTTPFetcherFactory(),
+                htmlParser: LiveHTMLParserStrategy(),
+                appleJSONParser: LiveAppleJSONParserStrategy(),
+                priorityPackageStrategy: LivePriorityPackageStrategy()
+            )
         }
 
         private func logStartMessage() {

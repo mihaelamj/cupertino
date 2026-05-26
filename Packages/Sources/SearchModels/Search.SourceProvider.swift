@@ -125,6 +125,28 @@ extension Search {
         /// the fan-out runner — the same behaviour as the pre-#1042
         /// `default:` arm.
         var searchRoute: Search.SearchRoute { get }
+
+        /// 2026-05-26 audit Finding 9.7 + 11.1: per-source fetch
+        /// strategy. Pre-fix `CLIImpl.Command.Fetch.run` had a 10-arm
+        /// `switch source` enumerating every shipped source-id, each
+        /// arm calling into a bespoke `run<X>Crawl/Fetch` method
+        /// (~200-500 LOC each, heavy CLI-flag state coupling). Adding
+        /// a new source required THREE edits in Fetch.swift alone:
+        /// new case arm, new run-method, update of the default-arm
+        /// error-message string listing valid sources.
+        ///
+        /// Post-fix each shipped `<X>Source` target supplies a
+        /// `Search.SourceFetchStrategy` concrete (`<X>FetchStrategy`)
+        /// that owns the per-source crawl/fetch logic. The dispatch
+        /// in `CLIImpl.Command.Fetch.run` becomes a single line:
+        /// `try await registry.entry(for: source).provider.makeFetchStrategy()?.run(env:)`.
+        ///
+        /// Sources without a fetch capability (today: `swift-book`,
+        /// a view-source whose pages are co-crawled by `swift-org`
+        /// via URL-prefix tagging) return nil; the default extension
+        /// below returns nil. The CLI distinguishes "no strategy"
+        /// from "unknown source-id" so the user gets a useful error.
+        func makeFetchStrategy() -> (any Search.SourceFetchStrategy)?
     }
 
     /// Which dispatcher runner a source uses for `cupertino search` /
@@ -152,4 +174,13 @@ extension Search.SourceProvider {
     /// dispatch differs (HIGSource, SampleCodeSource, PackagesSource)
     /// override.
     public var searchRoute: Search.SearchRoute { .docs }
+
+    /// Default: no fetch capability. Sources whose data ships via
+    /// `cupertino fetch` (apple-docs / hig / apple-archive /
+    /// swift-evolution / swift-org / samples / packages) override
+    /// to return their bespoke strategy concrete. Sources without
+    /// a fetch step (today: `swift-book`, the view-source) inherit
+    /// nil — the CLI reports "Source 'X' has no fetch capability"
+    /// for those.
+    public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? { nil }
 }

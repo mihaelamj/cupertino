@@ -490,7 +490,11 @@ let targets: [Target] = {
     // Search.Result, Search.MatchedSymbol, Search.PlatformAvailability, Search.DocumentFormat.
     let searchModelsTarget = Target.target(
         name: "SearchModels",
-        dependencies: ["SharedConstants", "ASTIndexer", "LoggingModels"]
+        // 2026-05-26 audit Finding 9.7 + 11.1: CrawlerModels carries
+        // the `Crawler.HTTPFetcherFactory` strategy seam consumed by
+        // `Search.FetchEnvironment`. Foundation-only dep — CrawlerModels
+        // is the seam tier, not the producer.
+        dependencies: ["SharedConstants", "ASTIndexer", "LoggingModels", "CrawlerModels"]
     )
     let searchModelsTestsTarget = Target.testTarget(
         name: "SearchModelsTests",
@@ -652,6 +656,12 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
+            // 2026-05-26 audit Finding 9.7 + 11.1: WebCrawlFetchStrategy
+            // wraps `Crawler.AppleDocs` + delegates to `Ingest.Session`
+            // for resume / requeue / baseline / urls-file plumbing.
+            "Crawler",
+            "CrawlerModels",
+            "Ingest",
         ]
     )
 
@@ -668,6 +678,11 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
+            // 2026-05-26 audit Finding 9.7 + 11.1: HIGFetchStrategy
+            // wraps `Crawler.HIG`. Per-source target owns its fetch
+            // strategy; `Crawler` stays as shared crawl infrastructure.
+            "Crawler",
+            "CrawlerModels",
         ]
     )
 
@@ -699,6 +714,10 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
+            // 2026-05-26 audit Finding 9.7 + 11.1: SwiftEvolutionFetchStrategy
+            // wraps `Crawler.Evolution`.
+            "Crawler",
+            "CrawlerModels",
         ]
     )
 
@@ -714,6 +733,13 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
+            // 2026-05-26 audit Finding 9.7 + 11.1: SwiftOrgSource +
+            // SwiftBookSource share AppleDocsSource's
+            // `WebCrawlFetchStrategy` concrete (different config per
+            // source). Inter-source-target dep accepted because the
+            // 3 web-crawl-tier sources have always shared the
+            // `runStandardCrawl` codepath pre-fix.
+            "AppleDocsSource",
         ]
     )
 
@@ -734,6 +760,11 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
+            // 2026-05-26 audit Finding 9.7 + 11.1: SwiftBookSource is
+            // a view-source over swift-org's crawl — its fetch
+            // strategy delegates to AppleDocsSource's shared
+            // `WebCrawlFetchStrategy` seeded with swift-org's URL.
+            "AppleDocsSource",
         ]
     )
 
@@ -769,6 +800,10 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
+            // 2026-05-26 audit Finding 9.7 + 11.1: AppleArchiveFetchStrategy
+            // wraps `Crawler.AppleArchive` + `Crawler.ArchiveGuideCatalog`.
+            "Crawler",
+            "CrawlerModels",
         ]
     )
 
