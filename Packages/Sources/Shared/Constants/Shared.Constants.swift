@@ -368,6 +368,22 @@ extension Shared.Constants {
 
     // MARK: - Source Prefixes
 
+    /// 2026-05-26 audit #1055 layer-2: canonical names for the
+    /// non-source-id `Search.SearchRoute` rawValues. The 3
+    /// source-id-shaped routes (`.hig` / `.samples` / `.packages`)
+    /// read directly from `SourcePrefix.*`; the 2 bucket-tier
+    /// routes (`docs` / `unified`) need their own canonical names
+    /// because they don't correspond to single sources.
+    /// `"docs"` = any source in the search.db family; `"unified"` =
+    /// fan-out runner. Co-located with `SourcePrefix` to keep the
+    /// route-name canon under one roof.
+    public enum SearchRouteName {
+        /// Docs-tier bucket route (search.db family).
+        public static let docs = "docs"
+        /// Unified fan-out route (default fallthrough).
+        public static let unified = "unified"
+    }
+
     /// Source prefixes used for filtering search queries.
     /// Users can prefix their search with these to filter by source type.
     /// Example: "swift-evolution actors" searches only Swift Evolution for "actors"

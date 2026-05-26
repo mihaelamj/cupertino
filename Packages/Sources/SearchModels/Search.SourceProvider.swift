@@ -163,21 +163,45 @@ extension Search {
 
     /// Which dispatcher runner a source uses for `cupertino search` /
     /// MCP `tools/call search`. See `Search.SourceProvider.searchRoute`.
-    /// String-backed so additional routes a future source might need
-    /// can be added by extension without breaking existing conformers.
-    public enum SearchRoute: String, Sendable, Equatable, Hashable {
+    ///
+    /// 2026-05-26 audit #1055 layer-2 follow-up: was a closed enum.
+    /// A new source needing a novel dispatch had to add a new enum
+    /// case AND a matching arm in BOTH the CLI Search dispatcher and
+    /// the MCP `CompositeToolProvider.handleSearch` dispatcher. Now a
+    /// `RawRepresentable` struct (same shape as
+    /// `Search.FetchInfo.DefaultOutputDirKey` post-Cluster-9-sub-1):
+    /// callers compare via `==` against static-let route constants
+    /// and `default:` falls through to the unified fan-out. Adding
+    /// a new route is a `static let` declaration; existing
+    /// dispatchers stay backward-compatible.
+    public struct SearchRoute: RawRepresentable, Sendable, Equatable, Hashable {
+        public let rawValue: String
+
+        public init(rawValue: String) {
+            self.rawValue = rawValue
+        }
+
         /// Docs DB (apple-docs / apple-archive / swift-evolution /
-        /// swift-org / swift-book). Default.
-        case docs
-        /// HIG-specific handler.
-        case hig
-        /// Samples (samples.db) — separate handler from docs.
-        case samples
+        /// swift-org / swift-book). Default. Named `"docs"` — not
+        /// a source-id; it's the bucket-tier label for "any source
+        /// whose data lives in the search.db family".
+        public static let docs = SearchRoute(rawValue: Shared.Constants.SearchRouteName.docs)
+        /// HIG-specific handler. Shares the name of the source-id;
+        /// the routes-equal-source-ids invariant lets the dispatcher
+        /// fall through to `.unified` for any unrecognised route.
+        public static let hig = SearchRoute(rawValue: Shared.Constants.SourcePrefix.hig)
+        /// Samples (apple-sample-code.db) — separate handler from docs.
+        public static let samples = SearchRoute(rawValue: Shared.Constants.SourcePrefix.samples)
         /// Packages (packages.db) — different DB from docs.
-        case packages
+        public static let packages = SearchRoute(rawValue: Shared.Constants.SourcePrefix.packages)
         /// Fall-back to the unified fan-out runner. Same as the
         /// pre-#1042 `default:` arm.
-        case unified
+        public static let unified = SearchRoute(rawValue: Shared.Constants.SearchRouteName.unified)
+
+        /// Canonical set of routes the shipped runners recognise.
+        /// Surfaces in `Issue1042PluggabilityContractTests` to pin
+        /// the seam without enforcing a closed-set count.
+        public static let allKnownCases: [SearchRoute] = [.docs, .hig, .samples, .packages, .unified]
     }
 }
 

@@ -248,22 +248,29 @@ extension CLIImpl.Command {
             } else {
                 route = .unified
             }
-            switch route {
-            case .samples:
+            // 2026-05-26 audit #1055 layer-2: SearchRoute is now an
+            // open RawRepresentable struct (not a closed enum), so
+            // dispatch is `if route == .X` equality chains instead
+            // of an exhaustive switch. Unknown routes fall through
+            // to the unified fan-out (matching the pre-fix `default:`
+            // arm), which means a new source declaring a novel
+            // `searchRoute` works out-of-the-box without editing
+            // this dispatcher.
+            if route == .samples {
                 try await runSampleSearch()
-            case .hig:
+            } else if route == .hig {
                 try await runHIGSearch()
-            case .packages:
+            } else if route == .packages {
                 // packages live in their own DB (packages.db), not search.db.
                 // The docs runner queries search.db only and would silently
                 // return [] here. Use the dedicated single-fetcher SmartQuery
                 // path instead so packages.db is actually consulted (#261).
                 try await runPackageSearch()
-            case .docs:
+            } else if route == .docs {
                 try await runDocsSearch()
-            case .unified:
-                // Default (nil source / "all" / future registered sources
-                // whose searchRoute is .unified) triggers SmartQuery fan-out.
+            } else {
+                // Default fallthrough: `.unified` + any future
+                // unrecognised route. Triggers SmartQuery fan-out.
                 try await runUnifiedSearch()
             }
         }

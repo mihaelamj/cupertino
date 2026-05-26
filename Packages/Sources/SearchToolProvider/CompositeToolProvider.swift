@@ -653,8 +653,14 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             ? Shared.Constants.SourcePrefix.samples
             : source
         let route = canonicalSourceID.flatMap { searchToolRoutesByID[$0] } ?? .unified
-        switch route {
-        case .samples:
+        // 2026-05-26 audit #1055 layer-2: SearchRoute is now an open
+        // RawRepresentable struct. Dispatch via `==` equality chains
+        // so an unrecognised route falls through to the unified
+        // fan-out. Adding a new bucket-tier route is a `static let`
+        // declaration in `Search.SearchRoute` plus a single new
+        // `else if` arm here (and the matching CLI arm); the dispatch
+        // never breaks on a missing case.
+        if route == .samples {
             raw = try await handleSearchSamples(
                 query: query,
                 framework: framework,
@@ -665,13 +671,13 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 minWatchOS: minWatchOS,
                 minVisionOS: minVisionOS
             )
-        case .hig:
+        } else if route == .hig {
             raw = try await handleSearchHIG(
                 query: query,
                 framework: framework,
                 limit: limit
             )
-        case .docs:
+        } else if route == .docs {
             // Specific docs-tier source requested: search only that source
             raw = try await handleSearchDocs(
                 query: query,
@@ -687,7 +693,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 minVisionOS: minVisionOS,
                 minSwift: minSwift
             )
-        case .packages:
+        } else if route == .packages {
             // `#789`-style fix: packages live in `packages.db` with a
             // richer schema (BM25 + chunk + apple_imports_json); the
             // pre-PR-2 fall-through to `handleSearchDocs(source:"packages")`
@@ -699,7 +705,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 limit: limit,
                 appleImports: appleImports
             )
-        case .unified:
+        } else {
             // Default (nil source / "all" / future registered sources
             // whose searchRoute is .unified): search ALL sources for comprehensive results
             raw = try await handleSearchAll(
