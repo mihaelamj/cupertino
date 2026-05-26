@@ -217,25 +217,31 @@ extension CLIImpl.Command {
             // source is one `makeURIResourceStrategy()` override on
             // the provider, no edits to Serve or the dispatcher.
             //
-            // Directory resolution: apple-docs honours the `--docs-dir`
-            // override (paths.docsDirectory at construction time);
-            // swift-evolution honours `--evolution-dir`; other schemes
-            // resolve via `Shared.Paths.directory(named:)` keyed by
-            // the source's `fetchInfo.defaultOutputDirKey.rawValue`.
+            // Directory resolution is uniform: every URI strategy's
+            // directory resolves via `Shared.Paths.directory(named:)`
+            // keyed by the provider's `fetchInfo.defaultOutputDirKey.rawValue`
+            // (falling back to `definition.id` when fetchInfo is nil).
+            //
+            // 2026-05-27 post-#1057 mechanical hunt: pre-fix this loop
+            // had a 3-arm switch on source-id (apple-docs /
+            // swift-evolution / apple-archive) that picked
+            // `paths.docsDirectory` / `evolutionURL` / `archiveURL`
+            // for the 3 historical sources. All three of those values
+            // are themselves derived from `paths.directory(named:)`
+            // (post-Cluster-13 the typed accessors delegate to the
+            // generic one), so the switch was redundant — adding a new
+            // URI-resource source needed a new case for no reason.
+            // Cull: every provider routes through the single generic
+            // lookup. The legacy `evolutionURL` + `archiveURL`
+            // parameters stay (other call sites consume them).
             let resourceRegistry = CLIImpl.makeProductionSourceRegistry()
             var resourceStrategies: [any SearchModels.Search.URIResourceStrategy] = []
             var directoriesByScheme: [String: URL] = [:]
             for provider in resourceRegistry.allEnabled {
                 guard let strategy = provider.makeURIResourceStrategy() else { continue }
                 resourceStrategies.append(strategy)
-                let dirKey = provider.fetchInfo?.defaultOutputDirKey.rawValue
-                let directory: URL = switch provider.definition.id {
-                case Shared.Constants.SourcePrefix.appleDocs: paths.docsDirectory
-                case Shared.Constants.SourcePrefix.swiftEvolution: evolutionURL
-                case Shared.Constants.SourcePrefix.appleArchive: archiveURL
-                default: paths.directory(named: dirKey ?? provider.definition.id)
-                }
-                directoriesByScheme[strategy.scheme] = directory
+                let dirKey = provider.fetchInfo?.defaultOutputDirKey.rawValue ?? provider.definition.id
+                directoriesByScheme[strategy.scheme] = paths.directory(named: dirKey)
             }
             let resourceProvider = MCP.Support.DocsResourceProvider(
                 configuration: config,

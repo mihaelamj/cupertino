@@ -73,24 +73,26 @@ extension Search {
             uriPath: String = "",
             docKindByID: [String: String] = [:]
         ) -> Search.DocKind {
-            // #1045 Gap 3: registry-supplied map wins. `apple-docs`
-            // intentionally absents itself from the map (its bespoke
-            // classifier partitions by `structuredKind` / `uriPath`),
-            // so its legacy switch arm below stays load-bearing.
+            // #1045 Gap 3: registry-supplied map wins. Each per-source
+            // target declares its `defaultDocKindRawValue` on its
+            // `Search.SourceDefinition`; `Search.SourceLookup.docKindRawValuesByID`
+            // flattens to `[String: String]`; production callers
+            // (`Search.Index.IndexingDocs.indexBatch` / `indexBatchTwo`)
+            // pass the dict here.
+            //
+            // 2026-05-27 post-#1057 mechanical hunt: pre-fix the
+            // fallthrough below had 5 dead-on-prod arms — swift-evolution,
+            // swift-book, swift-org, hig, apple-archive — each of which
+            // declares its `defaultDocKindRawValue` on its
+            // SourceDefinition so the dict-first path resolves before
+            // the switch fires. Audit Finding-14.5-style cull: those
+            // 5 arms deleted. The apple-docs arm IS load-bearing —
+            // apple-docs intentionally absents itself from the dict
+            // (its bespoke classifier needs `structuredKind` + `uriPath`).
             if let rawValue = docKindByID[source], let resolved = Search.DocKind(rawValue: rawValue) {
                 return resolved
             }
             switch source {
-            case Shared.Constants.SourcePrefix.swiftEvolution:
-                return .evolutionProposal
-            case Shared.Constants.SourcePrefix.swiftBook:
-                return .swiftBook
-            case Shared.Constants.SourcePrefix.swiftOrg:
-                return .swiftOrgDoc
-            case Shared.Constants.SourcePrefix.hig:
-                return .hig
-            case Shared.Constants.SourcePrefix.appleArchive:
-                return .archive
             case Shared.Constants.SourcePrefix.appleDocs:
                 return classifyAppleDocs(structuredKind: structuredKind, uriPath: uriPath)
             default:

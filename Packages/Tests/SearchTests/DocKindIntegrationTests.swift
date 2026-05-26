@@ -3,8 +3,47 @@ import LoggingModels
 @testable import SearchAPI
 import SearchModels
 @testable import SearchSQLite
+import SharedConstants
 import SQLite3
 import Testing
+
+// MARK: - Canonical SourceLookup for DocKind tests
+
+/// 2026-05-27 post-#1057 mechanical hunt: pre-cull
+/// `Search.Classify.kind(...)` had a 5-arm dead-on-prod fallback
+/// switch. The fallback was removed; production callers supply the
+/// dict via `Search.SourceLookup.docKindRawValuesByID`. Tests now
+/// construct a SourceLookup with the canonical mappings so the
+/// classifier's behavioural contract stays pinned.
+///
+/// Mirrors the production providers' `defaultDocKindRawValue`
+/// declarations (5 of 8 sources declare it; apple-docs, packages,
+/// samples intentionally absent — apple-docs has a bespoke
+/// classifier, the other 2 don't write to docs_metadata).
+private let canonicalDocKindSourceLookup: Search.SourceLookup = {
+    func make(id: String, docKind: String?) -> Search.SourceDefinition {
+        Search.SourceDefinition(
+            id: id,
+            displayName: id,
+            emoji: "🧪",
+            properties: Search.SourceProperties(
+                authority: 0.5, freshness: 0.5, comprehensiveness: 0.5,
+                codeExamples: 0.5, hasAvailability: 0.5, designFocus: 0.5,
+                languageFocus: 0.5, searchQuality: 0.5
+            ),
+            intents: [.howTo],
+            defaultDocKindRawValue: docKind
+        )
+    }
+    return Search.SourceLookup(definitions: [
+        make(id: Shared.Constants.SourcePrefix.swiftEvolution, docKind: "evolutionProposal"),
+        make(id: Shared.Constants.SourcePrefix.swiftBook, docKind: "swiftBook"),
+        make(id: Shared.Constants.SourcePrefix.swiftOrg, docKind: "swiftOrgDoc"),
+        make(id: Shared.Constants.SourcePrefix.hig, docKind: "hig"),
+        make(id: Shared.Constants.SourcePrefix.appleArchive, docKind: "archive"),
+        make(id: Shared.Constants.SourcePrefix.appleDocs, docKind: nil),
+    ])
+}()
 
 // MARK: - C2 integration coverage
 
@@ -157,7 +196,10 @@ struct IndexDocumentKindTests {
         let dbPath = makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
-        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        // 2026-05-27 post-#1057: classifier requires the canonical
+        // SourceLookup post-fallback-cull (the 5-arm switch was
+        // dead-on-prod when the dict was supplied).
+        let idx = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: canonicalDocKindSourceLookup)
         try await idx.indexDocument(Search.IndexDocumentParams(
             uri: uri,
             source: source,
