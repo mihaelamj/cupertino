@@ -568,7 +568,7 @@ struct CrawlerTests {
             "retryAttempts": 3
         }
         """
-        let data = try #require(Data(json.utf8))
+        let data = Data(json.utf8)
         let config = try JSONDecoder().decode(Shared.Configuration.Crawler.self, from: data)
         #expect(config.htmlLinkAugmentation == true)
         #expect(config.htmlLinkAugmentationMaxRefs == 10)
@@ -590,7 +590,7 @@ struct CrawlerTests {
             "htmlLinkAugmentationMaxRefs": 25
         }
         """
-        let data = try #require(Data(json.utf8))
+        let data = Data(json.utf8)
         let config = try JSONDecoder().decode(Shared.Configuration.Crawler.self, from: data)
         #expect(config.htmlLinkAugmentation == false)
         #expect(config.htmlLinkAugmentationMaxRefs == 25)

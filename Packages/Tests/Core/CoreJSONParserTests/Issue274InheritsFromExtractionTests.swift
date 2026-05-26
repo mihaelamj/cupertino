@@ -92,7 +92,7 @@ struct Issue274InheritsFromExtractionTests {
 
     @Test("UIButton-shaped page lifts `Inherits From` titles into `inheritsFrom`")
     func uiButtonExposesInheritsFrom() throws {
-        let data = try #require(Self.Data(uiButtonJSON.utf8))
+        let data = Data(Self.uiButtonJSON.utf8)
         let url = try #require(URL(string: "https://developer.apple.com/documentation/uikit/uibutton"))
         let page = try #require(Core.JSONParser.AppleJSONToMarkdown.toStructuredPage(data, url: url))
 
@@ -102,7 +102,7 @@ struct Issue274InheritsFromExtractionTests {
 
     @Test("Page with no inheritsFrom section keeps `inheritsFrom` nil (e.g. Foundation.Data, a struct)")
     func dataStructHasNoInheritsFrom() throws {
-        let data = try #require(Self.Data(dataStruct.utf8))
+        let data = Data(Self.dataStruct.utf8)
         let url = try #require(URL(string: "https://developer.apple.com/documentation/foundation/data"))
         let page = try #require(Core.JSONParser.AppleJSONToMarkdown.toStructuredPage(data, url: url))
 
@@ -114,7 +114,7 @@ struct Issue274InheritsFromExtractionTests {
 
     @Test("`Inherits From` does NOT leak into the default-section bucket post-fix")
     func inheritsFromNotInDefaultSectionBucket() throws {
-        let data = try #require(Self.Data(uiButtonJSON.utf8))
+        let data = Data(Self.uiButtonJSON.utf8)
         let url = try #require(URL(string: "https://developer.apple.com/documentation/uikit/uibutton"))
         let page = try #require(Core.JSONParser.AppleJSONToMarkdown.toStructuredPage(data, url: url))
 
@@ -169,7 +169,7 @@ struct Issue274InheritsFromExtractionTests {
             "interfaceLanguage": "swift"
         }
         """
-        let data = try #require(Data(json.utf8))
+        let data = Data(json.utf8)
         let url = try #require(URL(string: "https://developer.apple.com/documentation/uikit/uicontrol"))
         let page = try #require(Core.JSONParser.AppleJSONToMarkdown.toStructuredPage(data, url: url))
 
@@ -199,7 +199,7 @@ struct Issue274InheritsFromExtractionTests {
 
     @Test("UIButton page populates `inheritsFromURIs` parallel to titles via doc.references lookup")
     func uiButtonResolvesInheritsFromURIs() throws {
-        let data = try #require(Self.Data(uiButtonJSON.utf8))
+        let data = Data(Self.uiButtonJSON.utf8)
         let url = try #require(URL(string: "https://developer.apple.com/documentation/uikit/uibutton"))
         let page = try #require(Core.JSONParser.AppleJSONToMarkdown.toStructuredPage(data, url: url))
 
@@ -212,7 +212,7 @@ struct Issue274InheritsFromExtractionTests {
 
     @Test("Page with no `Inherits From` section keeps `inheritsFromURIs` nil")
     func noInheritsFromMeansNilURIs() throws {
-        let data = try #require(Self.Data(dataStruct.utf8))
+        let data = Data(Self.dataStruct.utf8)
         let url = try #require(URL(string: "https://developer.apple.com/documentation/foundation/data"))
         let page = try #require(Core.JSONParser.AppleJSONToMarkdown.toStructuredPage(data, url: url))
 
@@ -262,7 +262,7 @@ struct Issue274InheritsFromExtractionTests {
             "interfaceLanguage": "swift"
         }
         """
-        let data = try #require(Data(json.utf8))
+        let data = Data(json.utf8)
         let url = try #require(URL(string: "https://developer.apple.com/documentation/uikit/uicontrol"))
         let page = try #require(Core.JSONParser.AppleJSONToMarkdown.toStructuredPage(data, url: url))
 
