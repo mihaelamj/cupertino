@@ -66,6 +66,13 @@ public struct PackagesSource: Search.SourceProvider {
     /// not search.db; the dispatcher uses `runPackageSearch` /
     /// `handleSearchPackages`.
     public var searchRoute: Search.SearchRoute { .packages }
+
+    /// 2026-05-26 audit Finding 9.7 + 11.1: per-source fetch strategy.
+    /// 3-stage pipeline (metadata refresh + archive download +
+    /// availability annotation) lifted from `CLIImpl.Command.Fetch.runPackageFetch`.
+    public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? {
+        PackagesFetchStrategy()
+    }
 }
 
 // MARK: - View-source no-op concretes

@@ -2,7 +2,6 @@ import Core
 import CoreJSONParser
 import CorePackageIndexing
 import CoreProtocols
-import Crawler
 import CrawlerModels
 import Foundation
 import Logging

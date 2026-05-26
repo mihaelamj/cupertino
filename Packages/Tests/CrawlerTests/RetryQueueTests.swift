@@ -1,4 +1,4 @@
-@testable import Crawler
+@testable import AppleDocsSource
 import CrawlerModels
 import CrawlerWebKit
 import Foundation

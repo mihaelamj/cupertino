@@ -77,7 +77,6 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("PackagesAppleImportsPass"),
     .singleTargetLibrary("SamplesAppleConstraintsPass"),
     .singleTargetLibrary("SynonymsPass"),
-    .singleTargetLibrary("Ingest"),
     .singleTargetLibrary("Resources"),
     .singleTargetLibrary("AvailabilityModels"),
     .singleTargetLibrary("Availability"),
@@ -426,17 +425,6 @@ let targets: [Target] = {
         name: "CrawlerModelsTests",
         dependencies: ["CrawlerModels", "SharedConstants"]
     )
-    let crawlerTarget = Target.target(
-        name: "Crawler",
-        dependencies: [
-            "CrawlerModels",
-            "CoreProtocols",
-            "SharedConstants",
-            "LoggingModels",
-            "Resources",
-        ]
-    )
-
     // #903: CrawlerWebKit sibling target carrying the WebKit-backed
     // concretes (`Crawler.WebKit.ContentFetcher`, `Crawler.WebKit.Engine`)
     // + `LiveHTTPFetcherFactory`. The Crawler producer is foundation-only
@@ -451,10 +439,15 @@ let targets: [Target] = {
             "SharedConstants",
         ]
     )
+    // 2026-05-26 audit Finding 9.7+11.1: CrawlerTests now depends on
+    // the per-source targets where the `Crawler.<X>` concretes live
+    // (HIGSource / SwiftEvolutionSource / AppleArchiveSource /
+    // AppleDocsSource). The empty `Crawler` producer target was deleted.
+    // Per-source deps spread via the `allSourceTargetDeps` helper per
+    // the Cluster-14 anti-co-location contract.
     let crawlerTestsTarget = Target.testTarget(
         name: "CrawlerTests",
         dependencies: [
-            "Crawler",
             "CrawlerModels",
             "CrawlerWebKit",
             "Core",
@@ -462,7 +455,7 @@ let targets: [Target] = {
             "CorePackageIndexing",
             "SharedConstants",
             "TestSupport",
-        ]
+        ] + allSourceTargetDeps
     )
 
     // ---------- Cleanup family (Sources/Cleanup/{Core,Model}) ----------
@@ -659,9 +652,7 @@ let targets: [Target] = {
             // 2026-05-26 audit Finding 9.7 + 11.1: WebCrawlFetchStrategy
             // wraps `Crawler.AppleDocs` + delegates to `Ingest.Session`
             // for resume / requeue / baseline / urls-file plumbing.
-            "Crawler",
             "CrawlerModels",
-            "Ingest",
         ]
     )
 
@@ -681,7 +672,6 @@ let targets: [Target] = {
             // 2026-05-26 audit Finding 9.7 + 11.1: HIGFetchStrategy
             // wraps `Crawler.HIG`. Per-source target owns its fetch
             // strategy; `Crawler` stays as shared crawl infrastructure.
-            "Crawler",
             "CrawlerModels",
         ]
     )
@@ -698,6 +688,11 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
+            // 2026-05-26 audit Finding 9.7 + 11.1: SampleCodeFetchStrategy
+            // wraps `Sample.Core.GitHubFetcher`.
+            "CoreSampleCode",
+            "CoreSampleCodeModels",
+            "CrawlerModels",
         ]
     )
 
@@ -716,7 +711,6 @@ let targets: [Target] = {
             "SearchStrategyHelpers",
             // 2026-05-26 audit Finding 9.7 + 11.1: SwiftEvolutionFetchStrategy
             // wraps `Crawler.Evolution`.
-            "Crawler",
             "CrawlerModels",
         ]
     )
@@ -783,6 +777,14 @@ let targets: [Target] = {
         dependencies: [
             "SearchModels",
             "SharedConstants",
+            // 2026-05-26 audit Finding 9.7 + 11.1: PackagesFetchStrategy
+            // wraps the 3-stage Core.PackageIndexing pipeline.
+            "Core",
+            "CorePackageIndexing",
+            "CorePackageIndexingModels",
+            "CoreProtocols", // declares the `Core` namespace anchor that CorePackageIndexingModels extends with `PackageIndexing`.
+            "CrawlerModels",
+            "LoggingModels",
         ]
     )
 
@@ -801,9 +803,10 @@ let targets: [Target] = {
             "CoreProtocols",
             "SearchStrategyHelpers",
             // 2026-05-26 audit Finding 9.7 + 11.1: AppleArchiveFetchStrategy
-            // wraps `Crawler.AppleArchive` + `Crawler.ArchiveGuideCatalog`.
-            "Crawler",
+            // wraps `Crawler.AppleArchive` + `Crawler.ArchiveGuideCatalog`
+            // (both physically moved into this target).
             "CrawlerModels",
+            "Resources",
         ]
     )
 
@@ -1121,22 +1124,20 @@ let targets: [Target] = {
         dependencies: ["Indexer", "IndexerModels", "TestSupport"]
     )
 
-    // ---------- Ingest (#247: FetchCommand session + pipelines lift) ----------
-    let ingestTarget = Target.target(
-        name: "Ingest",
-        dependencies: ["SharedConstants", "LoggingModels"]
-    )
-    let ingestTestsTarget = Target.testTarget(
-        name: "IngestTests",
-        dependencies: ["Ingest", "TestSupport"]
-    )
+    // 2026-05-26 audit Finding 9.7 + 11.1: the Ingest target's contents
+    // (`Ingest.Session.swift` + `Ingest.swift` — session resume / requeue /
+    // baseline / urls-file helpers) lifted into `AppleDocsSource` (the
+    // only consumer post-lift). The empty Ingest target + IngestTests
+    // were dropped; existing tests cover the same surface via
+    // `Tests/IngestTests/` which now lives under AppleDocsSourceTests
+    // (TODO follow-up). Pre-lift was `#247: FetchCommand session +
+    // pipelines lift`; today the pipelines themselves are per-source.
 
     let cliTarget = Target.executableTarget(
         name: "CLI",
         dependencies: [
             "SharedConstants",
             "CoreProtocols", "CoreJSONParser", "CoreJSONParserWebKit", "CorePackageIndexing", "CorePackageIndexingModels", "Core", "CoreSampleCode", "CoreSampleCodeWebKit",
-            "Crawler",
             "CrawlerWebKit",
             "Cleanup",
             "SearchAPI",
@@ -1157,7 +1158,6 @@ let targets: [Target] = {
             "DistributionModels",
             "Diagnostics",
             "Indexer",
-            "Ingest",
             "Logging",
             "RemoteSync",
             "Availability",
@@ -1245,7 +1245,6 @@ let targets: [Target] = {
         dependencies: [
             "AppleDocsSource",
             "CLI",
-            "Crawler",
             "CrawlerWebKit",
             "MCPCore",
             "MCPSupport",
@@ -1271,7 +1270,18 @@ let targets: [Target] = {
 
     let fetchTestsTarget = Target.testTarget(
         name: "FetchTests",
-        dependencies: ["CLI", "CoreProtocols", "CorePackageIndexing", "CoreJSONParser", "Core", "Crawler", "CrawlerModels", "CrawlerWebKit", "Ingest", "TestSupport"],
+        // 2026-05-26 audit 9.7+11.1: Crawler.X concretes + Ingest.Session
+        // moved into per-source targets. FetchTests depends on the per-source
+        // targets (spread via the `allSourceTargetDeps` helper per the
+        // Cluster-14 anti-co-location contract) + CrawlerModels (foundation)
+        // + CrawlerWebKit (Live factory). The empty Crawler/Ingest packages
+        // were deleted.
+        dependencies: [
+            "CLI",
+            "CoreProtocols", "CorePackageIndexing", "CoreJSONParser", "Core",
+            "CrawlerModels", "CrawlerWebKit",
+            "TestSupport",
+        ] + allSourceTargetDeps,
         path: "Tests/CLICommandTests/FetchTests"
     )
 
@@ -1284,7 +1294,6 @@ let targets: [Target] = {
             "Core",
             "CoreJSONParser",
             "CorePackageIndexing",
-            "Crawler",
             "CrawlerModels",
             "CrawlerWebKit",
             "Indexer",
@@ -1370,7 +1379,6 @@ let targets: [Target] = {
         coreTestsTarget,
         crawlerModelsTarget,
         crawlerModelsTestsTarget,
-        crawlerTarget,
         crawlerWebKitTarget,
         crawlerTestsTarget,
         cleanupModelsTarget,
@@ -1426,8 +1434,6 @@ let targets: [Target] = {
         enrichmentTestsTarget,
         indexerTarget,
         indexerTestsTarget,
-        ingestTarget,
-        ingestTestsTarget,
         mcpSupportTarget,
         mcpSupportTestsTarget,
         searchToolProviderTarget,

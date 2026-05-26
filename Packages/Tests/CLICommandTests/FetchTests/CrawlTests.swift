@@ -2,7 +2,6 @@ import AppKit
 @testable import CLI
 @testable import Core
 import CoreProtocols
-import Crawler
 import CrawlerModels
 import CrawlerWebKit
 import Foundation

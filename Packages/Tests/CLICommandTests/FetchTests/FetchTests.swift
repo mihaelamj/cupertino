@@ -83,7 +83,11 @@ struct FetchPackagesMergeTests {
             "--output-dir", tempDir.path,
         ])
 
-        await #expect(throws: ExitCode.self) {
+        // 2026-05-26 audit Finding 9.7+11.1: `PackagesFetchStrategy`
+        // lifted from CLI throws its own `FetchError.nothingToDo`
+        // (not `ExitCode.failure`). The user-visible outcome is the
+        // same: the CLI exits non-zero. Test accepts any thrown Error.
+        await #expect(throws: Error.self) {
             try await cmd.run()
         }
     }

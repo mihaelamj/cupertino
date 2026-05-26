@@ -100,20 +100,24 @@ EXEMPT_TARGETS=(
     CoreJSONParserWebKit
     CoreSampleCodeWebKit
     # 2026-05-26 audit Finding 9.7 + 11.1: per-source targets that
-    # ship a `Search.SourceFetchStrategy` concrete. Each is a mini
-    # composition-root for its fetch concern — it owns the per-source
-    # FetchStrategy that wraps the matching `Crawler.<X>` concrete
-    # (HIGSource → Crawler.HIG; AppleArchiveSource → Crawler.AppleArchive;
-    # SwiftEvolutionSource → Crawler.Evolution; AppleDocsSource →
-    # Crawler.AppleDocs + Ingest.Session). The "different concern"
-    # filter in Phase B (#503) was meant to block e.g. ServicesModels
-    # (search-result-shape concern) from reaching for Crawler
-    # (HTTP-fetch concern). Per-source targets and their crawlers
-    # are the SAME concern: the source owns its fetch.
-    AppleDocsSource
-    HIGSource
-    AppleArchiveSource
-    SwiftEvolutionSource
+    # ship a `Search.SourceFetchStrategy` concrete (or that own a
+    # bespoke producer's machinery for THEIR concern). The Phase B
+    # rule (#503) forbids cross-concern producer imports. A per-source
+    # target importing the producer for ITS OWN concern is NOT a
+    # cross-concern import — `PackagesSource` importing
+    # `CorePackageIndexing` is the same concern (Swift Packages);
+    # `SampleCodeSource` importing `CoreSampleCode` is the same
+    # concern (Apple sample-code). The Crawler.<X> concretes for
+    # HIG / Evolution / AppleArchive / AppleDocs were physically
+    # lifted INTO their respective source targets in this audit, so
+    # those four don't need an exemption. Packages + Sample-code
+    # still depend on the cross-cutting CoreSampleCode /
+    # CorePackageIndexing producers (the SwiftPackageIndex resolver
+    # + GitHubFetcher live there). Exempting acknowledges the
+    # "per-source target IS a composition root for its concern"
+    # architectural extension to the Phase B contract.
+    PackagesSource
+    SampleCodeSource
 )
 
 # Grandfathered targets — pre-existing leaks acknowledged here so

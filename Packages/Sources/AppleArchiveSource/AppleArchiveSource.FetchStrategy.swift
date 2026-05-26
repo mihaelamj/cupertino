@@ -1,4 +1,3 @@
-import Crawler
 import CrawlerModels
 import Foundation
 import LoggingModels

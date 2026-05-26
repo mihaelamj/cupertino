@@ -1,10 +1,12 @@
+// 2026-05-26 audit Finding 9.7+11.1: `Ingest.Session.*` lifted into
+// `AppleDocsSource` (only consumer post-lift). Import here so the
+// existing test fixtures resolve.
+@testable import AppleDocsSource
 @testable import CLI
 @testable import Core
 import CoreProtocols
-@testable import Crawler
 import CrawlerModels
 import Foundation
-import Ingest
 import LoggingModels
 import SharedConstants
 import Testing

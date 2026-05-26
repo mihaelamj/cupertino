@@ -1,7 +1,6 @@
 @testable import Core
 @testable import CoreJSONParser
 import CoreProtocols
-@testable import Crawler
 import CrawlerModels
 import CrawlerWebKit
 import Foundation

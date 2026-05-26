@@ -74,4 +74,9 @@ public struct SampleCodeSource: Search.SourceProvider {
     /// (`runSampleSearch` / `handleSearchSamples`); not the default
     /// `.docs` route.
     public var searchRoute: Search.SearchRoute { .samples }
+
+    /// 2026-05-26 audit Finding 9.7 + 11.1: per-source fetch strategy.
+    public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? {
+        SampleCodeFetchStrategy()
+    }
 }
