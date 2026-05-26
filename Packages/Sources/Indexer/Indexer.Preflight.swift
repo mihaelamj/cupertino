@@ -112,8 +112,9 @@ extension Indexer {
             fm: FileManager
         ) -> [String] {
             var lines = ["  Samples (samples.db)"]
-            let samplesURL = samplesDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-                ?? sampleCodeDirectory
+            // #1046: resolve symlinks before counting zip files.
+            let samplesURL = (samplesDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+                ?? sampleCodeDirectory).resolvingSymlinksInPath()
             if fm.fileExists(atPath: samplesURL.path) {
                 let zipCount = (try? fm.contentsOfDirectory(atPath: samplesURL.path))?
                     .filter { $0.hasSuffix(".zip") }.count ?? 0
@@ -150,11 +151,13 @@ extension Indexer {
             maxFrameworks: Int = 5,
             maxSamples: Int = 3
         ) -> (checked: Int, withAvailability: Int) {
-            guard FileManager.default.fileExists(atPath: docsDir.path) else {
+            // #1046: resolve symlinks on the docs root.
+            let docsRoot = docsDir.resolvingSymlinksInPath()
+            guard FileManager.default.fileExists(atPath: docsRoot.path) else {
                 return (0, 0)
             }
             guard let frameworks = try? FileManager.default.contentsOfDirectory(
-                at: docsDir,
+                at: docsRoot,
                 includingPropertiesForKeys: [.isDirectoryKey],
                 options: [.skipsHiddenFiles]
             ) else {
@@ -181,8 +184,10 @@ extension Indexer {
             at packagesURL: URL
         ) -> (packages: Int, sidecars: Int) {
             let fm = FileManager.default
+            // #1046: resolve symlinks on the packages root.
+            let packagesRoot = packagesURL.resolvingSymlinksInPath()
             guard let owners = try? fm.contentsOfDirectory(
-                at: packagesURL,
+                at: packagesRoot,
                 includingPropertiesForKeys: [.isDirectoryKey],
                 options: [.skipsHiddenFiles]
             ) else { return (0, 0) }

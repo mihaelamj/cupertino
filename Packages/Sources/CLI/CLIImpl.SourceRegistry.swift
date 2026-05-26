@@ -136,7 +136,16 @@ extension CLIImpl {
         Dictionary(
             uniqueKeysWithValues: registry.allEnabled.map { provider in
                 let dir: URL? = provider.fetchInfo.flatMap { fi in
-                    paths.directory(named: fi.defaultOutputDirKey.rawValue)
+                    // #1046 (+ #779 cross-reference): resolve symlinks
+                    // at construction so per-source strategies receive
+                    // the same resolved URL shape `Indexer.DocsService.optionalDir`
+                    // produces for the legacy typed fields. Without
+                    // this resolution, `FileManager.contentsOfDirectory(at:)`
+                    // throws ENOTDIR (NSCocoa 256) on leaf directory
+                    // symlinks. The same bug took down the 11h15m
+                    // 2026-05-18 reindex; the #779 fix landed at
+                    // `optionalDir` but Gap-4's dict bypassed it.
+                    paths.directory(named: fi.defaultOutputDirKey.rawValue).resolvingSymlinksInPath()
                 }
                 return (provider.definition.id, dir)
             }

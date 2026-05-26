@@ -115,8 +115,11 @@ extension Availability {
         // MARK: - Private Methods - Discovery
 
         private func discoverFrameworks() throws -> [String] {
+            // #1046: resolve symlinks — corpus dirs are often symlinked
+            // in dev setups (~/.cupertino-dev/<source> → ~/.cupertino/<source>).
+            let walkRoot = docsDirectory.resolvingSymlinksInPath()
             let contents = try FileManager.default.contentsOfDirectory(
-                at: docsDirectory,
+                at: walkRoot,
                 includingPropertiesForKeys: [.isDirectoryKey],
                 options: [.skipsHiddenFiles]
             )
@@ -130,8 +133,12 @@ extension Availability {
         private func collectJSONFiles(from frameworks: [String]) throws -> [(framework: String, file: URL)] {
             var files: [(String, URL)] = []
 
+            // #1046: resolve symlinks once on the root; per-framework
+            // appending then operates on the resolved path so the
+            // contentsOfDirectory call gets a non-symlink URL.
+            let walkRoot = docsDirectory.resolvingSymlinksInPath()
             for framework in frameworks {
-                let frameworkDir = docsDirectory.appendingPathComponent(framework)
+                let frameworkDir = walkRoot.appendingPathComponent(framework)
                 let contents = try FileManager.default.contentsOfDirectory(
                     at: frameworkDir,
                     includingPropertiesForKeys: nil,

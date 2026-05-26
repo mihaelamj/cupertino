@@ -170,10 +170,13 @@ extension MCP.Support {
             }
 
             // Add Swift Evolution proposals
-            if FileManager.default.fileExists(atPath: evolutionDirectory.path) {
+            // #1046: resolve symlinks before listing — common dev setup
+            // symlinks corpus dirs under ~/.cupertino-dev/.
+            let evolutionRoot = evolutionDirectory.resolvingSymlinksInPath()
+            if FileManager.default.fileExists(atPath: evolutionRoot.path) {
                 do {
                     let files = try FileManager.default.contentsOfDirectory(
-                        at: evolutionDirectory,
+                        at: evolutionRoot,
                         includingPropertiesForKeys: nil
                     )
 
@@ -365,9 +368,9 @@ extension MCP.Support {
                     throw Shared.Core.ToolError.invalidURI(uri)
                 }
 
-                // Find the proposal file
+                // Find the proposal file (#1046: resolve symlinks).
                 let files = try FileManager.default.contentsOfDirectory(
-                    at: evolutionDirectory,
+                    at: evolutionDirectory.resolvingSymlinksInPath(),
                     includingPropertiesForKeys: nil
                 )
 
@@ -549,8 +552,9 @@ extension MCP.Support {
         private func listArchiveResources() throws -> [MCP.Core.Protocols.Resource] {
             var resources: [MCP.Core.Protocols.Resource] = []
 
+            // #1046: resolve symlinks before listing.
             let guides = try FileManager.default.contentsOfDirectory(
-                at: archiveDirectory,
+                at: archiveDirectory.resolvingSymlinksInPath(),
                 includingPropertiesForKeys: nil
             )
 
