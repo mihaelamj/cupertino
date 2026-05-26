@@ -43,16 +43,28 @@ extension RemoteSync {
         /// App version for state tracking
         private let appVersion: String
 
+        /// #1042 Cluster 11 sub-2: composition-root-supplied URI-scheme
+        /// dispatch map. Pre-fix the dict was a static `phaseURIPrefixes`
+        /// hardcoding 5 schemes; new sources required editing the static.
+        /// Post-fix the composition root supplies a Phase→scheme dict
+        /// derived from the production source registry (each
+        /// SourceProvider's `definition.id` is the canonical scheme for
+        /// its phase). Defaults to the historical 5-entry literal so
+        /// callers that don't supply one stay green.
+        private let phaseURIPrefixesOverride: [IndexState.Phase: String]
+
         // MARK: - Initialization
 
         public init(
             fetcher: GitHubFetcher = GitHubFetcher(),
             stateFileURL: URL,
-            appVersion: String
+            appVersion: String,
+            phaseURIPrefixes: [IndexState.Phase: String] = [:]
         ) {
             self.fetcher = fetcher
             self.stateFileURL = stateFileURL
             self.appVersion = appVersion
+            phaseURIPrefixesOverride = phaseURIPrefixes
             startTime = Date()
             state = IndexState(version: appVersion)
         }
@@ -291,7 +303,13 @@ extension RemoteSync {
                 .replacingOccurrences(of: ".json", with: "")
                 .replacingOccurrences(of: ".md", with: "")
 
-            let scheme = Self.phaseURIPrefixes[phase] ?? phase.rawValue
+            // #1042 Cluster 11 sub-2: composition-root override wins;
+            // falls back to the static default; ultimate fallback is
+            // the phase's rawValue (so unknown phases produce a
+            // semi-sane URI rather than crashing).
+            let scheme = phaseURIPrefixesOverride[phase]
+                ?? Self.phaseURIPrefixes[phase]
+                ?? phase.rawValue
             // Two URI shapes pre-#1042: frameworked sources (docs,
             // archive, packages) carry `<scheme>://<item>/<baseName>`;
             // single-tree sources (evolution, swiftOrg) carry just
