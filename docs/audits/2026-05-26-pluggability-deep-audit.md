@@ -264,9 +264,16 @@ Group the findings into issues by *fix shape*, not by file:
 
 
 
-## Action items
+## Action items (close-out: in flight 2026-05-26)
 
-- [ ] File a GitHub issue for **Finding 7.1** (Doctor `healthChecks` per-source coverage gap).
-- [ ] File a GitHub issue for **Finding 7.2** (Doctor `printSchemaVersions` hardcoded entries).
-- [ ] File a GitHub issue for **Layer 6 maintenance trap** (`Shared.Constants.Search.availableSources` static fallback).
-- [ ] Complete Layer 8 test-coverage sweep.
+- [x] **14.5** closed — culled dead arms + closed latent `--docs-dir` override bug (`b3fa1b9f`).
+- [x] **7.2** closed — `printSchemaVersions` entries list registry-derived (`c3864911`).
+- [x] **7.1** closed — `Doctor.healthChecks` registry-derived; `SearchHealthCheck` parameterised on descriptor; coverage-invariance test pins the contract (`c3864911`).
+- [x] **14.1** closed — `SaveSiblingGate.classifyPostSplitSourceID` switches on `destinationDB` (`c3864911`).
+- [x] **14.3** closed — `Services.ReadService.resolveSource` consumes `destinationsByID` dict (`c3864911`).
+- [x] **14.2** closed — `CLIImpl.Command.Search.run` dispatches via `provider.searchRoute` (in flight).
+- [x] **14.4** closed — MCP `CompositeToolProvider.handleSearch` consumes `searchToolRoutesByID` dict; Serve composition root wires it; test fixture pulls canonical map from new `CupertinoComposition` target (in flight).
+- [ ] **6.0** in flight — make formatter `availableSources` non-optional + delete the `Shared.Constants.Search.availableSources` static.
+- [ ] **9.7 + 11.1** queued — lift `Crawler.<X>` concretes into `<X>Source` targets + collapse `cupertino fetch` dispatch behind a `provider.makeFetchStrategy(...)` protocol method.
+- [ ] **9.2** queued — cull dead-on-prod statics (`SourcePrefix.allPrefixes`, `DisplayName.allSourceInfos`, `DatabaseDescriptor.allKnown`) after the dependents (above) are clean.
+- [x] **Architecture** — new `CupertinoComposition` SPM target holds the single canonical `makeProductionSourceRegistry()` factory. Both CLI's `CLIImpl.makeProductionSourceRegistry()` and `SearchToolProviderTests`'s fixture iterate the same registry. Adding a new source = ONE `.register(<X>Source())` line in `Cupertino.CompositionRoot.swift`. All downstream consumers (Doctor, MCP, CLI dispatch, sibling-gate, read-service, footer, etc.) pick up the new source automatically.

@@ -272,6 +272,16 @@ extension CLIImpl.Command {
                 searchToolSourceEnumValues.append(Shared.Constants.SourcePrefix.appleSampleCode)
             }
 
+            // 2026-05-26 audit Finding 14.4: derive source-id →
+            // searchRoute dispatch map from the production source
+            // registry. CompositeToolProvider.handleSearch consults
+            // this dict instead of switching on source-id literals
+            // (pre-fix the switch hardcoded 9 source ids).
+            var searchToolRoutesByID: [String: SearchModels.Search.SearchRoute] = [:]
+            for provider in registry.allEnabled {
+                searchToolRoutesByID[provider.definition.id] = provider.searchRoute
+            }
+
             let toolProvider = CompositeToolProvider(
                 searchIndex: searchIndex,
                 sampleDatabase: sampleIndex,
@@ -282,7 +292,8 @@ extension CLIImpl.Command {
                 packagesSearcher: packagesSearcher,
                 documentResourceProvider: resourceProvider,
                 searchIndexDisabledReason: searchIndexDisabledReason,
-                searchToolSourceEnumValues: searchToolSourceEnumValues
+                searchToolSourceEnumValues: searchToolSourceEnumValues,
+                searchToolRoutesByID: searchToolRoutesByID
             )
             await server.registerToolProvider(toolProvider)
 

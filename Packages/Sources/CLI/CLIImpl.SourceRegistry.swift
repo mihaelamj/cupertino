@@ -1,14 +1,7 @@
-import AppleArchiveSource
-import AppleDocsSource
+import CupertinoComposition
 import Foundation
-import HIGSource
-import PackagesSource
-import SampleCodeSource
 import SearchModels
 import SharedConstants
-import SwiftBookSource
-import SwiftEvolutionSource
-import SwiftOrgSource
 
 // MARK: - CLIImpl.makeProductionSourceRegistry
 
@@ -44,23 +37,16 @@ extension CLIImpl {
     /// `Search.SourceLookup` derive it from
     /// `Search.SourceLookup(definitions: makeProductionSourceRegistry().allEnabled.map(\.definition))`.
     static func makeProductionSourceRegistry() -> Search.SourceRegistry {
-        var registry = Search.SourceRegistry()
-        registry.register(AppleDocsSource())
-        registry.register(HIGSource())
-        registry.register(SampleCodeSource())
-        registry.register(AppleArchiveSource())
-        registry.register(SwiftEvolutionSource())
-        registry.register(SwiftOrgSource())
-        registry.register(SwiftBookSource())
-        registry.register(PackagesSource())
-        // #1007 epic complete; per-source-db-split.md steps 1-4 layered
-        // on top: registry carries all 8 sources; sourceLookup derived
-        // from the registry (#1025); indexer dict + strategies list
-        // post-step-4 filter by `destinationDB != .packages` (transitional;
-        // the original #1027 / #1029 filter was `== .search`).
-        // Step 5 replaces the transitional filter with
-        // `Dictionary(grouping: by: \.destinationDB)`.
-        return registry
+        // 2026-05-26 audit: single canonical declaration lives in
+        // `CupertinoComposition.makeProductionSourceRegistry()`. Adding
+        // a new source = one `.register(<X>Source())` line in
+        // `Cupertino.CompositionRoot.swift`; CLI, MCP, Doctor,
+        // SaveSiblingGate, ReadService, and the SearchToolProvider
+        // test fixture all consume the same registry through this
+        // single factory. The legacy per-source target imports moved
+        // out of this file; CLI no longer imports the per-source
+        // targets directly because the composition root does.
+        CupertinoComposition.makeProductionSourceRegistry()
     }
 
     /// Set of database descriptors the production `cupertino-docs` bundle

@@ -73,6 +73,15 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     /// constants.
     private let searchToolSourceEnumValues: [String]
 
+    /// 2026-05-26 audit Finding 14.4: registry-derived source-id →
+    /// SearchRoute dispatch map. `handleSearch` consults this dict
+    /// instead of switching on source-id literals. Pre-fix the
+    /// dispatcher hardcoded 9 source-ids in a switch; adding a new
+    /// source required editing this file. Post-fix the route is the
+    /// source's own declared property; new sources plug in via their
+    /// `SourceProvider.searchRoute`.
+    private let searchToolRoutesByID: [String: Search.SearchRoute]
+
     /// Primary init used by the CLI composition root. Each cross-package
     /// surface arrives pre-wired as a protocol-typed value so this file
     /// doesn't have to import the Search / SampleIndex / Services
@@ -87,7 +96,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         packagesSearcher: (any Search.PackagesSearcher)? = nil,
         documentResourceProvider: (any MCP.Core.ResourceProvider)? = nil,
         searchIndexDisabledReason: String? = nil,
-        searchToolSourceEnumValues: [String] = []
+        searchToolSourceEnumValues: [String] = [],
+        searchToolRoutesByID: [String: Search.SearchRoute] = [:]
     ) {
         self.searchIndex = searchIndex
         self.sampleDatabase = sampleDatabase
@@ -99,6 +109,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         self.documentResourceProvider = documentResourceProvider
         self.searchIndexDisabledReason = searchIndexDisabledReason
         self.searchToolSourceEnumValues = searchToolSourceEnumValues
+        self.searchToolRoutesByID = searchToolRoutesByID
     }
 
     /// True when the server should advertise search.db-dependent tools.
@@ -625,11 +636,25 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             contributingSources: dispatchDecision.sources
         )
 
-        // Route based on source parameter
-        // Default (nil) now searches ALL sources for better results (#81)
+        // 2026-05-26 audit Finding 14.4: dispatch via
+        // `Search.SourceProvider.searchRoute` instead of switching on
+        // source-id literals. Pre-fix this switch hardcoded 9 source
+        // ids; adding a new source required editing this file. The
+        // route map is wired at Serve composition root from
+        // `registry.allEnabled.reduce { $0[$1.definition.id] =
+        // $1.provider.searchRoute }` so a new source plugs in by
+        // declaring its searchRoute and the dispatcher finds it.
+        //
+        // Legacy alias `apple-sample-code` is aliased to `samples`
+        // (one-DB-two-tracks per the SampleCodeSource design).
+        // Empty source / "all" / unrecognised → unified fan-out.
         let raw: MCP.Core.Protocols.CallToolResult
-        switch source {
-        case Shared.Constants.SourcePrefix.samples, Shared.Constants.SourcePrefix.appleSampleCode:
+        let canonicalSourceID = source == Shared.Constants.SourcePrefix.appleSampleCode
+            ? Shared.Constants.SourcePrefix.samples
+            : source
+        let route = canonicalSourceID.flatMap { searchToolRoutesByID[$0] } ?? .unified
+        switch route {
+        case .samples:
             raw = try await handleSearchSamples(
                 query: query,
                 framework: framework,
@@ -640,18 +665,14 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 minWatchOS: minWatchOS,
                 minVisionOS: minVisionOS
             )
-        case Shared.Constants.SourcePrefix.hig:
+        case .hig:
             raw = try await handleSearchHIG(
                 query: query,
                 framework: framework,
                 limit: limit
             )
-        case Shared.Constants.SourcePrefix.appleDocs,
-             Shared.Constants.SourcePrefix.appleArchive,
-             Shared.Constants.SourcePrefix.swiftEvolution,
-             Shared.Constants.SourcePrefix.swiftOrg,
-             Shared.Constants.SourcePrefix.swiftBook:
-            // Specific source requested: search only that source
+        case .docs:
+            // Specific docs-tier source requested: search only that source
             raw = try await handleSearchDocs(
                 query: query,
                 source: source,
@@ -666,7 +687,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 minVisionOS: minVisionOS,
                 minSwift: minSwift
             )
-        case Shared.Constants.SourcePrefix.packages:
+        case .packages:
             // `#789`-style fix: packages live in `packages.db` with a
             // richer schema (BM25 + chunk + apple_imports_json); the
             // pre-PR-2 fall-through to `handleSearchDocs(source:"packages")`
@@ -678,8 +699,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 limit: limit,
                 appleImports: appleImports
             )
-        default:
-            // Default (nil or "all"): search ALL sources for comprehensive results
+        case .unified:
+            // Default (nil source / "all" / future registered sources
+            // whose searchRoute is .unified): search ALL sources for comprehensive results
             raw = try await handleSearchAll(
                 query: query,
                 framework: framework,

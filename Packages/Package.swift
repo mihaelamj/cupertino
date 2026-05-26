@@ -772,6 +772,18 @@ let targets: [Target] = {
         ]
     )
 
+    // 2026-05-26 audit follow-up: single canonical declaration of the
+    // production source set. Both CLI's CLIImpl.makeProductionSourceRegistry
+    // and SearchToolProviderTests' MCP route-map fixture delegate
+    // here so adding a new source = one register-call in
+    // Cupertino.CompositionRoot.swift, and no test fixture drifts.
+    let cupertinoCompositionTarget = Target.target(
+        name: "CupertinoComposition",
+        dependencies: [
+            "SearchModels",
+        ] + allSourceTargetDeps
+    )
+
     let sampleIndexTarget = Target.target(
         name: "SampleIndex",
         dependencies: ["SampleIndexModels", "SearchModels", "SharedConstants", "LoggingModels", "ASTIndexer"]
@@ -864,6 +876,11 @@ let targets: [Target] = {
             "MCPSharedTools",
             "ASTIndexer",
             "TestSupport",
+            // 2026-05-26 audit Finding 14.4: convenience-init fixture
+            // sources the canonical route map from the production
+            // composition root so adding a new <X>Source automatically
+            // extends the test fixture's route dispatch.
+            "CupertinoComposition",
         ]
     )
 
@@ -1090,6 +1107,7 @@ let targets: [Target] = {
             "SearchAPI",
             "SearchSQLite",
         ] + allSourceTargetDeps + [
+            "CupertinoComposition",
             "AppleConstraintsPass",
             "HierarchyPass",
             "PackagesAppleConstraintsPass",
@@ -1344,6 +1362,7 @@ let targets: [Target] = {
         swiftBookSourceTarget,
         packagesSourceTarget,
         appleArchiveSourceTarget,
+        cupertinoCompositionTarget,
         sampleIndexTarget,
         sampleIndexTestsTarget,
         sampleIndexSQLiteTarget,
