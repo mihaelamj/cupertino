@@ -159,13 +159,15 @@ Return their stored UTF-8 content as-is, README markdown for sample projects, fi
 
 ## Error handling
 
-### Document not found in any docs database
+### Document not found in `<per-source DB filename>`
 
 ```
-Error: Document not found in any docs database: apple-docs://invalid/path
+Error: Document not found in hig.db: hig://buttons/invalid-button
 ```
 
-**Solutions:** check spelling; run `cupertino search` to find valid URIs; ensure the doc is indexed (`cupertino save --source apple-docs`). Note that post-#1037 each docs source has its own DB, so a missing `hig://` URI means `hig.db` doesn't carry that row, not that `search.db` is unfound.
+The diagnostic names the actual per-source DB the read resolved to (`apple-documentation.db`, `hig.db`, `apple-archive.db`, `swift-evolution.db`, `swift-org.db`, `swift-book.db`). Pre-#1037 the message read `Document not found in search.db` because every docs lookup hit one file; post-#1037 each docs source owns its own SQLite file, so the missing row's location is unambiguous in the diagnostic.
+
+**Solutions:** check spelling; run `cupertino search` to find valid URIs; ensure the doc is indexed (`cupertino save --source <id>` for the source named in the error).
 
 ### Not found in apple-sample-code.db
 
