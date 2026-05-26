@@ -32,6 +32,21 @@ import Testing
 // suite intentionally lands with many assertions failing; each follow-
 // up commit drives one cluster green.
 //
+// HONEST STATUS — see issue #1045: this suite asserts STRUCTURAL seams
+// exist (override parameter exists, closed enum became RawRepresentable,
+// etc.), not BEHAVIOURAL pluggability (production composition root
+// actually supplies registry-derived values to those seams). A
+// 2026-05-26 post-audit found that 6 of 7 override parameters declared
+// here were never supplied at production call sites; 5 wiring batches
+// (commits 1adb8bc5 → b01ca44d) closed 3 of them end-to-end and added
+// factory-level seams for 1 more. The remaining 4 gaps (SmartQuery
+// weights, 13 Footer.Search call sites, DocKind switch, DocsIndexingInput
+// typed-per-source fields) are tracked in #1045 with explicit
+// acceptance criteria. When #1045 lands, this suite's assertions
+// should be reframed from \"structural\" to \"behavioural\" — e.g.
+// \"a registered fake source's id appears in SmartQuery's weights dict
+// at production runtime\", not just \"the override parameter exists\".
+//
 // Each assertion's status comment names the violation cluster + the
 // audit's punch-list rank. When an assertion is `false`, the cluster is
 // still outstanding; the comment says how to fix it.

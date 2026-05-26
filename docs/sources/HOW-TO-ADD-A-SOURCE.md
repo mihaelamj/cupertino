@@ -9,11 +9,12 @@
 - Batch 4: `SmartReport` CLI footer tips + `readFullCommand` registry-derived
 - Batch 5: `Services.Formatter.Footer.Search.{singleSource, unified}` factories accept `availableSources`
 
-**Still TODO (production wiring gaps from the audit):**
-- `Search.SmartQuery.sourceWeightsOverride` is declared on the protocol but never supplied at the production composition site (the hand-tuned RRF weights in the static literal stay live). Wiring requires either a derivation rule from `Search.SourceProperties.searchQuality` or a new `Search.SourceProperties.fusionWeight` field.
-- 13 `Footer.Search.singleSource` call sites in HIG/Samples/Frameworks formatters still pass `availableSources: nil`. Wiring each requires the calling formatter's input type to carry the list.
-- `SearchSQLite.DocKind.kind(source:…)` switch has 6 hardcoded source-id arms with a `.unknown` fallback for new sources. Fix: each `Search.SourceProvider` declares its `Search.DocKind`.
-- `CLIImpl.Command.Save.Indexers.resolveSourceDirectory(for:input:)` 7-arm switch on `provider.definition.id` maps to 5 typed fields on `Search.DocsIndexingInput`. Adding a new source needs both a new input field and a new switch arm. Fix: `DocsIndexingInput.directoryByKey: [String: URL?]` keyed by `provider.fetchInfo?.defaultOutputDirKey.rawValue`.
+**Still TODO (production wiring gaps from the audit)** — tracked at [#1045](https://github.com/mihaelamj/cupertino/issues/1045) with explicit acceptance criteria so these don't slide through the cracks behind the false "26/26 green" claim:
+
+- `Search.SmartQuery.sourceWeightsOverride` is declared on the protocol but never supplied at the production composition site (the hand-tuned RRF weights in the static literal stay live). Wiring requires either a derivation rule from `Search.SourceProperties.searchQuality` or a new `Search.SourceProperties.fusionWeight` field. (Acceptance #1 in #1045)
+- 13 `Footer.Search.singleSource` call sites in HIG/Samples/Frameworks formatters still pass `availableSources: nil`. Wiring each requires the calling formatter's input type to carry the list. (Acceptance #2 in #1045)
+- `SearchSQLite.DocKind.kind(source:…)` switch has 6 hardcoded source-id arms with a `.unknown` fallback for new sources. Fix: each `Search.SourceProvider` declares its `Search.DocKind`. (Acceptance #3 in #1045)
+- `CLIImpl.Command.Save.Indexers.resolveSourceDirectory(for:input:)` 7-arm switch on `provider.definition.id` maps to 5 typed fields on `Search.DocsIndexingInput`. Adding a new source needs both a new input field and a new switch arm. Fix: `DocsIndexingInput.directoryByKey: [String: URL?]` keyed by `provider.fetchInfo?.defaultOutputDirKey.rawValue`. (Acceptance #4 in #1045)
 
 **Naming asymmetry to remember**: `SampleCodeSource.destinationDB == .appleSampleCode` (not `.samples`), and `PackagesSource.destinationDB == .packages` (not `.swiftPackages` — the rename target). Consumer code that needs to identify "search.db-family sources" MUST exclude both `.appleSampleCode` and `.packages` to skip the two non-search-tier destinations.
 
