@@ -1,6 +1,6 @@
 # How to add a new content source
 
-**State**: living doc. Reflects the post-#1042 pluggability arc as of 2026-05-26. Contract status: **23 of 26 assertions green** (down from 14 OUTSTANDING at the start of the day's autonomous run). 3 still outstanding, all needing a `Search.SourceProvider` protocol extension.
+**State**: living doc. Reflects the post-#1042 pluggability arc as of 2026-05-26. Contract status: **26 of 26 assertions green**. Two architectural follow-ups remain queued but are not blocking the structural pluggability claim: rewiring the CLI + MCP search dispatch switches to iterate the new `Search.SourceProvider.searchRoute` property (Cluster 8 follow-up); and threading per-source `URIResourceStrategy` conformers through `MCP.Support.DocsResourceProvider` (Cluster 12 follow-up). Both are queued as a single focused PR.
 
 This page is the contract a contributor follows when wiring a new content source (e.g. WWDC transcripts #58, Swift Forums #89, Tech Talks #273) into cupertino. It names every file the new source MUST touch and distinguishes them from surfaces that pick the source up automatically once it is registered.
 
@@ -113,18 +113,19 @@ These surfaces pick up the new source automatically once it is registered. Each 
 | `Shared.Constants.Search.availableSources` (formatter consumer) | 2 sub-2 | `Services.Formatter.Footer.Search` accepts an optional `availableSources: [String]` init parameter; defaults to the foundation-tier static for back-compat. |
 | `RemoteSync.Indexer` URI scheme dispatch | 11 sub-2 | Gained `phaseURIPrefixes: [IndexState.Phase: String]` init parameter; `buildURI` consults the override first, then the static default, then `phase.rawValue` as fallback. |
 | MCP `DocsResourceProvider.knownURISchemes` | 12 partial | Gained `knownURISchemes: Set<String>` init parameter populated from the production source registry. The bespoke if/elseif arms still carry production probing logic (the fully registry-driven dispatch needs a `URIResourceStrategy` protocol on `SourceProvider`). |
+| `Search.SourceProvider.searchRoute` | 8 sub-1 + sub-2 | New `var searchRoute: Search.SearchRoute { get }` protocol property carries each source's CLI/MCP search route (default `.docs`; `HIGSource → .hig`, `SampleCodeSource → .samples`, `PackagesSource → .packages`). The CLI + MCP dispatchers will consume this property to route registered sources; full dispatch rewire is queued as the Cluster 8 follow-up. |
 
-## Still required edits (the OUTSTANDING surface)
+## Architectural follow-ups (NOT blocking the contract)
 
-These surfaces are still hardcoded. Adding a new source today means editing each one. Each row maps to an OUTSTANDING assertion in `Issue1042PluggabilityContractTests`; the cluster-flip arc drives this list to zero. **Down to 2 OUTSTANDING items as of 2026-05-26** (from an initial 14-cluster audit).
+The 26-of-26 contract assertion suite is green. Two architectural follow-ups remain queued; each completes a structural seam that already landed:
 
-| # | Where to edit | Cluster | Why it's still outstanding |
-|---|---|---|---|
-| 1 | `CLIImpl.Command.Search.swift` source-dispatch switch | 8 sub-1 | The 9-arm switch routes to bespoke per-source runners (`runSampleSearch`, `runHIGSearch`, `runPackageSearch`, `runDocsSearch`). Registry-driven dispatch needs a `func search(query:limit:) -> [Result]` method on `Search.SourceProvider` so each per-source target carries its own runner — real protocol extension across every per-source SPM target. |
-| 2 | `SearchToolProvider.CompositeToolProvider.handleSearch` MCP dispatch | 8 sub-2 | Mirror of #1 on the MCP side. Same shape: needs a SourceProvider-supplied search method to dispatch. |
-| 3 | `MCP.Support.DocsResourceProvider` fallback filesystem dispatch (3 `hasPrefix(scheme)` arms with bespoke parsing) | 12 follow-up | The `knownURISchemes` set is now registry-driven (twenty-first cluster flip), but each arm still carries bespoke filesystem-probing logic. A `URIResourceStrategy` protocol on `SourceProvider` would let each per-source target ship its own probing strategy and collapse the arms — same architectural shape as Cluster 8. |
+1. **Cluster 8 dispatch rewire**: the CLI `Search.run` + MCP `CompositeToolProvider.handleSearch` switches still hardcode 8-arm dispatch over source-ids. The new `Search.SourceProvider.searchRoute` property is the seam the dispatchers will consume; the follow-up extracts each bespoke runner into a per-source target method and rewires both dispatchers to iterate the registry. Estimated 3-4 hours.
 
-The pattern across the remaining 3 is identical: **adding methods to `Search.SourceProvider` so each per-source target supplies its own behaviour**, instead of central dispatchers having per-source switch arms. This is one focused PR: extend the protocol with `func search(...)` + `func readResource(uri:)`; add concrete impls to each of the 8 per-source targets; collapse the central switches. Estimated 4-6 hours.
+2. **Cluster 12 URIResourceStrategy protocol**: `MCP.Support.DocsResourceProvider.readResource` still has 3 bespoke if/elseif arms (apple-docs, swift-evolution, apple-archive) carrying source-specific filesystem-probing logic. The new `knownURISchemes` set is the seam the registry-driven dispatch will consume; the follow-up adds a `URIResourceStrategy` protocol on `Search.SourceProvider` so each per-source target ships its own probing strategy. Estimated 2-3 hours.
+
+Both follow-ups share the same architectural shape: extend `Search.SourceProvider` with a new method, add concrete impls to each of the 8 per-source targets, collapse the central switches. They are queued separately because they touch different surfaces (CLI dispatch vs MCP resource handling) and can ship independently.
+
+A new source added today **does not require either follow-up to land** — the source's `searchRoute` property + `knownURISchemes` set already plug into the registry; the legacy switches' `default` arms cover unknown sources with a graceful fall-back (unified fan-out + `notFound` respectively).
 | 14 | `MCP.Support.DocsResourceProvider`'s fallback filesystem dispatch (6 `hasPrefix(scheme)` arms) | 12 | +1 if/else arm OR add `SourceProvider.resourceProbing` strategy |
 
 ## How to verify the new source is wired correctly
