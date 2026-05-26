@@ -1140,7 +1140,12 @@ let targets: [Target] = {
     )
     let indexerTestsTarget = Target.testTarget(
         name: "IndexerTests",
-        dependencies: ["Indexer", "IndexerModels", "TestSupport"]
+        // #1059: Issue1059OptionalDirScopeTests stubs the
+        // Search.DocsIndexingRunner + related strategy protocols and
+        // references Shared.Models.StructuredDocumentationPage in
+        // those stub signatures, so SearchModels + SharedConstants
+        // need to be visible.
+        dependencies: ["Indexer", "IndexerModels", "SearchModels", "SharedConstants", "TestSupport"]
     )
 
     // 2026-05-26 audit Finding 9.7 + 11.1: the Ingest target's contents

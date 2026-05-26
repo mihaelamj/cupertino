@@ -54,10 +54,42 @@ extension Indexer.DocsService {
 
         events.observe(event: .initializingIndex)
 
-        let evolutionDirToUse = optionalDir(evolutionURL, label: "Swift Evolution", events: events)
-        let swiftOrgDirToUse = optionalDir(swiftOrgURL, label: "Swift.org", events: events)
-        let archiveDirToUse = optionalDir(archiveURL, label: "Apple Archive", events: events)
-        let higDirToUse = optionalDir(higURL, label: "HIG", events: events)
+        // #1059: gate optional-dir probes by `selectedSourceIDs` so a
+        // single-source save (e.g. `cupertino save --source apple-docs`)
+        // doesn't spam `ℹ️  <X> directory not found…` info lines for
+        // every OTHER docs-tier source. Pre-fix the 4 calls below
+        // fired unconditionally. Post-fix `nil` selection (legacy
+        // callers + `--all`) keeps the original full-fan-out probe;
+        // an explicit selection narrows to just the sources the user
+        // asked for. The optional dirs the strategy receives stay
+        // `nil` for sources out of scope, which the strategy already
+        // tolerates (its own scope filter drops them).
+        func probeIfSelected(_ url: URL, sourceID: String, label: String) -> URL? {
+            if let selected = request.selectedSourceIDs, !selected.contains(sourceID) {
+                return nil
+            }
+            return optionalDir(url, label: label, events: events)
+        }
+        let evolutionDirToUse = probeIfSelected(
+            evolutionURL,
+            sourceID: Shared.Constants.SourcePrefix.swiftEvolution,
+            label: "Swift Evolution"
+        )
+        let swiftOrgDirToUse = probeIfSelected(
+            swiftOrgURL,
+            sourceID: Shared.Constants.SourcePrefix.swiftOrg,
+            label: "Swift.org"
+        )
+        let archiveDirToUse = probeIfSelected(
+            archiveURL,
+            sourceID: Shared.Constants.SourcePrefix.appleArchive,
+            label: "Apple Archive"
+        )
+        let higDirToUse = probeIfSelected(
+            higURL,
+            sourceID: Shared.Constants.SourcePrefix.hig,
+            label: "HIG"
+        )
 
         if !Indexer.Preflight.checkDocsHaveAvailability(docsDir: docsURL) {
             events.observe(event: .availabilityMissing)
