@@ -43,24 +43,27 @@ extension Logging {
             level: LoggingModels.Logging.Level,
             category: LoggingModels.Logging.Category
         ) {
-            // Fire-and-forget through the held actor. We map the
-            // Models-side Level / Category to the actor's own Level /
-            // Category nested enums (deliberately kept separate during
-            // migration so a typo in the Models-side enum can't break
-            // the legacy static path).
+            // 2026-05-26 post-#1056: the previous shape mapped the
+            // Models-side Category to a separate inner-enum Category
+            // via `Self.categoryMap` (10 hardcoded entries) +
+            // `mapCategory()` helper. Post-fix
+            // `Logging.Unified.Category` is a typealias for
+            // `LoggingModels.Logging.Category`; the dict + helper are
+            // gone. The `actorLevel` mapper stays — Level remains a
+            // closed 4-case enum (debug/info/warning/error) that's
+            // deliberately not user-pluggable.
             let actorLevel = mapLevel(level)
-            let actorCategory = mapCategory(category)
             let target = unified
             Task.detached {
                 switch actorLevel {
                 case .debug:
-                    await target.debug(message, category: actorCategory)
+                    await target.debug(message, category: category)
                 case .info:
-                    await target.info(message, category: actorCategory)
+                    await target.info(message, category: category)
                 case .warning:
-                    await target.warning(message, category: actorCategory)
+                    await target.warning(message, category: category)
                 case .error:
-                    await target.error(message, category: actorCategory)
+                    await target.error(message, category: category)
                 }
             }
         }
@@ -95,27 +98,13 @@ extension Logging {
             }
         }
 
-        // #1042 Cluster 10: post-LoggingModels Category enum→struct
-        // conversion, this mapping is a dict lookup keyed by the
-        // LoggingModels.Logging.Category raw value. Unknown categories
-        // (a future source registering its own category outside the 10
-        // shipped) fall through to the `.cli` bucket — the safe default
-        // for "general CLI output" rather than crashing in a switch.
-        private static let categoryMap: [LoggingModels.Logging.Category: Logging.Unified.Category] = [
-            .crawler: .crawler,
-            .mcp: .mcp,
-            .search: .search,
-            .cli: .cli,
-            .transport: .transport,
-            .evolution: .evolution,
-            .samples: .samples,
-            .packages: .packages,
-            .archive: .archive,
-            .hig: .hig,
-        ]
-
-        private func mapCategory(_ category: LoggingModels.Logging.Category) -> Logging.Unified.Category {
-            Self.categoryMap[category] ?? .cli
-        }
+        // 2026-05-26 post-#1056: `categoryMap` + `mapCategory()`
+        // deleted. The two Category types collapsed into a single
+        // `LoggingModels.Logging.Category` (foundation tier open
+        // struct, Cluster 10). The `Logging.Unified.Category`
+        // typealias keeps the inner-actor signatures stable while
+        // routing through the same rawValue. The osLogger dispatch
+        // moved to a dict in `Logging.Logger.osLogger(for:)`; unknown
+        // categories still fall through to `.cli`.
     }
 }

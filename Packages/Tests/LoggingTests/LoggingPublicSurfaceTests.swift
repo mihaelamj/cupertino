@@ -49,21 +49,20 @@ struct LoggingPublicSurfaceTests {
 
     // MARK: All 10 logger categories
 
-    @Test("All Logging.Logger.<category> constants are reachable")
+    @Test("All Logging.Logger.<category> os.Logger lookups are reachable")
     func allLoggerCategories() {
-        // Pin the full set; CupertinoLoggingTests only checks 7 of 10.
-        // Adding / removing a category here means an MCP host / serve
-        // / search consumer needs a matching update.
-        _ = Logging.Logger.crawler
-        _ = Logging.Logger.mcp
-        _ = Logging.Logger.search
-        _ = Logging.Logger.cli
-        _ = Logging.Logger.transport
-        _ = Logging.Logger.evolution
-        _ = Logging.Logger.samples
-        _ = Logging.Logger.packageDownloader
-        _ = Logging.Logger.archive
-        _ = Logging.Logger.hig
+        // 2026-05-26 post-#1056: the previous shape was a closed-set
+        // of `public static let <category>` os.Logger instances on
+        // `Logging.Logger`. Post-fix the source of truth is a dict
+        // keyed by category rawValue, with `Logging.Logger.osLogger(for:)`
+        // as the lookup. Pin: every shipped LoggingModels.Logging.Category
+        // resolves to a non-nil os.Logger via the dict (categories
+        // not in the dict still resolve via the `.cli` fall-through,
+        // so the lookup never crashes).
+        for category in Logging.Unified.Category.allKnownCases {
+            let raw = category.rawValue == "packages" ? "package-downloader" : category.rawValue
+            _ = Logging.Logger.osLogger(for: raw)
+        }
     }
 
     // MARK: Logging.Unified.Level
@@ -97,24 +96,16 @@ struct LoggingPublicSurfaceTests {
 
     // MARK: Logging.Unified.Category
 
-    @Test("Logging.Unified.Category raw values pin the os.log category strings")
+    @Test("LoggingModels.Logging.Category raw values pin the os.log category strings")
     func unifiedCategoryRawValues() {
-        // The String raw values are what shows up as the `category`
-        // field in `log show --predicate 'subsystem == ...'` queries.
-        // Renaming would break operator playbooks. Pin them.
-        let allCategories: [Logging.Unified.Category] = [
-            .crawler,
-            .mcp,
-            .search,
-            .cli,
-            .transport,
-            .evolution,
-            .samples,
-            .packages,
-            .archive,
-            .hig,
-        ]
-        let allRaws = allCategories.map(\.rawValue)
+        // 2026-05-26 post-#1056: `Logging.Unified.Category` is now a
+        // typealias for the foundation-tier
+        // `LoggingModels.Logging.Category` open struct. The String
+        // raw values are still what shows up as the `category` field
+        // in `log show --predicate 'subsystem == ...'` queries —
+        // renaming would break operator playbooks. Pin them against
+        // the foundation-tier struct's `allKnownCases`.
+        let allRaws = Logging.Unified.Category.allKnownCases.map(\.rawValue)
         #expect(allRaws.sorted() == [
             "archive", "cli", "crawler", "evolution", "hig", "mcp",
             "packages", "samples", "search", "transport",

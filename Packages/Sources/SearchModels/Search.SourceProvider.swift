@@ -184,6 +184,28 @@ extension Search {
         /// when called through `any Search.SourceProvider`.
         func makeURIResourceStrategy() -> (any Search.URIResourceStrategy)?
 
+        /// 2026-05-26 post-#1056: does this source's indexing strategy
+        /// require a real on-disk corpus directory to function?
+        ///
+        /// Pre-fix `CLIImpl.Command.Save.Indexers.resolveSourceDirectory`
+        /// had a hardcoded 2-arm switch over source-ids
+        /// (`swift-book` / `samples`) returning a `/dev/null` sentinel
+        /// URL so the `compactMap` downstream wouldn't drop their
+        /// strategy from the dispatch list (their strategy runs but
+        /// doesn't actually READ the directory — swift-book is a
+        /// view-source over swift-org's crawl, samples uses
+        /// `env.sampleCatalogProvider` instead). Adding a new
+        /// view-source or alternate-input source meant editing the
+        /// CLI switch.
+        ///
+        /// Default `true`: most sources have a real corpus directory
+        /// (web-crawled or otherwise materialised on disk).
+        /// SwiftBookSource and SampleCodeSource override `false`; the
+        /// CLI resolver then supplies a sentinel placeholder URL on
+        /// behalf of any provider that opted out, with zero per-source
+        /// knowledge in the central resolver.
+        var requiresCorpusDirectory: Bool { get }
+
         /// 2026-05-26 audit #1055 layer-2 part 3: is this source's
         /// `destinationDB` in the search.db FTS family?
         /// `CLIImpl.Command.Search.SmartReport.docsSources` filters
@@ -260,4 +282,11 @@ extension Search.SourceProvider {
     /// `apple-sample-code.db` catalog tables, `PackagesSource` reading
     /// `packages.db` BM25+chunk schema) override to `false`.
     public var isSearchTier: Bool { true }
+
+    /// Default: this source needs a real on-disk corpus directory.
+    /// View-sources (today: `SwiftBookSource`) and alternate-input
+    /// sources (today: `SampleCodeSource`) override to `false`; the
+    /// CLI resolver supplies a placeholder URL so the strategy still
+    /// runs in the dispatch fan-out without consuming the directory.
+    public var requiresCorpusDirectory: Bool { true }
 }

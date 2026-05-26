@@ -483,34 +483,29 @@ extension CLIImpl.Command.Save {
             // composition site populates `input.directoryByKey` from
             // `provider.fetchInfo?.outputDir` for every registered
             // provider, so a NEW source's directory resolves here
-            // without touching this switch. The legacy switch below
-            // stays as fallback for the 2 sentinel arms (`samples`
-            // uses env.sampleCatalogProvider not a directory;
-            // `swiftBook` is a view-source) which carry per-source
-            // logic that doesn't fit the generic dict lookup.
+            // without touching this resolver.
+            //
+            // 2026-05-26 post-#1056: pre-fix the fallthrough had a
+            // hardcoded 2-arm switch on source-id (`swift-book` +
+            // `samples`) returning a `/dev/null` placeholder so the
+            // downstream `compactMap` wouldn't drop their strategy
+            // from the dispatch list (those strategies need to RUN
+            // but don't actually READ the directory parameter —
+            // swift-book is a view-source over swift-org's crawl,
+            // samples consumes `env.sampleCatalogProvider`). Adding
+            // a new view-source / alternate-input source meant
+            // editing this file. Post-fix the provider declares its
+            // own `requiresCorpusDirectory` flag (default `true`);
+            // sources that opt out get the placeholder URL with zero
+            // per-source knowledge in this resolver.
             let sourceID = provider.definition.id
             if let mapped = input.directoryByKey[sourceID], let url = mapped {
                 return url
             }
-            // Fallthrough — dict entry is either absent or nil. The 2
-            // sentinel sources (samples + swift-book) deliberately
-            // declare nil in the dict because their strategy doesn't
-            // consume a sourceDirectory: samples uses
-            // env.sampleCatalogProvider; swift-book is a view-source
-            // whose emission runs in SwiftOrgStrategy via URL-prefix
-            // tagging. Return a /dev/null sentinel so the
-            // makeStrategy compactMap doesn't drop them (their
-            // strategy needs to run, just without a directory).
-            //
-            // Other sources hitting this fallthrough genuinely have
-            // no directory and should be dropped — return nil.
-            switch sourceID {
-            case Shared.Constants.SourcePrefix.swiftBook,
-                 Shared.Constants.SourcePrefix.samples:
+            guard provider.requiresCorpusDirectory else {
                 return URL(fileURLWithPath: "/dev/null")
-            default:
-                return nil
             }
+            return nil
         }
     }
 

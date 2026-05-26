@@ -835,6 +835,39 @@ struct Issue1042PluggabilityContractTests {
         #expect(schemesByID[ContractFakeSourceProvider.fakeID] == nil)
     }
 
+    @Test("Search.SourceProvider.requiresCorpusDirectory drops the hardcoded swift-book + samples sentinel switch in resolveSourceDirectory")
+    func requiresCorpusDirectoryIsRegistryDriven() {
+        // STATUS: PASSES (post-#1056 follow-up). Pre-fix
+        // `CLIImpl.Command.Save.Indexers.resolveSourceDirectory` had
+        // a hardcoded 2-arm switch on source-id (swift-book +
+        // samples) returning a `/dev/null` placeholder so the
+        // downstream `compactMap` wouldn't drop their strategy. Post-
+        // fix the provider declares its own `requiresCorpusDirectory`
+        // flag (default `true`); SwiftBookSource + SampleCodeSource
+        // override `false`. The resolver checks the flag and
+        // supplies the placeholder URL with zero per-source knowledge.
+        let registry = registryWithFake()
+        for prov in registry.allEnabled {
+            switch prov.definition.id {
+            case Shared.Constants.SourcePrefix.swiftBook:
+                #expect(
+                    prov.requiresCorpusDirectory == false,
+                    "SwiftBookSource is a view-source; should opt out"
+                )
+            case Shared.Constants.SourcePrefix.samples:
+                #expect(
+                    prov.requiresCorpusDirectory == false,
+                    "SampleCodeSource uses env.sampleCatalogProvider; should opt out"
+                )
+            default:
+                #expect(
+                    prov.requiresCorpusDirectory == true,
+                    "\(prov.definition.id) inherits the default; should require a directory"
+                )
+            }
+        }
+    }
+
     @Test("Search.SourceProvider.isSearchTier declares which providers join the docs-tier FTS fan-out")
     func isSearchTierFiltersFanOut() {
         // STATUS: PASSES (post-#1055 layer-2 part 3). Pre-fix
@@ -872,7 +905,7 @@ struct Issue1042PluggabilityContractTests {
         // a 15th violation cluster, add its assertion here AND bump
         // this count. The pin is human-tracked, not mechanical.
         let auditedClusterCount = 14
-        let stubbedAssertions = 23 // count of @Test functions in this suite
+        let stubbedAssertions = 24 // count of @Test functions in this suite
         #expect(stubbedAssertions >= auditedClusterCount, "every audit cluster needs at least one contract assertion")
     }
 }
