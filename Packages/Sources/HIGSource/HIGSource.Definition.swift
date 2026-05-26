@@ -22,7 +22,8 @@ extension HIGSource {
             hasAvailability: 0.3,
             designFocus: 1.0,
             languageFocus: 0.0,
-            searchQuality: 0.9
+            searchQuality: 0.9,
+            rankWeight: 0.5
         ),
         intents: [.designGuidance],
         intentPriority: [.designGuidance: 100],

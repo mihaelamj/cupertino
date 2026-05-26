@@ -298,7 +298,22 @@ extension CLIImpl.Command {
                 }
             }
 
-            let smartQuery = SearchModule.SmartQuery(fetchers: plan.fetchers)
+            // #1045 Gap 1 wiring: derive RRF fusion weights from each
+            // registered provider's `properties.rankWeight`. Pre-fix
+            // SmartQuery fell back to its 9-entry static literal; a new
+            // source got the 1.0 default. Post-fix each source declares
+            // its weight in its own Definition.swift (matching the YAML
+            // manifest's `searchProperties.rankWeight`).
+            let smartQueryRegistry = CLIImpl.makeProductionSourceRegistry()
+            let smartQueryWeights: [String: Double] = Dictionary(
+                uniqueKeysWithValues: smartQueryRegistry.allEnabled.map { provider in
+                    (provider.definition.id, provider.definition.properties.rankWeight)
+                }
+            )
+            let smartQuery = SearchModule.SmartQuery(
+                fetchers: plan.fetchers,
+                sourceWeightsOverride: smartQueryWeights
+            )
             let rawResult = await smartQuery.answer(
                 question: trimmed,
                 limit: limit,

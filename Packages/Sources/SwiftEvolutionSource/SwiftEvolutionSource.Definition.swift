@@ -19,7 +19,8 @@ extension SwiftEvolutionSource {
             hasAvailability: 0.2,
             designFocus: 0.1,
             languageFocus: 1.0,
-            searchQuality: 0.9
+            searchQuality: 0.9,
+            rankWeight: 1.5
         ),
         intents: [.languageFeature, .migration, .conceptual],
         intentPriority: [
