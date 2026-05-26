@@ -171,6 +171,39 @@ struct Issue1045BehavioralWiringTests {
 
     // MARK: - Gap 4 — DocsIndexingInput.directoryByKey wiring
 
+    @Test("Gap 4 audit follow-up (14.5) — CLI --docs-dir override layered through makeDocsIndexingDirectoryByKey wins over the registry default")
+    func gap4_cliOverrideWinsOverRegistryDefault() {
+        // STATUS: behavioural. Post-audit (Finding 14.5) the helper
+        // accepts an `overrides: [String: URL?]` parameter so the
+        // CLI's `--docs-dir /custom` flag can win over the registry
+        // default. Pre-fix the dict ALWAYS won, silently dropping
+        // the user's override.
+        let registry = CLIImpl.makeProductionSourceRegistry()
+        let paths = Shared.Paths(baseDirectory: URL(fileURLWithPath: "/tmp/issue-1045-override"))
+        let customDocs = URL(fileURLWithPath: "/tmp/my-custom-docs")
+        let dict = CLIImpl.makeDocsIndexingDirectoryByKey(
+            registry: registry,
+            paths: paths,
+            overrides: [
+                Shared.Constants.SourcePrefix.appleDocs: customDocs,
+            ]
+        )
+        // Override wins: apple-docs entry equals /tmp/my-custom-docs
+        // (symlink-resolved — `.resolvingSymlinksInPath()` is a no-op
+        // for non-symlink paths).
+        if let entry = dict[Shared.Constants.SourcePrefix.appleDocs], let resolved = entry {
+            #expect(resolved.path == customDocs.resolvingSymlinksInPath().path)
+        } else {
+            Issue.record("apple-docs override should resolve to a non-nil URL; got \(String(describing: dict[Shared.Constants.SourcePrefix.appleDocs]))")
+        }
+        // Sanity: other registered sources still fall back to registry defaults.
+        if let higEntry = dict[Shared.Constants.SourcePrefix.hig], let url = higEntry {
+            #expect(url.path.contains("hig"))
+        } else {
+            Issue.record("hig should resolve to its registry-default directory; got \(String(describing: dict[Shared.Constants.SourcePrefix.hig]))")
+        }
+    }
+
     @Test("Gap 4 — registered provider's fetchInfo.outputDir reaches DocsIndexingInput.directoryByKey")
     func gap4_fetchInfoOutputDirThreadsToInput() {
         // STATUS: behavioural. Fake declares a fetchInfo with

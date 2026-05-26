@@ -114,10 +114,31 @@ extension CLIImpl.Command.Save {
         // `CLIImpl.makeDocsIndexingDirectoryByKey(...)` so the
         // assembly logic is single-sourced + behavioural tests can
         // exercise it directly.
+        //
+        // CLI-flag overrides (`--docs-dir` / `--evolution-dir` /
+        // `--swift-org-dir` / `--archive-dir`) layer in here so the
+        // dict path honours user-supplied paths. Pre-fix the dict
+        // ALWAYS won (registry-default value); user overrides on
+        // typed fields were silently dropped by `resolveSourceDirectory`'s
+        // dict-first lookup. Post-fix overrides win in the dict
+        // itself, so the precedence is correct + the typed fields
+        // become redundant (kept on the Input struct for back-compat
+        // pending #1052/#1053 cleanup).
         let savePaths = Shared.Paths(baseDirectory: effectiveBase)
+        let cliOverrides: [String: URL?] = [
+            Shared.Constants.SourcePrefix.appleDocs:
+                docsDir.map { URL(fileURLWithPath: $0).expandingTildeInPath },
+            Shared.Constants.SourcePrefix.swiftEvolution:
+                evolutionDir.map { URL(fileURLWithPath: $0).expandingTildeInPath },
+            Shared.Constants.SourcePrefix.swiftOrg:
+                swiftOrgDir.map { URL(fileURLWithPath: $0).expandingTildeInPath },
+            Shared.Constants.SourcePrefix.appleArchive:
+                archiveDir.map { URL(fileURLWithPath: $0).expandingTildeInPath },
+        ]
         let saveDirectoryByKey = CLIImpl.makeDocsIndexingDirectoryByKey(
             registry: CLIImpl.makeProductionSourceRegistry(),
-            paths: savePaths
+            paths: savePaths,
+            overrides: cliOverrides
         )
 
         let request = Indexer.DocsService.Request(
@@ -468,41 +489,26 @@ extension CLIImpl.Command.Save {
             // `swiftBook` is a view-source) which carry per-source
             // logic that doesn't fit the generic dict lookup.
             let sourceID = provider.definition.id
-            if let mapped = input.directoryByKey[sourceID] {
-                // Explicit nil-in-dict means "registered but no
-                // directory" → skip (compactMap drops it).
-                // Non-nil URL → use it.
-                if let url = mapped {
-                    return url
-                }
-                // Fall through to the legacy switch below for
-                // sources whose dict entry is nil (the 2 sentinels).
+            if let mapped = input.directoryByKey[sourceID], let url = mapped {
+                return url
             }
+            // Fallthrough — dict entry is either absent or nil. The 2
+            // sentinel sources (samples + swift-book) deliberately
+            // declare nil in the dict because their strategy doesn't
+            // consume a sourceDirectory: samples uses
+            // env.sampleCatalogProvider; swift-book is a view-source
+            // whose emission runs in SwiftOrgStrategy via URL-prefix
+            // tagging. Return a /dev/null sentinel so the
+            // makeStrategy compactMap doesn't drop them (their
+            // strategy needs to run, just without a directory).
+            //
+            // Other sources hitting this fallthrough genuinely have
+            // no directory and should be dropped — return nil.
             switch sourceID {
-            case Shared.Constants.SourcePrefix.appleDocs:
-                return input.docsDirectory
-            case Shared.Constants.SourcePrefix.swiftEvolution:
-                return input.evolutionDirectory
-            case Shared.Constants.SourcePrefix.swiftOrg:
-                return input.swiftOrgDirectory
-            case Shared.Constants.SourcePrefix.swiftBook:
-                // SwiftBookSource.makeStrategy is a noop (real emission
-                // runs in SwiftOrgStrategy via URL-prefix tagging);
-                // sourceDirectory is unused. Return any non-nil URL so
-                // compactMap includes it.
-                return input.swiftOrgDirectory ?? URL(fileURLWithPath: "/dev/null")
-            case Shared.Constants.SourcePrefix.appleArchive:
-                return input.archiveDirectory
-            case Shared.Constants.SourcePrefix.hig:
-                return input.higDirectory
-            case Shared.Constants.SourcePrefix.samples:
-                // SampleCodeStrategy uses env.sampleCatalogProvider, not
-                // env.sourceDirectory. Sentinel URL so the strategy is
-                // included in the list.
+            case Shared.Constants.SourcePrefix.swiftBook,
+                 Shared.Constants.SourcePrefix.samples:
                 return URL(fileURLWithPath: "/dev/null")
             default:
-                // Unknown source-id (e.g. a future view-source that
-                // doesn't need a directory): skip.
                 return nil
             }
         }

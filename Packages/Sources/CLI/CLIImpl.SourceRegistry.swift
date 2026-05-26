@@ -129,25 +129,37 @@ extension CLIImpl {
     /// `CLIImpl.Command.Save.Indexers.resolveSourceDirectory(for:input:)`.
     /// Each provider's `fetchInfo?.defaultOutputDirKey.rawValue`
     /// resolves against `Shared.Paths.directory(named:)`.
+    ///
+    /// `overrides` is the CLI-flag override layer — when the user
+    /// passes `--docs-dir /custom`, the composition root supplies
+    /// `["apple-docs": URL(.../custom)]` and the helper threads that
+    /// non-nil entry through instead of the registry default. Closes
+    /// the latent regression where Gap-4's dict path bypassed the
+    /// CLI's typed-field overrides: pre-fix the dict ALWAYS won, so
+    /// `--docs-dir /custom` was silently ignored. Post-fix overrides
+    /// win, registry defaults backstop, fall through to nil for any
+    /// provider without a `fetchInfo` (the noop view-source case).
     public static func makeDocsIndexingDirectoryByKey(
         registry: Search.SourceRegistry,
-        paths: Shared.Paths
+        paths: Shared.Paths,
+        overrides: [String: URL?] = [:]
     ) -> [String: URL?] {
         Dictionary(
             uniqueKeysWithValues: registry.allEnabled.map { provider in
+                let sourceID = provider.definition.id
+                if let overrideEntry = overrides[sourceID], let url = overrideEntry {
+                    // #1046 (+ #779) resolution applied to overrides too —
+                    // user-supplied `--<source>-dir` paths may themselves
+                    // be symlinks (common `~/.cupertino-dev/<source>` setup).
+                    return (sourceID, url.resolvingSymlinksInPath() as URL?)
+                }
                 let dir: URL? = provider.fetchInfo.flatMap { fi in
-                    // #1046 (+ #779 cross-reference): resolve symlinks
-                    // at construction so per-source strategies receive
-                    // the same resolved URL shape `Indexer.DocsService.optionalDir`
-                    // produces for the legacy typed fields. Without
-                    // this resolution, `FileManager.contentsOfDirectory(at:)`
-                    // throws ENOTDIR (NSCocoa 256) on leaf directory
-                    // symlinks. The same bug took down the 11h15m
-                    // 2026-05-18 reindex; the #779 fix landed at
-                    // `optionalDir` but Gap-4's dict bypassed it.
+                    // #1046 (+ #779): resolve symlinks at construction
+                    // so per-source strategies receive the same resolved
+                    // URL shape `Indexer.DocsService.optionalDir` produces.
                     paths.directory(named: fi.defaultOutputDirKey.rawValue).resolvingSymlinksInPath()
                 }
-                return (provider.definition.id, dir)
+                return (sourceID, dir)
             }
         )
     }
