@@ -48,24 +48,56 @@ extension CLIImpl.Command.Search {
 
     /// Docs-backed sources in a consistent order. `apple-archive` is included
     /// with `includeArchive: true` so the base search path doesn't exclude it.
-    static let docsSources: [(prefix: String, includeArchive: Bool)] = [
-        (Shared.Constants.SourcePrefix.appleDocs, false),
-        (Shared.Constants.SourcePrefix.appleArchive, true),
-        (Shared.Constants.SourcePrefix.hig, false),
-        (Shared.Constants.SourcePrefix.swiftEvolution, false),
-        (Shared.Constants.SourcePrefix.swiftOrg, false),
-        (Shared.Constants.SourcePrefix.swiftBook, false),
-    ]
+    ///
+    /// #1042 audit + wiring batch 3: derived at call time from the
+    /// production source registry. A "docs-tier" source is one whose
+    /// `destinationDB` is neither `.samples` nor `.packages` — i.e.
+    /// any source whose rows live in the search.db family. That covers
+    /// apple-docs, hig, apple-archive, swift-evolution, swift-org,
+    /// swift-book today, and any future search-tier source. `searchRoute`
+    /// is NOT the right predicate here — HIG has `.hig` dispatch but
+    /// still lives in the search.db family (Cluster 9 sub-3 test
+    /// showed this regression and was caught by `CLISearchUrlResolutionTests`).
+    /// `includeArchive` is `true` for the apple-archive provider only.
+    static func docsSources() -> [(prefix: String, includeArchive: Bool)] {
+        let registry = CLIImpl.makeProductionSourceRegistry()
+        // Excluded descriptors: samples (`.appleSampleCode`, NOT `.samples`)
+        // and packages. Note the asymmetry — `SampleCodeSource.destinationDB`
+        // is `.appleSampleCode` post-#1036's per-source DB split, even
+        // though the source-id is `samples`. Future-proofing: the
+        // search.db-tier predicate is "anywhere a Search.Index family
+        // DB lives", which today maps to: not `.appleSampleCode`, not
+        // `.packages`. If a new source ships a non-search-tier DB
+        // (its own bespoke index), it needs to declare a non-search
+        // destinationDB and be added to this exclusion list — same
+        // pattern samples/packages already follow.
+        let excluded: Set<Shared.Models.DatabaseDescriptor> = [.appleSampleCode, .packages]
+        return registry.allEnabled
+            .filter { !excluded.contains($0.destinationDB) }
+            .map { (
+                prefix: $0.definition.id,
+                includeArchive: $0.definition.id == Shared.Constants.SourcePrefix.appleArchive
+            ) }
+    }
 
     /// Sources whose results aren't scoped by `--platform`/`--min-version`.
     /// Only the Swift-language-version-axis sources remain unfiltered (their
     /// pages don't carry `min_<platform>` columns at all -- see #225 for the
     /// matching `--swift` flag).
-    static let unfilteredSourcesUnderPlatformFlag: [String] = [
-        Shared.Constants.SourcePrefix.swiftEvolution,
-        Shared.Constants.SourcePrefix.swiftOrg,
-        Shared.Constants.SourcePrefix.swiftBook,
-    ]
+    ///
+    /// #1042 audit + wiring batch 3: derived at call time from each
+    /// registered provider's `Search.Capabilities.metadata[.hasMinSwiftVersion]`
+    /// flag (the same source-of-truth Cluster 4's CandidateFetcher
+    /// wiring uses). A new Swift-version-axis source declares the
+    /// metadata flag and lands in this set without touching this file.
+    static func unfilteredSourcesUnderPlatformFlag() -> Set<String> {
+        let registry = CLIImpl.makeProductionSourceRegistry()
+        return Set(
+            registry.allEnabled
+                .filter { $0.capabilities.metadata[.hasMinSwiftVersion] == true }
+                .map(\.definition.id)
+        )
+    }
 
     /// Validate the `--platform` / `--min-version` pair into an
     /// `AvailabilityFilter`. Either both flags or neither -- anything else
@@ -171,7 +203,7 @@ extension CLIImpl.Command.Search {
         baseDirectory: URL,
         sources: [(prefix: String, includeArchive: Bool)]? = nil
     ) -> [String: URL] {
-        let effective = sources ?? docsSources
+        let effective = sources ?? Self.docsSources()
         var result: [String: URL] = [:]
         for source in effective {
             if let override {
@@ -259,7 +291,7 @@ extension CLIImpl.Command.Search {
         var failedByPath: [String: String] = [:]
         var missingPaths: Set<String> = []
 
-        for source in docsSources {
+        for source in Self.docsSources() {
             guard let url = urlsBySource[source.prefix] else {
                 // Unknown source-id (shouldn't happen for built-in
                 // sources; defensive log + skip).
@@ -562,7 +594,7 @@ extension CLIImpl.Command.Search {
               let platform,
               let minVersion else { return }
         let unfiltered = result.contributingSources.filter {
-            unfilteredSourcesUnderPlatformFlag.contains($0)
+            Self.unfilteredSourcesUnderPlatformFlag().contains($0)
         }
         guard !unfiltered.isEmpty else { return }
         print(
@@ -661,7 +693,7 @@ extension CLIImpl.Command.Search {
               let platform,
               let minVersion else { return }
         let unfiltered = result.contributingSources.filter {
-            unfilteredSourcesUnderPlatformFlag.contains($0)
+            Self.unfilteredSourcesUnderPlatformFlag().contains($0)
         }
         guard !unfiltered.isEmpty else { return }
         print(
