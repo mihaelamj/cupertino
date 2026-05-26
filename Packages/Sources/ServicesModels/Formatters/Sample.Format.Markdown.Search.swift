@@ -11,13 +11,13 @@ extension Sample.Format.Markdown {
         private let framework: String?
         private let teasers: Services.Formatter.TeaserResults?
         /// #1045 Gap 2: registry-derived source-id list for footer tips.
-        private let availableSources: [String]?
+        private let availableSources: [String]
 
         public init(
             query: String,
             framework: String? = nil,
             teasers: Services.Formatter.TeaserResults? = nil,
-            availableSources: [String]? = nil
+            availableSources: [String]
         ) {
             self.query = query
             self.framework = framework
@@ -86,12 +86,12 @@ extension Sample.Format.Markdown {
         private let totalCount: Int
         private let framework: String?
         /// #1045 Gap 2: registry-derived source-id list for footer tips.
-        private let availableSources: [String]?
+        private let availableSources: [String]
 
         public init(
             totalCount: Int,
             framework: String? = nil,
-            availableSources: [String]? = nil
+            availableSources: [String]
         ) {
             self.totalCount = totalCount
             self.framework = framework
@@ -137,9 +137,9 @@ extension Sample.Format.Markdown {
 extension Sample.Format.Markdown {
     public struct Project: Services.Formatter.Result {
         /// #1045 Gap 2: registry-derived source-id list for footer tips.
-        private let availableSources: [String]?
+        private let availableSources: [String]
 
-        public init(availableSources: [String]? = nil) {
+        public init(availableSources: [String]) {
             self.availableSources = availableSources
         }
 
@@ -168,9 +168,9 @@ extension Sample.Format.Markdown {
 extension Sample.Format.Markdown {
     public struct File: Services.Formatter.Result {
         /// #1045 Gap 2: registry-derived source-id list for footer tips.
-        private let availableSources: [String]?
+        private let availableSources: [String]
 
-        public init(availableSources: [String]? = nil) {
+        public init(availableSources: [String]) {
             self.availableSources = availableSources
         }
 

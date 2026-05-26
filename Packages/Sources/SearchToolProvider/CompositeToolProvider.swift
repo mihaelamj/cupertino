@@ -826,8 +826,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         // #1045 Gap 2 wiring: registry-derived source-id list for the
         // formatter's footer tips. Strip "all" and the appleSampleCode
         // alias the schema enum carries but the formatter doesn't display.
-        let docsAvailableSources: [String]? = searchToolSourceEnumValues.isEmpty
-            ? nil
+        let docsAvailableSources: [String] = searchToolSourceEnumValues.isEmpty
+            ? []
             : searchToolSourceEnumValues.filter { id in
                 id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
             }
@@ -907,8 +907,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         )
 
         // Use shared formatter — #1045 Gap 2 wiring.
-        let samplesAvailableSources: [String]? = searchToolSourceEnumValues.isEmpty
-            ? nil
+        let samplesAvailableSources: [String] = searchToolSourceEnumValues.isEmpty
+            ? []
             : searchToolSourceEnumValues.filter { id in
                 id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
             }
@@ -996,8 +996,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             minimumVisionOS: nil
         )
         // #1045 Gap 2 wiring: registry-derived source-id list.
-        let packagesAvailableSources: [String]? = searchToolSourceEnumValues.isEmpty
-            ? nil
+        let packagesAvailableSources: [String] = searchToolSourceEnumValues.isEmpty
+            ? []
             : searchToolSourceEnumValues.filter { id in
                 id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
             }
@@ -1047,8 +1047,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         // into the formatter so the footer's "narrow with --source" tip
         // reflects every registered source.
         let higQuery = Services.HIGQuery(text: query, platform: nil, category: nil)
-        let higAvailableSources: [String]? = searchToolSourceEnumValues.isEmpty
-            ? nil
+        let higAvailableSources: [String] = searchToolSourceEnumValues.isEmpty
+            ? []
             : searchToolSourceEnumValues.filter { id in
                 id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
             }
@@ -1094,8 +1094,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         // derived source-id list through to the formatter input so a
         // registered new source appears in the "Searched ALL sources"
         // header + the footer tip.
-        let unifiedAvailableSources: [String]? = searchToolSourceEnumValues.isEmpty
-            ? nil
+        let unifiedAvailableSources: [String] = searchToolSourceEnumValues.isEmpty
+            ? []
             : searchToolSourceEnumValues.filter { id in
                 id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
             }
@@ -1188,8 +1188,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         // source appears in the "Searched ALL sources" header + the
         // footer tip. Strip the "all" + appleSampleCode alias tokens
         // the schema enum carries but the formatter doesn't display.
-        let formatterAvailableSources: [String]? = searchToolSourceEnumValues.isEmpty
-            ? nil
+        let formatterAvailableSources: [String] = searchToolSourceEnumValues.isEmpty
+            ? []
             : searchToolSourceEnumValues.filter { id in
                 id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
             }
@@ -1219,8 +1219,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let totalDocs = try await searchIndex.documentCount()
 
         // #1045 Gap 2 wiring: registry-derived source-id list.
-        let frameworksAvailableSources: [String]? = searchToolSourceEnumValues.isEmpty
-            ? nil
+        let frameworksAvailableSources: [String] = searchToolSourceEnumValues.isEmpty
+            ? []
             : searchToolSourceEnumValues.filter { id in
                 id != "all" && id != Shared.Constants.SourcePrefix.appleSampleCode
             }

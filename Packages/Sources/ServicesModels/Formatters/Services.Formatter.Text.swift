@@ -12,7 +12,7 @@ extension Services.Formatter {
         private let config: Services.Formatter.Config
         private let teasers: TeaserResults?
         /// #1045 Gap 2: registry-derived source-id list for footer tips.
-        private let availableSources: [String]?
+        private let availableSources: [String]
 
         public init(
             query: String,
@@ -26,7 +26,7 @@ extension Services.Formatter {
                 emptyMessage: "_No results found. Try broader search terms._"
             ),
             teasers: TeaserResults? = nil,
-            availableSources: [String]? = nil
+            availableSources: [String]
         ) {
             self.query = query
             self.source = source

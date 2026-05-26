@@ -1,4 +1,8 @@
+// swiftlint:disable line_length
+// (descriptive @Test annotations + #expect failure messages exceed the 120-char line guideline; readability beats wrapping here.)
+
 @testable import CLI
+import CupertinoComposition
 import Foundation
 import SearchModels
 import SharedConstants
@@ -316,21 +320,44 @@ struct PluggabilityInvariantTests {
         #expect(true)
     }
 
-    // MARK: - Pre-existing closed-set seams (regression markers; tracked at #932-#935)
+    // MARK: - Drift detectors: foundation-tier static lists must match the production registry
 
-    @Test("Closed-set seam: Shared.Constants.SourcePrefix.allPrefixes is a static literal; adding a new source's prefix requires editing this array (#932 candidate)")
-    func closedSetSourcePrefixAllPrefixes() {
-        // This test records the closed-set seam as a known-not-pluggable
-        // gap. It asserts the array EXISTS and the existing prefixes
-        // are present; a future PR that closes the gap (replacing the
-        // static array with a registry-derived computed property) will
-        // need to update this test to assert the new mechanism.
-        let prefixes = Shared.Constants.SourcePrefix.allPrefixes
-        #expect(prefixes.contains(Shared.Constants.SourcePrefix.appleDocs))
-        #expect(prefixes.contains(Shared.Constants.SourcePrefix.packages))
+    @Test("Drift detector: Shared.Constants.SourcePrefix.allPrefixes matches every registered source's id (post-2026-05-26 audit Finding 9.2)")
+    func sourcePrefixAllPrefixesMatchesRegistry() {
+        // Pre-audit this static was a closed-set anti-pattern (every
+        // new source had to be appended here in parallel with the
+        // composition root). Post-audit production callers all derive
+        // the prefix list from `Search.SourceLookup.allIDs` (via the
+        // CupertinoComposition registry); the foundation-tier static
+        // remains as a documentation/sanity list. This test pins the
+        // invariant: if you register a new source in
+        // `Cupertino.CompositionRoot.swift` but forget to append to
+        // `Shared.Constants.SourcePrefix.allPrefixes`, the test fails
+        // and CI catches the drift.
+        let registeredIDs = Set(
+            CupertinoComposition
+                .makeProductionSourceRegistry()
+                .allEnabled
+                .map(\.definition.id)
+        )
+        let allPrefixes = Set(Shared.Constants.SourcePrefix.allPrefixes)
+        let missingFromStatic = registeredIDs.subtracting(allPrefixes)
+        let extraInStatic = allPrefixes.subtracting(registeredIDs)
         #expect(
-            !prefixes.contains("audit-fixture"),
-            "AuditFixtureSource's prefix is NOT in allPrefixes (proof: registering a fake source did not auto-extend allPrefixes; closed-set gap confirmed)"
+            missingFromStatic.isEmpty,
+            "Shared.Constants.SourcePrefix.allPrefixes is missing registered source(s): \(missingFromStatic.sorted()). Append them to allPrefixes (Shared.Constants.swift) or remove them from CupertinoComposition."
+        )
+        // `extraInStatic` allowed for special tokens + aliases:
+        //   - `"all"` is the fan-out alias (not a real source)
+        //   - `appleSampleCode` is the legacy alias for `samples`
+        let allowedExtras: Set<String> = [
+            "all",
+            Shared.Constants.SourcePrefix.appleSampleCode,
+        ]
+        let unexpectedExtras = extraInStatic.subtracting(allowedExtras)
+        #expect(
+            unexpectedExtras.isEmpty,
+            "Shared.Constants.SourcePrefix.allPrefixes has stale entries: \(unexpectedExtras.sorted()) — remove or add corresponding sources to CupertinoComposition."
         )
     }
 

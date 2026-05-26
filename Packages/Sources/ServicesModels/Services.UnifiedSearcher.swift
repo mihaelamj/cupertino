@@ -44,105 +44,21 @@ extension Services {
             minVisionOS: String?,
             minSwift: String?,
             appleImports: String?,
-            availableSources: [String]?
+            availableSources: [String]
         ) async -> Services.Formatter.Unified.Input
     }
 }
 
-// MARK: - Backward-compatible default (pre-`availableSources`)
+// 2026-05-26 audit Finding 6.0: the back-compat extension overload
+// that forwarded `availableSources: nil` was deleted along with the
+// `Shared.Constants.Search.availableSources` static fallback it relied
+// on. Every caller now supplies a non-nil list from
+// `CupertinoComposition.makeProductionSourceRegistry().allEnabled.map(\.definition.id)`.
 
-extension Services.UnifiedSearcher {
-    /// #1042 Cluster 2 wiring: registry-supplied source-id list for the
-    /// formatter's "Searched ALL sources" header + footer tip. Pre-fix
-    /// the conformer always built the list from the foundation-tier
-    /// static. Default nil here keeps existing callers compiling; the
-    /// composition root (MCP `CompositeToolProvider.handleSearchAll`)
-    /// supplies a registry-derived list to make the new source visible
-    /// in the formatter output.
-    public func searchAll(
-        query: String,
-        framework: String?,
-        limit: Int,
-        minIOS: String?,
-        minMacOS: String?,
-        minTvOS: String?,
-        minWatchOS: String?,
-        minVisionOS: String?,
-        minSwift: String?,
-        appleImports: String?
-    ) async -> Services.Formatter.Unified.Input {
-        await searchAll(
-            query: query,
-            framework: framework,
-            limit: limit,
-            minIOS: minIOS,
-            minMacOS: minMacOS,
-            minTvOS: minTvOS,
-            minWatchOS: minWatchOS,
-            minVisionOS: minVisionOS,
-            minSwift: minSwift,
-            appleImports: appleImports,
-            availableSources: nil
-        )
-    }
-}
-
-// MARK: - Backward-compatible default (pre-`appleImports`)
-
-extension Services.UnifiedSearcher {
-    /// Legacy nine-arg overload retained so call sites that haven't been
-    /// migrated to thread the `apple_imports` MCP arg through compile
-    /// unchanged. Forwards to the new ten-arg requirement with
-    /// `appleImports: nil`.
-    public func searchAll(
-        query: String,
-        framework: String?,
-        limit: Int,
-        minIOS: String?,
-        minMacOS: String?,
-        minTvOS: String?,
-        minWatchOS: String?,
-        minVisionOS: String?,
-        minSwift: String?
-    ) async -> Services.Formatter.Unified.Input {
-        await searchAll(
-            query: query,
-            framework: framework,
-            limit: limit,
-            minIOS: minIOS,
-            minMacOS: minMacOS,
-            minTvOS: minTvOS,
-            minWatchOS: minWatchOS,
-            minVisionOS: minVisionOS,
-            minSwift: minSwift,
-            appleImports: nil
-        )
-    }
-}
-
-// MARK: - Backward-compatible default
-
-extension Services.UnifiedSearcher {
-    /// Legacy zero-platform-args overload — preserved for callers that
-    /// haven't been migrated to thread platform filters through. Maps to
-    /// the new shape with every `min_*` / `minSwift` argument set to nil.
-    /// Existing call sites compile unchanged; new platform-filtered
-    /// behaviour is opt-in.
-    public func searchAll(
-        query: String,
-        framework: String?,
-        limit: Int
-    ) async -> Services.Formatter.Unified.Input {
-        await searchAll(
-            query: query,
-            framework: framework,
-            limit: limit,
-            minIOS: nil,
-            minMacOS: nil,
-            minTvOS: nil,
-            minWatchOS: nil,
-            minVisionOS: nil,
-            minSwift: nil
-        )
-    }
-}
+// 2026-05-26 audit Finding 6.0: the back-compat 9-arg + 3-arg overloads
+// (pre-`appleImports` + pre-platform-args) deleted alongside the
+// pre-`availableSources` overload. Every caller now invokes the
+// canonical 11-arg shape with explicit `availableSources`. The only
+// production caller (`CompositeToolProvider.handleSearchAll`) and the
+// one conformance-witness test (`ServicesModelsTests.unifiedSearcherWitness`)
+// pass values directly.

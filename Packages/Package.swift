@@ -1288,7 +1288,7 @@ let targets: [Target] = {
         // Search.DocsSourceCandidateFetcher.defaultSwiftVersionSources +
         // defaultFrameworkScopedSources (Cluster 4 sub-1 + sub-2).
         dependencies: [
-            "CLI", "Diagnostics", "Distribution", "DistributionModels",
+            "CLI", "CupertinoComposition", "Diagnostics", "Distribution", "DistributionModels",
             "Services", "ServicesModels", "RemoteSyncModels", "SearchSQLite",
         ]
     )

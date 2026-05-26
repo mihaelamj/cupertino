@@ -21,14 +21,18 @@ extension Services.Formatter.Footer {
         /// Custom footer items
         public let customItems: [Item]
 
-        /// #1042 Cluster 2: composition-root-supplied list of source IDs
-        /// for the "💡 To narrow results, use `source` parameter: …" tip.
-        /// When nil, falls back to `Shared.Constants.Search.availableSources`
-        /// (the historical static literal). A registry-aware composition
-        /// root supplies the list from `makeProductionSourceRegistry().allEnabled.map(\.definition.id)`,
-        /// so a new registered source's id appears in the tip without
-        /// editing the static literal.
-        public let availableSources: [String]?
+        /// 2026-05-26 audit Finding 6.0: registry-supplied list of
+        /// source IDs for the "💡 To narrow results, use `source`
+        /// parameter: …" tip. Non-optional + no fallback — every
+        /// caller MUST supply the list from
+        /// `CupertinoComposition.makeProductionSourceRegistry().allEnabled.map(\.definition.id)`
+        /// (or equivalent registry iteration). Pre-fix this was
+        /// optional and the formatter silently fell back to the
+        /// `Shared.Constants.Search.availableSources` static literal
+        /// — a maintenance trap where a future PR that forgot to
+        /// wire `availableSources` would silently omit any new
+        /// shipped source from the footer.
+        public let availableSources: [String]
 
         /// #1045 Gap 2: sources whose rows actually appeared in this
         /// response. Drives the actionable top-of-footer tip (e.g.
@@ -52,7 +56,7 @@ extension Services.Formatter.Footer {
             showSemanticTip: Bool = true,
             showPlatformTip: Bool = true,
             customItems: [Item] = [],
-            availableSources: [String]? = nil,
+            availableSources: [String],
             contributingSources: [String]? = nil,
             excludedSources: Set<String> = []
         ) {
@@ -68,7 +72,7 @@ extension Services.Formatter.Footer {
 
         public func makeFooter() -> [Item] {
             var items: [Item] = []
-            let registeredSources = availableSources ?? Shared.Constants.Search.availableSources
+            let registeredSources = availableSources
 
             // 1. Actionable source tip (top of footer). #1045 Gap 2:
             //    if the caller supplied `contributingSources`, the tip
@@ -160,7 +164,15 @@ extension Services.Formatter.Footer {
             if currentSource == nil {
                 return "_To narrow results, use `source` parameter: \(sources)_"
             }
-            return Shared.Constants.Search.tipOtherSources(excluding: currentSource)
+            // 2026-05-26 audit Finding 6.0: `tipOtherSources` previously
+            // delegated to `Shared.Constants.Search.otherSources(excluding:)`
+            // which iterated the deleted static literal. Inline the
+            // same computation against the (non-optional) registered
+            // list so the tip honours the caller-supplied scope.
+            let others = registeredSources
+                .filter { $0 != (currentSource ?? "") }
+                .joined(separator: ", ")
+            return "💡 **Other sources:** \(others), or `all`"
         }
 
         private func makeTeaserItems(_ teasers: Services.Formatter.TeaserResults) -> [Item] {
@@ -181,13 +193,13 @@ extension Services.Formatter.Footer {
 
 extension Services.Formatter.Footer.Search {
     /// Create footer for unified search (all sources).
-    /// #1042 audit + wiring batch 5: `availableSources` parameter for
-    /// the registry-derived "narrow with --source: …" tip. When nil,
-    /// the footer falls back to `Shared.Constants.Search.availableSources`.
+    /// 2026-05-26 audit Finding 6.0: `availableSources` is non-optional;
+    /// every caller MUST supply the registry-derived list (typically
+    /// `CupertinoComposition.makeProductionSourceRegistry().allEnabled.map(\.definition.id)`).
     public static func unified(
         showSemanticTip: Bool = true,
         showPlatformTip: Bool = true,
-        availableSources: [String]? = nil,
+        availableSources: [String],
         contributingSources: [String]? = nil,
         excludedSources: Set<String> = []
     ) -> Services.Formatter.Footer.Search {
@@ -203,14 +215,14 @@ extension Services.Formatter.Footer.Search {
     }
 
     /// Create footer for single-source search.
-    /// #1042 audit + wiring batch 5: same `availableSources`
-    /// composition-root injection point as `unified(...)`.
+    /// 2026-05-26 audit Finding 6.0: `availableSources` is non-optional;
+    /// callers MUST supply the registry-derived list.
     public static func singleSource(
         _ source: String,
         teasers: Services.Formatter.TeaserResults? = nil,
         showSemanticTip: Bool = true,
         showPlatformTip: Bool = true,
-        availableSources: [String]? = nil,
+        availableSources: [String],
         contributingSources: [String]? = nil,
         excludedSources: Set<String> = []
     ) -> Services.Formatter.Footer.Search {

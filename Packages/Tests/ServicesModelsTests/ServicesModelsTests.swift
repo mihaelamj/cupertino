@@ -259,7 +259,7 @@ struct TeaserResultsTests {
 struct UnifiedInputTests {
     @Test("Default Unified.Input has zero totalCount and zero non-empty sources")
     func defaults() {
-        let input = Services.Formatter.Unified.Input()
+        let input = Services.Formatter.Unified.Input(availableSources: [])
         #expect(input.totalCount == 0)
         #expect(input.nonEmptySourceCount == 0)
         #expect(input.allSources.isEmpty)
@@ -273,7 +273,8 @@ struct UnifiedInputTests {
         let input = Services.Formatter.Unified.Input(
             docResults: [doc, doc],
             higResults: [doc],
-            packagesResults: [doc, doc, doc]
+            packagesResults: [doc, doc, doc],
+            availableSources: []
         )
         #expect(input.totalCount == 6)
         #expect(input.nonEmptySourceCount == 3)
@@ -288,7 +289,8 @@ struct UnifiedInputTests {
         let input = Services.Formatter.Unified.Input(
             docResults: [doc],
             higResults: [doc],
-            packagesResults: [doc]
+            packagesResults: [doc],
+            availableSources: []
         )
         let names = input.allSources.map(\.info.name)
         #expect(names.count == 3)
@@ -308,6 +310,7 @@ struct UnifiedInputTests {
         let input = Services.Formatter.Unified.Input(
             docResults: [doc, doc],
             packagesResults: [doc],
+            availableSources: [],
             limit: 2
         )
         let teasers = input.sourceTeasers
@@ -403,9 +406,9 @@ struct ServicesProtocolWitnessTests {
             minVisionOS: String?,
             minSwift: String?,
             appleImports: String?,
-            availableSources: [String]?
+            availableSources: [String]
         ) async -> Services.Formatter.Unified.Input {
-            Services.Formatter.Unified.Input(limit: limit)
+            Services.Formatter.Unified.Input(availableSources: availableSources, limit: limit)
         }
     }
 
@@ -430,8 +433,26 @@ struct ServicesProtocolWitnessTests {
 
     @Test("UnifiedSearcher protocol accepts a stub implementation")
     func unifiedSearcherWitness() async {
+        // 2026-05-26 audit Finding 6.0: searchAll's availableSources is
+        // non-optional now. Pass an empty list — the stub returns an
+        // empty Input regardless. The test fixture documents that
+        // formatter-rendering tests should pull the canonical list
+        // from CupertinoComposition; conformance witnesses can pass
+        // any value-typed array.
         let searcher: any Services.UnifiedSearcher = StubUnified()
-        let input = await searcher.searchAll(query: "x", framework: nil, limit: 5)
+        let input = await searcher.searchAll(
+            query: "x",
+            framework: nil,
+            limit: 5,
+            minIOS: nil,
+            minMacOS: nil,
+            minTvOS: nil,
+            minWatchOS: nil,
+            minVisionOS: nil,
+            minSwift: nil,
+            appleImports: nil,
+            availableSources: []
+        )
         #expect(input.totalCount == 0)
         #expect(input.limit == 5)
     }

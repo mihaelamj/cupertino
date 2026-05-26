@@ -929,7 +929,8 @@ struct UnifiedSearchFormatterTests {
             swiftEvolutionResults: [],
             swiftOrgResults: [makeResult(title: "SwiftOrg1")],
             swiftBookResults: [],
-            packagesResults: [makeResult(title: "Package1")]
+            packagesResults: [makeResult(title: "Package1")],
+            availableSources: []
         )
 
         #expect(input.totalCount == 7)
@@ -937,7 +938,7 @@ struct UnifiedSearchFormatterTests {
 
     @Test("Services.Formatter.Unified.Input empty state")
     func emptyState() {
-        let input = Services.Formatter.Unified.Input()
+        let input = Services.Formatter.Unified.Input(availableSources: [])
         #expect(input.totalCount == 0)
     }
 
@@ -951,7 +952,8 @@ struct UnifiedSearchFormatterTests {
             swiftEvolutionResults: [],
             swiftOrgResults: [],
             swiftBookResults: [],
-            packagesResults: []
+            packagesResults: [],
+            availableSources: []
         )
 
         let formatter = Services.Formatter.Unified.Markdown(query: "view")
@@ -973,7 +975,8 @@ struct UnifiedSearchFormatterTests {
             swiftEvolutionResults: [],
             swiftOrgResults: [],
             swiftBookResults: [],
-            packagesResults: []
+            packagesResults: [],
+            availableSources: []
         )
 
         let formatter = Services.Formatter.Unified.Markdown(query: "test")

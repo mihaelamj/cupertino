@@ -63,10 +63,14 @@ extension Services.Formatter.Unified {
             // searched set when degradedSources is non-empty, and keeps
             // the original "ALL sources" wording on the happy path so
             // existing clients don't have to special-case anything.
-            // #1042 Cluster 2 wiring: registry-supplied list wins; fall
-            // back to the foundation-tier static when the caller didn't
-            // thread it through.
-            let availableSourcesList = input.availableSources ?? Shared.Constants.Search.availableSources
+            // 2026-05-26 audit Finding 6.0: registry-supplied list,
+            // non-optional. The caller MUST thread it from
+            // `CupertinoComposition.makeProductionSourceRegistry().allEnabled.map(\.definition.id)`
+            // (or equivalent registry iteration). Pre-fix this had a
+            // `?? Shared.Constants.Search.availableSources` fallback;
+            // the static was a maintenance trap (any new shipped source
+            // had to be added there too, separate from the registry).
+            let availableSourcesList = input.availableSources
             let degradedNames = Set(input.degradedSources.map(\.name))
             if degradedNames.isEmpty {
                 let allSources = availableSourcesList.joined(separator: ", ")

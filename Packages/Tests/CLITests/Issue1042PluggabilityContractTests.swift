@@ -359,7 +359,8 @@ struct Issue1042PluggabilityContractTests {
         let input = Services.Formatter.Unified.Input(
             extras: [
                 ContractFakeSourceProvider.fakeID: .init(info: fakeInfo, results: [fakeResult]),
-            ]
+            ],
+            availableSources: []
         )
         #expect(input.totalCount == 1)
         #expect(input.allSources.contains(where: { $0.info.key == ContractFakeSourceProvider.fakeID }))

@@ -8,9 +8,9 @@ extension Services.Formatter.Frameworks {
     public struct Markdown: Services.Formatter.Result {
         private let totalDocs: Int
         /// #1045 Gap 2: registry-derived source-id list for footer tips.
-        private let availableSources: [String]?
+        private let availableSources: [String]
 
-        public init(totalDocs: Int, availableSources: [String]? = nil) {
+        public init(totalDocs: Int, availableSources: [String]) {
             self.totalDocs = totalDocs
             self.availableSources = availableSources
         }

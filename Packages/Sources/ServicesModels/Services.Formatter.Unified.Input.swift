@@ -35,17 +35,17 @@ extension Services.Formatter.Unified {
             }
         }
 
-        /// #1042 Cluster 2 wiring: composition-root-supplied list of
+        /// 2026-05-26 audit Finding 6.0: registry-supplied list of
         /// source IDs for the formatter's footer tip ("_To narrow
         /// results, use `source` parameter: …_") + the "Searched ALL
-        /// sources" header. When nil, formatters fall back to
-        /// `Shared.Constants.Search.availableSources` (the historical
-        /// foundation-tier static). Registry-aware composition roots
-        /// supply the list from
-        /// `makeProductionSourceRegistry().allEnabled.map(\.definition.id)`,
-        /// so a new registered source shows up in both the header and
-        /// the tip automatically.
-        public let availableSources: [String]?
+        /// sources" header. Non-optional — every caller MUST supply
+        /// the list from `CupertinoComposition.makeProductionSourceRegistry().allEnabled.map(\.definition.id)`
+        /// (or equivalent). Pre-fix this was optional and the
+        /// formatters silently fell back to the
+        /// `Shared.Constants.Search.availableSources` static literal
+        /// — a future PR that forgot to wire the list would silently
+        /// omit any new shipped source from the rendered output.
+        public let availableSources: [String]
 
         public let limit: Int // The limit used per source, for teaser calculation
         /// Per-source configuration errors (#640). Empty on the happy
@@ -68,7 +68,7 @@ extension Services.Formatter.Unified {
             swiftBookResults: [Search.Result] = [],
             packagesResults: [Search.Result] = [],
             extras: [String: ExtraSource] = [:],
-            availableSources: [String]? = nil,
+            availableSources: [String],
             limit: Int = 10,
             degradedSources: [Search.DegradedSource] = []
         ) {

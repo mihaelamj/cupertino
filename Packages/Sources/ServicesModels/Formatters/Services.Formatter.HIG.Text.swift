@@ -13,12 +13,12 @@ extension Services.Formatter.HIG {
         /// footer's "narrow with --source: …" tip. nil falls back to
         /// the foundation-tier static; composition root supplies the
         /// list from `makeProductionSourceRegistry().allEnabled.map(\.definition.id)`.
-        private let availableSources: [String]?
+        private let availableSources: [String]
 
         public init(
             query: Services.HIGQuery,
             teasers: Services.Formatter.TeaserResults? = nil,
-            availableSources: [String]? = nil
+            availableSources: [String]
         ) {
             self.query = query
             self.teasers = teasers

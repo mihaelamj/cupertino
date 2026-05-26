@@ -525,17 +525,14 @@ extension Shared.Constants {
             emoji: emojiPackages
         )
 
-        /// All source infos in display order
-        public static let allSourceInfos: [SourceInfo] = [
-            infoAppleDocs,
-            infoArchive,
-            infoSamples,
-            infoHIG,
-            infoSwiftEvolution,
-            infoSwiftOrg,
-            infoSwiftBook,
-            infoPackages,
-        ]
+        // 2026-05-26 audit Finding 9.2: `allSourceInfos: [SourceInfo]`
+        // was a dead-on-prod static literal — zero consumers in
+        // `Packages/Sources/` post-#1042. Deleted along with the
+        // related `Shared.Constants.Search.availableSources` literal.
+        // Each per-source `info<X>` constant is still referenced
+        // individually by SourceProvider definitions via DisplayName
+        // lookups, so they stay; only the joined-list dead static is
+        // gone.
     }
 
     // MARK: - URLs
@@ -925,28 +922,19 @@ extension Shared.Constants {
         `\(schemaParamMinTvOS)`, `\(schemaParamMinWatchOS)`, `\(schemaParamMinVisionOS)`
         """
 
-        /// All available source values (excluding 'all')
-        public static let availableSources: [String] = [
-            SourcePrefix.appleDocs,
-            SourcePrefix.samples,
-            SourcePrefix.hig,
-            SourcePrefix.appleArchive,
-            SourcePrefix.swiftEvolution,
-            SourcePrefix.swiftOrg,
-            SourcePrefix.swiftBook,
-            SourcePrefix.packages,
-        ]
-
-        /// Get all sources except the specified one(s)
-        public static func otherSources(excluding current: String?) -> [String] {
-            let excluded = current ?? ""
-            return availableSources.filter { $0 != excluded }
-        }
-
-        /// Comprehensive tips showing all available search capabilities
-        public static let tipSearchCapabilities = """
-        💡 **Dig deeper:** Use `source` parameter to search: \(availableSources.joined(separator: ", ")), or `all`.
-        """
+        // 2026-05-26 audit Finding 6.0: the static
+        // `availableSources: [String]` literal was a maintenance trap
+        // — every new shipped source had to be appended here in
+        // parallel with the registry. Deleted. Production callers
+        // now thread the registry-derived list from
+        // `CupertinoComposition.makeProductionSourceRegistry().allEnabled.map(\.definition.id)`
+        // (CLI + MCP composition roots already do this), and test
+        // fixtures construct an explicit list in-fixture.
+        //
+        // The two former companions (`otherSources(excluding:)` and
+        // `tipSearchCapabilities`) were inlined at their two callers
+        // — see `Services.Formatter.Footer.Search` for the equivalent
+        // dynamic computation.
 
         /// Tip for semantic code search tools (#81)
         public static let tipSemanticSearch = """
@@ -955,11 +943,11 @@ extension Shared.Constants {
         discovery via AST extraction.
         """
 
-        /// Generate tip showing other sources for a specific search
-        public static func tipOtherSources(excluding current: String?) -> String {
-            let others = otherSources(excluding: current)
-            return "💡 **Other sources:** \(others.joined(separator: ", ")), or `all`"
-        }
+        // 2026-05-26 audit Finding 6.0: `tipOtherSources` deleted
+        // alongside the static `availableSources` literal it consumed.
+        // The single caller (`Services.Formatter.Footer.Search.makeOtherSourcesTip`)
+        // now inlines the equivalent computation against the
+        // caller-supplied registered-sources list.
 
         // MARK: Formatting
 

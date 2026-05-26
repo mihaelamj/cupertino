@@ -71,10 +71,9 @@ extension Services.Formatter.Unified {
             }
 
             // Standard tips (using shared constants for consistency with MCP).
-            // #1042 Cluster 2 wiring: registry-supplied list wins; static
-            // is the back-compat fallback.
-            let sources = (input.availableSources ?? Shared.Constants.Search.availableSources)
-                .joined(separator: ", ")
+            // 2026-05-26 audit Finding 6.0: registry-supplied list,
+            // non-optional. Static fallback deleted.
+            let sources = input.availableSources.joined(separator: ", ")
             output += "_To narrow results, use source parameter: \(sources)_\n\n"
             output += Shared.Constants.Search.tipSemanticSearch + "\n\n"
             output += Shared.Constants.Search.tipPlatformFilters + "\n"
