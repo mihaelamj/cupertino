@@ -37,4 +37,7 @@ public struct SwiftEvolutionSource: Search.SourceProvider {
     public func makeIndexer() -> any Search.SourceIndexer {
         Search.SwiftEvolutionIndexer()
     }
+
+    /// #1045 Gap 3: every swift-evolution row is an evolution proposal.
+    public func docKind(structuredKind _: String?, uriPath _: String) -> Search.DocKind { .evolutionProposal }
 }

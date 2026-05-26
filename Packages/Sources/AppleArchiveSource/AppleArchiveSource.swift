@@ -50,4 +50,7 @@ public struct AppleArchiveSource: Search.SourceProvider {
     public func makeIndexer() -> any Search.SourceIndexer {
         Search.AppleArchiveIndexer()
     }
+
+    /// #1045 Gap 3: every apple-archive row classifies as `.archive`.
+    public func docKind(structuredKind _: String?, uriPath _: String) -> Search.DocKind { .archive }
 }

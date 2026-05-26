@@ -242,6 +242,25 @@ searchProperties:
   intentDefault: reference           # one of: reference, conceptual, sample, news
   rankWeight: 1.0
 
+# #1042 Cluster 8: which CLI/MCP search-dispatch runner this source uses.
+# Mirrors `Search.SourceProvider.searchRoute: Search.SearchRoute`.
+# Allowed values: docs (default), hig, samples, packages, unified.
+# `docs` covers apple-docs + apple-archive + swift-evolution + swift-org +
+# swift-book (5 of 8 shipped). `hig`, `samples`, `packages` use their own
+# runners. `unified` falls back to the cross-source fan-out and is the
+# safe default for novel sources whose dispatch is genuinely new.
+searchRoute: docs
+
+# #1045 Gap 3: how `Search.SourceProvider.docKind(structuredKind:uriPath:)`
+# classifies a row from this source for `docs_metadata.kind`. Either a
+# `Search.DocKind` literal (.symbolPage / .article / .tutorial /
+# .sampleCode / .evolutionProposal / .swiftBook / .swiftOrgDoc / .hig /
+# .archive / .unknown) — the per-source target returns that constant
+# from its `docKind(...)` override — OR `dynamic` when the per-source
+# target overrides `docKind(...)` with a structured-kind classifier
+# (apple-docs is the only `dynamic` shipped source today).
+docKind: dynamic
+
 # Required: what this source can answer (capabilities declaration)
 # Read at runtime to gate which searchers / operations / MCP tools
 # fan out to this source's DB. See §3.5 for vocabulary + semantics.

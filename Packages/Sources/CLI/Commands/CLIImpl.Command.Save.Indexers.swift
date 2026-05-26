@@ -302,8 +302,17 @@ extension CLIImpl.Command.Save {
             // any source-id at result-formatting time (a swift-org row
             // reading a swift-evolution-flavored URI still gets the
             // right display name). Built once, shared across groups.
+            // #1045 Gap 3 wiring: thread the provider dict through so
+            // `Search.Classify.kind(...)` can dispatch
+            // `provider.docKind(structuredKind:uriPath:)` instead of
+            // falling back to the foundation-tier static switch when a
+            // new source is registered.
+            let sourceLookupProviders: [String: any Search.SourceProvider] = Dictionary(
+                uniqueKeysWithValues: productionRegistry.allEnabled.map { ($0.definition.id, $0) }
+            )
             let sourceLookup = Search.SourceLookup(
-                definitions: productionRegistry.allEnabled.map(\.definition)
+                definitions: productionRegistry.allEnabled.map(\.definition),
+                providers: sourceLookupProviders
             )
 
             let allGroups = productionRegistry.groupedByDestinationDB(excluding: [.packages])

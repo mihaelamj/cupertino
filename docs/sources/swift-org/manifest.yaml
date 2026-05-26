@@ -42,6 +42,12 @@ searchProperties:
   intentDefault: reference
   rankWeight: 0.95
 
+# #1042 Cluster 8: shared docs runner.
+searchRoute: docs
+
+# #1045 Gap 3: every swift-org row classifies as `.swiftOrgDoc`.
+docKind: swiftOrgDoc
+
 capabilities:
   searchers:
     - text

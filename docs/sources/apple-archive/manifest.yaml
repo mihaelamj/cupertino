@@ -33,6 +33,13 @@ searchProperties:
   intentDefault: reference
   rankWeight: 0.6
 
+# #1042 Cluster 8: shared docs runner (same as apple-docs / swift-org /
+# swift-book / swift-evolution).
+searchRoute: docs
+
+# #1045 Gap 3: every apple-archive row classifies as `.archive`.
+docKind: archive
+
 capabilities:
   searchers:
     - text

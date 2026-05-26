@@ -48,6 +48,19 @@ searchProperties:
   intentDefault: reference
   rankWeight: 1.0
 
+# #1042 Cluster 8: which CLI/MCP search-dispatch runner this source uses.
+# `docs` covers apple-docs, apple-archive, swift-evolution, swift-org,
+# swift-book (5 of 8 shipped). `hig`, `samples`, `packages` use their
+# own runners.
+searchRoute: docs
+
+# #1045 Gap 3: how `Search.SourceProvider.docKind(structuredKind:uriPath:)`
+# classifies a row from this source.
+# `dynamic`: AppleDocsSource overrides docKind with a structured-kind
+# classifier (protocol/class/struct/... → .symbolPage; article/collection
+# → .article; tutorial → .tutorial; sample code → .sampleCode).
+docKind: dynamic
+
 capabilities:
   searchers:
     - text

@@ -19,31 +19,14 @@ import SearchModels
 import SharedConstants
 
 extension Search {
-    /// High-level document-shape taxonomy stored per row in `docs_metadata`.
-    public enum DocKind: String, Codable, Sendable, CaseIterable {
-        /// API reference with a declaration (struct/class/protocol/enum/func/etc.).
-        case symbolPage
-        /// Discussion, overview, or collection index page.
-        case article
-        /// DocC tutorial chapter or step.
-        case tutorial
-        /// Apple sample-code landing page.
-        case sampleCode
-        /// Swift Evolution proposal.
-        case evolutionProposal
-        /// The Swift Programming Language book.
-        case swiftBook
-        /// Other Swift.org documentation.
-        case swiftOrgDoc
-        /// Human Interface Guidelines page.
-        case hig
-        /// Legacy Apple Archive programming guide.
-        case archive
-        /// Fallback — classifier had no matching branch.
-        case unknown
-    }
-
     /// Deterministic classifier for `DocKind`. Pure; safe to call from any context.
+    ///
+    /// **Post-#1045 Gap 3**: dispatches via the supplied
+    /// `Search.SourceLookup` to each registered provider's
+    /// `docKind(structuredKind:uriPath:)` method. The 6-arm
+    /// `switch source` is gone; new sources contribute their
+    /// classifier inside their per-source target. Sources without a
+    /// registered provider fall through to `.unknown`.
     public enum Classify {
         /// Classify a document given its source prefix, optional structured-doc kind,
         /// and URI path. See #192 section C1 for the full spec.
@@ -56,10 +39,35 @@ extension Search {
         ///   - uriPath: the URI path component (e.g. `/documentation/swiftui/view` or
         ///     `/samplecode/swiftui/robust-nav`). Used to disambiguate sample-code
         ///     pages which share `source == apple-docs` with symbol pages.
+        ///   - lookup: the production source lookup. When supplied, dispatches
+        ///     via each provider's `docKind(...)` method. When nil (legacy
+        ///     callers), falls back to the registry-free static map preserved
+        ///     for back-compat.
         public static func kind(
             source: String,
             structuredKind: String? = nil,
-            uriPath: String = ""
+            uriPath: String = "",
+            lookup: Search.SourceLookup? = nil
+        ) -> Search.DocKind {
+            if let lookup, let provider = lookup.provider(for: source) {
+                return provider.docKind(structuredKind: structuredKind, uriPath: uriPath)
+            }
+            return Self.fallbackKind(
+                source: source,
+                structuredKind: structuredKind,
+                uriPath: uriPath
+            )
+        }
+
+        /// Back-compat fallback used when no `SourceLookup` is in scope.
+        /// Mirrors the pre-#1045 hardcoded `switch source` — kept for
+        /// callers that haven't migrated to threading a registry
+        /// through. New sources won't appear here; they MUST be passed
+        /// via the `lookup:` parameter to be classified correctly.
+        private static func fallbackKind(
+            source: String,
+            structuredKind: String?,
+            uriPath: String
         ) -> Search.DocKind {
             switch source {
             case Shared.Constants.SourcePrefix.swiftEvolution:
@@ -79,7 +87,10 @@ extension Search {
             }
         }
 
-        private static func classifyAppleDocs(
+        /// Apple-docs structured-kind classifier. Public so per-source
+        /// `Search.SourceProvider.docKind(...)` overrides in AppleDocsSource
+        /// can call it without duplicating the mapping logic.
+        public static func classifyAppleDocs(
             structuredKind: String?,
             uriPath: String
         ) -> Search.DocKind {
