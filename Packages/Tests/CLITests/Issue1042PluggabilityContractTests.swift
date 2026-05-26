@@ -188,12 +188,32 @@ struct Issue1042PluggabilityContractTests {
 
     // MARK: - Cluster 5: Search.PlatformFilterScope sets
 
-    @Test(
-        "PlatformFilterScope.dispatchAppliesFilter is registry-derived",
-        .disabled("OUTSTANDING — Cluster 5: SearchModels/Search.PlatformFilterScope.swift L42-57 hardcodes 8-source set. Refactor: SourceProperties.appliesPlatformFilter.")
-    )
+    @Test("PlatformFilterScope.partitionForNotice accepts a composition-root-supplied appliesFilter set")
     func dispatchAppliesFilterCapabilityDerived() {
-        #expect(Bool(false), "see disabled note")
+        // STATUS: PASSES (post-Cluster-5 sub-1). The pre-fix
+        // `partitionForNotice(contributingSources:)` only consulted
+        // the static `dispatchAppliesFilter` set. Post-fix a new
+        // overload accepts `appliesFilter: Set<String>` so a
+        // composition root can derive the set from
+        // `Search.Capabilities.metadata[.hasMinPlatformVersion]` on
+        // each registered SourceProvider. The legacy overload still
+        // works for callers that haven't migrated, forwarding to the
+        // new overload with the static set.
+        let appliesSet: Set<String> = [
+            ContractFakeSourceProvider.fakeID,
+            Shared.Constants.SourcePrefix.appleDocs,
+        ]
+        let (filtered, unfiltered) = Search.PlatformFilterScope.partitionForNotice(
+            contributingSources: [
+                ContractFakeSourceProvider.fakeID,
+                Shared.Constants.SourcePrefix.appleDocs,
+                Shared.Constants.SourcePrefix.hig,
+            ],
+            appliesFilter: appliesSet
+        )
+        #expect(filtered.contains(ContractFakeSourceProvider.fakeID))
+        #expect(filtered.contains(Shared.Constants.SourcePrefix.appleDocs))
+        #expect(unfiltered.contains(Shared.Constants.SourcePrefix.hig))
     }
 
     @Test("PlatformFilterScope.dispatch(for:fanOutSources:) accepts a registry-derived list (legacy static-list overload deprecated)")

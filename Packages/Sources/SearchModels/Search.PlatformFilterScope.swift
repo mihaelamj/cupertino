@@ -85,10 +85,25 @@ extension Search {
         public static func partitionForNotice(
             contributingSources: [String]
         ) -> (filtered: [String], unfiltered: [String]) {
+            partitionForNotice(
+                contributingSources: contributingSources,
+                appliesFilter: dispatchAppliesFilter
+            )
+        }
+
+        /// #1042 Cluster 5 sub-1: registry-aware variant accepting a
+        /// composition-root-supplied set of sources whose dispatch
+        /// handler threads the platform filter. The legacy static
+        /// `partitionForNotice` (above) forwards to this with
+        /// `dispatchAppliesFilter` so existing callers stay green.
+        public static func partitionForNotice(
+            contributingSources: [String],
+            appliesFilter: Set<String>
+        ) -> (filtered: [String], unfiltered: [String]) {
             var filtered: [String] = []
             var unfiltered: [String] = []
             for source in contributingSources {
-                if dispatchAppliesFilter.contains(source) {
+                if appliesFilter.contains(source) {
                     filtered.append(source)
                 } else {
                     unfiltered.append(source)
