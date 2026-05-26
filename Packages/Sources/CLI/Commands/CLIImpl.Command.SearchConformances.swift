@@ -56,11 +56,7 @@ extension CLIImpl.Command {
 
         @Option(
             name: .long,
-            help: """
-            Override the apple-docs database path. Default: 
-            apple-documentation.db (resolved through the production source 
-            registry).
-            """
+            help: CLIImpl.appleDocsDBOverrideHelp
         )
         var searchDb: String?
 

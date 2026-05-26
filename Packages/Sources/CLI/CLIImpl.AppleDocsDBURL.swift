@@ -1,3 +1,4 @@
+import ArgumentParser
 import Foundation
 import SearchModels
 import SharedConstants
@@ -19,6 +20,16 @@ import SharedConstants
 /// test + migration-window back-compat: when set, the override URL is
 /// returned verbatim regardless of the registry.
 extension CLIImpl {
+    /// Single source-of-truth help body for the seven AST-aware
+    /// subcommands' `--search-db` option (round-14 critic finding #7:
+    /// the literal was duplicated across 7 callsites with two
+    /// divergent formattings; promoting it here removes the
+    /// `N-place edit` smell and makes future help-text revisions
+    /// land in one file).
+    public static let appleDocsDBOverrideHelp: ArgumentHelp = .init(
+        "Override the apple-docs database path. Default: apple-documentation.db (resolved through the production source registry)."
+    )
+
     /// Returns the file URL the AST-aware search commands should open.
     /// Defaults to `<baseDirectory>/apple-documentation.db` (resolved
     /// through `CLIImpl.makeProductionSourceRegistry()`'s

@@ -40,29 +40,53 @@ extension CLIImpl.Command {
             // structs need no singleton handle per GoF p. 127.
             let searchDatabaseFactory: any SearchModule.DatabaseFactory = LiveSearchDatabaseFactory()
 
-            // Path-DI composition sub-root (#535). Apple framework
-            // partitioning lives in apple-docs AND apple-archive (the
-            // two sources whose pages carry a meaningful `framework`
-            // column; HIG / swift-evolution / swift-org / swift-book
-            // emit framework=""). Pre per-source DB split, this
-            // command's `SELECT framework FROM docs_metadata` against
-            // the unified search.db pulled both source's frameworks
-            // in one query; post-split it fans out across the two
-            // per-source DBs that contribute. Other sources (whose
-            // framework column is always "") are not opened.
+            // Path-DI composition sub-root (#535). Source Independence
+            // Day pattern: iterate the production source registry and
+            // open every source whose `capabilities.operations`
+            // contains `.listFrameworks`. Today: apple-docs +
+            // apple-archive. Adding a new source that declares
+            // `.listFrameworks` adds it to this fan-out with zero
+            // edits here (the "2-file PR" standard).
+            //
+            // The `--search-db` override applies only to the apple-docs
+            // source (this command's legacy override semantic).
+            // Other framework-scoped sources resolve through their
+            // own per-source DB filenames declared by each
+            // `SourceProvider.destinationDB.filename`.
+            let baseDirectory = Shared.Paths.live().baseDirectory
+            let registry = CLIImpl.makeProductionSourceRegistry()
+            let frameworkSources = registry.allEnabled.filter {
+                $0.capabilities.operations.contains(.listFrameworks)
+            }
             let appleDocsURL = CLIImpl.resolveAppleDocsDBURL(override: searchDb)
-            let appleArchiveURL = Shared.Paths.live().baseDirectory.appendingPathComponent(
-                Shared.Models.DatabaseDescriptor.appleArchive.filename
-            )
+
+            // Fail-fast: surface the apple-docs missing-DB diagnostic
+            // before opening any other DB. Pre-#1037 the user was
+            // either set up or not; the apple-docs DB is the canonical
+            // floor for whether this command can run at all.
+            guard FileManager.default.fileExists(atPath: appleDocsURL.path) else {
+                CLIImpl.printUserFacingDiagnostic(
+                    CLIImpl.appleDocsDBMissingMessage(url: appleDocsURL),
+                    recording: Cupertino.Context.composition.logging.recording
+                )
+                throw ExitCode.failure
+            }
 
             var frameworks: [String: Int] = [:]
             var totalDocs = 0
 
-            for dbURL in [appleDocsURL, appleArchiveURL] {
+            for provider in frameworkSources {
+                let dbURL: URL
+                if provider.definition.id == Shared.Constants.SourcePrefix.appleDocs {
+                    // Honour --search-db for apple-docs only.
+                    dbURL = appleDocsURL
+                } else {
+                    dbURL = baseDirectory.appendingPathComponent(provider.destinationDB.filename)
+                }
                 guard FileManager.default.fileExists(atPath: dbURL.path) else {
-                    // Missing apple-archive.db is non-fatal: a user who
-                    // never set up the bundle's archive DB still sees
-                    // apple-docs frameworks.
+                    // Missing non-apple-docs DB is non-fatal: a user
+                    // who never set up the bundle's archive DB still
+                    // sees apple-docs frameworks.
                     continue
                 }
                 let perDB = try await Services.ServiceContainer.withDocsService(
@@ -75,18 +99,6 @@ extension CLIImpl.Command {
                 }
                 frameworks.merge(perDB.0, uniquingKeysWith: +)
                 totalDocs += perDB.1
-            }
-
-            // apple-docs.db is the required floor. apple-archive.db is
-            // optional. If apple-docs.db itself is missing the user is
-            // pre-setup; surface the same diagnostic as the AST
-            // commands do.
-            guard FileManager.default.fileExists(atPath: appleDocsURL.path) else {
-                CLIImpl.printUserFacingDiagnostic(
-                    CLIImpl.appleDocsDBMissingMessage(url: appleDocsURL),
-                    recording: Cupertino.Context.composition.logging.recording
-                )
-                throw ExitCode.failure
             }
 
             // Output results using formatters
