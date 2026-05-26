@@ -1,16 +1,26 @@
 import Foundation
 import SharedConstants
 
-// MARK: - Distribution.SetupService: value types + Observer protocol
+// MARK: - Distribution.Setup.Service: value types + Observer protocol
 
+/// Sub-namespace grouping for setup-related types (Service + Error).
+/// Post-#1042 type-name deepening: previously `Distribution.SetupService`
+/// + `Distribution.SetupError` sat at the same nesting level; now
+/// grouped under `Distribution.Setup.*`. Back-compat typealiases at
+/// the bottom keep pre-rename call-sites compiling
+/// (`Distribution.SetupService` -> `Distribution.Setup.Service`).
 extension Distribution {
+    public enum Setup {}
+}
+
+extension Distribution.Setup {
     /// `cupertino setup` orchestrator namespace. The concrete
     /// `run(...)` static function lives in the `Distribution` producer
     /// target as an extension on this enum. The value types
     /// (`Request`, `Outcome`, `Event`) plus the GoF Observer protocol
     /// (`EventObserving`) stay here in `DistributionModels` so any
     /// conformer can implement the protocol without `import Distribution`.
-    public enum SetupService {
+    public enum Service {
         /// What the caller asked for. Mirrors the `cupertino setup`
         /// flag shape so the CLI maps argv to this struct directly.
         public struct Request: Sendable {
@@ -22,7 +32,7 @@ extension Distribution {
             /// and place. Ordered by the printable sequence the success-summary
             /// printer iterates. Composition-root injected (the CLI's
             /// `CLIImpl.Command.Setup.run` assembles the list and passes it
-            /// in) so adding a 4th DB no longer touches `Distribution.SetupService.run`.
+            /// in) so adding a 4th DB no longer touches `Distribution.Setup.Service.run`.
             ///
             /// **Required at construction; no default.** The other init
             /// parameters carry defaults (`currentDocsVersion`,
@@ -61,7 +71,7 @@ extension Distribution {
                 // Request-specific error before any side effects.
                 precondition(
                     !required.isEmpty,
-                    "Distribution.SetupService.Request.required must list at least one database"
+                    "Distribution.Setup.Service.Request.required must list at least one database"
                 )
                 // Reject duplicate-by-`id` (the routing key everywhere downstream:
                 // `Outcome.path(forDatabaseId:)`, status classification). Full
@@ -71,7 +81,7 @@ extension Distribution {
                 // the second is silently shadowed.
                 precondition(
                     Set(required.map(\.id)).count == required.count,
-                    "Distribution.SetupService.Request.required carries duplicate descriptor ids: \(required.map(\.id))"
+                    "Distribution.Setup.Service.Request.required carries duplicate descriptor ids: \(required.map(\.id))"
                 )
                 self.baseDir = baseDir
                 self.currentDocsVersion = currentDocsVersion
@@ -97,7 +107,7 @@ extension Distribution {
         /// Outcome of a single `run` invocation. The CLI uses this to
         /// render the success summary and decide what hint to print.
         /// `databases` is ordered by the construction sequence in
-        /// `SetupService.run`; the CLI's success-summary printer
+        /// `Setup.Service.run`; the CLI's success-summary printer
         /// iterates the list rather than addressing 3 fixed fields, so
         /// adding a 4th DB never touches this struct (#248 second cut).
         ///
@@ -105,7 +115,7 @@ extension Distribution {
         /// `databases` array, which is order-sensitive. Two Outcomes
         /// covering the same descriptors in a different order are
         /// NOT equal. Production code constructs the list in a single
-        /// place (`SetupService.run`'s `placements` literal); call
+        /// place (`Setup.Service.run`'s `placements` literal); call
         /// sites that compare Outcomes from heterogeneous constructions
         /// must align their construction order.
         public struct Outcome: Sendable, Equatable {
@@ -148,7 +158,7 @@ extension Distribution {
             /// would overwrite it (#249).
             case dbBackedUp(filename: String, from: URL, to: URL)
             case downloadStart(label: String)
-            case downloadProgress(label: String, Distribution.ArtifactDownloader.Progress)
+            case downloadProgress(label: String, Distribution.Artifact.Downloader.Progress)
             case downloadComplete(label: String, sizeBytes: Int64)
             case extractStart(label: String)
             case extractTick(label: String)
@@ -156,7 +166,7 @@ extension Distribution {
             case finished(Outcome)
         }
 
-        /// GoF Observer (1994 p. 293) for `SetupService.run` lifecycle
+        /// GoF Observer (1994 p. 293) for `Setup.Service.run` lifecycle
         /// events. Replaces the previous
         /// `handler: @escaping @Sendable (Event) -> Void` closure
         /// parameter. Per the standing cupertino rule "no closures,
@@ -168,4 +178,9 @@ extension Distribution {
             func observe(event: Event)
         }
     }
+}
+
+/// Back-compat alias for pre-#1042 consumers.
+extension Distribution {
+    public typealias SetupService = Setup.Service
 }

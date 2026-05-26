@@ -1,10 +1,10 @@
 import Foundation
 
-extension Distribution {
-    /// Typed errors emitted by `SetupService`, `ArtifactDownloader`, and
-    /// `ArtifactExtractor`. Mirrors the `SetupError` that lived in
+extension Distribution.Setup {
+    /// Typed errors emitted by `Setup.Service`, `Artifact.Downloader`, and
+    /// `Artifact.Extractor`. Mirrors the `SetupError` that lived in
     /// `CLI.SetupCommand` pre-#246. Pure value enum; foundation-only.
-    public enum SetupError: Error, CustomStringConvertible, Equatable {
+    public enum Error: Swift.Error, CustomStringConvertible, Equatable {
         case invalidURL(String)
         case invalidResponse
         case notFound(URL)
@@ -44,4 +44,9 @@ extension Distribution {
             }
         }
     }
+}
+
+/// Back-compat alias for pre-#1042 consumers.
+extension Distribution {
+    public typealias SetupError = Setup.Error
 }
