@@ -2,6 +2,7 @@ import Foundation
 import SharedConstants
 
 // MARK: - Distribution.InstalledVersion — concrete file I/O + classifier
+
 //
 // The `Distribution.InstalledVersion` namespace + `Status` value enum
 // live in the foundation-only `DistributionModels` seam target. This

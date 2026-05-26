@@ -2,6 +2,7 @@ import Foundation
 import SharedConstants
 
 // MARK: - Distribution.ArtifactDownloader — concrete download static func
+
 //
 // The `Distribution.ArtifactDownloader` namespace + `Progress` value
 // type + `ProgressObserving` Observer protocol live in the

@@ -922,23 +922,26 @@ let targets: [Target] = {
         dependencies: ["ASTIndexer", "TestSupport"]
     )
 
-    // ---------- DistributionModels (foundation-only seam — value types + Observer protocols) ----------
+    // ---------- Distribution family (Sources/Distribution/{Core,Model}) ----------
+    // Per folder-grouping.md: family root with Core/ (live concrete)
+    // + Model/ (foundation-only seam). Subfolder names singular.
     let distributionModelsTarget = Target.target(
         name: "DistributionModels",
         // LoggingModels added in #930 so Distribution.DatabaseHealthCheck
         // (the Doctor per-DB strategy seam) can take `any Logging.Recording`
         // as its output sink without leaking the live recorder concrete.
-        dependencies: ["SharedConstants", "LoggingModels"]
+        dependencies: ["SharedConstants", "LoggingModels"],
+        path: "Sources/Distribution/Model"
     )
     let distributionModelsTestsTarget = Target.testTarget(
         name: "DistributionModelsTests",
         dependencies: ["DistributionModels", "TestSupport"]
     )
 
-    // ---------- Distribution (#246: SetupCommand lift) ----------
     let distributionTarget = Target.target(
         name: "Distribution",
-        dependencies: ["DistributionModels", "SearchModels", "SharedConstants"]
+        dependencies: ["DistributionModels", "SearchModels", "SharedConstants"],
+        path: "Sources/Distribution/Core"
     )
     let distributionTestsTarget = Target.testTarget(
         name: "DistributionTests",
@@ -965,76 +968,82 @@ let targets: [Target] = {
         dependencies: ["IndexerModels", "TestSupport"]
     )
 
-    // ---------- EnrichmentModels (#837: foundation-only seam for the postprocessor
-    // pipeline — EnrichmentPass protocol + Target/Result value types. Per epic #769,
-    // the live passes and the cupertino-postprocessor CLI binary both build against
-    // this target without dragging in Search / SampleIndex / CorePackageIndexing).
+    // ---------- Enrichment family (#1042 follow-up: folder-grouping.md
+    // restructure). All Enrichment-related targets live under
+    // Sources/Enrichment/ with subfolders: Core/ (runtime LiveRunner),
+    // Models/ (foundation-only seam), Passes/ (6 single-file
+    // per-pass targets). Per folder-grouping.md the single-file pass
+    // targets share one parent folder via explicit `path:` + `sources:`
+    // so the filesystem flattens to one folder of 6 sibling files
+    // while SPM target identity stays separate (lift-out preservation).
     let enrichmentModelsTarget = Target.target(
         name: "EnrichmentModels",
-        dependencies: []
+        dependencies: [],
+        path: "Sources/Enrichment/Model"
     )
     let enrichmentModelsTestsTarget = Target.testTarget(
         name: "EnrichmentModelsTests",
         dependencies: ["EnrichmentModels", "TestSupport"]
     )
 
-    // ---------- Enrichment (#837 phase 1B: live concrete EnrichmentRunner + the
-    // 6 pass implementations that moved out of `Search.IndexBuilder`).
-    // After #906 the passes take `any Search.IndexWriter` /
-    // `any Search.PackageWriter` / `any Sample.Index.Writer` via init
-    // injection, so the target's deps shrink to the foundation-only
-    // Models seams + SharedConstants and audit clean against
-    // STRICT_PRODUCERS.
     let enrichmentTarget = Target.target(
         name: "Enrichment",
-        dependencies: ["EnrichmentModels", "SearchModels", "SampleIndexModels", "SharedConstants"]
+        dependencies: ["EnrichmentModels", "SearchModels", "SampleIndexModels", "SharedConstants"],
+        path: "Sources/Enrichment/Core"
     )
     let enrichmentTestsTarget = Target.testTarget(
         name: "EnrichmentTests",
         dependencies: ["Enrichment", "EnrichmentModels", "AppleConstraintsPass", "TestSupport"]
     )
 
-    // #906 sub-PR B: extract AppleConstraintsPass. Pattern-setter for
-    // the remaining 5 per-pass extractions (Hierarchy, PackagesAppleConstraints,
-    // PackagesAppleImports, SamplesAppleConstraints, Synonyms).
+    // Per-pass single-file targets, co-located under
+    // Sources/Enrichment/Passes/ via shared `path:` + per-target
+    // disjoint `sources:` lists. Target identity preserved; consumers
+    // still import `AppleConstraintsPass` / etc. unchanged. Adding a
+    // 7th pass = one more append below + one new `.swift` file in
+    // the same directory.
+    let enrichmentPassesPath = "Sources/Enrichment/Pass"
     let appleConstraintsPassTarget = Target.target(
         name: "AppleConstraintsPass",
         dependencies: [
             "EnrichmentModels",
             "SearchModels",
             "SharedConstants",
-        ]
+        ],
+        path: enrichmentPassesPath,
+        sources: ["Enrichment.AppleConstraintsPass.swift"]
     )
 
-    // #906 sub-PR C: extract HierarchyPass. Same shape as the AppleConstraintsPass
-    // pattern-setter above. Foundation-only deps; no Search / SearchSQLite link.
     let hierarchyPassTarget = Target.target(
         name: "HierarchyPass",
         dependencies: [
             "EnrichmentModels",
             "SearchModels",
-        ]
+        ],
+        path: enrichmentPassesPath,
+        sources: ["Enrichment.HierarchyPass.swift"]
     )
 
-    // #906 sub-PR D: extract PackagesAppleConstraintsPass.
     let packagesAppleConstraintsPassTarget = Target.target(
         name: "PackagesAppleConstraintsPass",
         dependencies: [
             "EnrichmentModels",
             "SearchModels",
-        ]
+        ],
+        path: enrichmentPassesPath,
+        sources: ["Enrichment.PackagesAppleConstraintsPass.swift"]
     )
 
-    // #906 sub-PR E: extract PackagesAppleImportsPass.
     let packagesAppleImportsPassTarget = Target.target(
         name: "PackagesAppleImportsPass",
         dependencies: [
             "EnrichmentModels",
             "SearchModels",
-        ]
+        ],
+        path: enrichmentPassesPath,
+        sources: ["Enrichment.PackagesAppleImportsPass.swift"]
     )
 
-    // #906 sub-PR F: extract SamplesAppleConstraintsPass.
     let samplesAppleConstraintsPassTarget = Target.target(
         name: "SamplesAppleConstraintsPass",
         dependencies: [
@@ -1042,17 +1051,19 @@ let targets: [Target] = {
             "SampleIndexModels",
             "SearchModels",
             "SharedConstants",
-        ]
+        ],
+        path: enrichmentPassesPath,
+        sources: ["Enrichment.SamplesAppleConstraintsPass.swift"]
     )
 
-    // #906 sub-PR G: extract SynonymsPass. Final per-pass extraction; after
-    // this lands the Enrichment package retains only the LiveRunner orchestrator.
     let synonymsPassTarget = Target.target(
         name: "SynonymsPass",
         dependencies: [
             "EnrichmentModels",
             "SearchModels",
-        ]
+        ],
+        path: enrichmentPassesPath,
+        sources: ["Enrichment.SynonymsPass.swift"]
     )
 
     // ---------- Indexer (#244: SaveCommand indexer + preflight lift) ----------
