@@ -5,6 +5,25 @@ import SearchModels
 import SharedConstants
 import Testing
 
+// MARK: - Canonical DocKind mapping
+
+/// 2026-05-27 post-#1056 mechanical hunt: pre-cull
+/// `Search.Classify.kind(source:)` had a 5-arm fallback switch
+/// returning per-source DocKind values when the registry-supplied
+/// dict was empty. Post-cull the switch is gone (the 5 arms were
+/// dead-on-prod — every production caller supplies the dict via
+/// `Search.SourceLookup.docKindRawValuesByID`). Tests reproduce the
+/// canonical mapping inline so the classifier's behavioural contract
+/// stays pinned without relying on a default-empty parameter that
+/// hides the per-source mapping.
+private let canonicalDocKindByID: [String: String] = [
+    Shared.Constants.SourcePrefix.swiftEvolution: "evolutionProposal",
+    Shared.Constants.SourcePrefix.swiftBook: "swiftBook",
+    Shared.Constants.SourcePrefix.swiftOrg: "swiftOrgDoc",
+    Shared.Constants.SourcePrefix.hig: "hig",
+    Shared.Constants.SourcePrefix.appleArchive: "archive",
+]
+
 // MARK: - DocKind taxonomy (#192 section C1)
 
 @Suite("Search.Classify.kind")
@@ -13,34 +32,34 @@ struct DocKindClassifyTests {
 
     @Test("swift-evolution → evolutionProposal")
     func evolutionSource() {
-        #expect(Search.Classify.kind(source: "swift-evolution") == .evolutionProposal)
-        #expect(Search.Classify.kind(source: "swift-evolution", structuredKind: "anything") == .evolutionProposal)
+        #expect(Search.Classify.kind(source: "swift-evolution", docKindByID: canonicalDocKindByID) == .evolutionProposal)
+        #expect(Search.Classify.kind(source: "swift-evolution", structuredKind: "anything", docKindByID: canonicalDocKindByID) == .evolutionProposal)
     }
 
     @Test("swift-book → swiftBook")
     func swiftBookSource() {
-        #expect(Search.Classify.kind(source: "swift-book") == .swiftBook)
+        #expect(Search.Classify.kind(source: "swift-book", docKindByID: canonicalDocKindByID) == .swiftBook)
     }
 
     @Test("swift-org → swiftOrgDoc")
     func swiftOrgSource() {
-        #expect(Search.Classify.kind(source: "swift-org") == .swiftOrgDoc)
+        #expect(Search.Classify.kind(source: "swift-org", docKindByID: canonicalDocKindByID) == .swiftOrgDoc)
     }
 
     @Test("hig → hig")
     func higSource() {
-        #expect(Search.Classify.kind(source: "hig") == .hig)
+        #expect(Search.Classify.kind(source: "hig", docKindByID: canonicalDocKindByID) == .hig)
     }
 
     @Test("apple-archive → archive")
     func archiveSource() {
-        #expect(Search.Classify.kind(source: "apple-archive") == .archive)
+        #expect(Search.Classify.kind(source: "apple-archive", docKindByID: canonicalDocKindByID) == .archive)
     }
 
     @Test("Unknown source → unknown")
     func unknownSource() {
-        #expect(Search.Classify.kind(source: "mystery-source") == .unknown)
-        #expect(Search.Classify.kind(source: "") == .unknown)
+        #expect(Search.Classify.kind(source: "mystery-source", docKindByID: canonicalDocKindByID) == .unknown)
+        #expect(Search.Classify.kind(source: "", docKindByID: canonicalDocKindByID) == .unknown)
     }
 
     // MARK: apple-docs structured-kind branches
@@ -54,7 +73,7 @@ struct DocKindClassifyTests {
         ]
         for declKind in declKinds {
             #expect(
-                Search.Classify.kind(source: "apple-docs", structuredKind: declKind) == .symbolPage,
+                Search.Classify.kind(source: "apple-docs", structuredKind: declKind, docKindByID: canonicalDocKindByID) == .symbolPage,
                 "Expected \(declKind) → symbolPage"
             )
         }
@@ -62,25 +81,25 @@ struct DocKindClassifyTests {
 
     @Test("apple-docs + article/collection → article")
     func appleDocsArticle() {
-        #expect(Search.Classify.kind(source: "apple-docs", structuredKind: "article") == .article)
-        #expect(Search.Classify.kind(source: "apple-docs", structuredKind: "collection") == .article)
+        #expect(Search.Classify.kind(source: "apple-docs", structuredKind: "article", docKindByID: canonicalDocKindByID) == .article)
+        #expect(Search.Classify.kind(source: "apple-docs", structuredKind: "collection", docKindByID: canonicalDocKindByID) == .article)
     }
 
     @Test("apple-docs + tutorial → tutorial")
     func appleDocsTutorial() {
-        #expect(Search.Classify.kind(source: "apple-docs", structuredKind: "tutorial") == .tutorial)
+        #expect(Search.Classify.kind(source: "apple-docs", structuredKind: "tutorial", docKindByID: canonicalDocKindByID) == .tutorial)
     }
 
     @Test("apple-docs + no structured kind → unknown")
     func appleDocsNoStructuredKind() {
-        #expect(Search.Classify.kind(source: "apple-docs") == .unknown)
-        #expect(Search.Classify.kind(source: "apple-docs", structuredKind: nil) == .unknown)
+        #expect(Search.Classify.kind(source: "apple-docs", docKindByID: canonicalDocKindByID) == .unknown)
+        #expect(Search.Classify.kind(source: "apple-docs", structuredKind: nil, docKindByID: canonicalDocKindByID) == .unknown)
     }
 
     @Test("apple-docs + unrecognized structured kind → unknown")
     func appleDocsUnknownStructuredKind() {
-        #expect(Search.Classify.kind(source: "apple-docs", structuredKind: "widget-gadget") == .unknown)
-        #expect(Search.Classify.kind(source: "apple-docs", structuredKind: "") == .unknown)
+        #expect(Search.Classify.kind(source: "apple-docs", structuredKind: "widget-gadget", docKindByID: canonicalDocKindByID) == .unknown)
+        #expect(Search.Classify.kind(source: "apple-docs", structuredKind: "", docKindByID: canonicalDocKindByID) == .unknown)
     }
 
     // MARK: sample-code URI override
@@ -92,14 +111,16 @@ struct DocKindClassifyTests {
             Search.Classify.kind(
                 source: "apple-docs",
                 structuredKind: "article",
-                uriPath: "apple-docs://swiftui/documentation/samplecode/foo"
+                uriPath: "apple-docs://swiftui/documentation/samplecode/foo",
+                docKindByID: canonicalDocKindByID
             ) == .sampleCode
         )
         #expect(
             Search.Classify.kind(
                 source: "apple-docs",
                 structuredKind: "struct",
-                uriPath: "/documentation/samplecode/bar"
+                uriPath: "/documentation/samplecode/bar",
+                docKindByID: canonicalDocKindByID
             ) == .sampleCode
         )
     }
@@ -109,7 +130,8 @@ struct DocKindClassifyTests {
         #expect(
             Search.Classify.kind(
                 source: "apple-docs",
-                uriPath: "apple-docs://swiftui/samplecode/navigation"
+                uriPath: "apple-docs://swiftui/samplecode/navigation",
+                docKindByID: canonicalDocKindByID
             ) == .sampleCode
         )
     }
@@ -120,7 +142,8 @@ struct DocKindClassifyTests {
             Search.Classify.kind(
                 source: "apple-docs",
                 structuredKind: "article",
-                uriPath: "https://developer.apple.com/documentation/SampleCode/foo"
+                uriPath: "https://developer.apple.com/documentation/SampleCode/foo",
+                docKindByID: canonicalDocKindByID
             ) == .sampleCode
         )
     }
@@ -133,7 +156,8 @@ struct DocKindClassifyTests {
         #expect(
             Search.Classify.kind(
                 source: "swift-evolution",
-                uriPath: "weird://something/samplecode/here"
+                uriPath: "weird://something/samplecode/here",
+                docKindByID: canonicalDocKindByID
             ) == .evolutionProposal
         )
     }
@@ -151,7 +175,7 @@ struct DocKindClassifyTests {
         ]
         for (prefix, expected) in prefixes {
             #expect(
-                Search.Classify.kind(source: prefix) == expected,
+                Search.Classify.kind(source: prefix, docKindByID: canonicalDocKindByID) == expected,
                 "Source \(prefix) should map to \(expected)"
             )
         }
