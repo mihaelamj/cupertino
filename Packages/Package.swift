@@ -886,12 +886,31 @@ let targets: [Target] = {
 
     let mcpSupportTarget = Target.target(
         name: "MCPSupport",
-        dependencies: ["MCPCore", "MCPSharedTools", "SharedConstants", "LoggingModels"],
+        // 2026-05-26 audit Cluster 12 follow-up: SearchModels carries
+        // `Search.URIResourceStrategy` + `Search.URIResourceEnvironment`
+        // — the seam the per-source URI dispatch consumes. Foundation
+        // tier import (gof-di-rules § 4-8 allows it).
+        dependencies: ["MCPCore", "MCPSharedTools", "SearchModels", "SharedConstants", "LoggingModels"],
         path: "Sources/MCP/Support"
     )
     let mcpSupportTestsTarget = Target.testTarget(
         name: "MCPSupportTests",
-        dependencies: ["MCPSupport", "MCPCore", "MCPSharedTools", "SharedConstants", "TestSupport"],
+        // 2026-05-26 audit Cluster 12 follow-up: per-source URI
+        // strategy concretes live in their owning source targets
+        // (AppleDocsSource / SwiftEvolutionSource / AppleArchiveSource);
+        // tests that build a DocsResourceProvider need access to
+        // instantiate them.
+        dependencies: [
+            "AppleDocsSource",
+            "AppleArchiveSource",
+            "MCPSupport",
+            "MCPCore",
+            "MCPSharedTools",
+            "SearchModels",
+            "SharedConstants",
+            "SwiftEvolutionSource",
+            "TestSupport",
+        ],
         path: "Tests/MCP/SupportTests"
     )
 
@@ -1243,6 +1262,7 @@ let targets: [Target] = {
     let serveTestsTarget = Target.testTarget(
         name: "ServeTests",
         dependencies: [
+            "AppleArchiveSource",
             "AppleDocsSource",
             "CLI",
             "CrawlerWebKit",
@@ -1257,6 +1277,7 @@ let targets: [Target] = {
             "Services",
             "ServicesModels",
             "SharedConstants",
+            "SwiftEvolutionSource",
             "TestSupport",
         ],
         path: "Tests/CLICommandTests/ServeTests"
@@ -1331,9 +1352,18 @@ let targets: [Target] = {
         // SearchSQLite added so the contract test can reference
         // Search.DocsSourceCandidateFetcher.defaultSwiftVersionSources +
         // defaultFrameworkScopedSources (Cluster 4 sub-1 + sub-2).
+        // 2026-05-26 audit Cluster 12 follow-up: AppleDocsSource +
+        // AppleArchiveSource + SwiftEvolutionSource added so the
+        // contract test in Issue1042PluggabilityContractTests can
+        // build a DocsResourceProvider with the per-source URI
+        // strategy concretes.
         dependencies: [
+            "AppleArchiveSource",
+            "AppleDocsSource",
             "CLI", "CupertinoComposition", "Diagnostics", "Distribution", "DistributionModels",
+            "MCPSupport",
             "Services", "ServicesModels", "RemoteSyncModels", "SearchSQLite",
+            "SwiftEvolutionSource",
         ]
     )
     let mockAIAgentTestsTarget = Target.testTarget(

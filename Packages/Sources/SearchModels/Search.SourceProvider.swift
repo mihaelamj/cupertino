@@ -160,6 +160,30 @@ extension Search {
         /// `PackagesSource` returns `PackagesReadStrategy`).
         func makeReadStrategy() -> (any Search.SourceReadStrategy)?
 
+        /// 2026-05-26 audit Cluster 12 follow-up: per-source MCP-resource
+        /// URI strategy. Pre-fix `MCP.Support.DocsResourceProvider`'s
+        /// `readResource` had a 3-arm `if uri.hasPrefix(...)` dispatch
+        /// (apple-docs / swift-evolution / apple-archive), each carrying
+        /// 30-50 LOC of bespoke URI parsing + filesystem probing +
+        /// (apple-docs only) JSON-vs-md decode logic. `listResources`
+        /// mirrored the shape with 3 source-specific blocks. Adding a
+        /// new docs-tier source whose pages reach the client via
+        /// `resources/{list,read}` required editing both dispatchers.
+        /// Post-fix the per-source target supplies a
+        /// `Search.URIResourceStrategy` concrete; the dispatchers
+        /// iterate the registry.
+        ///
+        /// Returns nil for sources that don't expose MCP-resource URIs
+        /// (swift-org, swift-book, samples, packages, hig). The
+        /// dispatcher skips nil strategies.
+        ///
+        /// Declared as a protocol requirement (not just a default
+        /// extension) to defeat the Swift static-dispatch trap that
+        /// bit `makeReadStrategy` during the #1055 layer-2 work — if
+        /// it were extension-only, per-source overrides wouldn't win
+        /// when called through `any Search.SourceProvider`.
+        func makeURIResourceStrategy() -> (any Search.URIResourceStrategy)?
+
         /// 2026-05-26 audit #1055 layer-2 part 3: is this source's
         /// `destinationDB` in the search.db FTS family?
         /// `CLIImpl.Command.Search.SmartReport.docsSources` filters

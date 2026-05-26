@@ -1,6 +1,8 @@
 // swiftlint:disable line_length
 // (long lines are descriptive `.disabled("OUTSTANDING — Cluster …")` audit-recipe strings; readability beats wrapping here)
 
+import AppleArchiveSource
+import AppleDocsSource
 @testable import CLI
 import Foundation
 import Logging
@@ -619,21 +621,31 @@ struct Issue1042PluggabilityContractTests {
         // protocol on `Search.SourceProvider` will fill in. Today
         // the set is informational; once a provider-supplied probing
         // strategy lands, the if/elseif arms collapse.
+        // 2026-05-26 audit Cluster 12 follow-up: `knownURISchemes` is
+        // now derived from `resourceStrategies.map(\.scheme)`. Construct
+        // a fake strategy whose scheme equals the fake source's id +
+        // pair it with the production AppleDocs strategy so the
+        // assertion below pins both shapes.
+        struct FakeURIResourceStrategy: SearchModels.Search.URIResourceStrategy {
+            let scheme: String
+            func listResources(env _: SearchModels.Search.URIResourceEnvironment) async throws -> [SearchModels.Search.URIResource] { [] }
+            func readMarkdown(uri _: String, env _: SearchModels.Search.URIResourceEnvironment) async throws -> String? { nil }
+        }
+        let strategies: [any SearchModels.Search.URIResourceStrategy] = [
+            FakeURIResourceStrategy(scheme: ContractFakeSourceProvider.fakeID),
+            AppleDocsURIResourceStrategy(),
+        ]
         let provider = MCP.Support.DocsResourceProvider(
             configuration: Shared.Configuration(
                 crawler: Shared.Configuration.Crawler(outputDirectory: URL(fileURLWithPath: "/tmp/contract-test-docs")),
                 changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: URL(fileURLWithPath: "/tmp/contract-test-docs"))
             ),
-            evolutionDirectory: URL(fileURLWithPath: "/tmp/contract-test-evo"),
-            archiveDirectory: URL(fileURLWithPath: "/tmp/contract-test-archive"),
-            logger: LoggingModels.Logging.NoopRecording(),
-            knownURISchemes: [
-                ContractFakeSourceProvider.fakeID,
-                Shared.Constants.SourcePrefix.appleDocs,
-            ]
+            resourceStrategies: strategies,
+            directoriesByScheme: [:],
+            logger: LoggingModels.Logging.NoopRecording()
         )
         #expect(provider.knownURISchemes.contains(ContractFakeSourceProvider.fakeID))
-        #expect(provider.knownURISchemes.contains(Shared.Constants.SourcePrefix.appleDocs))
+        #expect(provider.knownURISchemes.contains(Shared.Constants.Search.appleDocsScheme))
     }
 
     @Test("RemoteSync.Indexer accepts a composition-root-supplied phase→scheme URI dispatch map")
@@ -790,6 +802,39 @@ struct Issue1042PluggabilityContractTests {
         #expect(Search.SearchRoute.allKnownCases.count == 5)
     }
 
+    @Test("Search.SourceProvider.makeURIResourceStrategy is the registry-driven seam for MCP DocsResourceProvider dispatch")
+    func makeURIResourceStrategyIsRegistryDriven() {
+        // STATUS: PASSES (post-Cluster-12 follow-up). Pre-fix
+        // `MCP.Support.DocsResourceProvider.{listResources,readResource}`
+        // had 3 hardcoded `if uri.hasPrefix(...)` arms (apple-docs /
+        // swift-evolution / apple-archive); adding a new MCP-resource
+        // source meant editing the dispatcher. Post-fix the protocol
+        // requires `makeURIResourceStrategy()` (default extension
+        // returns nil) and the 3 historical scheme owners override:
+        // AppleDocsSource / SwiftEvolutionSource / AppleArchiveSource.
+        // The dispatcher iterates the registry's strategies; the
+        // protocol body declaration (not extension-only) defeats the
+        // static-dispatch trap that bit `makeReadStrategy` during
+        // #1055 layer-2.
+        let registry = registryWithFake()
+        var schemesByID: [String: String] = [:]
+        for prov in registry.allEnabled {
+            schemesByID[prov.definition.id] = prov.makeURIResourceStrategy()?.scheme
+        }
+        #expect(schemesByID[Shared.Constants.SourcePrefix.appleDocs] == Shared.Constants.Search.appleDocsScheme)
+        #expect(schemesByID[Shared.Constants.SourcePrefix.swiftEvolution] == Shared.Constants.Search.swiftEvolutionScheme)
+        #expect(schemesByID[Shared.Constants.SourcePrefix.appleArchive] == Shared.Constants.Search.appleArchiveScheme)
+        // Sources that don't expose MCP-resource URIs (swift-org,
+        // swift-book, samples, packages, hig) inherit the protocol's
+        // default nil.
+        #expect(schemesByID[Shared.Constants.SourcePrefix.swiftOrg] == nil)
+        #expect(schemesByID[Shared.Constants.SourcePrefix.hig] == nil)
+        #expect(schemesByID[Shared.Constants.SourcePrefix.samples] == nil)
+        #expect(schemesByID[Shared.Constants.SourcePrefix.packages] == nil)
+        // Fake source inherits the default nil too.
+        #expect(schemesByID[ContractFakeSourceProvider.fakeID] == nil)
+    }
+
     @Test("Search.SourceProvider.isSearchTier declares which providers join the docs-tier FTS fan-out")
     func isSearchTierFiltersFanOut() {
         // STATUS: PASSES (post-#1055 layer-2 part 3). Pre-fix
@@ -827,7 +872,7 @@ struct Issue1042PluggabilityContractTests {
         // a 15th violation cluster, add its assertion here AND bump
         // this count. The pin is human-tracked, not mechanical.
         let auditedClusterCount = 14
-        let stubbedAssertions = 22 // count of @Test functions in this suite
+        let stubbedAssertions = 23 // count of @Test functions in this suite
         #expect(stubbedAssertions >= auditedClusterCount, "every audit cluster needs at least one contract assertion")
     }
 }

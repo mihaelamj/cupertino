@@ -76,4 +76,12 @@ public struct AppleDocsSource: Search.SourceProvider {
     public func makeReadStrategy() -> (any Search.SourceReadStrategy)? {
         Search.DocsReadStrategy(sourceID: definition.id)
     }
+
+    /// 2026-05-26 audit Cluster 12 follow-up: per-source MCP-resource
+    /// URI strategy for the `apple-docs://` scheme. Carries the lifted
+    /// URI parser + framework-root filter + JSON-vs-md probe sequence
+    /// that pre-fix lived in `MCP.Support.DocsResourceProvider`.
+    public func makeURIResourceStrategy() -> (any Search.URIResourceStrategy)? {
+        AppleDocsURIResourceStrategy()
+    }
 }

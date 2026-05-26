@@ -1,8 +1,12 @@
+import AppleArchiveSource
+import AppleDocsSource
 import Foundation
 import LoggingModels
 import MCPCore
 @testable import MCPSupport
+import SearchModels
 import SharedConstants
+import SwiftEvolutionSource
 import Testing
 
 // Real behavioural coverage of `MCP.Support.DocsResourceProvider`. The
@@ -63,10 +67,24 @@ private func makeProvider(
     let crawler = Shared.Configuration.Crawler(outputDirectory: crawlOutputDirectory)
     let changeDetection = Shared.Configuration.ChangeDetection(outputDirectory: crawlOutputDirectory)
     let config = Shared.Configuration(crawler: crawler, changeDetection: changeDetection)
+    // 2026-05-26 audit Cluster 12 follow-up: DocsResourceProvider now
+    // consumes per-source URI strategies. The 3 historical
+    // (apple-docs / swift-evolution / apple-archive) strategies are
+    // wired by the production composition root in
+    // `CLIImpl.Command.Serve.registerProviders`; tests reproduce the
+    // canonical bundle inline so the dispatcher exercises the same
+    // strategy concretes that ship in prod.
+    let appleDocs = AppleDocsURIResourceStrategy()
+    let evolution = SwiftEvolutionURIResourceStrategy()
+    let archive = AppleArchiveURIResourceStrategy()
     return MCP.Support.DocsResourceProvider(
         configuration: config,
-        evolutionDirectory: evolutionDir,
-        archiveDirectory: archiveDir,
+        resourceStrategies: [appleDocs, evolution, archive],
+        directoriesByScheme: [
+            appleDocs.scheme: crawlOutputDirectory,
+            evolution.scheme: evolutionDir,
+            archive.scheme: archiveDir,
+        ],
         markdownLookup: markdownLookup,
         logger: Logging.NoopRecording()
     )

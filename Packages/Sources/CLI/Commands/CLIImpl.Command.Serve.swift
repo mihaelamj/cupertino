@@ -141,6 +141,7 @@ extension CLIImpl.Command {
             await registerProviders(
                 server: server,
                 config: config,
+                paths: paths,
                 evolutionURL: evolutionURL,
                 archiveURL: archiveURL,
                 searchDBURL: searchDBURL,
@@ -174,9 +175,11 @@ extension CLIImpl.Command {
             await server.waitForCompletion()
         }
 
+        // swiftlint:disable:next function_parameter_count
         private func registerProviders(
             server: MCP.Core.Server,
             config: Shared.Configuration,
+            paths: Shared.Paths,
             evolutionURL: URL,
             archiveURL: URL,
             searchDBURL: URL,
@@ -203,22 +206,43 @@ extension CLIImpl.Command {
             } else {
                 markdownLookup = nil
             }
-            // #1042 Cluster 12 wiring: derive the resource provider's
-            // knownURISchemes from the production source registry. Each
-            // registered source's `definition.id` is the canonical URI
-            // scheme prefix it claims. Adding a new source (one
-            // `.register(<X>Source())` line in
-            // `CLIImpl.makeProductionSourceRegistry`) automatically
-            // extends the set the resource provider treats as known.
-            let resourceProviderRegistry = CLIImpl.makeProductionSourceRegistry()
-            let resourceProviderKnownSchemes = Set(resourceProviderRegistry.allEnabled.map(\.definition.id))
+            // 2026-05-26 audit Cluster 12 follow-up: collect each
+            // registered provider's `Search.URIResourceStrategy` (the
+            // 3 source-specific MCP-resource concretes today —
+            // apple-docs / swift-evolution / apple-archive; nil for
+            // every other source by the protocol's default extension)
+            // and the matching on-disk corpus directory per scheme.
+            // The dispatcher in `MCP.Support.DocsResourceProvider`
+            // iterates the strategy list; adding a new MCP-resource
+            // source is one `makeURIResourceStrategy()` override on
+            // the provider, no edits to Serve or the dispatcher.
+            //
+            // Directory resolution: apple-docs honours the `--docs-dir`
+            // override (paths.docsDirectory at construction time);
+            // swift-evolution honours `--evolution-dir`; other schemes
+            // resolve via `Shared.Paths.directory(named:)` keyed by
+            // the source's `fetchInfo.defaultOutputDirKey.rawValue`.
+            let resourceRegistry = CLIImpl.makeProductionSourceRegistry()
+            var resourceStrategies: [any SearchModels.Search.URIResourceStrategy] = []
+            var directoriesByScheme: [String: URL] = [:]
+            for provider in resourceRegistry.allEnabled {
+                guard let strategy = provider.makeURIResourceStrategy() else { continue }
+                resourceStrategies.append(strategy)
+                let dirKey = provider.fetchInfo?.defaultOutputDirKey.rawValue
+                let directory: URL = switch provider.definition.id {
+                case Shared.Constants.SourcePrefix.appleDocs: paths.docsDirectory
+                case Shared.Constants.SourcePrefix.swiftEvolution: evolutionURL
+                case Shared.Constants.SourcePrefix.appleArchive: archiveURL
+                default: paths.directory(named: dirKey ?? provider.definition.id)
+                }
+                directoriesByScheme[strategy.scheme] = directory
+            }
             let resourceProvider = MCP.Support.DocsResourceProvider(
                 configuration: config,
-                evolutionDirectory: evolutionURL,
-                archiveDirectory: archiveURL,
+                resourceStrategies: resourceStrategies,
+                directoriesByScheme: directoriesByScheme,
                 markdownLookup: markdownLookup,
-                logger: Cupertino.Context.composition.logging.recording,
-                knownURISchemes: resourceProviderKnownSchemes
+                logger: Cupertino.Context.composition.logging.recording
             )
             await server.registerResourceProvider(resourceProvider)
 

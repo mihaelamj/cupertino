@@ -49,4 +49,10 @@ public struct SwiftEvolutionSource: Search.SourceProvider {
     public func makeReadStrategy() -> (any Search.SourceReadStrategy)? {
         Search.DocsReadStrategy(sourceID: definition.id)
     }
+
+    /// 2026-05-26 audit Cluster 12 follow-up: per-source MCP-resource
+    /// URI strategy for the `swift-evolution://` scheme.
+    public func makeURIResourceStrategy() -> (any Search.URIResourceStrategy)? {
+        SwiftEvolutionURIResourceStrategy()
+    }
 }

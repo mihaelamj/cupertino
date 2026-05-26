@@ -2,6 +2,7 @@ import Foundation
 import LoggingModels
 import MCPCore
 import MCPSharedTools
+import SearchModels
 import SharedConstants
 
 // MARK: - Documentation Resource Provider
@@ -49,51 +50,47 @@ extension MCP.Support {
 
         private let configuration: Shared.Configuration
         private var metadata: Shared.Models.CrawlMetadata?
-        private let evolutionDirectory: URL
-        private let archiveDirectory: URL
         private let markdownLookup: (any MCP.Support.MarkdownLookupStrategy)?
         /// GoF Strategy seam for log emission (1994 p. 315).
         private let logger: any LoggingModels.Logging.Recording
 
-        /// Strict-DI constructor (#535): every directory is supplied by the
-        /// caller's composition root. The previous nil-default + fallback
-        /// to `Shared.Constants.default*` (which routed through the
-        /// `BinaryConfig.shared` Singleton) is gone — callers must thread
-        /// the URLs through explicitly.
-        /// #1042 Cluster 12: composition-root-supplied set of URI
-        /// schemes this provider claims to handle. Pre-fix the
-        /// resource provider only recognised the 3 hardcoded
-        /// `hasPrefix("apple-docs:")` / `("swift-evolution:")` /
-        /// `("apple-archive:")` arms in its fallback filesystem
-        /// dispatch. Adding a new source's URI scheme required editing
-        /// the if/else chain. Post-fix the composition root supplies
-        /// the set derived from the production source registry; the
-        /// dispatch's terminal "throw notFound" arm still catches
-        /// schemes the bespoke arms can't read, but the set itself is
-        /// no longer hardcoded as the source of truth for "which
-        /// schemes does the resource provider understand".
-        ///
-        /// Default empty so existing callers stay green; the in-tree
-        /// fallback arms cover the 3 historical schemes regardless.
-        /// The fully registry-driven dispatch (with each
-        /// SourceProvider supplying its own URI-to-filesystem
-        /// resolution strategy) is queued as a follow-up.
+        /// 2026-05-26 audit Cluster 12 follow-up: registry-supplied
+        /// per-source URI resource strategies. Pre-fix the resource
+        /// provider had 3 hardcoded `if uri.hasPrefix(...)` arms in
+        /// `readResource` + 3 source-specific blocks in `listResources`
+        /// (apple-docs / swift-evolution / apple-archive), each carrying
+        /// 30-50 LOC of bespoke URI parsing + filesystem probing +
+        /// (apple-docs only) JSON-vs-md decode logic. Post-fix each
+        /// per-source target supplies its own
+        /// `Search.URIResourceStrategy` concrete; the dispatcher
+        /// iterates this list. Adding a new MCP-resource source is one
+        /// `makeURIResourceStrategy()` override on the provider.
+        private let resourceStrategies: [any Search.URIResourceStrategy]
+
+        /// Per-scheme on-disk corpus directory. The composition root
+        /// builds this from each provider's
+        /// `fetchInfo.defaultOutputDirKey` resolved via `Shared.Paths`
+        /// (honouring `--evolution-dir` + apple-docs CLI overrides).
+        private let directoriesByScheme: [String: URL]
+
+        /// Set of URI schemes the dispatcher recognises. Derived from
+        /// `resourceStrategies.map(\.scheme)` so the set stays in sync
+        /// with the strategies list automatically.
         public nonisolated let knownURISchemes: Set<String>
 
         public init(
             configuration: Shared.Configuration,
-            evolutionDirectory: URL,
-            archiveDirectory: URL,
+            resourceStrategies: [any Search.URIResourceStrategy],
+            directoriesByScheme: [String: URL],
             markdownLookup: (any MCP.Support.MarkdownLookupStrategy)? = nil,
-            logger: any LoggingModels.Logging.Recording,
-            knownURISchemes: Set<String> = []
+            logger: any LoggingModels.Logging.Recording
         ) {
             self.configuration = configuration
-            self.evolutionDirectory = evolutionDirectory
-            self.archiveDirectory = archiveDirectory
+            self.resourceStrategies = resourceStrategies
+            self.directoriesByScheme = directoriesByScheme
             self.markdownLookup = markdownLookup
             self.logger = logger
-            self.knownURISchemes = knownURISchemes
+            knownURISchemes = Set(resourceStrategies.map(\.scheme))
             // Metadata will be loaded lazily on first access
         }
 
@@ -102,66 +99,18 @@ extension MCP.Support {
         public func listResources(cursor: String?) async throws -> MCP.Core.Protocols.ListResourcesResult {
             var resources: [MCP.Core.Protocols.Resource] = []
 
-            // Add Apple Documentation resources.
-            //
-            // Bug #568 fix: iterate `metadata.pages` with the
-            // framework-root filter applied. Pre-fix this loop ran on
-            // every page in the corpus (~55k entries on the live
-            // bundle), turning each deep symbol page into a noisy
-            // resource. Only one resource per framework belongs in
-            // `resources/list`; deep pages are reachable through
-            // `tools/call search` + `readResource` with a precise
-            // `apple-docs://framework/symbol` URI.
-            //
-            // The do/catch around `getMetadata()` used to swallow the
-            // throw silently, which is how v1.1.0 hid this regression
-            // (the apple-docs slice quietly evaporated and the user
-            // saw a swift-evolution-only list). Now we log at .error
-            // level so the failure is visible in normal operation
-            // without breaking the "evolution + archive still work
-            // when the docs corpus is absent" UX.
+            // Apple-docs metadata is loaded lazily here (the only
+            // strategy that consumes it; the swift-evolution +
+            // apple-archive strategies enumerate the filesystem and
+            // ignore the env's metadata field). The metadata load is
+            // wrapped in the same do/catch that pre-fix surrounded the
+            // apple-docs slice — bug #568 hid this branch by silently
+            // swallowing the throw, post-fix we log loud-fail at .error
+            // so `cupertino doctor` users can grep for it.
+            var loadedMetadata: Shared.Models.CrawlMetadata?
             do {
-                let metadata = try await getMetadata()
-
-                for (url, pageMetadata) in metadata.pages {
-                    // `url` comes from indexed page metadata; skip rows whose key
-                    // doesn't parse rather than crashing the resource listing.
-                    // The other two skip sites (SearchIndexBuilder,
-                    // SampleCodeDownloader) log the skip; matching that here so
-                    // a degraded listing doesn't go unnoticed.
-                    guard let parsedURL = URL(string: url) else {
-                        logger.warning(
-                            "Skipping malformed URL key in CrawlMetadata.pages: '\(url)' "
-                                + "(framework: \(pageMetadata.framework))",
-                            category: .mcp
-                        )
-                        continue
-                    }
-                    guard isFrameworkRootPage(url: parsedURL, framework: pageMetadata.framework) else {
-                        continue
-                    }
-                    // #587 / BUG 1 fix: use the lossless `appleDocsURI(from:)`
-                    // helper. The resources/list URI MUST match the
-                    // indexer-stored URI in `docs_metadata` so that
-                    // `resources/read` and `read_document` lookups
-                    // resolve. Both surfaces now route through the same
-                    // helper.
-                    let uri = Shared.Models.URLUtilities.appleDocsURI(from: parsedURL)
-                        ?? "\(Shared.Constants.Search.appleDocsScheme)\(pageMetadata.framework)/\(Shared.Models.URLUtilities.filename(from: parsedURL))"
-                    let resource = MCP.Core.Protocols.Resource(
-                        uri: uri,
-                        name: extractTitle(from: url),
-                        description: "\(MCP.SharedTools.Copy.appleDocsDescriptionPrefix) \(pageMetadata.framework)",
-                        mimeType: MCP.SharedTools.Copy.mimeTypeMarkdown
-                    )
-                    resources.append(resource)
-                }
+                loadedMetadata = try await getMetadata()
             } catch {
-                // Loud-fail surface for the apple-docs slice. The
-                // call still returns the evolution + archive resources
-                // it can build from disk; `cupertino doctor` users
-                // can grep for this line to confirm the corpus is
-                // absent / unreadable.
                 logger.error(
                     "DocsResourceProvider: apple-docs slice unavailable (\(error)); "
                         + "resources/list will exclude apple-docs entries this call",
@@ -169,41 +118,48 @@ extension MCP.Support {
                 )
             }
 
-            // Add Swift Evolution proposals
-            // #1046: resolve symlinks before listing — common dev setup
-            // symlinks corpus dirs under ~/.cupertino-dev/.
-            let evolutionRoot = evolutionDirectory.resolvingSymlinksInPath()
-            if FileManager.default.fileExists(atPath: evolutionRoot.path) {
-                do {
-                    let files = try FileManager.default.contentsOfDirectory(
-                        at: evolutionRoot,
-                        includingPropertiesForKeys: nil
+            // Per-strategy fan-out. Each strategy returns its own slice
+            // of URIResource entries; the dispatcher maps to
+            // MCP.Core.Protocols.Resource at the boundary. A strategy
+            // whose directory is missing or unreadable contributes an
+            // empty slice (and a debug-level log); the call still
+            // returns everything else.
+            for strategy in resourceStrategies {
+                guard let directory = directoriesByScheme[strategy.scheme] else {
+                    logger.warning(
+                        "DocsResourceProvider: no directory configured for scheme '\(strategy.scheme)' "
+                            + "— skipping that slice of resources/list",
+                        category: .mcp
                     )
-
-                    for file in files where file.pathExtension == "md"
-                        && (file.lastPathComponent.hasPrefix(Shared.Constants.Search.sePrefix) ||
-                            file.lastPathComponent.hasPrefix(Shared.Constants.Search.stPrefix)) {
-                        let proposalID = file.deletingPathExtension().lastPathComponent
-                        let resource = MCP.Core.Protocols.Resource(
-                            uri: "\(Shared.Constants.Search.swiftEvolutionScheme)\(proposalID)",
-                            name: proposalID,
-                            description: MCP.SharedTools.Copy.swiftEvolutionDescription,
+                    continue
+                }
+                let env = Search.URIResourceEnvironment(
+                    sourceDirectory: directory,
+                    metadata: loadedMetadata,
+                    logger: logger
+                )
+                do {
+                    let slice = try await strategy.listResources(env: env)
+                    resources.append(contentsOf: slice.map { entry in
+                        MCP.Core.Protocols.Resource(
+                            uri: entry.uri,
+                            name: entry.name,
+                            description: entry.description,
                             mimeType: MCP.SharedTools.Copy.mimeTypeMarkdown
                         )
-                        resources.append(resource)
-                    }
+                    })
                 } catch {
-                    // Evolution proposals directory doesn't exist or can't be read
-                }
-            }
-
-            // Add Apple Archive documentation
-            if FileManager.default.fileExists(atPath: archiveDirectory.path) {
-                do {
-                    let archiveResources = try listArchiveResources()
-                    resources.append(contentsOf: archiveResources)
-                } catch {
-                    // Archive directory doesn't exist or can't be read
+                    // Source-specific listResources errors are
+                    // non-fatal; the dispatcher carries on with the
+                    // other slices. Pre-fix swift-evolution + apple-
+                    // archive used a silent `catch {}` here — keep
+                    // that behaviour for those slices but emit a
+                    // debug-level log so the path isn't completely
+                    // invisible.
+                    logger.warning(
+                        "DocsResourceProvider: \(strategy.scheme) slice failed: \(error)",
+                        category: .mcp
+                    )
                 }
             }
 
@@ -281,24 +237,6 @@ extension MCP.Support {
 
         // MARK: - Filter
 
-        /// Returns `true` when `url` points at a framework root page —
-        /// the only apple-docs entries that belong in
-        /// `resources/list`. A framework root has path exactly
-        /// `/documentation/<framework>` (case-insensitive on the
-        /// framework segment to absorb Apple's mixed-case JSON
-        /// responses), with an optional trailing slash.
-        ///
-        /// Returns `false` for deep symbol pages
-        /// (`/documentation/<framework>/<member>`), the docs root
-        /// (`/documentation` with no framework), and anything else.
-        private func isFrameworkRootPage(url: URL, framework: String) -> Bool {
-            let normalizedPath = url.path.hasSuffix("/")
-                ? String(url.path.dropLast())
-                : url.path
-            let expected = "/documentation/\(framework.lowercased())"
-            return normalizedPath.lowercased() == expected
-        }
-
         public func readResource(uri: String) async throws -> MCP.Core.Protocols.ReadResourceResult {
             let markdown: String
 
@@ -317,90 +255,33 @@ extension MCP.Support {
                 }
             }
 
-            // Database lookup failed or no index - fall back to filesystem
-            if uri.hasPrefix(Shared.Constants.Search.appleDocsScheme) {
-                // Parse URI: apple-docs://framework[/rest]
-                guard let components = parseAppleDocsURI(uri) else {
-                    throw Shared.Core.ToolError.invalidURI(uri)
-                }
-
-                let baseDir = configuration.crawler.outputDirectory
-                    .appendingPathComponent(components.framework)
-
-                // Probe sequence: try `<filename>.json`, then `.md`. For the
-                // framework-root URI shape `apple-docs://<framework>` the
-                // parser returns `filename == framework`; older crawls
-                // wrote that page under the legacy `documentation_<framework>`
-                // basename (filename(from:) output pre-#587), so also try
-                // that shape as a defence against stale on-disk files.
-                let isFrameworkRoot = components.filename == components.framework
-                var probes: [URL] = [
-                    baseDir.appendingPathComponent("\(components.filename).json"),
-                    baseDir.appendingPathComponent("\(components.filename)\(Shared.Constants.FileName.markdownExtension)"),
-                ]
-                if isFrameworkRoot {
-                    probes.append(baseDir.appendingPathComponent("documentation_\(components.framework).json"))
-                    probes.append(baseDir.appendingPathComponent("documentation_\(components.framework)\(Shared.Constants.FileName.markdownExtension)"))
-                }
-
-                var found: URL?
-                for path in probes where FileManager.default.fileExists(atPath: path.path) {
-                    found = path
-                    break
-                }
-                guard let path = found else {
-                    throw Shared.Core.ToolError.notFound(uri)
-                }
-                if path.pathExtension == "json" {
-                    let jsonData = try Data(contentsOf: path)
-                    let page = try Shared.Utils.JSONCoding.decode(Shared.Models.StructuredDocumentationPage.self, from: jsonData)
-                    guard let rawMarkdown = page.rawMarkdown else {
-                        throw Shared.Core.ToolError.notFound(uri)
-                    }
-                    markdown = rawMarkdown
-                } else {
-                    markdown = try String(contentsOf: path, encoding: .utf8)
-                }
-
-            } else if uri.hasPrefix(Shared.Constants.Search.swiftEvolutionScheme) {
-                // Parse URI: swift-evolution://SE-NNNN
-                guard let proposalID = parseEvolutionURI(uri) else {
-                    throw Shared.Core.ToolError.invalidURI(uri)
-                }
-
-                // Find the proposal file (#1046: resolve symlinks).
-                let files = try FileManager.default.contentsOfDirectory(
-                    at: evolutionDirectory.resolvingSymlinksInPath(),
-                    includingPropertiesForKeys: nil
-                )
-
-                guard let file = files.first(where: { $0.lastPathComponent.hasPrefix(proposalID) }) else {
-                    throw Shared.Core.ToolError.notFound(uri)
-                }
-
-                // Read markdown content from filesystem
-                markdown = try String(contentsOf: file, encoding: .utf8)
-
-            } else if uri.hasPrefix(Shared.Constants.Search.appleArchiveScheme) {
-                // Parse URI: apple-archive://guideUID/filename
-                guard let components = parseArchiveURI(uri) else {
-                    throw Shared.Core.ToolError.invalidURI(uri)
-                }
-
-                // Construct file path: archive/{guideUID}/{filename}.md
-                let filePath = archiveDirectory
-                    .appendingPathComponent(components.guideUID)
-                    .appendingPathComponent("\(components.filename).md")
-
-                guard FileManager.default.fileExists(atPath: filePath.path) else {
-                    throw Shared.Core.ToolError.notFound(uri)
-                }
-
-                markdown = try String(contentsOf: filePath, encoding: .utf8)
-
-            } else {
+            // Database lookup failed or no index — strategy dispatch.
+            // Each strategy answers for its own URI scheme. The first
+            // strategy that recognises the URI (by `hasPrefix(scheme)`)
+            // and resolves it returns the content; if it recognises
+            // the URI but the resource is missing on disk (returns
+            // nil), throw `notFound`. If no strategy recognises the
+            // URI's scheme at all, throw `invalidURI`.
+            guard let strategy = resourceStrategies.first(where: { uri.hasPrefix($0.scheme) }) else {
                 throw Shared.Core.ToolError.invalidURI(uri)
             }
+            guard let directory = directoriesByScheme[strategy.scheme] else {
+                throw Shared.Core.ToolError.notFound(uri)
+            }
+            // Apple-docs reads metadata in its strategy via env; the
+            // other strategies ignore the metadata field. Load it best-
+            // effort; a missing metadata file is non-fatal because the
+            // filesystem probe in each strategy doesn't depend on it.
+            let envMetadata: Shared.Models.CrawlMetadata? = await (try? getMetadata())
+            let env = Search.URIResourceEnvironment(
+                sourceDirectory: directory,
+                metadata: envMetadata,
+                logger: logger
+            )
+            guard let resolved = try await strategy.readMarkdown(uri: uri, env: env) else {
+                throw Shared.Core.ToolError.notFound(uri)
+            }
+            markdown = resolved
 
             // Create resource contents
             let contents = MCP.Core.Protocols.ResourceContents.text(
@@ -414,7 +295,9 @@ extension MCP.Support {
             return MCP.Core.Protocols.ReadResourceResult(contents: [contents])
         }
 
-        public func listResourceTemplates(cursor: String?) async throws -> MCP.Core.Protocols.ListResourceTemplatesResult? {
+        public func listResourceTemplates(
+            cursor _: String?
+        ) async throws -> MCP.Core.Protocols.ListResourceTemplatesResult? {
             let templates = [
                 MCP.Core.Protocols.ResourceTemplate(
                     uriTemplate: MCP.SharedTools.Copy.templateAppleDocs,
@@ -495,106 +378,13 @@ extension MCP.Support {
             return metadata
         }
 
-        private func parseAppleDocsURI(_ uri: String) -> (framework: String, filename: String)? {
-            // Accept two shapes (#588 — `appleDocsURI(from:)` emits both):
-            //   * `apple-docs://<framework>/<rest-of-path>` — sub-page URI.
-            //     `filename` is the rest of the path verbatim (a single
-            //     segment for shallow pages, slash-joined for deep ones).
-            //   * `apple-docs://<framework>` — framework-root URI. The on-
-            //     disk crawl writes the root page at one of two legacy
-            //     filenames (`<framework>.json` or `documentation_<framework>.json`
-            //     depending on crawler version); the caller's existing
-            //     `.json`-then-`.md` fallback tries both shapes when we
-            //     return `filename: framework` here, so the resolution
-            //     proceeds via the standard probe chain.
-            guard uri.hasPrefix(Shared.Constants.Search.appleDocsScheme) else {
-                return nil
-            }
-
-            let path = uri.replacingOccurrences(of: Shared.Constants.Search.appleDocsScheme, with: "")
-            let components = path.split(separator: "/", maxSplits: 1)
-
-            switch components.count {
-            case 1:
-                let framework = String(components[0])
-                guard !framework.isEmpty else { return nil }
-                return (framework: framework, filename: framework)
-            case 2:
-                return (framework: String(components[0]), filename: String(components[1]))
-            default:
-                return nil
-            }
-        }
-
-        private func parseEvolutionURI(_ uri: String) -> String? {
-            // Expected format: swift-evolution://SE-NNNN
-            guard uri.hasPrefix(Shared.Constants.Search.swiftEvolutionScheme) else {
-                return nil
-            }
-
-            let proposalID = uri.replacingOccurrences(of: Shared.Constants.Search.swiftEvolutionScheme, with: "")
-            return proposalID.isEmpty ? nil : proposalID
-        }
-
-        private func extractTitle(from urlString: String) -> String {
-            guard let url = URL(string: urlString) else {
-                return urlString
-            }
-
-            // Get the last path component and clean it up
-            let lastComponent = url.lastPathComponent
-            return lastComponent
-                .replacingOccurrences(of: "-", with: " ")
-                .replacingOccurrences(of: "_", with: " ")
-                .capitalized
-        }
-
-        private func listArchiveResources() throws -> [MCP.Core.Protocols.Resource] {
-            var resources: [MCP.Core.Protocols.Resource] = []
-
-            // #1046: resolve symlinks before listing.
-            let guides = try FileManager.default.contentsOfDirectory(
-                at: archiveDirectory.resolvingSymlinksInPath(),
-                includingPropertiesForKeys: nil
-            )
-
-            for guide in guides where guide.hasDirectoryPath {
-                let guideUID = guide.lastPathComponent
-                let files = try FileManager.default.contentsOfDirectory(
-                    at: guide,
-                    includingPropertiesForKeys: nil
-                )
-
-                for file in files where file.pathExtension == "md" {
-                    let filename = file.deletingPathExtension().lastPathComponent
-                    let uri = "\(Shared.Constants.Search.appleArchiveScheme)\(guideUID)/\(filename)"
-                    let resource = MCP.Core.Protocols.Resource(
-                        uri: uri,
-                        name: filename.replacingOccurrences(of: "-", with: " ").capitalized,
-                        description: "Apple Archive documentation",
-                        mimeType: MCP.SharedTools.Copy.mimeTypeMarkdown
-                    )
-                    resources.append(resource)
-                }
-            }
-
-            return resources
-        }
-
-        private func parseArchiveURI(_ uri: String) -> (guideUID: String, filename: String)? {
-            // Expected format: apple-archive://guideUID/filename
-            guard uri.hasPrefix(Shared.Constants.Search.appleArchiveScheme) else {
-                return nil
-            }
-
-            let path = uri.replacingOccurrences(of: Shared.Constants.Search.appleArchiveScheme, with: "")
-            let components = path.split(separator: "/", maxSplits: 1)
-
-            guard components.count == 2 else {
-                return nil
-            }
-
-            return (guideUID: String(components[0]), filename: String(components[1]))
-        }
+        // 2026-05-26 audit Cluster 12 follow-up: `parseAppleDocsURI`,
+        // `parseEvolutionURI`, `parseArchiveURI`, `extractTitle`,
+        // `isFrameworkRootPage`, and `listArchiveResources` lifted into
+        // per-source `Search.URIResourceStrategy` concretes
+        // (`AppleDocsURIResourceStrategy` /
+        // `SwiftEvolutionURIResourceStrategy` /
+        // `AppleArchiveURIResourceStrategy`). Adding a new MCP-resource
+        // source no longer requires editing this file.
     }
 }
