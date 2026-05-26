@@ -60,18 +60,40 @@ extension MCP.Support {
         /// to `Shared.Constants.default*` (which routed through the
         /// `BinaryConfig.shared` Singleton) is gone — callers must thread
         /// the URLs through explicitly.
+        /// #1042 Cluster 12: composition-root-supplied set of URI
+        /// schemes this provider claims to handle. Pre-fix the
+        /// resource provider only recognised the 3 hardcoded
+        /// `hasPrefix("apple-docs:")` / `("swift-evolution:")` /
+        /// `("apple-archive:")` arms in its fallback filesystem
+        /// dispatch. Adding a new source's URI scheme required editing
+        /// the if/else chain. Post-fix the composition root supplies
+        /// the set derived from the production source registry; the
+        /// dispatch's terminal "throw notFound" arm still catches
+        /// schemes the bespoke arms can't read, but the set itself is
+        /// no longer hardcoded as the source of truth for "which
+        /// schemes does the resource provider understand".
+        ///
+        /// Default empty so existing callers stay green; the in-tree
+        /// fallback arms cover the 3 historical schemes regardless.
+        /// The fully registry-driven dispatch (with each
+        /// SourceProvider supplying its own URI-to-filesystem
+        /// resolution strategy) is queued as a follow-up.
+        public nonisolated let knownURISchemes: Set<String>
+
         public init(
             configuration: Shared.Configuration,
             evolutionDirectory: URL,
             archiveDirectory: URL,
             markdownLookup: (any MCP.Support.MarkdownLookupStrategy)? = nil,
-            logger: any LoggingModels.Logging.Recording
+            logger: any LoggingModels.Logging.Recording,
+            knownURISchemes: Set<String> = []
         ) {
             self.configuration = configuration
             self.evolutionDirectory = evolutionDirectory
             self.archiveDirectory = archiveDirectory
             self.markdownLookup = markdownLookup
             self.logger = logger
+            self.knownURISchemes = knownURISchemes
             // Metadata will be loaded lazily on first access
         }
 

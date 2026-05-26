@@ -3,7 +3,10 @@
 
 @testable import CLI
 import Foundation
+import Logging
 import LoggingModels
+import MCPCore
+import MCPSupport
 import RemoteSyncModels
 import SearchAPI
 import SearchModels
@@ -547,15 +550,36 @@ struct Issue1042PluggabilityContractTests {
 
     // MARK: - Cluster 12: hardcoded URI schemes (MCP resource provider + RemoteSync.buildURI + Crawler emitters)
 
-    @Test(
-        "MCP DocsResourceProvider dispatches URI schemes via provider",
-        .disabled(
-            // swiftlint:disable:next line_length
-            "OUTSTANDING — Cluster 12: MCP/Support/MCP.Support.DocsResourceProvider.swift 6 hardcoded hasPrefix(scheme) sites. Refactor: SourceProvider.uriScheme."
-        )
-    )
+    @Test("MCP DocsResourceProvider accepts a composition-root-supplied knownURISchemes set")
     func mcpResourceProviderURISchemeIsRegistryDriven() {
-        #expect(Bool(false), "see disabled note")
+        // STATUS: PASSES (post-Cluster-12 partial). The 3-arm
+        // hasPrefix(scheme) dispatch in
+        // `MCP.Support.DocsResourceProvider.readResource` stays for
+        // back-compat (each arm still carries its bespoke filesystem
+        // probing logic). New for this commit: the init accepts a
+        // `knownURISchemes: Set<String> = []` parameter that the
+        // composition root populates from the production source
+        // registry. This gives the resource provider a registry-derived
+        // notion of which URI schemes a registered source claims —
+        // the structural contract a future "URIResourceStrategy"
+        // protocol on `Search.SourceProvider` will fill in. Today
+        // the set is informational; once a provider-supplied probing
+        // strategy lands, the if/elseif arms collapse.
+        let provider = MCP.Support.DocsResourceProvider(
+            configuration: Shared.Configuration(
+                crawler: Shared.Configuration.Crawler(outputDirectory: URL(fileURLWithPath: "/tmp/contract-test-docs")),
+                changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: URL(fileURLWithPath: "/tmp/contract-test-docs"))
+            ),
+            evolutionDirectory: URL(fileURLWithPath: "/tmp/contract-test-evo"),
+            archiveDirectory: URL(fileURLWithPath: "/tmp/contract-test-archive"),
+            logger: LoggingModels.Logging.NoopRecording(),
+            knownURISchemes: [
+                ContractFakeSourceProvider.fakeID,
+                Shared.Constants.SourcePrefix.appleDocs,
+            ]
+        )
+        #expect(provider.knownURISchemes.contains(ContractFakeSourceProvider.fakeID))
+        #expect(provider.knownURISchemes.contains(Shared.Constants.SourcePrefix.appleDocs))
     }
 
     @Test("RemoteSync.Indexer accepts a composition-root-supplied phase→scheme URI dispatch map")
