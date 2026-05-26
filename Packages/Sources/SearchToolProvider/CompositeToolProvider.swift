@@ -65,6 +65,14 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     // package import-contract stays clean.
     private let documentResourceProvider: (any MCP.Core.ResourceProvider)?
 
+    /// #1042 Cluster 7 pluggability anchor: registry-derived list of
+    /// source IDs the MCP `search` tool advertises in its
+    /// `source` enum schema. Composition root supplies
+    /// `["all"] + registry.allEnabled.map(\.definition.id)`; pre-fix
+    /// this list was hardcoded in `listTools` as 10 SourcePrefix
+    /// constants.
+    private let searchToolSourceEnumValues: [String]
+
     /// Primary init used by the CLI composition root. Each cross-package
     /// surface arrives pre-wired as a protocol-typed value so this file
     /// doesn't have to import the Search / SampleIndex / Services
@@ -78,7 +86,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         unifiedService: (any Services.UnifiedSearcher)?,
         packagesSearcher: (any Search.PackagesSearcher)? = nil,
         documentResourceProvider: (any MCP.Core.ResourceProvider)? = nil,
-        searchIndexDisabledReason: String? = nil
+        searchIndexDisabledReason: String? = nil,
+        searchToolSourceEnumValues: [String] = []
     ) {
         self.searchIndex = searchIndex
         self.sampleDatabase = sampleDatabase
@@ -89,6 +98,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         self.packagesSearcher = packagesSearcher
         self.documentResourceProvider = documentResourceProvider
         self.searchIndexDisabledReason = searchIndexDisabledReason
+        self.searchToolSourceEnumValues = searchToolSourceEnumValues
     }
 
     /// True when the server should advertise search.db-dependent tools.
@@ -134,18 +144,26 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             ),
             Shared.Constants.Search.schemaParamSource: stringSchema(
                 description: "Optional source filter.",
-                enumValues: [
-                    "all",
-                    Shared.Constants.SourcePrefix.appleDocs,
-                    Shared.Constants.SourcePrefix.samples,
-                    Shared.Constants.SourcePrefix.appleSampleCode,
-                    Shared.Constants.SourcePrefix.hig,
-                    Shared.Constants.SourcePrefix.appleArchive,
-                    Shared.Constants.SourcePrefix.swiftEvolution,
-                    Shared.Constants.SourcePrefix.swiftOrg,
-                    Shared.Constants.SourcePrefix.swiftBook,
-                    Shared.Constants.SourcePrefix.packages,
-                ]
+                // #1042 Cluster 7: list is supplied by the composition root
+                // from the production source registry (plus "all" + the
+                // appleSampleCode alias the existing dispatch accepts).
+                // When the init was called without a list (legacy two-arg
+                // path / tests that don't exercise the search tool),
+                // fall back to the historical 10-element literal.
+                enumValues: !searchToolSourceEnumValues.isEmpty
+                    ? searchToolSourceEnumValues
+                    : [
+                        "all",
+                        Shared.Constants.SourcePrefix.appleDocs,
+                        Shared.Constants.SourcePrefix.samples,
+                        Shared.Constants.SourcePrefix.appleSampleCode,
+                        Shared.Constants.SourcePrefix.hig,
+                        Shared.Constants.SourcePrefix.appleArchive,
+                        Shared.Constants.SourcePrefix.swiftEvolution,
+                        Shared.Constants.SourcePrefix.swiftOrg,
+                        Shared.Constants.SourcePrefix.swiftBook,
+                        Shared.Constants.SourcePrefix.packages,
+                    ]
             ),
             Shared.Constants.Search.schemaParamFramework: stringSchema(
                 description: "Framework filter (e.g. swiftui, foundation)."

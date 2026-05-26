@@ -248,6 +248,20 @@ extension CLIImpl.Command {
             // `resources/read` successfully read off disk (typical with
             // bundles whose indexer-written URIs use the pre-#293
             // `.lastPathComponent` shape).
+            // #1042 Cluster 7: derive the search tool's `source` enum
+            // schema from the production source registry. Adding a new
+            // source (one `.register(<X>Source())` call below) extends
+            // the MCP schema automatically. `"all"` + the appleSampleCode
+            // alias join the registered IDs to keep the existing
+            // dispatch contract (samples is the canonical id; clients
+            // historically also pass `apple-sample-code`).
+            let registry = CLIImpl.makeProductionSourceRegistry()
+            var searchToolSourceEnumValues = ["all"]
+            searchToolSourceEnumValues.append(contentsOf: registry.allEnabled.map(\.definition.id))
+            if !searchToolSourceEnumValues.contains(Shared.Constants.SourcePrefix.appleSampleCode) {
+                searchToolSourceEnumValues.append(Shared.Constants.SourcePrefix.appleSampleCode)
+            }
+
             let toolProvider = CompositeToolProvider(
                 searchIndex: searchIndex,
                 sampleDatabase: sampleIndex,
@@ -257,7 +271,8 @@ extension CLIImpl.Command {
                 unifiedService: unifiedService,
                 packagesSearcher: packagesSearcher,
                 documentResourceProvider: resourceProvider,
-                searchIndexDisabledReason: searchIndexDisabledReason
+                searchIndexDisabledReason: searchIndexDisabledReason,
+                searchToolSourceEnumValues: searchToolSourceEnumValues
             )
             await server.registerToolProvider(toolProvider)
 

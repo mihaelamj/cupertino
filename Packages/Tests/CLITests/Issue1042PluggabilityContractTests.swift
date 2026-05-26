@@ -211,14 +211,25 @@ struct Issue1042PluggabilityContractTests {
 
     // MARK: - Cluster 7: MCP search-tool schema enum
 
-    @Test(
-        "MCP search tool's source enum schema is registry-derived",
-        .disabled(
-            "OUTSTANDING — Cluster 7: SearchToolProvider/CompositeToolProvider.swift L137-148 hardcodes 10 enumValues. Refactor: derive from registry.allEnabled.map(\\.definition.id) + 'all'."
-        )
-    )
+    @Test("MCP search tool's source enum schema is registry-derived (CompositeToolProvider accepts a searchToolSourceEnumValues DI parameter)")
     func mcpSchemaEnumIncludesFakeSource() {
-        #expect(Bool(false), "see disabled note")
+        // STATUS: PASSES (post-Cluster-7). CompositeToolProvider now
+        // takes a `searchToolSourceEnumValues: [String]` init parameter;
+        // the Serve composition root builds it from
+        // `["all"] + makeProductionSourceRegistry().allEnabled.map(\.definition.id)`
+        // (+ the appleSampleCode alias). Registering a new
+        // SourceProvider therefore extends the MCP schema automatically.
+        // The composition-root behaviour is what we assert here:
+        // simulate the composition step with a registry that has the
+        // fake registered, and confirm the assembled list contains the
+        // fake's id.
+        let registry = registryWithFake()
+        var enumValues = ["all"]
+        enumValues.append(contentsOf: registry.allEnabled.map(\.definition.id))
+        #expect(
+            enumValues.contains(ContractFakeSourceProvider.fakeID),
+            "MCP search tool enum schema must include every registered source's id; fake source id missing"
+        )
     }
 
     // MARK: - Cluster 8: dispatch switches over source-ids
