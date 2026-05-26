@@ -577,7 +577,7 @@ extension CLIImpl.Command.Search {
 
     private static func printTipsFooterText(availabilityFilterActive: Bool) {
         print("💡 Narrow with --source <name>: "
-            + Shared.Constants.Search.availableSources.joined(separator: ", "))
+            + CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition.id).joined(separator: ", "))
         if !availabilityFilterActive {
             print("💡 Filter by platform: --platform iOS --min-version 16.0  "
                 + "(or macOS / tvOS / watchOS / visionOS)")
@@ -673,7 +673,7 @@ extension CLIImpl.Command.Search {
     }
 
     private static func printTipsFooterMarkdown(availabilityFilterActive: Bool) {
-        let sources = Shared.Constants.Search.availableSources.joined(separator: ", ")
+        let sources = CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition.id).joined(separator: ", ")
         print("> 💡 **Narrow with `--source <name>`:** \(sources)")
         if !availabilityFilterActive {
             print(
@@ -773,20 +773,15 @@ extension CLIImpl.Command.Search {
     /// disambiguates sample-file vs. package paths (both have shape
     /// `<seg>/<seg>/<seg>`). Returns nil only for unknown sources.
     static func readFullCommand(for candidate: Search.SmartCandidate) -> String? {
-        let source: String
-        switch candidate.source {
-        case Shared.Constants.SourcePrefix.appleDocs,
-             Shared.Constants.SourcePrefix.appleArchive,
-             Shared.Constants.SourcePrefix.hig,
-             Shared.Constants.SourcePrefix.swiftEvolution,
-             Shared.Constants.SourcePrefix.swiftOrg,
-             Shared.Constants.SourcePrefix.swiftBook,
-             Shared.Constants.SourcePrefix.samples,
-             Shared.Constants.SourcePrefix.packages:
-            source = candidate.source
-        default:
-            return nil
-        }
-        return "cupertino read \(candidate.identifier) --source \(source)"
+        // #1042 audit + wiring batch 3: registry-derived "is this a
+        // known source?" gate. Pre-fix the switch enumerated 8
+        // hardcoded source-ids; a new registered source would fall
+        // through to `default → nil` (no read command generated). Now
+        // any source-id appearing in the production registry generates
+        // a `cupertino read <id> --source <name>` command.
+        let registry = CLIImpl.makeProductionSourceRegistry()
+        let knownIDs = Set(registry.allEnabled.map(\.definition.id))
+        guard knownIDs.contains(candidate.source) else { return nil }
+        return "cupertino read \(candidate.identifier) --source \(candidate.source)"
     }
 }
