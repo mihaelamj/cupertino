@@ -109,6 +109,24 @@ extension CLIImpl.Command.Save {
 
         Cupertino.Context.composition.logging.recording.info("🔨 Building Search Index\n")
 
+        // #1045 Gap 4 wiring: build per-source dir map from the
+        // production source registry. Each provider's
+        // `fetchInfo?.defaultOutputDirKey.rawValue` is the dirname;
+        // `Shared.Paths.directory(named:)` (Cluster 13) resolves it
+        // against the effective base. A new source's `fetchInfo`
+        // automatically extends this dict — no edit to the Save
+        // composition surface required.
+        let savePaths = Shared.Paths(baseDirectory: effectiveBase)
+        let saveRegistry = CLIImpl.makeProductionSourceRegistry()
+        let saveDirectoryByKey: [String: URL?] = Dictionary(
+            uniqueKeysWithValues: saveRegistry.allEnabled.map { provider in
+                let dir: URL? = provider.fetchInfo.flatMap { fi in
+                    savePaths.directory(named: fi.defaultOutputDirKey.rawValue)
+                }
+                return (provider.definition.id, dir)
+            }
+        )
+
         let request = Indexer.DocsService.Request(
             baseDir: effectiveBase,
             docsDir: docsDir.map { URL(fileURLWithPath: $0).expandingTildeInPath },
@@ -117,7 +135,8 @@ extension CLIImpl.Command.Save {
             archiveDir: archiveDir.map { URL(fileURLWithPath: $0).expandingTildeInPath },
             higDir: nil,
             searchDB: resolvedSearchDB,
-            clear: clear
+            clear: clear,
+            directoryByKey: saveDirectoryByKey
         )
 
         // Path-DI composition sub-root (#535): catalog actor takes
@@ -444,7 +463,27 @@ extension CLIImpl.Command.Save {
             for provider: any Search.SourceProvider,
             input: Search.DocsIndexingInput
         ) -> URL? {
-            switch provider.definition.id {
+            // #1045 Gap 4: registry-supplied dict wins. The Save
+            // composition site populates `input.directoryByKey` from
+            // `provider.fetchInfo?.outputDir` for every registered
+            // provider, so a NEW source's directory resolves here
+            // without touching this switch. The legacy switch below
+            // stays as fallback for the 2 sentinel arms (`samples`
+            // uses env.sampleCatalogProvider not a directory;
+            // `swiftBook` is a view-source) which carry per-source
+            // logic that doesn't fit the generic dict lookup.
+            let sourceID = provider.definition.id
+            if let mapped = input.directoryByKey[sourceID] {
+                // Explicit nil-in-dict means "registered but no
+                // directory" → skip (compactMap drops it).
+                // Non-nil URL → use it.
+                if let url = mapped {
+                    return url
+                }
+                // Fall through to the legacy switch below for
+                // sources whose dict entry is nil (the 2 sentinels).
+            }
+            switch sourceID {
             case Shared.Constants.SourcePrefix.appleDocs:
                 return input.docsDirectory
             case Shared.Constants.SourcePrefix.swiftEvolution:

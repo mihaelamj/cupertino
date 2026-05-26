@@ -65,6 +65,27 @@ extension Search.DocsIndexing {
         public let markdownStrategy: any Search.MarkdownToStructuredPageStrategy
         public let sampleCatalogProvider: any Search.SampleCatalog.Provider
 
+        /// #1045 Gap 4: registry-derived per-source directory map.
+        /// Composition root populates `provider.definition.id → fetchInfo.outputDir`
+        /// for every registered provider; the indexer's
+        /// `resolveSourceDirectory(for:input:)` consults this dict
+        /// first and falls back to the pre-#1045 typed-field switch
+        /// for sources the dict doesn't cover.
+        ///
+        /// Pre-fix `resolveSourceDirectory` was a 7-arm `switch
+        /// provider.definition.id`. A new source needed both a new
+        /// typed `*Directory` field above AND a new switch arm. With
+        /// `directoryByKey` populated, the dict lookup covers
+        /// arbitrary new sources without touching either surface.
+        ///
+        /// The 5 typed `*Directory` fields above stay for back-compat
+        /// (today's resolveSourceDirectory still uses them via the
+        /// fallback path for the 2 sentinel arms — `samples` and
+        /// `swiftBook` — that aren't pure directory lookups). A
+        /// follow-up will dissolve the typed fields once every
+        /// dispatch arm migrates to the dict.
+        public let directoryByKey: [String: URL?]
+
         public init(
             searchDBPath: URL,
             docsDirectory: URL,
@@ -74,7 +95,8 @@ extension Search.DocsIndexing {
             higDirectory: URL?,
             clearExisting: Bool,
             markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
-            sampleCatalogProvider: any Search.SampleCatalog.Provider
+            sampleCatalogProvider: any Search.SampleCatalog.Provider,
+            directoryByKey: [String: URL?] = [:]
         ) {
             self.searchDBPath = searchDBPath
             self.docsDirectory = docsDirectory
@@ -85,6 +107,7 @@ extension Search.DocsIndexing {
             self.clearExisting = clearExisting
             self.markdownStrategy = markdownStrategy
             self.sampleCatalogProvider = sampleCatalogProvider
+            self.directoryByKey = directoryByKey
         }
     }
 
