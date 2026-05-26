@@ -264,16 +264,23 @@ Group the findings into issues by *fix shape*, not by file:
 
 
 
-## Action items (close-out: in flight 2026-05-26)
+## Action items — 2026-05-26 status
 
-- [x] **14.5** closed — culled dead arms + closed latent `--docs-dir` override bug (`b3fa1b9f`).
-- [x] **7.2** closed — `printSchemaVersions` entries list registry-derived (`c3864911`).
-- [x] **7.1** closed — `Doctor.healthChecks` registry-derived; `SearchHealthCheck` parameterised on descriptor; coverage-invariance test pins the contract (`c3864911`).
-- [x] **14.1** closed — `SaveSiblingGate.classifyPostSplitSourceID` switches on `destinationDB` (`c3864911`).
-- [x] **14.3** closed — `Services.ReadService.resolveSource` consumes `destinationsByID` dict (`c3864911`).
-- [x] **14.2** closed — `CLIImpl.Command.Search.run` dispatches via `provider.searchRoute` (in flight).
-- [x] **14.4** closed — MCP `CompositeToolProvider.handleSearch` consumes `searchToolRoutesByID` dict; Serve composition root wires it; test fixture pulls canonical map from new `CupertinoComposition` target (in flight).
-- [ ] **6.0** in flight — make formatter `availableSources` non-optional + delete the `Shared.Constants.Search.availableSources` static.
-- [ ] **9.7 + 11.1** queued — lift `Crawler.<X>` concretes into `<X>Source` targets + collapse `cupertino fetch` dispatch behind a `provider.makeFetchStrategy(...)` protocol method.
-- [ ] **9.2** queued — cull dead-on-prod statics (`SourcePrefix.allPrefixes`, `DisplayName.allSourceInfos`, `DatabaseDescriptor.allKnown`) after the dependents (above) are clean.
-- [x] **Architecture** — new `CupertinoComposition` SPM target holds the single canonical `makeProductionSourceRegistry()` factory. Both CLI's `CLIImpl.makeProductionSourceRegistry()` and `SearchToolProviderTests`'s fixture iterate the same registry. Adding a new source = ONE `.register(<X>Source())` line in `Cupertino.CompositionRoot.swift`. All downstream consumers (Doctor, MCP, CLI dispatch, sibling-gate, read-service, footer, etc.) pick up the new source automatically.
+**8 of 9 findings closed in this audit's follow-up commits.**
+
+- [x] **14.5** culled dead arms + closed latent `--docs-dir` override bug (`b3fa1b9f`).
+- [x] **7.2** `printSchemaVersions` entries list registry-derived (`c3864911`).
+- [x] **7.1** `Doctor.healthChecks` registry-derived; `SearchHealthCheck` parameterised on descriptor; coverage-invariance test pins the contract (`c3864911`).
+- [x] **14.1** `SaveSiblingGate.classifyPostSplitSourceID` switches on `destinationDB` (`c3864911`).
+- [x] **14.3** `Services.ReadService.resolveSource` consumes `destinationsByID` dict (`c3864911`).
+- [x] **14.2** `CLIImpl.Command.Search.run` dispatches via `provider.searchRoute` (`05c4e5d5`).
+- [x] **14.4** MCP `CompositeToolProvider.handleSearch` consumes `searchToolRoutesByID` dict; Serve composition root wires it; test fixture pulls canonical map from new `CupertinoComposition` target (`05c4e5d5`).
+- [x] **6.0** formatter `availableSources` non-optional; `Shared.Constants.Search.availableSources` static + its companions deleted; all production callers thread registry-derived list (`2ff09a6e`).
+- [x] **9.2** dead-on-prod `DisplayName.allSourceInfos` static deleted; `SourcePrefix.allPrefixes` + `DatabaseDescriptor.allKnown` kept as documentation lists with drift-detector tests that compare against the production registry (`2ff09a6e`).
+- [x] **Architecture** new `CupertinoComposition` SPM target holds the single canonical `makeProductionSourceRegistry()` factory. CLI's `CLIImpl.makeProductionSourceRegistry()` and the `SearchToolProviderTests` fixture both delegate to it. Adding a new source = ONE `.register(<X>Source())` line in `Cupertino.CompositionRoot.swift`. All downstream consumers (Doctor, MCP, CLI dispatch, sibling-gate, read-service, formatters, drift-detector tests) pick up the new source automatically.
+
+**1 remaining open finding** — too big to land in the same audit-close-out session, queued for a dedicated PR:
+
+- [ ] **9.7 + 11.1** — `cupertino fetch` dispatch + per-source crawler concretes. The 10-arm switch in `Fetch.swift` plus the 4 `Crawler.<X>` files in the cross-cutting Crawler package need to lift into per-source `<X>Source` targets behind a new `Search.SourceProvider.makeFetchStrategy(...)` protocol method. Each existing `run<X>Crawl/Fetch` method (200-500 LOC each, heavy CLI-flag state coupling) needs to be extracted into a per-source strategy concrete. Full plan + step sequence at the new follow-up GitHub issue (to be filed).
+  - Pluggability impact: adding a new web-crawlable source TODAY needs (a) new file in cross-cutting `Crawler/` package, (b) new case in `Fetch.swift` switch, (c) new `run<X>Crawl` method, (d) update to default-arm error-message string. After this fix lands: ONE provider with `makeFetchStrategy` returning a strategy concrete; zero edits to Fetch.swift or Crawler.
+  - Scope: 12-20 file changes touching ~1500 LOC across Fetch.swift, the 4 Crawler.<X> files, and 4 per-source target files. Genuinely needs its own PR for review-ability.
