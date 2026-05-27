@@ -57,6 +57,7 @@ extension CLIImpl.Command.Save {
         var path: URL?
     }
 
+    // swiftlint:disable:next function_body_length
     func runDocsIndexer(effectiveBase: URL, selectedSourceIDs: Set<String>?) async throws {
         // Resolve searchDB destination. In --dry-run, route writes to a
         // throwaway temp file so the existing on-disk search.db is
@@ -88,9 +89,21 @@ extension CLIImpl.Command.Save {
         //
         // Dry-run already routes to a throwaway path; sidecar adds no
         // value there (the user explicitly asked for a temp DB).
+        //
+        // #1062: post-#1036 per-source-DB-split saves write directly to
+        // `<base>/<destinationDB.filename>` per source, never touching
+        // `actualSearchDB` / the sidecar. Skip the sidecar setup + log
+        // entirely for per-source saves (the common case post-#1036)
+        // so the misleading `🛡️ writing to search.db.in-flight` line
+        // doesn't appear when the actual write target is e.g. hig.db.
+        // The legacy `--all` no-selection path keeps sidecar mode for
+        // any future code that still routes through search.db. A
+        // deeper refactor that creates per-destination-DB sidecars is
+        // tracked as the proper #1062 close-out.
         let resolvedSearchDB: URL
         let sidecarPath: URL?
-        if clear, !isDryRun {
+        let perSourceSave = !(selectedSourceIDs?.isEmpty ?? true)
+        if clear, !isDryRun, !perSourceSave {
             let sidecar = actualSearchDB.appendingPathExtension("in-flight")
             // Clean up any orphan sidecar from a prior crashed save.
             // .in-flight files should never persist between runs; if
@@ -192,7 +205,9 @@ extension CLIImpl.Command.Save {
             // is untouched because we never wrote to it.
             if let sidecarPath {
                 Cupertino.Context.composition.logging.recording.error(
-                    "❌ Save failed; sidecar preserved at \(sidecarPath.path) for inspection. Original DB at \(actualSearchDB.path) is intact. Re-run `cupertino save --clear` to retry."
+                    "❌ Save failed; sidecar preserved at \(sidecarPath.path) for inspection. " +
+                        "Original DB at \(actualSearchDB.path) is intact. " +
+                        "Re-run `cupertino save --clear` to retry."
                 )
             }
             throw error

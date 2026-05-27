@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Fixed
+
+- **fix(#1062): per-source `cupertino save` no longer prints the misleading "🛡️ Sidecar mode (#673 Phase G): writing to search.db.in-flight" line.** Post-#1036 per-source-DB-split saves write directly to `<base>/<destinationDB.filename>` (e.g. `hig.db`, `apple-archive.db`) and never touch `search.db` or the in-flight sidecar. The log line claimed otherwise, and the orphan-sidecar cleanup ran for nothing. Fix: gate the sidecar setup + log on `selectedSourceIDs?.isEmpty ?? true` so the sidecar mode only fires for the legacy no-selection / `--all` path. The post-success rename was already guarded by `FileManager.fileExists(atPath: sidecarPath.path)` (added 2026-05-27 as part of the original #1062 partial close), so the trailing `Error: "search.db.in-flight" couldn't be moved…` never landed in practice; this PR finishes the close-out by also suppressing the no-op pre-save log line. Verified: `cupertino save --source hig --clear --yes` no longer prints any "Sidecar mode" / "in-flight" text. 2879/2879 tests green.
+
 ### Changed
 
 - **docs(#1066): `cupertino fetch --help` now lists `swift-book` as a first-class source.** #1093 made swift-book independent of swift-org's crawl but the help-text SOURCES block still only mentioned swift-org. Fetch itself worked (`cupertino fetch --source swift-book` succeeds end-to-end); discovery via `--help` did not. Added a `swift-book` row to SOURCES, a swift-book example to EXAMPLES, and `swift-book` to the `--source` option's long-help comma-list. No behaviour change.
