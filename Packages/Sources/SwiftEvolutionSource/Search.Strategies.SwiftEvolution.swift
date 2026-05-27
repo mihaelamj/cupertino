@@ -241,6 +241,9 @@ extension Search {
                 jsonData: pageJSON,
                 overrideMinIOS: availability.iOS,
                 overrideMinMacOS: availability.macOS,
+                overrideMinTvOS: availability.tvOS,
+                overrideMinWatchOS: availability.watchOS,
+                overrideMinVisionOS: availability.visionOS,
                 overrideAvailabilitySource: availability.iOS != nil ? "swift-version" : nil,
                 implementationSwiftVersion: implementationSwiftVersion
             )
