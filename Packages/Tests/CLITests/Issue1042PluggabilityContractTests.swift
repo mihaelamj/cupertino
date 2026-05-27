@@ -554,7 +554,7 @@ struct Issue1042PluggabilityContractTests {
         #expect(fakeKey.rawValue == "wwdc-transcripts")
         // Existing keys still accessible.
         #expect(Search.FetchInfo.DefaultOutputDirKey.docs.rawValue == "docs")
-        #expect(Search.FetchInfo.DefaultOutputDirKey.allKnownCases.count == 8)
+        #expect(Search.FetchInfo.DefaultOutputDirKey.allKnownCases.count == 9)
     }
 
     @Test("LoggingModels.Logging.Category is a rawValue-String struct, not a closed enum")

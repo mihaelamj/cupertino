@@ -778,11 +778,11 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
-            // #1082 follow-up: SwiftBookSource no longer carries a
-            // fetch strategy of its own (view-source over swift-org;
-            // `cupertino fetch --source swift-org` covers it). The
-            // pre-existing AppleDocsSource dep is dropped — no
-            // cross-source target import.
+            // #1093: swift-book gains its own independent fetch leg
+            // (no longer a view-source over swift-org). Reuses
+            // `AppleDocsSource.WebCrawlFetchStrategy` — the same
+            // crawler concrete other web-crawlable sources use.
+            "AppleDocsSource",
         ]
     )
 

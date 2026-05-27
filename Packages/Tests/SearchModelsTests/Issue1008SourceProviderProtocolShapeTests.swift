@@ -95,7 +95,7 @@ struct Issue1008SourceProviderProtocolShapeTests {
         let cases = Search.FetchInfo.DefaultOutputDirKey.allCases
         // The 8 keys correspond to the pre-#1007 FetchType enum's defaultOutputDir(paths:)
         // switch arms (docs/swift/evolution/packages/code-or-samples/archive/hig/all).
-        #expect(cases.count == 8)
+        #expect(cases.count == 9)
         #expect(cases.contains(.docs))
         #expect(cases.contains(.swiftOrg))
         #expect(cases.contains(.swiftEvolution))

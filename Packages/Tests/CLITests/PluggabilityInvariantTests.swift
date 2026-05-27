@@ -373,7 +373,7 @@ struct PluggabilityInvariantTests {
         #expect(custom.rawValue == "wwdc-transcripts")
         // The 8 shipped keys still exist as static lets for
         // discoverability + back-compat.
-        #expect(Search.FetchInfo.DefaultOutputDirKey.allKnownCases.count == 8)
+        #expect(Search.FetchInfo.DefaultOutputDirKey.allKnownCases.count == 9)
         #expect(Search.FetchInfo.DefaultOutputDirKey.allKnownCases.contains(.docs))
     }
 }

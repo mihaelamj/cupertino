@@ -2,56 +2,105 @@
 import Foundation
 import SearchModels
 import SharedConstants
-import SwiftBookSource
 import Testing
 
-// MARK: - #1082 — corpusDirectoryAlias routing
+// MARK: - #1082 — corpusDirectoryAlias routing (protocol seam still present, no production user post-#1093)
 
 //
-// Focused tests for the post-#1082 view-source-directory routing:
+// #1082 introduced `Search.SourceProvider.corpusDirectoryAlias` as
+// the view-source-directory routing seam. SwiftBookSource was its
+// first (and only) consumer. #1093 split swift-book into an
+// independently-fetchable source with its own corpus dir, so
+// SwiftBookSource no longer overrides this property.
 //
-//   1. `makeDocsIndexingDirectoryByKey` resolves an aliased provider
-//      to the parent's URL (default path).
-//
-//   2. When a `--<parent>-dir` override is supplied, the aliased
-//      provider inherits the SAME override (not the default path).
-//
-//   3. An explicit `--<aliased>-dir` override still wins over the
-//      inherited parent value (rare but well-defined).
-//
-//   4. `resolveSourceDirectory(for: swiftBook, ...)` returns a real
-//      URL (not nil, not `/dev/null`) when `directoryByKey` carries
-//      a valid swift-book entry — the load-bearing wiring assertion
-//      for #1082.
+// The protocol seam stays for future view-sources (e.g. a tutorial
+// source that piggybacks on apple-docs's corpus). These tests use a
+// fake provider to pin the resolver's alias-propagation logic so a
+// future view-source can rely on it.
 
-@Suite("#1082 — corpusDirectoryAlias propagation")
+private struct ContractFakeAliasedProvider: Search.SourceProvider {
+    static let fakeID = "issue-1082-fake-aliased"
+    static let parentSourceID = Shared.Constants.SourcePrefix.swiftOrg
+
+    let definition = Search.SourceDefinition(
+        id: ContractFakeAliasedProvider.fakeID,
+        displayName: "Issue 1082 Fake Aliased Provider",
+        emoji: "🧪",
+        properties: Search.SourceProperties(
+            authority: 0.5,
+            freshness: 0.5,
+            comprehensiveness: 0.5,
+            codeExamples: 0.5,
+            hasAvailability: 0.5,
+            designFocus: 0.5,
+            languageFocus: 0.5,
+            searchQuality: 0.5
+        ),
+        intents: [.howTo]
+    )
+
+    var destinationDB: Shared.Models.DatabaseDescriptor {
+        .swiftOrg
+    }
+
+    var fetchInfo: Search.FetchInfo? {
+        nil
+    } // view-source has no own fetch
+    var corpusDirectoryAlias: String? {
+        Self.parentSourceID
+    }
+
+    var capabilities: Search.Capabilities {
+        Search.Capabilities(searchers: [.text], operations: [.readByURI])
+    }
+
+    var legacySourceIDAliases: Set<String> {
+        []
+    }
+
+    func makeStrategy(env _: Search.IndexEnvironment) -> any Search.SourceIndexingStrategy {
+        preconditionFailure("Contract test never invokes makeStrategy")
+    }
+
+    func makeIndexer() -> any Search.SourceIndexer {
+        preconditionFailure("Contract test never invokes makeIndexer")
+    }
+}
+
+@Suite("#1082 — corpusDirectoryAlias propagation (protocol seam pinned via fake provider)")
 struct Issue1082CorpusDirectoryAliasTests {
+    private func registryWithFakeAliased() -> Search.SourceRegistry {
+        var registry = CLIImpl.makeProductionSourceRegistry()
+        registry.register(ContractFakeAliasedProvider())
+        return registry
+    }
+
     @Test("Aliased provider inherits parent's default directory (no override)")
     func aliasedInheritsParentDefault() {
-        let registry = CLIImpl.makeProductionSourceRegistry()
+        let registry = registryWithFakeAliased()
         let paths = Shared.Paths.live()
         let dict = CLIImpl.makeDocsIndexingDirectoryByKey(
             registry: registry,
             paths: paths
         )
-        let parentURL = dict[Shared.Constants.SourcePrefix.swiftOrg] ?? nil
-        let aliasedURL = dict[Shared.Constants.SourcePrefix.swiftBook] ?? nil
+        let parentURL = dict[ContractFakeAliasedProvider.parentSourceID] ?? nil
+        let aliasedURL = dict[ContractFakeAliasedProvider.fakeID] ?? nil
         #expect(parentURL != nil, "swift-org has fetchInfo with .swiftOrg key; resolver must populate")
-        #expect(aliasedURL == parentURL, "swift-book is aliased to swift-org and must inherit its URL")
+        #expect(aliasedURL == parentURL, "fake provider is aliased to swift-org and must inherit its URL")
     }
 
     @Test("Aliased provider inherits parent's --<parent>-dir override")
     func aliasedInheritsParentOverride() {
-        let registry = CLIImpl.makeProductionSourceRegistry()
+        let registry = registryWithFakeAliased()
         let paths = Shared.Paths.live()
         let customURL = URL(fileURLWithPath: "/Volumes/External/custom-swift-corpus")
         let dict = CLIImpl.makeDocsIndexingDirectoryByKey(
             registry: registry,
             paths: paths,
-            overrides: [Shared.Constants.SourcePrefix.swiftOrg: customURL]
+            overrides: [ContractFakeAliasedProvider.parentSourceID: customURL]
         )
-        let parentURL = dict[Shared.Constants.SourcePrefix.swiftOrg] ?? nil
-        let aliasedURL = dict[Shared.Constants.SourcePrefix.swiftBook] ?? nil
+        let parentURL = dict[ContractFakeAliasedProvider.parentSourceID] ?? nil
+        let aliasedURL = dict[ContractFakeAliasedProvider.fakeID] ?? nil
         #expect(parentURL?.path == customURL.resolvingSymlinksInPath().path)
         #expect(
             aliasedURL?.path == customURL.resolvingSymlinksInPath().path,
@@ -61,7 +110,7 @@ struct Issue1082CorpusDirectoryAliasTests {
 
     @Test("Explicit --<aliased>-dir override wins over inherited parent value")
     func explicitAliasedOverrideWinsOverInheritance() {
-        let registry = CLIImpl.makeProductionSourceRegistry()
+        let registry = registryWithFakeAliased()
         let paths = Shared.Paths.live()
         let parentOverride = URL(fileURLWithPath: "/tmp/parent-override")
         let aliasedOverride = URL(fileURLWithPath: "/tmp/aliased-override")
@@ -69,12 +118,12 @@ struct Issue1082CorpusDirectoryAliasTests {
             registry: registry,
             paths: paths,
             overrides: [
-                Shared.Constants.SourcePrefix.swiftOrg: parentOverride,
-                Shared.Constants.SourcePrefix.swiftBook: aliasedOverride,
+                ContractFakeAliasedProvider.parentSourceID: parentOverride,
+                ContractFakeAliasedProvider.fakeID: aliasedOverride,
             ]
         )
-        let parentURL = dict[Shared.Constants.SourcePrefix.swiftOrg] ?? nil
-        let aliasedURL = dict[Shared.Constants.SourcePrefix.swiftBook] ?? nil
+        let parentURL = dict[ContractFakeAliasedProvider.parentSourceID] ?? nil
+        let aliasedURL = dict[ContractFakeAliasedProvider.fakeID] ?? nil
         #expect(parentURL?.path == parentOverride.resolvingSymlinksInPath().path)
         #expect(
             aliasedURL?.path == aliasedOverride.resolvingSymlinksInPath().path,
@@ -82,53 +131,17 @@ struct Issue1082CorpusDirectoryAliasTests {
         )
     }
 
-    @Test("resolveSourceDirectory(swift-book) returns swift-org's URL (not /dev/null, not nil)")
-    func resolverReturnsRealURLForViewSource() throws {
+    @Test("Post-#1093: no shipping source overrides corpusDirectoryAlias (sentinel)")
+    func noProductionAliasedProvider() {
+        // Pin that the seam exists but is unused in production. If
+        // a future source adopts the view-source pattern, this test
+        // becomes a candidate for removal/reframe. SwiftBookSource
+        // used to be the only consumer; #1093 split it out.
         let registry = CLIImpl.makeProductionSourceRegistry()
-        let provider = try #require(
-            registry.allEnabled.first { $0.definition.id == Shared.Constants.SourcePrefix.swiftBook },
-            "SwiftBookSource must be in the production registry"
-        )
-        let swiftOrgURL = URL(fileURLWithPath: "/tmp/swift-org-corpus")
-        let input = Search.DocsIndexingInput(
-            searchDBPath: URL(fileURLWithPath: "/tmp/search.db"),
-            docsDirectory: URL(fileURLWithPath: "/tmp/docs"),
-            evolutionDirectory: nil,
-            swiftOrgDirectory: swiftOrgURL,
-            archiveDirectory: nil,
-            higDirectory: nil,
-            clearExisting: false,
-            markdownStrategy: NoopMarkdownStrategy(),
-            sampleCatalogProvider: NoopSampleCatalogProvider(),
-            directoryByKey: [
-                Shared.Constants.SourcePrefix.swiftOrg: swiftOrgURL,
-                Shared.Constants.SourcePrefix.swiftBook: swiftOrgURL,
-            ]
-        )
-        let resolved = CLIImpl.Command.Save.LiveDocsIndexingRunner.resolveSourceDirectory(
-            for: provider,
-            input: input
-        )
+        let aliasedProviders = registry.allEnabled.filter { $0.corpusDirectoryAlias != nil }
         #expect(
-            resolved?.path == swiftOrgURL.path,
-            "Pre-#1082 returned /dev/null; post-fix returns swift-org's URL via directoryByKey"
+            aliasedProviders.isEmpty,
+            "No production source overrides corpusDirectoryAlias post-#1093"
         )
-        #expect(resolved?.path != "/dev/null")
-    }
-}
-
-// MARK: - Test fixtures
-
-import LoggingModels
-
-private struct NoopMarkdownStrategy: Search.MarkdownToStructuredPageStrategy {
-    func convert(markdown _: String, url _: URL?) -> Shared.Models.StructuredDocumentationPage? {
-        nil
-    }
-}
-
-private struct NoopSampleCatalogProvider: Search.SampleCatalogProvider {
-    func fetch() async -> Search.SampleCatalogState {
-        .loaded(entries: [])
     }
 }

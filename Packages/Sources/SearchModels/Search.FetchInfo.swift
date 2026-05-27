@@ -116,6 +116,11 @@ extension Search.FetchInfo {
 
         public static let docs = Self(rawValue: "docs")
         public static let swiftOrg = Self(rawValue: "swift-org")
+        /// #1093: swift-book has its own corpus dir post-split.
+        /// Pre-#1093 it shared `.swiftOrg` (view-source pattern). The
+        /// split lets each source's fetch run independently against
+        /// its own URL space without dragging the other.
+        public static let swiftBook = Self(rawValue: "swift-book")
         public static let swiftEvolution = Self(rawValue: "swift-evolution")
         public static let packages = Self(rawValue: "packages")
         public static let sampleCode = Self(rawValue: "sample-code")
@@ -127,7 +132,7 @@ extension Search.FetchInfo {
         /// keys outside this list; tests iterating the production set
         /// keep using this property.
         public static let allKnownCases: [DefaultOutputDirKey] = [
-            .docs, .swiftOrg, .swiftEvolution, .packages,
+            .docs, .swiftOrg, .swiftBook, .swiftEvolution, .packages,
             .sampleCode, .archive, .hig, .baseDirectory,
         ]
 
