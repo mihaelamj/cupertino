@@ -98,8 +98,36 @@ extension Search {
                 scope: .swiftOrgOnly,
                 summarySource: source,
                 into: index,
-                progress: progress
+                progress: progress,
+                platformVersions: SwiftOrgPlatformResolver()
             )
         }
+    }
+}
+
+// MARK: - #1097 server-side platform inference
+
+/// Bridges swift-org content-category logic into the shared
+/// `crawlSwiftDocumentation` helper. Server-side Swift guides
+/// (URI prefix `documentation_server_`) are Linux-deployment
+/// content with no Apple-platform applicability — they get NULL
+/// `min_<platform>` columns. Everything else (blog posts, articles,
+/// install guides, DocC docs) inherits the universal Swift baseline.
+private struct SwiftOrgPlatformResolver: Search.PlatformVersionsResolver {
+    func versions(for url: URL) -> Search.PlatformVersions {
+        // The URL path encoded the source layout: swift-book/ pages
+        // get filename-derived slugs; the rest carry the full
+        // path-joined-by-underscores filename. Server-side content
+        // sits under `/documentation/server/...` and serialises to
+        // filenames starting `documentation_server_`. Check both
+        // the URL path itself and the slug-form.
+        let path = url.path.lowercased()
+        let slug = url.lastPathComponent.lowercased()
+        if path.contains("/documentation/server/") || slug.hasPrefix("documentation_server_") {
+            return Search.PlatformVersions(
+                iOS: nil, macOS: nil, tvOS: nil, watchOS: nil, visionOS: nil
+            )
+        }
+        return .universalSwift
     }
 }
