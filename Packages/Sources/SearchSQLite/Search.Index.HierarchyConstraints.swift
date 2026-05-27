@@ -24,15 +24,15 @@ extension Search.Index {
     /// even though they're View-constrained by inheritance.
     ///
     /// **Algorithm.**
-    /// 1. Pass 1 (in memory): `SELECT doc_uri, generic_constraints FROM
+    /// 1. Pass 1 (in memory): `SELECT docURI, generic_constraints FROM
     ///    doc_symbols WHERE generic_constraints IS NOT NULL AND kind IN
     ///    ('struct', 'class', 'enum', 'actor', 'protocol', 'typealias')`.
-    ///    Build a `[doc_uri: String: constraint: String]` map keyed by
+    ///    Build a `[docURI: String: constraint: String]` map keyed by
     ///    the type's own page URI.
     /// 2. Pass 2 (single UPDATE per matching row): for every row where
     ///    `generic_constraints IS NULL AND generic_params IS NOT NULL`,
     ///    derive the parent URI by stripping the last `/<segment>`
-    ///    from `doc_uri`, look up the map, set the row's
+    ///    from `docURI`, look up the map, set the row's
     ///    `generic_constraints` to the parent's value if present.
     ///
     /// **Idempotent.** Re-running against an already-propagated DB is a
@@ -49,21 +49,39 @@ extension Search.Index {
     /// bytes/entry = ~10 MB for the full v1.0.x corpus. Negligible
     /// against the 2.3 GB raw markdown the indexer already streams.
     @discardableResult
-    public func propagateConstraintsFromParents() async throws -> Int {
+    public func propagateConstraintsFromParents(
+        audit: (any Search.EnrichmentAuditObserver)? = nil,
+        dbPath: String = ""
+    ) async throws -> Int {
         guard let database else {
             throw Search.Error.databaseNotInitialized
         }
+        audit?.recordPassStart(passIdentifier: "hierarchy", dbPath: dbPath)
+        let startedAt = Date()
 
         // Pass 1. build the parent map.
         let parentMap = try buildParentConstraintsMap(database)
 
         guard !parentMap.isEmpty else {
             // No type rows carry constraints; nothing to propagate.
+            audit?.recordPassEnd(
+                passIdentifier: "hierarchy",
+                totalRowsAffected: 0,
+                totalRowsSkipped: 0,
+                durationMs: Int(Date().timeIntervalSince(startedAt) * 1000)
+            )
             return 0
         }
 
         // Pass 2. update each child row whose parent lives in the map.
-        return try applyInheritedConstraints(database, parentMap: parentMap)
+        let count = try applyInheritedConstraints(database, parentMap: parentMap, audit: audit)
+        audit?.recordPassEnd(
+            passIdentifier: "hierarchy",
+            totalRowsAffected: count,
+            totalRowsSkipped: 0,
+            durationMs: Int(Date().timeIntervalSince(startedAt) * 1000)
+        )
+        return count
     }
 
     /// Pass 1: collect parent-type rows whose `generic_constraints`
@@ -117,7 +135,7 @@ extension Search.Index {
             let paramsCstr = sqlite3_column_text(statement, 2)
             let paramsStr = paramsCstr.map { String(cString: $0) } ?? ""
             let paramNames = Self.extractBareParamNames(from: paramsStr)
-            // If multiple type rows share the same doc_uri (rare; e.g.
+            // If multiple type rows share the same docURI (rare; e.g.
             // a typealias on the same page as a struct of the same
             // name), keep the entry with the most informative
             // constraint string.
@@ -154,13 +172,14 @@ extension Search.Index {
     /// row genuinely doesn't live in the parent's generic surface
     /// (e.g. a static non-generic helper).
     ///
-    /// "Parent URI" = the row's `doc_uri` with the last path segment
+    /// "Parent URI" = the row's `docURI` with the last path segment
     /// stripped. Example:
     /// `apple-docs://swiftui/navigationlink/init-isactive-destination`
     /// → parent = `apple-docs://swiftui/navigationlink`.
     private func applyInheritedConstraints(
         _ database: OpaquePointer,
-        parentMap: [String: (constraints: String, paramNames: [String])]
+        parentMap: [String: (constraints: String, paramNames: [String])],
+        audit: (any Search.EnrichmentAuditObserver)? = nil
     ) throws -> Int {
         let selectSQL = """
         SELECT id, doc_uri, generic_params, signature
@@ -180,7 +199,7 @@ extension Search.Index {
         // bulk-update outside the SELECT cursor. SQLite forbids
         // UPDATE-while-iterating on the same table in the same prepared
         // statement; staging the work is the safe shape.
-        var updates: [(id: Int64, constraints: String)] = []
+        var updates: [(id: Int64, docURI: String, constraints: String)] = []
         while sqlite3_step(selectStmt) == SQLITE_ROW {
             let id = sqlite3_column_int64(selectStmt, 0)
             guard let uriPtr = sqlite3_column_text(selectStmt, 1) else {
@@ -214,7 +233,7 @@ extension Search.Index {
             guard hasOwnGenericParams || sigReferencesParent else {
                 continue
             }
-            updates.append((id, parent.constraints))
+            updates.append((id, childUri, parent.constraints))
         }
 
         guard !updates.isEmpty else {
@@ -237,7 +256,7 @@ extension Search.Index {
             throw Search.Error.sqliteError("propagateConstraintsFromParents BEGIN failed: \(errorMessage)")
         }
 
-        for (id, constraints) in updates {
+        for (id, docURI, constraints) in updates {
             sqlite3_reset(updateStmt)
             sqlite3_bind_text(updateStmt, 1, (constraints as NSString).utf8String, -1, nil)
             sqlite3_bind_int64(updateStmt, 2, id)
@@ -246,6 +265,13 @@ extension Search.Index {
                 _ = sqlite3_exec(database, "ROLLBACK;", nil, nil, nil)
                 throw Search.Error.sqliteError("propagateConstraintsFromParents update step failed: \(errorMessage)")
             }
+            audit?.recordEntry(
+                passIdentifier: "hierarchy",
+                docURI: docURI,
+                value: constraints,
+                matchType: "hierarchy",
+                rowsAffected: 1
+            )
         }
 
         guard sqlite3_exec(database, "COMMIT;", nil, nil, nil) == SQLITE_OK else {

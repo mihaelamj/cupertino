@@ -208,7 +208,11 @@ extension Search {
                 // call is a no-op and the build falls back to iter 1 +
                 // iter 2 alone.
                 if staticConstraintsLookup != nil {
-                    let affected = try await searchIndex.applyAppleStaticConstraints(lookup: staticConstraintsLookup)
+                    let affected = try await searchIndex.applyAppleStaticConstraints(
+                        lookup: staticConstraintsLookup,
+                        audit: nil,
+                        dbPath: ""
+                    )
                     logger.info("   Applied authoritative Apple constraints table (#759 iteration 3): \(affected) rows", category: .search)
                 }
 
@@ -223,7 +227,10 @@ extension Search {
                 // `Destination` but no constraint clause inherits the
                 // struct's `Destination: View`). Sub-second on the full
                 // 351k-row corpus.
-                let inherited = try await searchIndex.propagateConstraintsFromParents()
+                let inherited = try await searchIndex.propagateConstraintsFromParents(
+                    audit: nil,
+                    dbPath: ""
+                )
                 logger.info("   Inherited generic constraints from parents (#759 iteration 2): \(inherited) rows", category: .search)
             }
 

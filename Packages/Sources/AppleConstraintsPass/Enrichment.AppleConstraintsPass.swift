@@ -21,6 +21,8 @@ extension Enrichment {
 
         private let searchIndex: any Search.IndexWriter
         private let lookup: (any Search.StaticConstraintsLookup)?
+        private let audit: (any Search.EnrichmentAuditObserver)?
+        private let dbPath: String
 
         /// - Parameters:
         ///   - searchIndex: the search.db index the pass writes to.
@@ -28,9 +30,23 @@ extension Enrichment {
         ///     (no symbolgraph corpus wired in at the composition root)
         ///     the pass is a no-op and the build falls back to the
         ///     iter 1 + iter 2 inline constraint extraction alone.
-        public init(searchIndex: any Search.IndexWriter, lookup: (any Search.StaticConstraintsLookup)?) {
+        ///   - audit: optional per-entry audit observer. Emits
+        ///     `recordPassStart` / `recordEntry` (per matched URI) /
+        ///     `recordPassEnd` so the composition root can write a JSONL
+        ///     audit trail.
+        ///   - dbPath: tagged into every audit event so a single log
+        ///     file carries events from multiple per-source DBs in the
+        ///     same save run.
+        public init(
+            searchIndex: any Search.IndexWriter,
+            lookup: (any Search.StaticConstraintsLookup)?,
+            audit: (any Search.EnrichmentAuditObserver)? = nil,
+            dbPath: String = ""
+        ) {
             self.searchIndex = searchIndex
             self.lookup = lookup
+            self.audit = audit
+            self.dbPath = dbPath
         }
 
         public func run(database: OpaquePointer?) async throws -> EnrichmentModels.Result {
@@ -42,10 +58,11 @@ extension Enrichment {
                     durationMs: 0
                 )
             }
-            let affected = try await searchIndex.applyAppleStaticConstraints(lookup: lookup)
-            // rowsSkipped is intentionally 0 for SET-based UPDATE passes;
-            // see EnrichmentModels.Result doc. durationMs is patched by
-            // Enrichment.LiveRunner via the 0-sentinel.
+            let affected = try await searchIndex.applyAppleStaticConstraints(
+                lookup: lookup,
+                audit: audit,
+                dbPath: dbPath
+            )
             return EnrichmentModels.Result(
                 passIdentifier: identifier,
                 rowsAffected: affected,

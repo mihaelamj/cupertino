@@ -19,16 +19,24 @@ extension Enrichment {
         public let target = EnrichmentModels.Target.search
 
         private let searchIndex: any Search.IndexWriter
+        private let audit: (any Search.EnrichmentAuditObserver)?
+        private let dbPath: String
 
-        public init(searchIndex: any Search.IndexWriter) {
+        public init(
+            searchIndex: any Search.IndexWriter,
+            audit: (any Search.EnrichmentAuditObserver)? = nil,
+            dbPath: String = ""
+        ) {
             self.searchIndex = searchIndex
+            self.audit = audit
+            self.dbPath = dbPath
         }
 
         public func run(database: OpaquePointer?) async throws -> EnrichmentModels.Result {
-            let affected = try await searchIndex.propagateConstraintsFromParents()
-            // rowsSkipped is intentionally 0 for SET-based UPDATE passes;
-            // see EnrichmentModels.Result doc. durationMs is patched by
-            // Enrichment.LiveRunner via the 0-sentinel.
+            let affected = try await searchIndex.propagateConstraintsFromParents(
+                audit: audit,
+                dbPath: dbPath
+            )
             return EnrichmentModels.Result(
                 passIdentifier: identifier,
                 rowsAffected: affected,
