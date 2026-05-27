@@ -73,6 +73,7 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Enrichment"),
     .singleTargetLibrary("AppleConstraintsPass"),
     .singleTargetLibrary("HierarchyPass"),
+    .singleTargetLibrary("HIGPlatformInferencePass"),
     .singleTargetLibrary("PackagesAppleConstraintsPass"),
     .singleTargetLibrary("PackagesAppleImportsPass"),
     .singleTargetLibrary("SamplesAppleConstraintsPass"),
@@ -487,7 +488,16 @@ let targets: [Target] = {
         // the `Crawler.HTTPFetcherFactory` strategy seam consumed by
         // `Search.FetchEnvironment`. Foundation-only dep — CrawlerModels
         // is the seam tier, not the producer.
-        dependencies: ["SharedConstants", "ASTIndexer", "LoggingModels", "CrawlerModels"]
+        //
+        // 2026-05-27: EnrichmentModels added so `Search.SourceProvider`
+        // can return `[any EnrichmentPass]` from
+        // `makeSourceSpecificEnrichmentPasses`. EnrichmentModels has
+        // zero deps so the foundation tier stays clean; this lets
+        // per-source targets declare their own enrichment passes
+        // (e.g. HIGSource → HIGPlatformInferencePass) without the
+        // CLI composition root needing to import every source's
+        // pass module.
+        dependencies: ["SharedConstants", "ASTIndexer", "LoggingModels", "CrawlerModels", "EnrichmentModels"]
     )
     let searchModelsTestsTarget = Target.testTarget(
         name: "SearchModelsTests",
@@ -673,6 +683,12 @@ let targets: [Target] = {
             // wraps `Crawler.HIG`. Per-source target owns its fetch
             // strategy; `Crawler` stays as shared crawl infrastructure.
             "CrawlerModels",
+            // 2026-05-27 (#1073): HIG owns its source-specific
+            // platform-inference enrichment pass. Pluggability rule:
+            // CLI composition root iterates providers' passes; it
+            // doesn't import per-source pass modules itself.
+            "EnrichmentModels",
+            "HIGPlatformInferencePass",
         ]
     )
 
@@ -1099,6 +1115,15 @@ let targets: [Target] = {
         ]
     )
 
+    // 2026-05-27: HIG-specific topic-aware platform-inference pass.
+    let higPlatformInferencePassTarget = Target.target(
+        name: "HIGPlatformInferencePass",
+        dependencies: [
+            "EnrichmentModels",
+            "SearchModels",
+        ]
+    )
+
     let packagesAppleConstraintsPassTarget = Target.target(
         name: "PackagesAppleConstraintsPass",
         dependencies: [
@@ -1170,6 +1195,9 @@ let targets: [Target] = {
             "CupertinoComposition",
             "AppleConstraintsPass",
             "HierarchyPass",
+            // 2026-05-27 (#1073): HIGPlatformInferencePass is owned by
+            // HIGSource (transits here via `allSourceTargetDeps`). CLI
+            // no longer depends on per-source enrichment modules.
             "PackagesAppleConstraintsPass",
             "PackagesAppleImportsPass",
             "SamplesAppleConstraintsPass",
@@ -1462,6 +1490,7 @@ let targets: [Target] = {
         enrichmentTarget,
         appleConstraintsPassTarget,
         hierarchyPassTarget,
+        higPlatformInferencePassTarget,
         packagesAppleConstraintsPassTarget,
         packagesAppleImportsPassTarget,
         samplesAppleConstraintsPassTarget,

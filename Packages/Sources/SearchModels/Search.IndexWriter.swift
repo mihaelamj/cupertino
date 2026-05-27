@@ -160,6 +160,21 @@ extension Search {
             dbPath: String
         ) async throws -> Int
 
+        /// HIG-specific topic-aware platform inference (#1073). For
+        /// rows whose URI declares an explicit platform target
+        /// (designing-for-watchos, spatial-layout, mac-catalyst,
+        /// carplay, etc.), NULLs the `min_<platform>` columns for
+        /// non-applicable platforms. Rows without an explicit
+        /// platform keyword keep their cross-platform defaults.
+        ///
+        /// Idempotent.  Returns the count of rows whose columns
+        /// were updated.
+        @discardableResult
+        func applyHIGPlatformInference(
+            audit: (any Search.EnrichmentAuditObserver)?,
+            dbPath: String
+        ) async throws -> Int
+
         /// Drop every row from every search-index table. Used by
         /// `IndexBuilder.buildIndex` when `--clear` is passed and by
         /// the `save --force-replace` recovery flag. Schema rows

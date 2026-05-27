@@ -1,4 +1,6 @@
+import EnrichmentModels
 import Foundation
+import HIGPlatformInferencePass
 import SearchModels
 import SharedConstants
 
@@ -27,11 +29,17 @@ import SharedConstants
 public struct HIGSource: Search.SourceProvider {
     public init() {}
 
-    public var definition: Search.SourceDefinition { Self.definition }
+    public var definition: Search.SourceDefinition {
+        Self.definition
+    }
 
-    public var fetchInfo: Search.FetchInfo? { Self.fetchInfo }
+    public var fetchInfo: Search.FetchInfo? {
+        Self.fetchInfo
+    }
 
-    public var destinationDB: Shared.Models.DatabaseDescriptor { .hig }
+    public var destinationDB: Shared.Models.DatabaseDescriptor {
+        .hig
+    }
 
     public var capabilities: Search.Capabilities {
         .init(
@@ -59,7 +67,9 @@ public struct HIGSource: Search.SourceProvider {
     /// #1042 Cluster 8: HIG uses its own search runner (`runHIGSearch`
     /// in `CLIImpl.Command.Search` / `handleSearchHIG` in
     /// `CompositeToolProvider`); not the default `.docs` route.
-    public var searchRoute: Search.SearchRoute { .hig }
+    public var searchRoute: Search.SearchRoute {
+        .hig
+    }
 
     /// 2026-05-26 audit Finding 9.7 + 11.1: per-source fetch strategy.
     /// Lifts `CLIImpl.Command.Fetch.runHIGCrawl` into this target so
@@ -73,5 +83,28 @@ public struct HIGSource: Search.SourceProvider {
     /// DB via `env.docsDBURLs[sourceID]`.
     public func makeReadStrategy() -> (any Search.SourceReadStrategy)? {
         Search.DocsReadStrategy(sourceID: definition.id)
+    }
+
+    /// 2026-05-27 (#1073): HIG-specific topic-aware platform
+    /// inference. Pre-fix every HIG row was stamped with the
+    /// earliest version of every Apple platform as a baseline
+    /// default, so `--min-ios 16` returned watchOS- and visionOS-only
+    /// HIG pages. This pass NULLs the non-applicable
+    /// `min_<platform>` columns for URIs that declare an explicit
+    /// platform target (designing-for-watchos, spatial-layout,
+    /// mac-catalyst, carplay, etc.). Per the post-#1073 pluggability
+    /// architecture HIG owns this pass, not the CLI.
+    public func makeSourceSpecificEnrichmentPasses(
+        searchIndex: any Search.IndexWriter,
+        audit: (any Search.EnrichmentAuditObserver)?,
+        dbPath: String
+    ) -> [any EnrichmentPass] {
+        [
+            Enrichment.HIGPlatformInferencePass(
+                searchIndex: searchIndex,
+                audit: audit,
+                dbPath: dbPath
+            ),
+        ]
     }
 }
