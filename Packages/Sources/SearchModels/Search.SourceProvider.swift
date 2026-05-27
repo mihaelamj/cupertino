@@ -1,3 +1,4 @@
+import EnrichmentModels
 import Foundation
 import SharedConstants
 
@@ -160,6 +161,27 @@ extension Search {
         /// `PackagesSource` returns `PackagesReadStrategy`).
         func makeReadStrategy() -> (any Search.SourceReadStrategy)?
 
+        /// 2026-05-27: per-source enrichment passes. The composition
+        /// root appends these to the generic enrichment runner after
+        /// the standard passes (synonyms, constraints, hierarchy).
+        /// Returns `[]` for sources without per-source enrichment.
+        /// Today only `HIGSource` overrides to return its
+        /// `HIGPlatformInferencePass` for topic-aware platform
+        /// narrowing on HIG rows.
+        ///
+        /// Returning the pass instances directly (rather than a
+        /// strategy or factory) lets the composition root construct
+        /// them with the per-DB `searchIndex` + audit observer +
+        /// dbPath without the CLI having to know which source-specific
+        /// passes exist. Adding a new source-specific pass becomes a
+        /// 2-file PR: the pass concrete in its source target + this
+        /// override.
+        func makeSourceSpecificEnrichmentPasses(
+            searchIndex: any Search.IndexWriter,
+            audit: (any Search.EnrichmentAuditObserver)?,
+            dbPath: String
+        ) -> [any EnrichmentPass]
+
         /// 2026-05-26 audit Cluster 12 follow-up: per-source MCP-resource
         /// URI strategy. Pre-fix `MCP.Support.DocsResourceProvider`'s
         /// `readResource` had a 3-arm `if uri.hasPrefix(...)` dispatch
@@ -266,7 +288,9 @@ extension Search.SourceProvider {
     /// Default route is `.docs` — the most common case. Sources whose
     /// dispatch differs (HIGSource, SampleCodeSource, PackagesSource)
     /// override.
-    public var searchRoute: Search.SearchRoute { .docs }
+    public var searchRoute: Search.SearchRoute {
+        .docs
+    }
 
     /// Default: no fetch capability. Sources whose data ships via
     /// `cupertino fetch` (apple-docs / hig / apple-archive /
@@ -275,18 +299,35 @@ extension Search.SourceProvider {
     /// a fetch step (today: `swift-book`, the view-source) inherit
     /// nil — the CLI reports "Source 'X' has no fetch capability"
     /// for those.
-    public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? { nil }
+    public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? {
+        nil
+    }
 
     /// Default: this source's `destinationDB` lives in the search.db
     /// FTS family. The 2 non-FTS sources (`SampleCodeSource` reading
     /// `apple-sample-code.db` catalog tables, `PackagesSource` reading
     /// `packages.db` BM25+chunk schema) override to `false`.
-    public var isSearchTier: Bool { true }
+    public var isSearchTier: Bool {
+        true
+    }
 
     /// Default: this source needs a real on-disk corpus directory.
     /// View-sources (today: `SwiftBookSource`) and alternate-input
     /// sources (today: `SampleCodeSource`) override to `false`; the
     /// CLI resolver supplies a placeholder URL so the strategy still
     /// runs in the dispatch fan-out without consuming the directory.
-    public var requiresCorpusDirectory: Bool { true }
+    public var requiresCorpusDirectory: Bool {
+        true
+    }
+
+    /// Default: no per-source enrichment passes. Sources with
+    /// source-specific enrichment (today: `HIGSource` →
+    /// `HIGPlatformInferencePass`) override.
+    public func makeSourceSpecificEnrichmentPasses(
+        searchIndex _: any Search.IndexWriter,
+        audit _: (any Search.EnrichmentAuditObserver)?,
+        dbPath _: String
+    ) -> [any EnrichmentPass] {
+        []
+    }
 }

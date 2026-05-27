@@ -461,22 +461,38 @@ extension CLIImpl.Command.Save {
                 // JSONL audit can distinguish events from different DBs
                 // in the same save run.
                 let dbPathString = dbPath.lastPathComponent
-                let enrichmentRunner: any EnrichmentRunner = Enrichment.LiveRunner(
-                    passes: [
-                        Enrichment.SynonymsPass(searchIndex: index),
-                        Enrichment.AppleConstraintsPass(
-                            searchIndex: index,
-                            lookup: staticConstraintsLookup,
-                            audit: enrichmentAudit,
-                            dbPath: dbPathString
-                        ),
-                        Enrichment.HierarchyPass(
-                            searchIndex: index,
-                            audit: enrichmentAudit,
-                            dbPath: dbPathString
-                        ),
-                    ]
-                )
+                // 2026-05-27 (#1073): source-specific enrichment is
+                // pluggable. The CLI composition root assembles the
+                // shared docs-tier passes (synonyms, apple constraints,
+                // hierarchy) and then asks each provider for any
+                // source-specific passes via
+                // `makeSourceSpecificEnrichmentPasses`. The HIG
+                // platform-inference pass lives on HIGSource, not on
+                // the CLI. Default provider extension returns `[]`.
+                // Pluggability invariant: adding a source-specific
+                // enrichment pass must not touch this file.
+                var passes: [any EnrichmentPass] = [
+                    Enrichment.SynonymsPass(searchIndex: index),
+                    Enrichment.AppleConstraintsPass(
+                        searchIndex: index,
+                        lookup: staticConstraintsLookup,
+                        audit: enrichmentAudit,
+                        dbPath: dbPathString
+                    ),
+                    Enrichment.HierarchyPass(
+                        searchIndex: index,
+                        audit: enrichmentAudit,
+                        dbPath: dbPathString
+                    ),
+                ]
+                for provider in providers {
+                    passes.append(contentsOf: provider.makeSourceSpecificEnrichmentPasses(
+                        searchIndex: index,
+                        audit: enrichmentAudit,
+                        dbPath: dbPathString
+                    ))
+                }
+                let enrichmentRunner: any EnrichmentRunner = Enrichment.LiveRunner(passes: passes)
 
                 // Per-group strategies. compactMap drops providers
                 // whose CLI input directory is nil (pre-#1029 shape).
