@@ -2,6 +2,7 @@ import ASTIndexer
 import Foundation
 import OSLog
 import SampleIndexModels
+import SearchModels
 import SharedConstants
 
 // MARK: - Sample Index Builder
@@ -248,23 +249,34 @@ extension Sample.Index {
             // so the projects-table row carries deployment targets directly.
             let parsedDeploymentTargets = readPackageSwiftPlatforms(in: projectRoot)
 
+            // #1111: aggregate per-file `@available(...)` attributes
+            // BEFORE indexProject so the row can be stamped with the
+            // exact floor the sample requires (MAX iOS / macOS / etc.
+            // across every attribute), not just the framework
+            // introduction version. Stash the per-file attrs in
+            // `fileAvailability` so the main index loop below reuses
+            // them instead of re-parsing each swift source.
+            let fileAvailability = extractFileAvailability(files: files)
+            let aggregatedAvailability = SampleAvailableAttributeAggregator.aggregate(
+                attributes: fileAvailability.flatMap(\.attributes)
+            )
+
             // #1104: 633/634 Apple sample projects ship as Xcode
             // projects (no Package.swift) so `parsedDeploymentTargets`
-            // is empty for them. Pre-fix the row landed with all
-            // `min_<platform>` NULL, making any `--min-<platform>`
-            // filter exclude every sample. Fall back to per-
+            // is empty for them. Fall back to the @available
+            // aggregation (#1111) when present, then to the per-
             // framework lookup from `SampleFrameworkAvailability`
-            // (top ~55 frameworks covering the sample-code corpus).
-            // Only stamp when the lookup is exact — unknown
-            // frameworks leave platforms NULL rather than claiming
-            // 5-platform support the framework probably doesn't
-            // have.
+            // (`100+` framework slugs). Only stamp when an exact
+            // signal exists. Unknown unframework samples with no
+            // @available stay NULL rather than claiming 5-platform
+            // support the sample probably doesn't have.
             let frameworks = entry?.frameworks ?? []
             let inferredFrameworkProbe = frameworks.first
                 ?? SampleFrameworkAvailability.frameworkFromProjectId(projectId)
                 ?? ""
-            let availabilityInfo = resolveSampleAvailability(
+            let availabilityInfo = Self.resolveSampleAvailability(
                 parsedDeploymentTargets: parsedDeploymentTargets,
+                aggregatedAvailability: aggregatedAvailability,
                 frameworkProbe: inferredFrameworkProbe
             )
 
@@ -286,31 +298,23 @@ extension Sample.Index {
             // Index project
             try await database.indexProject(project)
 
-            // Index all files (with AST extraction for Swift files)
+            // Index all files (with AST extraction for Swift files).
+            // `fileAvailability` is the pre-computed per-file
+            // attribute list from #1111 above; we look up each file's
+            // attrs by relpath instead of re-parsing.
             let extractor = ASTIndexer.Extractor()
-            // #228 phase 1: collect per-file `@available(...)` attribute
-            // occurrences while we're already walking the swift sources.
-            // Same shape as #219's per-package `availability.json`.
-            // Phase 2 also persists each file's attrs into samples.db.
-            var fileAvailability: [Sample.Index.AvailabilitySidecar.FileEntry] = []
+            let availabilityByRelpath = Dictionary(
+                uniqueKeysWithValues: fileAvailability.map { ($0.relpath, $0.attributes) }
+            )
             let encoder = JSONEncoder()
             for file in files {
                 // Compute the per-file @available JSON before indexFile so
                 // it can be bound on the same INSERT.
                 var availableAttrsJSON: String?
-                if file.fileExtension == "swift" {
-                    let attrs = ASTIndexer.AvailabilityParsers
-                        .extractAvailability(from: file.content)
-                    if !attrs.isEmpty {
-                        if let data = try? encoder.encode(attrs) {
-                            availableAttrsJSON = String(data: data, encoding: .utf8)
-                        }
-                        fileAvailability.append(
-                            Sample.Index.AvailabilitySidecar.FileEntry(
-                                relpath: file.path,
-                                attributes: attrs
-                            )
-                        )
+                if file.fileExtension == "swift",
+                   let attrs = availabilityByRelpath[file.path], !attrs.isEmpty {
+                    if let data = try? encoder.encode(attrs) {
+                        availableAttrsJSON = String(data: data, encoding: .utf8)
                     }
                 }
 
@@ -367,23 +371,36 @@ extension Sample.Index {
             let availabilitySource: String?
         }
 
-        /// #1104 + critic-pass: pick the strongest signal available
-        /// for a sample's deployment targets.
+        /// #1104 + critic-pass + #1111: pick the strongest signal
+        /// available for a sample's deployment targets.
         ///
         /// Priority:
         /// 1. `Package.swift platforms:` declarations (verified
-        ///    by-hand by the sample author) → tagged `sample-swift`.
-        /// 2. Exact `SampleFrameworkAvailability` match for the
-        ///    framework probe (catalog `frameworks` field or the
-        ///    project-id prefix when the catalog has no entry) →
-        ///    tagged `sample-framework-inferred`.
+        ///    by-hand by the sample author): tagged `sample-swift`.
+        ///    Authoritative; supersedes everything else.
+        /// 2. MAX-merge of (per-file `@available` aggregate, framework
+        ///    introduction floor). Each platform takes the higher of
+        ///    the two; the row carries whichever signal contributed
+        ///    the dominant value. Tagged `sample-available-aggregated`
+        ///    when any platform's value came from the aggregator,
+        ///    else `sample-framework-inferred`.
+        ///    Rationale: a single back-port helper marked
+        ///    `@available(iOS 11.0, *)` shouldn't pull a SwiftUI
+        ///    sample's `min_ios` below SwiftUI's introduction
+        ///    version. The aggregator surfaces ceilings that
+        ///    individual `@available` attributes require; the
+        ///    framework table surfaces ceilings the framework
+        ///    itself requires. The sample needs BOTH to compile, so
+        ///    the floor is the MAX.
         /// 3. Otherwise NULL platforms + nil source. Stamping the
         ///    universal-Apple fallback for unknown frameworks
         ///    produces false-positive `--min-tvos`/`--min-watchos`
         ///    matches (e.g. iOS-only CarPlay claiming tvOS 9.0),
-        ///    so unknown frameworks deliberately remain NULL.
-        func resolveSampleAvailability(
+        ///    so unknown unframework samples with no @available
+        ///    deliberately remain NULL.
+        static func resolveSampleAvailability(
             parsedDeploymentTargets: [String: String],
+            aggregatedAvailability: Search.PlatformVersions?,
             frameworkProbe: String
         ) -> SampleAvailability {
             if !parsedDeploymentTargets.isEmpty {
@@ -392,25 +409,131 @@ extension Sample.Index {
                     availabilitySource: "sample-swift"
                 )
             }
-            guard !frameworkProbe.isEmpty else {
-                return SampleAvailability(deploymentTargets: [:], availabilitySource: nil)
-            }
-            let lookup = SampleFrameworkAvailability.versions(for: frameworkProbe)
-            guard lookup.isExact else {
-                return SampleAvailability(deploymentTargets: [:], availabilitySource: nil)
-            }
-            var dict: [String: String] = [:]
-            // Keys match `Sample.Index.Database.bindMin`'s lookup
-            // ("iOS"/"macOS"/etc., not lowercased).
-            if let ver = lookup.versions.iOS { dict["iOS"] = ver }
-            if let ver = lookup.versions.macOS { dict["macOS"] = ver }
-            if let ver = lookup.versions.tvOS { dict["tvOS"] = ver }
-            if let ver = lookup.versions.watchOS { dict["watchOS"] = ver }
-            if let ver = lookup.versions.visionOS { dict["visionOS"] = ver }
-            return SampleAvailability(
-                deploymentTargets: dict,
-                availabilitySource: dict.isEmpty ? nil : "sample-framework-inferred"
+            // Framework-tier floor (may be nil for unknown frameworks
+            // / empty probes; treated as no signal).
+            let frameworkAvailability: Search.PlatformVersions? = {
+                guard !frameworkProbe.isEmpty else { return nil }
+                let lookup = SampleFrameworkAvailability.versions(for: frameworkProbe)
+                return lookup.isExact ? lookup.versions : nil
+            }()
+            // MAX-merge per platform; record whether the
+            // aggregator contributed a higher value than the
+            // framework so the row's `availability_source` reflects
+            // the true dominant signal.
+            let merged = Self.maxMergePlatformVersions(
+                aggregatedAvailability,
+                frameworkAvailability
             )
+            guard let merged, let dict = Self.platformVersionsToDict(merged.versions), !dict.isEmpty else {
+                return SampleAvailability(deploymentTargets: [:], availabilitySource: nil)
+            }
+            let source: String = merged.aggregatedContributed
+                ? "sample-available-aggregated"
+                : "sample-framework-inferred"
+            return SampleAvailability(deploymentTargets: dict, availabilitySource: source)
+        }
+
+        /// Per-platform MAX of two `Search.PlatformVersions` values
+        /// (either may be nil; either may have nil per-platform
+        /// fields). Also reports whether the aggregator's value won
+        /// any platform's MAX: the deciding bit for the
+        /// `sample-available-aggregated` vs `sample-framework-inferred`
+        /// tag. Treats version strings as dotted-int sequences,
+        /// matching `SampleAvailableAttributeAggregator.SemanticVersion`.
+        static func maxMergePlatformVersions(
+            _ aggregated: Search.PlatformVersions?,
+            _ framework: Search.PlatformVersions?
+        ) -> (versions: Search.PlatformVersions, aggregatedContributed: Bool)? {
+            if aggregated == nil, framework == nil { return nil }
+            var aggregatedContributed = false
+            func merge(
+                _ aggregatedValue: String?,
+                _ frameworkValue: String?
+            ) -> String? {
+                switch (aggregatedValue, frameworkValue) {
+                case (nil, nil): return nil
+                case (.some(let value), nil):
+                    aggregatedContributed = true
+                    return value
+                case (nil, .some(let value)):
+                    return value
+                case (.some(let aggValue), .some(let frmValue)):
+                    if compareDottedVersions(aggValue, frmValue) >= 0 {
+                        if aggValue != frmValue { aggregatedContributed = true }
+                        return aggValue
+                    }
+                    return frmValue
+                }
+            }
+            let versions = Search.PlatformVersions(
+                iOS: merge(aggregated?.iOS, framework?.iOS),
+                macOS: merge(aggregated?.macOS, framework?.macOS),
+                tvOS: merge(aggregated?.tvOS, framework?.tvOS),
+                watchOS: merge(aggregated?.watchOS, framework?.watchOS),
+                visionOS: merge(aggregated?.visionOS, framework?.visionOS)
+            )
+            // Force at least one non-nil component before reporting.
+            if versions.iOS == nil, versions.macOS == nil, versions.tvOS == nil,
+               versions.watchOS == nil, versions.visionOS == nil {
+                return nil
+            }
+            return (versions, aggregatedContributed)
+        }
+
+        /// Compare two dotted-int version strings: returns negative,
+        /// zero, or positive in the same shape as `String.compare`.
+        /// Missing components are treated as 0 (so `"14"` ==
+        /// `"14.0"`). Non-int components return 0 to be conservative.
+        static func compareDottedVersions(_ lhs: String, _ rhs: String) -> Int {
+            let lhsParts = lhs.split(separator: ".").compactMap { Int($0) }
+            let rhsParts = rhs.split(separator: ".").compactMap { Int($0) }
+            let count = max(lhsParts.count, rhsParts.count)
+            for idx in 0..<count {
+                let left = idx < lhsParts.count ? lhsParts[idx] : 0
+                let right = idx < rhsParts.count ? rhsParts[idx] : 0
+                if left != right { return left - right }
+            }
+            return 0
+        }
+
+        /// Map a `Search.PlatformVersions` to the dict shape
+        /// `Sample.Index.Database.bindMin` expects (proper-case
+        /// platform keys). Returns nil only when every platform is
+        /// nil (unreachable in practice but kept defensive).
+        private static func platformVersionsToDict(
+            _ versions: Search.PlatformVersions
+        ) -> [String: String]? {
+            var dict: [String: String] = [:]
+            if let ver = versions.iOS { dict["iOS"] = ver }
+            if let ver = versions.macOS { dict["macOS"] = ver }
+            if let ver = versions.tvOS { dict["tvOS"] = ver }
+            if let ver = versions.watchOS { dict["watchOS"] = ver }
+            if let ver = versions.visionOS { dict["visionOS"] = ver }
+            return dict.isEmpty ? nil : dict
+        }
+
+        /// #1111: walk the swift files in a sample once up-front and
+        /// extract every `@available(...)` attribute occurrence into
+        /// the same sidecar shape `writeAvailabilitySidecar` ships.
+        /// Called BEFORE the project insert so the aggregation feeds
+        /// `resolveSampleAvailability`'s tier 2.
+        func extractFileAvailability(
+            files: [Sample.Index.File]
+        ) -> [Sample.Index.AvailabilitySidecar.FileEntry] {
+            var entries: [Sample.Index.AvailabilitySidecar.FileEntry] = []
+            for file in files where file.fileExtension == "swift" {
+                let attrs = ASTIndexer.AvailabilityParsers
+                    .extractAvailability(from: file.content)
+                if !attrs.isEmpty {
+                    entries.append(
+                        Sample.Index.AvailabilitySidecar.FileEntry(
+                            relpath: file.path,
+                            attributes: attrs
+                        )
+                    )
+                }
+            }
+            return entries
         }
 
         /// Write `<projectId>.availability.json` next to the zip in
@@ -550,6 +673,7 @@ extension Sample.Index {
         ///   - entry: Optional metadata from Sample.Core.Catalog
         ///   - forceReindex: If true, delete existing and reindex
         /// - Returns: Number of files indexed
+        // swiftlint:disable:next function_body_length
         public func indexProjectDirectory(
             directoryURL: URL,
             entry: SampleCodeEntryInfo?,
@@ -574,17 +698,22 @@ extension Sample.Index {
             // Calculate totals
             let totalSize = files.reduce(0) { $0 + $1.size }
 
-            // #1104: same per-framework availability fallback as
+            // #1104 + #1111: same tiered availability resolution as
             // `indexProject` so directory-only projects (cupertino-
             // sample-code git-clone path with no zips) also land with
             // honest `min_<platform>` columns instead of all NULL.
             let parsedDeploymentTargets = readPackageSwiftPlatforms(in: projectRoot)
+            let directoryFileAvailability = extractFileAvailability(files: files)
+            let aggregatedAvailability = SampleAvailableAttributeAggregator.aggregate(
+                attributes: directoryFileAvailability.flatMap(\.attributes)
+            )
             let frameworks = entry?.frameworks ?? []
             let inferredFrameworkProbe = frameworks.first
                 ?? SampleFrameworkAvailability.frameworkFromProjectId(projectId)
                 ?? ""
-            let availabilityInfo = resolveSampleAvailability(
+            let availabilityInfo = Self.resolveSampleAvailability(
                 parsedDeploymentTargets: parsedDeploymentTargets,
+                aggregatedAvailability: aggregatedAvailability,
                 frameworkProbe: inferredFrameworkProbe
             )
 
@@ -606,10 +735,33 @@ extension Sample.Index {
             // Index project
             try await database.indexProject(project)
 
-            // Index all files (with AST extraction for Swift files)
+            // Index all files (with AST extraction for Swift files).
+            // #1111 critic-pass: also persist per-file
+            // `available_attrs_json` via the pre-computed
+            // `directoryFileAvailability` lookup, matching the
+            // indexProject (zip) path. Pre-fix this column was always
+            // NULL on directory-imported rows.
             let extractor = ASTIndexer.Extractor()
+            let availabilityByRelpath = Dictionary(
+                uniqueKeysWithValues: directoryFileAvailability.map { ($0.relpath, $0.attributes) }
+            )
+            let encoder = JSONEncoder()
             for file in files {
-                try await database.indexFile(file)
+                var availableAttrsJSON: String?
+                if file.fileExtension == "swift",
+                   let attrs = availabilityByRelpath[file.path], !attrs.isEmpty {
+                    if let data = try? encoder.encode(attrs) {
+                        availableAttrsJSON = String(data: data, encoding: .utf8)
+                    }
+                }
+
+                let fileWithAvailability = File(
+                    projectId: file.projectId,
+                    path: file.path,
+                    content: file.content,
+                    availableAttrsJSON: availableAttrsJSON
+                )
+                try await database.indexFile(fileWithAvailability)
 
                 // Extract symbols from Swift files (#81)
                 if file.fileExtension == "swift" {
