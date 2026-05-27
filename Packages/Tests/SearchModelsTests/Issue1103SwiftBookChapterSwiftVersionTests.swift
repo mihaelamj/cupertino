@@ -1,6 +1,6 @@
 import Foundation
 import SearchModels
-import SwiftBookSource
+@testable import SwiftBookSource
 import Testing
 
 /// #1103: each `SwiftBookChapterVersions.ChapterFloor` carries the
@@ -43,6 +43,46 @@ struct Issue1103SwiftBookChapterSwiftVersionTests {
         let resolver = NoOpResolver()
         let url = try #require(URL(string: "https://example.com/whatever"))
         #expect(resolver.implementationSwiftVersion(for: url) == nil)
+    }
+
+    @Test("SwiftBookChapterVersionsResolver end-to-end: URL → resolver → version")
+    func resolverEndToEnd() throws {
+        let resolver = SwiftBookChapterVersionsResolver()
+        let cases: [(urlString: String, expectedSwiftVersion: String?, expectedIOS: String?)] = [
+            (
+                "https://docs.swift.org/swift-book/documentation/the-swift-programming-language/concurrency",
+                "5.5",
+                "13.0"
+            ),
+            (
+                "https://docs.swift.org/swift-book/documentation/the-swift-programming-language/macros",
+                "5.9",
+                "17.0"
+            ),
+            (
+                "https://docs.swift.org/swift-book/documentation/the-swift-programming-language/concurrency/",
+                "5.5",
+                "13.0"
+            ), // trailing slash → empty lastPathComponent; falls back to parent
+            (
+                "https://docs.swift.org/swift-book/documentation/the-swift-programming-language/concurrency.html",
+                "5.5",
+                "13.0"
+            ), // `.html` extension stripped
+            (
+                "https://docs.swift.org/swift-book/documentation/the-swift-programming-language/thebasics",
+                nil,
+                "8.0"
+            ), // chapter not in table; universalSwiftBaseline applies
+        ]
+        for testCase in cases {
+            let url = try #require(URL(string: testCase.urlString))
+            #expect(
+                resolver.implementationSwiftVersion(for: url) == testCase.expectedSwiftVersion,
+                "url: \(url)"
+            )
+            #expect(resolver.versions(for: url).iOS == testCase.expectedIOS, "url: \(url)")
+        }
     }
 }
 

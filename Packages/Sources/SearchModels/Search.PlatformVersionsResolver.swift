@@ -63,8 +63,11 @@ extension Search {
     }
 }
 
-// #1103: default implementation lives outside the `extension Search`
-// block so the protocol's `Sendable` conformance check is happy.
+// #1103: default implementation lives at file scope because Swift
+// does not permit nesting an `extension Search.PlatformVersionsResolver`
+// block inside an `extension Search` block. The fully-qualified name
+// reaches the same protocol either way; the choice is purely about
+// syntactic placement.
 public extension Search.PlatformVersionsResolver {
     func implementationSwiftVersion(for _: URL) -> String? {
         nil

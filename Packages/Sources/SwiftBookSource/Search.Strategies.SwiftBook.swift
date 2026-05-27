@@ -84,7 +84,11 @@ extension Search {
 /// `Search.PlatformVersions`. Chapters not in the table fall back
 /// to the universal Swift baseline via
 /// `SwiftBookChapterVersions.floor(forSlug:)`'s default.
-private struct SwiftBookChapterVersionsResolver: Search.PlatformVersionsResolver {
+// #1103: internal (not private) so the resolver's slug extraction
+// + version lookup can be unit-tested via @testable import without
+// going through the full crawl helper. The type otherwise isn't
+// part of SwiftBookSource's public surface.
+struct SwiftBookChapterVersionsResolver: Search.PlatformVersionsResolver {
     func versions(for url: URL) -> Search.PlatformVersions {
         let floor = SwiftBookChapterVersions.floor(forSlug: slug(from: url))
         return Search.PlatformVersions(
