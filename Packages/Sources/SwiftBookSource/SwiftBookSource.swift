@@ -34,17 +34,25 @@ import SharedConstants
 public struct SwiftBookSource: Search.SourceProvider {
     public init() {}
 
-    public var definition: Search.SourceDefinition { Self.definition }
+    public var definition: Search.SourceDefinition {
+        Self.definition
+    }
 
-    public var fetchInfo: Search.FetchInfo? { nil }
+    /// #1082: swift-book is a view-source over the swift-org crawl —
+    /// the strategy walks swift-org's corpus tree and filters by
+    /// URL-prefix to emit only swift-book-tagged pages. Pre-#1082
+    /// `fetchInfo` was nil and `requiresCorpusDirectory: false`,
+    /// which routed the strategy to a `/dev/null` placeholder and
+    /// left `swift-book.db` empty. Post-fix the FetchInfo declares
+    /// `defaultOutputDirKey = .swiftOrg` (shared with SwiftOrgSource)
+    /// so the resolver routes the strategy to the real corpus tree.
+    public var fetchInfo: Search.FetchInfo? {
+        Self.fetchInfo
+    }
 
-    /// 2026-05-26 post-#1056: swift-book is a view-source over the
-    /// swift-org crawl (its pages are co-crawled by swift-org via
-    /// URL-prefix tagging). The strategy runs in the dispatch but
-    /// doesn't read a corpus directory of its own.
-    public var requiresCorpusDirectory: Bool { false }
-
-    public var destinationDB: Shared.Models.DatabaseDescriptor { .swiftBook }
+    public var destinationDB: Shared.Models.DatabaseDescriptor {
+        .swiftBook
+    }
 
     /// Swift Book read-side capabilities. The Book is universal text +
     /// tutorial-grade code samples; the searcher + metadata matrix is

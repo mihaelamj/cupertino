@@ -21,10 +21,21 @@ struct Issue1021SwiftBookSourceShapeTests {
         #expect(def.properties.codeExamples == 0.9)
     }
 
-    @Test("SwiftBookSource.fetchInfo is nil (view-source: SwiftOrgStrategy owns the crawl)")
-    func fetchInfoIsNil() {
+    @Test("SwiftBookSource.fetchInfo declares defaultOutputDirKey=.swiftOrg (view-source over swift-org's corpus dir, #1082)")
+    func fetchInfoSharesSwiftOrgDir() {
+        // Pre-#1082 `fetchInfo` was nil, which combined with
+        // `requiresCorpusDirectory: false` short-circuited the
+        // resolver to `/dev/null` and left `swift-book.db` empty.
+        // Post-#1082 fetchInfo is non-nil and declares
+        // `defaultOutputDirKey = .swiftOrg` so the resolver routes
+        // the strategy to the real swift-org corpus tree; the
+        // strategy's `.swiftBookOnly` scope filter then emits only
+        // swift-book-tagged pages into `swift-book.db`.
         let provider = SwiftBookSource()
-        #expect(provider.fetchInfo == nil)
+        let fetchInfo = try? #require(provider.fetchInfo)
+        #expect(fetchInfo?.sourceID == Shared.Constants.SourcePrefix.swiftBook)
+        #expect(fetchInfo?.defaultOutputDirKey == .swiftOrg)
+        #expect(fetchInfo?.isWebCrawlable == true)
     }
 
     @Test("SwiftBookSource.destinationDB == .swiftBook (post #1038 'diff db for each source'; swift-book owns swift-book.db)")
@@ -51,7 +62,7 @@ struct Issue1021SwiftBookSourceShapeTests {
     }
 
     @Test("SwiftBookSource.makeStrategy returns a view-source strategy that emits zero items")
-    func makeStrategyIsNoop() async throws {
+    func makeStrategyIsNoop() {
         let provider = SwiftBookSource()
         let env = Search.IndexEnvironment(
             sourceDirectory: URL(fileURLWithPath: "/tmp"),

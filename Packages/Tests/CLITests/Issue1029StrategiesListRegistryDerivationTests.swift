@@ -18,26 +18,26 @@ struct Issue1029StrategiesListRegistryDerivationTests {
     // MARK: - resolveSourceDirectory bridge helper
 
     @Test("resolveSourceDirectory returns input.docsDirectory for apple-docs source")
-    func resolveAppleDocsDirectory() {
+    func resolveAppleDocsDirectory() throws {
         let input = Self.fullInput
         let registry = CLIImpl.makeProductionSourceRegistry()
-        let appleDocs = registry.allEnabled.first { $0.definition.id == Shared.Constants.SourcePrefix.appleDocs }!
+        let appleDocs = try #require(registry.allEnabled.first { $0.definition.id == Shared.Constants.SourcePrefix.appleDocs })
         #expect(CLIImpl.Command.Save.LiveDocsIndexingRunner.resolveSourceDirectory(for: appleDocs, input: input) == input.docsDirectory)
     }
 
     @Test("resolveSourceDirectory returns nil for swift-evolution when input.evolutionDirectory is nil")
-    func resolveSwiftEvolutionNilWhenInputNil() {
+    func resolveSwiftEvolutionNilWhenInputNil() throws {
         let input = Self.minimalInput // only docsDirectory set; evolution/org/archive/hig nil
         let registry = CLIImpl.makeProductionSourceRegistry()
-        let evolution = registry.allEnabled.first { $0.definition.id == Shared.Constants.SourcePrefix.swiftEvolution }!
+        let evolution = try #require(registry.allEnabled.first { $0.definition.id == Shared.Constants.SourcePrefix.swiftEvolution })
         #expect(CLIImpl.Command.Save.LiveDocsIndexingRunner.resolveSourceDirectory(for: evolution, input: input) == nil)
     }
 
     @Test("resolveSourceDirectory returns sentinel /dev/null for samples (sourceDirectory ignored by SampleCodeStrategy)")
-    func resolveSamplesIsSentinel() {
+    func resolveSamplesIsSentinel() throws {
         let input = Self.minimalInput
         let registry = CLIImpl.makeProductionSourceRegistry()
-        let samples = registry.allEnabled.first { $0.definition.id == Shared.Constants.SourcePrefix.samples }!
+        let samples = try #require(registry.allEnabled.first { $0.definition.id == Shared.Constants.SourcePrefix.samples })
         let resolved = CLIImpl.Command.Save.LiveDocsIndexingRunner.resolveSourceDirectory(for: samples, input: input)
         #expect(resolved?.path == "/dev/null")
     }
@@ -71,10 +71,18 @@ struct Issue1029StrategiesListRegistryDerivationTests {
                 )
                 return provider.makeStrategy(env: env)
             }
-        #expect(strategies.count == 7) // apple-docs + hig + samples + apple-archive + swift-evolution + swift-org + swift-book (noop)
+        // Pluggability invariant: with every docs-tier directory
+        // present, the strategies list has one entry per docs-tier
+        // provider in the registry. Adding a new docs-tier source
+        // (registered + a directoryByKey entry) auto-grows the
+        // count without editing this assertion.
+        let expectedDocsTierProviders = registry.allEnabled
+            .filter { $0.destinationDB != .packages }
+            .count
+        #expect(strategies.count == expectedDocsTierProviders)
     }
 
-    @Test("With minimal input (only docsDirectory + samples), derived strategies list has 3 entries (apple-docs + samples + swift-book noop)")
+    @Test("With minimal input (only docsDirectory + samples), derived strategies list has 2 entries (apple-docs + samples)")
     func minimalInputSkipsOptionalDirs() {
         let input = Self.minimalInput
         let registry = CLIImpl.makeProductionSourceRegistry()
@@ -94,22 +102,34 @@ struct Issue1029StrategiesListRegistryDerivationTests {
                 )
                 return provider.makeStrategy(env: env)
             }
-        // apple-docs (docsDir) + samples (sentinel) + swift-book (sentinel fallback) = 3.
-        // swift-evolution / swift-org / apple-archive / hig skipped (nil dirs).
-        #expect(strategies.count == 3)
+        // Pluggability invariant: with minimal input, the strategies
+        // list = (providers whose dir is supplied via directoryByKey)
+        // + (sentinel providers that opt out of requiresCorpusDirectory).
+        // Post-#1082 swift-book is no longer a sentinel — it requires
+        // the swift-org dir, which is absent here, so it drops.
+        let expected = registry.allEnabled
+            .filter { $0.destinationDB != .packages }
+            .filter { provider in
+                if let supplied = input.directoryByKey[provider.definition.id], supplied != nil {
+                    return true
+                }
+                return !provider.requiresCorpusDirectory
+            }
+            .count
+        #expect(strategies.count == expected)
     }
 }
 
 // MARK: - Test fixtures
 
 extension Issue1029StrategiesListRegistryDerivationTests {
-    // Post-#1045 Gap-4 + post-cull (2026-05-26 audit Finding 14.5):
-    // `resolveSourceDirectory` no longer reads typed fields — every
-    // per-source directory flows through `directoryByKey`. The
-    // typed `*Directory` fields remain on the Input struct for
-    // back-compat with existing callers but are not consulted by
-    // the dispatcher. Tests construct the dict directly so the
-    // assertions exercise the production code path.
+    /// Post-#1045 Gap-4 + post-cull (2026-05-26 audit Finding 14.5):
+    /// `resolveSourceDirectory` no longer reads typed fields — every
+    /// per-source directory flows through `directoryByKey`. The
+    /// typed `*Directory` fields remain on the Input struct for
+    /// back-compat with existing callers but are not consulted by
+    /// the dispatcher. Tests construct the dict directly so the
+    /// assertions exercise the production code path.
     static let fullInput = Search.DocsIndexingInput(
         searchDBPath: URL(fileURLWithPath: "/tmp/search.db"),
         docsDirectory: URL(fileURLWithPath: "/tmp/docs"),
@@ -126,10 +146,14 @@ extension Issue1029StrategiesListRegistryDerivationTests {
             Shared.Constants.SourcePrefix.swiftOrg: URL(fileURLWithPath: "/tmp/swift-org"),
             Shared.Constants.SourcePrefix.appleArchive: URL(fileURLWithPath: "/tmp/archive"),
             Shared.Constants.SourcePrefix.hig: URL(fileURLWithPath: "/tmp/hig"),
-            // swiftBook + samples deliberately nil — dispatcher returns
-            // the /dev/null sentinel for them so their makeStrategy
-            // still gets invoked (each strategy doesn't consume sourceDirectory).
-            Shared.Constants.SourcePrefix.swiftBook: nil,
+            // Post-#1082: swift-book's fetchInfo declares
+            // defaultOutputDirKey=.swiftOrg so the dict carries the
+            // SAME path as swiftOrg. The strategy then walks
+            // swift-org's tree and emits only swift-book-tagged pages.
+            Shared.Constants.SourcePrefix.swiftBook: URL(fileURLWithPath: "/tmp/swift-org"),
+            // samples deliberately nil — dispatcher returns the
+            // /dev/null sentinel (it consumes env.sampleCatalogProvider,
+            // not a directory).
             Shared.Constants.SourcePrefix.samples: nil,
         ]
     )

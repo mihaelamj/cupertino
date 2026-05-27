@@ -85,7 +85,9 @@ private struct ContractFakeSourceProvider: Search.SourceProvider {
         .swiftOrg
     }
 
-    var fetchInfo: Search.FetchInfo? { nil }
+    var fetchInfo: Search.FetchInfo? {
+        nil
+    }
 
     var capabilities: Search.Capabilities {
         Search.Capabilities(
@@ -95,7 +97,9 @@ private struct ContractFakeSourceProvider: Search.SourceProvider {
         )
     }
 
-    var legacySourceIDAliases: Set<String> { [] }
+    var legacySourceIDAliases: Set<String> {
+        []
+    }
 
     func makeStrategy(env _: Search.IndexEnvironment) -> any Search.SourceIndexingStrategy {
         preconditionFailure("Contract test never invokes makeStrategy; #935 covers the strategy roundtrip path")
@@ -628,8 +632,13 @@ struct Issue1042PluggabilityContractTests {
         // assertion below pins both shapes.
         struct FakeURIResourceStrategy: SearchModels.Search.URIResourceStrategy {
             let scheme: String
-            func listResources(env _: SearchModels.Search.URIResourceEnvironment) async throws -> [SearchModels.Search.URIResource] { [] }
-            func readMarkdown(uri _: String, env _: SearchModels.Search.URIResourceEnvironment) async throws -> String? { nil }
+            func listResources(env _: SearchModels.Search.URIResourceEnvironment) async throws -> [SearchModels.Search.URIResource] {
+                []
+            }
+
+            func readMarkdown(uri _: String, env _: SearchModels.Search.URIResourceEnvironment) async throws -> String? {
+                nil
+            }
         }
         let strategies: [any SearchModels.Search.URIResourceStrategy] = [
             FakeURIResourceStrategy(scheme: ContractFakeSourceProvider.fakeID),
@@ -837,23 +846,21 @@ struct Issue1042PluggabilityContractTests {
 
     @Test("Search.SourceProvider.requiresCorpusDirectory drops the hardcoded swift-book + samples sentinel switch in resolveSourceDirectory")
     func requiresCorpusDirectoryIsRegistryDriven() {
-        // STATUS: PASSES (post-#1056 follow-up). Pre-fix
-        // `CLIImpl.Command.Save.Indexers.resolveSourceDirectory` had
-        // a hardcoded 2-arm switch on source-id (swift-book +
-        // samples) returning a `/dev/null` placeholder so the
-        // downstream `compactMap` wouldn't drop their strategy. Post-
-        // fix the provider declares its own `requiresCorpusDirectory`
-        // flag (default `true`); SwiftBookSource + SampleCodeSource
-        // override `false`. The resolver checks the flag and
-        // supplies the placeholder URL with zero per-source knowledge.
+        // STATUS: PASSES. Post-#1082: SwiftBookSource no longer
+        // overrides `requiresCorpusDirectory` to false. Pre-#1082 the
+        // false override worked WITH a nil `fetchInfo` to short-
+        // circuit the resolver to `/dev/null`, which left
+        // `swift-book.db` empty (strategy walked an empty dir). Post-
+        // fix SwiftBookSource declares a real `fetchInfo` with
+        // `defaultOutputDirKey = .swiftOrg` (shared with
+        // SwiftOrgSource), the resolver routes the strategy to the
+        // real swift-org corpus tree, and the strategy's
+        // `.swiftBookOnly` scope filter emits the swift-book pages
+        // into `swift-book.db`. Only SampleCodeSource still opts out
+        // (it consumes `env.sampleCatalogProvider`, not a directory).
         let registry = registryWithFake()
         for prov in registry.allEnabled {
             switch prov.definition.id {
-            case Shared.Constants.SourcePrefix.swiftBook:
-                #expect(
-                    prov.requiresCorpusDirectory == false,
-                    "SwiftBookSource is a view-source; should opt out"
-                )
             case Shared.Constants.SourcePrefix.samples:
                 #expect(
                     prov.requiresCorpusDirectory == false,
