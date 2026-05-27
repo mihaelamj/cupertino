@@ -63,7 +63,9 @@ extension Search.StrategyHelpers {
     // (pre-#1084 baseline was 168 lines — file-walking + per-page
     // decoding + poison defence + URI derivation + indexer call;
     // each stage is short on its own and splitting across helpers
-    // would obscure the linear page-processing flow.)
+    // would obscure the linear page-processing flow. #1095 added
+    // the optional `platformVersions` param as a per-strategy
+    // override hook.)
     public static func crawlSwiftDocumentation(
         swiftOrgDirectory: URL,
         markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
@@ -71,7 +73,8 @@ extension Search.StrategyHelpers {
         scope: SwiftDocumentationScope,
         summarySource: String,
         into index: any Search.Database & Search.IndexWriter,
-        progress _: (any Search.IndexingProgressReporting)?
+        progress _: (any Search.IndexingProgressReporting)?,
+        platformVersions: (any Search.PlatformVersionsResolver)? = nil
     ) async throws -> Search.IndexStats {
         guard FileManager.default.fileExists(atPath: swiftOrgDirectory.path) else {
             return Search.IndexStats(
@@ -256,26 +259,28 @@ extension Search.StrategyHelpers {
             do {
                 // #1088: both swift-org AND swift-book carry Swift-
                 // language-level content that applies to every
-                // platform Swift runs on. Pre-#1088 only swift-book
-                // got the universal Swift baseline; swift-org rows
-                // landed with all-NULL platform columns, making any
-                // `--min-<platform>` filter exclude the entire
-                // source. Now both sub-sources receive the same
-                // baseline (iOS 8.0 / macOS 10.9 / tvOS 9.0 /
-                // watchOS 2.0 / visionOS 1.0 — Swift's introduction
-                // version on each platform).
+                // platform Swift runs on.
+                // #1095: per-page override seam — strategies that
+                // need page-specific floors (e.g. swift-book's
+                // chapter-version table for concurrency/macros)
+                // supply a `PlatformVersionsResolver`. Default is
+                // the universal Swift baseline (iOS 8.0 / macOS
+                // 10.9 / tvOS 9.0 / watchOS 2.0 / visionOS 1.0).
+                let versions = platformVersions?.versions(for: structuredPage.url) ?? .universalSwift
                 try await index.indexStructuredDocument(
                     uri: uri,
                     source: pageSource,
                     framework: pageSource,
                     page: structuredPage,
                     jsonData: jsonString,
-                    overrideMinIOS: "8.0",
-                    overrideMinMacOS: "10.9",
-                    overrideMinTvOS: "9.0",
-                    overrideMinWatchOS: "2.0",
-                    overrideMinVisionOS: "1.0",
-                    overrideAvailabilitySource: "universal-swift"
+                    overrideMinIOS: versions.iOS,
+                    overrideMinMacOS: versions.macOS,
+                    overrideMinTvOS: versions.tvOS,
+                    overrideMinWatchOS: versions.watchOS,
+                    overrideMinVisionOS: versions.visionOS,
+                    overrideAvailabilitySource: platformVersions == nil
+                        ? "universal-swift"
+                        : "swift-book-chapter"
                 )
 
                 if !structuredPage.codeExamples.isEmpty {
