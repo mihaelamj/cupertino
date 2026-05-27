@@ -2,6 +2,7 @@ import ASTIndexer
 import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
+import SampleIndexModels
 import SearchModels
 import SharedConstants
 
@@ -225,16 +226,136 @@ extension Search {
             let swiftToolsVersion: String? = result.swiftToolsVersion
                 ?? readSwiftToolsVersionFromPackageManifest(at: dir)
 
+            // #1114: MAX-merge per-file @available aggregation with
+            // Package.swift deployment targets. Parallel to #1111
+            // for apple-sample-code. The per-file attributes are
+            // already on disk in availability.json; pre-#1114 they
+            // were only persisted per-file (attrsByRelpath) but
+            // never aggregated into the project-level
+            // package_metadata.min_<platform> columns. A package
+            // that uses `@available(iOS 17.0, *)` APIs in its
+            // sources unconditionally needs iOS 17 to compile;
+            // pre-#1114 the row stamped iOS 13 from
+            // Package.swift platforms only.
+            let astAttrs = result.fileAvailability.flatMap { fileAvail in
+                fileAvail.attributes.map {
+                    ASTIndexer.AvailabilityParsers.Attribute(
+                        line: $0.line, raw: $0.raw, platforms: $0.platforms
+                    )
+                }
+            }
+            let aggregated = SampleAvailableAttributeAggregator.aggregate(attributes: astAttrs)
+            let packageSwift = Self.platformVersionsFromDict(result.deploymentTargets)
+            let merged = Self.maxMergePlatformVersions(aggregated, packageSwift)
+            let mergedDict: [String: String]
+            if let merged {
+                mergedDict = Self.dictFromPlatformVersions(merged.versions)
+            } else {
+                mergedDict = result.deploymentTargets
+            }
+            let source: String
+            if let merged, merged.aggregatedContributed {
+                source = "package-available-aggregated"
+            } else {
+                source = "package-swift"
+            }
+
             return PackageIndex.AvailabilityPayload(
-                deploymentTargets: result.deploymentTargets,
+                deploymentTargets: mergedDict,
                 attributesByRelpath: attrsByRelpath,
-                source: "package-swift",
+                source: source,
                 // #225 Part A — propagate the swift-tools-version from the
                 // annotator's read of Package.swift line 1. Nil when the
                 // manifest didn't carry a declaration we could parse AND
                 // the fallback read of Package.swift also turned up empty.
                 swiftToolsVersion: swiftToolsVersion
             )
+        }
+
+        // MARK: - #1114 MAX-merge helpers
+
+        /// Build a `Search.PlatformVersions` from the dict shape
+        /// `availability.json.deploymentTargets` uses (keys
+        /// `"iOS"`/`"macOS"`/etc., values version strings).
+        nonisolated static func platformVersionsFromDict(_ dict: [String: String]) -> Search.PlatformVersions? {
+            if dict.isEmpty { return nil }
+            return Search.PlatformVersions(
+                iOS: dict["iOS"],
+                macOS: dict["macOS"],
+                tvOS: dict["tvOS"],
+                watchOS: dict["watchOS"],
+                visionOS: dict["visionOS"]
+            )
+        }
+
+        /// Inverse of `platformVersionsFromDict` — drop nil
+        /// platforms so the resulting dict's keys are present
+        /// only when the platform has a value.
+        nonisolated static func dictFromPlatformVersions(_ versions: Search.PlatformVersions) -> [String: String] {
+            var dict: [String: String] = [:]
+            if let value = versions.iOS { dict["iOS"] = value }
+            if let value = versions.macOS { dict["macOS"] = value }
+            if let value = versions.tvOS { dict["tvOS"] = value }
+            if let value = versions.watchOS { dict["watchOS"] = value }
+            if let value = versions.visionOS { dict["visionOS"] = value }
+            return dict
+        }
+
+        /// Per-platform MAX-merge of (aggregator-derived, Package.swift-
+        /// derived) `Search.PlatformVersions`. Mirrors the
+        /// `Sample.Index.Builder.maxMergePlatformVersions` shape from
+        /// #1111 critic-pass. Reports whether the aggregator's value
+        /// won any platform's MAX — the deciding bit for the
+        /// `package-available-aggregated` vs `package-swift` tag.
+        nonisolated static func maxMergePlatformVersions(
+            _ aggregated: Search.PlatformVersions?,
+            _ packageSwift: Search.PlatformVersions?
+        ) -> (versions: Search.PlatformVersions, aggregatedContributed: Bool)? {
+            if aggregated == nil, packageSwift == nil { return nil }
+            var aggregatedContributed = false
+            func merge(_ aggregatedValue: String?, _ packageSwiftValue: String?) -> String? {
+                switch (aggregatedValue, packageSwiftValue) {
+                case (nil, nil): return nil
+                case let (.some(value), nil):
+                    aggregatedContributed = true
+                    return value
+                case let (nil, .some(value)):
+                    return value
+                case let (.some(aggValue), .some(pkgValue)):
+                    if Self.compareDottedVersions(aggValue, pkgValue) >= 0 {
+                        if aggValue != pkgValue { aggregatedContributed = true }
+                        return aggValue
+                    }
+                    return pkgValue
+                }
+            }
+            let versions = Search.PlatformVersions(
+                iOS: merge(aggregated?.iOS, packageSwift?.iOS),
+                macOS: merge(aggregated?.macOS, packageSwift?.macOS),
+                tvOS: merge(aggregated?.tvOS, packageSwift?.tvOS),
+                watchOS: merge(aggregated?.watchOS, packageSwift?.watchOS),
+                visionOS: merge(aggregated?.visionOS, packageSwift?.visionOS)
+            )
+            if versions.iOS == nil, versions.macOS == nil, versions.tvOS == nil,
+               versions.watchOS == nil, versions.visionOS == nil {
+                return nil
+            }
+            return (versions, aggregatedContributed)
+        }
+
+        /// Compare two dotted-int version strings: returns negative,
+        /// zero, or positive in the same shape as `String.compare`.
+        /// Missing components treated as 0 (so `"14"` == `"14.0"`).
+        nonisolated static func compareDottedVersions(_ lhs: String, _ rhs: String) -> Int {
+            let lhsParts = lhs.split(separator: ".").compactMap { Int($0) }
+            let rhsParts = rhs.split(separator: ".").compactMap { Int($0) }
+            let count = max(lhsParts.count, rhsParts.count)
+            for idx in 0..<count {
+                let left = idx < lhsParts.count ? lhsParts[idx] : 0
+                let right = idx < rhsParts.count ? rhsParts[idx] : 0
+                if left != right { return left - right }
+            }
+            return 0
         }
 
         /// #861 fallback helper. Read `<dir>/Package.swift` if present
