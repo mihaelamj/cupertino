@@ -163,6 +163,14 @@ extension Distribution.Setup {
             case extractStart(label: String)
             case extractTick(label: String)
             case extractComplete(label: String)
+            /// 2026-05-27: emitted when the optional
+            /// `apple-constraints.json` sidecar download fails (network
+            /// error, 404, etc.). Non-fatal — save will still work,
+            /// just at the iter-1+2 enrichment coverage (~16% of
+            /// doc_symbols rows) instead of iter-3 (~38%). The CLI
+            /// observer surfaces this as a warning so users know to
+            /// expect degraded constraint enrichment.
+            case constraintsDownloadSkipped(reason: String)
             case finished(Outcome)
         }
 
