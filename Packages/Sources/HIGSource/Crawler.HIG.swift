@@ -191,8 +191,22 @@ extension Crawler {
         }
 
         private func crawlPage(_ page: Page, stats: inout Crawler.HIGStatistics) async throws {
-            // Determine output path
-            let filename = sanitizeFilename(page.title) + ".md"
+            // #1076: derive filename from the URL's last path
+            // component (Apple's canonical HIG slug), NOT from the
+            // HTML <title>. Pre-fix the crawler used
+            // `sanitizeFilename(page.title)`; when Apple's site
+            // returned two HTML variants for the same URL with
+            // different `<title>` shapes (one with the `" | Apple
+            // Developer Documentation"` suffix stripped, one with a
+            // dehyphenated `"|AppleDeveloperDocumentation"` suffix
+            // the strip didn't catch), the same page got saved as two
+            // files (`buttons.md` + `buttons-appledeveloperdocumentation.md`)
+            // and reached search.db as two rows. Apple's URL slug is
+            // the authoritative topic name (it IS the canonical
+            // identifier Apple themselves use in URLs + redirects);
+            // taking it directly eliminates the title-roundtrip + the
+            // dedup problem in one move.
+            let filename = Self.canonicalFilename(for: page.url) + ".md"
             let categoryDir = outputDirectory.appendingPathComponent(page.category.rawValue)
 
             do {
@@ -516,6 +530,26 @@ extension Crawler {
             return name.components(separatedBy: invalidChars).joined(separator: "-")
                 .lowercased()
                 .replacingOccurrences(of: " ", with: "-")
+        }
+
+        /// #1076: derive the canonical .md filename from Apple's HIG
+        /// URL last path component. Apple's URL slug is the
+        /// authoritative topic identifier — e.g. the HIG buttons page
+        /// at `developer.apple.com/design/human-interface-guidelines/buttons`
+        /// canonicalizes to `buttons`. Strips any trailing slash and a
+        /// trailing `.html` extension (defensive — Apple's HIG URLs
+        /// don't carry them today). Internal + `nonisolated` so the
+        /// focused regression suite can import and exercise this
+        /// pure-function helper without entering @MainActor (the
+        /// enclosing `Crawler.HIG` is @MainActor because it owns a
+        /// WebKit fetcher; the URL canonicalizer carries no actor
+        /// state).
+        nonisolated static func canonicalFilename(for url: URL) -> String {
+            var slug = url.lastPathComponent
+            if slug.hasSuffix(".html") {
+                slug = String(slug.dropLast(".html".count))
+            }
+            return slug.lowercased()
         }
 
         // MARK: - Logging

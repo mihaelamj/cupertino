@@ -43,36 +43,25 @@ extension Search.Index {
         // Every other min_<platform> column gets set to NULL on a
         // matching row.
         //
-        // The cupertino corpus carries two variants of each HIG page
-        // due to a known URL-canonicalization gap (see memory
-        // `cupertino-url-canonicalization-bug.md`): the hyphenated
-        // canonical slug (`hig://general/designing-for-watchos`) and a
-        // dehyphenated duplicate emitted by a sibling scraper path
-        // (`hig://general/designingforwatchos-appledeveloperdocumentation`).
-        // Until the canonicalizer is fixed, this pass carries parallel
-        // patterns for both variants so the user-facing search filter
-        // covers both URIs of every duplicated topic. CarPlay is a
-        // single word so its pattern needs no twin.
+        // Patterns target Apple's canonical HIG URL slugs (post-#1076
+        // the crawler derives filenames from URL last-path-component,
+        // so the dehyphenated `-appledeveloperdocumentation` duplicates
+        // no longer exist on disk; the parallel patterns the pre-#1076
+        // commit carried as a band-aid have been removed). If a future
+        // Apple URL adds a topic with combined keywords (e.g.
+        // `designing-for-ios-and-mac`), add the rule explicitly rather
+        // than relying on substring overlap.
         let rules: [(pattern: String, keep: Set<String>)] = [
             ("%designing-for-watchos%", ["watchos"]),
-            ("%designingforwatchos%", ["watchos"]),
             ("%watch-faces%", ["watchos"]),
-            ("%watchfaces%", ["watchos"]),
             ("%designing-for-tvos%", ["tvos"]),
-            ("%designingfortvos%", ["tvos"]),
             ("%designing-for-visionos%", ["visionos"]),
-            ("%designingforvisionos%", ["visionos"]),
             ("%spatial-layout%", ["visionos"]),
-            ("%spatiallayout%", ["visionos"]),
             ("%designing-for-macos%", ["macos"]),
-            ("%designingformacos%", ["macos"]),
             ("%mac-catalyst%", ["ios", "macos"]),
-            ("%maccatalyst%", ["ios", "macos"]),
             ("%carplay%", ["ios"]),
             ("%designing-for-ipados%", ["ios"]),
-            ("%designingforipados%", ["ios"]),
             ("%designing-for-ios%", ["ios"]),
-            ("%designingforios%", ["ios"]),
         ]
         let allPlatforms = ["ios", "macos", "tvos", "watchos", "visionos"]
 
