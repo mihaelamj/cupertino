@@ -2,6 +2,7 @@ import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
 import SharedConstants
+
 extension Core.PackageIndexing {
     /// Fetches a repo's source tarball from `codeload.github.com/<owner>/<repo>/tar.gz/<ref>`
     /// and returns its text content as `[ExtractedFile]` in memory. The caller (the
@@ -183,16 +184,73 @@ extension Core.PackageIndexing {
                 "--strip-components=1",
             ]
             let stderr = Pipe()
+            let stdout = Pipe()
             process.standardError = stderr
-            process.standardOutput = Pipe()
+            process.standardOutput = stdout
+
+            // #1106: drain both pipes concurrently with the child so we
+            // never deadlock on a full pipe buffer. Foundation's
+            // `Process` provides no automatic drain — assigning a `Pipe`
+            // and waiting on `waitUntilExit()` blocks the child the
+            // moment it writes more than the ~64 KB pipe capacity. tar
+            // is normally silent under `-xzf`, but tarballs with
+            // overly-long paths / symlink loops / changed-during-extract
+            // files can emit hundreds of KB of stderr warnings.
+            //
+            // `readabilityHandler` runs the closure on a private
+            // background queue per pipe, so the buffers can never
+            // fill up under us. A `LockedBuffer` reference type
+            // gives the closures a Sendable handle into a shared
+            // accumulator with internal locking.
+            let stderrBuf = LockedBuffer()
+            let stdoutBuf = LockedBuffer()
+            stderr.fileHandleForReading.readabilityHandler = { handle in
+                let chunk = handle.availableData
+                if !chunk.isEmpty { stderrBuf.append(chunk) }
+            }
+            stdout.fileHandleForReading.readabilityHandler = { handle in
+                let chunk = handle.availableData
+                if !chunk.isEmpty { stdoutBuf.append(chunk) }
+            }
+            defer {
+                stderr.fileHandleForReading.readabilityHandler = nil
+                stdout.fileHandleForReading.readabilityHandler = nil
+            }
+
             try process.run()
             process.waitUntilExit()
+
+            // Drain any data the kernel still had in the pipe at exit.
+            // `readabilityHandler` fires on each writable burst, but
+            // there can be a tail chunk between the last fire and
+            // process exit that wasn't picked up. `availableData` is
+            // non-blocking once the writer side is closed.
+            stderrBuf.append(stderr.fileHandleForReading.availableData)
+            stdoutBuf.append(stdout.fileHandleForReading.availableData)
+
             if process.terminationStatus != 0 {
-                let err = String(
-                    data: stderr.fileHandleForReading.readDataToEndOfFile(),
-                    encoding: .utf8
-                ) ?? ""
-                throw ExtractError.tarFailed(code: process.terminationStatus, stderr: err)
+                let stderrText = String(data: stderrBuf.snapshot(), encoding: .utf8) ?? ""
+                throw ExtractError.tarFailed(code: process.terminationStatus, stderr: stderrText)
+            }
+        }
+
+        /// Thread-safe accumulator used by `readabilityHandler`
+        /// callbacks (which run on distinct private queues per pipe).
+        /// Class semantics + internal `NSLock` make the handle
+        /// `Sendable`-clean under Swift 6 strict concurrency.
+        private final class LockedBuffer: @unchecked Sendable {
+            private let lock = NSLock()
+            private var buffer = Data()
+            func append(_ chunk: Data) {
+                lock.lock()
+                buffer.append(chunk)
+                lock.unlock()
+            }
+
+            func snapshot() -> Data {
+                lock.lock()
+                defer { lock.unlock() }
+                return buffer
             }
         }
 
