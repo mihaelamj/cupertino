@@ -54,6 +54,19 @@ extension Core.PackageIndexing {
             destination: URL
         ) async throws -> PackageExtractionResult {
             for ref in candidateRefs {
+                // #1110 HEAD probe: bail before the GET when the
+                // server exposes Content-Length and the archive
+                // exceeds maxTarballBytes. Saves the 270 MB of wasted
+                // bytes-on-wire seen on `tuist/tuist` repro. HEAD
+                // returning nil (codeload sometimes doesn't expose
+                // Content-Length on dynamic tarballs, transient
+                // error) falls through to the GET, which keeps the
+                // post-download size check as a safety net.
+                if let size = await probeTarballSize(owner: owner, repo: repo, ref: ref),
+                   size > maxTarballBytes {
+                    throw ExtractError.tarballTooLarge(size)
+                }
+
                 switch await downloadTarball(owner: owner, repo: repo, ref: ref) {
                 case .success(let data):
                     if data.count > maxTarballBytes {
@@ -71,6 +84,41 @@ extension Core.PackageIndexing {
                 }
             }
             throw ExtractError.tarballNotFound
+        }
+
+        /// HEAD-probe the tarball URL and return the server's
+        /// `Content-Length` when available. Returns nil for any
+        /// non-200, missing-header, or transient-error case; the
+        /// caller's downstream GET still carries the post-download
+        /// size guard, so a nil-from-HEAD doesn't compromise the
+        /// ceiling, it just gives up the bytes-on-wire savings for
+        /// that one repo.
+        private func probeTarballSize(
+            owner: String,
+            repo: String,
+            ref: String
+        ) async -> Int? {
+            let urlString = "https://codeload.github.com/\(owner)/\(repo)/tar.gz/\(ref)"
+            guard let url = URL(string: urlString) else { return nil }
+            var request = URLRequest(url: url)
+            request.httpMethod = "HEAD"
+            request.setValue(Shared.Constants.App.userAgent, forHTTPHeaderField: "User-Agent")
+            request.timeoutInterval = 30
+            do {
+                let (_, response) = try await session.data(for: request)
+                guard
+                    let http = response as? HTTPURLResponse,
+                    http.statusCode == 200
+                else { return nil }
+                guard
+                    let lengthHeader = http.value(forHTTPHeaderField: "Content-Length"),
+                    let length = Int(lengthHeader),
+                    length > 0
+                else { return nil }
+                return length
+            } catch {
+                return nil
+            }
         }
 
         // MARK: - Download
