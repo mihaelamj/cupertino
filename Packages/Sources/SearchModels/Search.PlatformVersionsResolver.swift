@@ -34,6 +34,17 @@ extension Search {
         /// Default implementation returns nil so existing conformers
         /// don't need to change.
         func implementationSwiftVersion(for url: URL) -> String?
+
+        /// #1116: per-page `availability_source` tag, stamped onto
+        /// `docs_metadata.availability_source`. Source-specific
+        /// label so consumers can tell swift-org from swift-book
+        /// rows (pre-#1116 every resolver-stamped row was hardcoded
+        /// to `"swift-book-chapter"`, mislabelling swift-org pages).
+        /// Conformers should return a stable string keyed on the
+        /// source-id, e.g. `"swift-book-chapter"`, `"swift-org-page"`.
+        /// Default implementation returns nil so the helper falls
+        /// back to its own default tag.
+        func availabilitySource(for url: URL) -> String?
     }
 
     /// Companion tuple type for `PlatformVersionsResolver.versions`.
@@ -70,6 +81,10 @@ extension Search {
 // syntactic placement.
 public extension Search.PlatformVersionsResolver {
     func implementationSwiftVersion(for _: URL) -> String? {
+        nil
+    }
+
+    func availabilitySource(for _: URL) -> String? {
         nil
     }
 }

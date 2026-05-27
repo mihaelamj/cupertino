@@ -108,6 +108,16 @@ struct SwiftBookChapterVersionsResolver: Search.PlatformVersionsResolver {
         SwiftBookChapterVersions.floor(forSlug: slug(from: url)).swiftVersion
     }
 
+    /// #1116: tag every resolver-stamped swift-book row as
+    /// `swift-book-chapter`. Pre-#1116 this string was hardcoded
+    /// in `crawlSwiftDocumentation` and got incorrectly applied to
+    /// swift-org rows that share the helper's per-page-resolver
+    /// path. Per-resolver tagging puts the source-specific label
+    /// next to the source-specific lookup.
+    func availabilitySource(for _: URL) -> String? {
+        "swift-book-chapter"
+    }
+
     private func slug(from url: URL) -> String {
         var slug = url.lastPathComponent
         if slug.isEmpty {

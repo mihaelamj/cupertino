@@ -273,6 +273,18 @@ extension Search.StrategyHelpers {
                 // table; default returns nil so other strategies
                 // keep the column NULL).
                 let swiftVersion = platformVersions?.implementationSwiftVersion(for: structuredPage.url)
+                // #1116: source-specific availability_source tag.
+                // Pre-fix this was hardcoded `"swift-book-chapter"`
+                // whenever a resolver was supplied, mislabelling
+                // swift-org rows that share the same code path.
+                // Resolver now supplies its own tag (swift-book
+                // returns "swift-book-chapter"; swift-org returns
+                // "swift-org-universal" or "swift-org-linux-server"
+                // per page). Falls back to "universal-swift" only
+                // when no resolver is in play.
+                let resolverTag = platformVersions?.availabilitySource(for: structuredPage.url)
+                let availabilitySource = resolverTag
+                    ?? (platformVersions == nil ? "universal-swift" : "per-page-resolver")
                 try await index.indexStructuredDocument(
                     uri: uri,
                     source: pageSource,
@@ -284,9 +296,7 @@ extension Search.StrategyHelpers {
                     overrideMinTvOS: versions.tvOS,
                     overrideMinWatchOS: versions.watchOS,
                     overrideMinVisionOS: versions.visionOS,
-                    overrideAvailabilitySource: platformVersions == nil
-                        ? "universal-swift"
-                        : "swift-book-chapter",
+                    overrideAvailabilitySource: availabilitySource,
                     implementationSwiftVersion: swiftVersion
                 )
 
