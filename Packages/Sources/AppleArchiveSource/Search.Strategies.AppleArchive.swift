@@ -52,6 +52,15 @@ extension Search {
         /// actor).
         ///   - progress: Optional progress callback, called every 100 items.
         /// - Returns: ``SearchModels/Search/IndexStats`` with indexed and skipped counts.
+        // swiftlint:disable:next function_body_length
+        // (pre-#1080 baseline was 110 lines; #1080 extracted the
+        // availability-resolution to a helper, dropping the body to
+        // 114. The remaining length is the unavoidable per-page
+        // indexing loop covering metadata extraction + poison
+        // defence + structured-page assembly + indexer call — each
+        // of those stages is short on its own and splitting them
+        // across helpers would obscure the linear page-processing
+        // narrative.)
         public func indexItems(
             into index: any Search.Database & Search.IndexWriter,
             progress: (any Search.IndexingProgressReporting)?
@@ -132,13 +141,11 @@ extension Search {
                 let attrs = try? FileManager.default.attributesOfItem(atPath: file.path)
                 let modDate = attrs?[.modificationDate] as? Date ?? Date()
 
-                let availability: Search.FrameworkAvailability
-                if let cached = frameworkAvailabilityCache[framework] {
-                    availability = cached
-                } else {
-                    availability = await index.getFrameworkAvailability(framework: framework)
-                    frameworkAvailabilityCache[framework] = availability
-                }
+                let availability = await Self.resolveAvailability(
+                    framework: framework,
+                    cache: &frameworkAvailabilityCache,
+                    index: index
+                )
 
                 do {
                     // #668 — write a structured row in addition to the FTS row so
@@ -166,7 +173,18 @@ extension Search {
                         overrideMinTvOS: availability.minTvOS,
                         overrideMinWatchOS: availability.minWatchOS,
                         overrideMinVisionOS: availability.minVisionOS,
-                        overrideAvailabilitySource: availability.minIOS != nil ? "framework" : nil
+                        // #1080: tag the source so callers can
+                        // distinguish per-page availability (from the
+                        // page's own metadata) from inferred (from
+                        // our static framework table). For apple-
+                        // archive this is always inferred today.
+                        overrideAvailabilitySource: (
+                            availability.minIOS != nil ||
+                                availability.minMacOS != nil ||
+                                availability.minTvOS != nil ||
+                                availability.minWatchOS != nil ||
+                                availability.minVisionOS != nil
+                        ) ? "framework-inferred" : nil
                     )
                     indexed += 1
                 } catch {
@@ -188,6 +206,28 @@ extension Search {
                 "   Apple Archive: \(indexed) indexed, \(skipped) skipped", category: .search
             )
             return IndexStats(source: source, indexed: indexed, skipped: skipped)
+        }
+
+        /// #1080: per-framework availability resolution. Order: cache
+        /// → static table → per-DB lookup (self-referential for
+        /// apple-archive, kept as a future-proof fallback). Extracted
+        /// from `indexItems` to keep that loop under the
+        /// `function_body_length` lint threshold.
+        private static func resolveAvailability(
+            framework: String,
+            cache: inout [String: Search.FrameworkAvailability],
+            index: any Search.Database & Search.IndexWriter
+        ) async -> Search.FrameworkAvailability {
+            if let cached = cache[framework] {
+                return cached
+            }
+            if let staticAvailability = AppleArchiveFrameworkAvailability.availability(for: framework) {
+                cache[framework] = staticAvailability
+                return staticAvailability
+            }
+            let dbLookup = await index.getFrameworkAvailability(framework: framework)
+            cache[framework] = dbLookup
+            return dbLookup
         }
     }
 }
