@@ -59,6 +59,11 @@ extension Search.StrategyHelpers {
     ///   - index: `Search.Database & Search.IndexWriter` actor (e.g.
     ///     `Search.Index`) that receives the indexed pages.
     ///   - progress: Optional progress callback.
+    // swiftlint:disable:next function_body_length
+    // (pre-#1084 baseline was 168 lines — file-walking + per-page
+    // decoding + poison defence + URI derivation + indexer call;
+    // each stage is short on its own and splitting across helpers
+    // would obscure the linear page-processing flow.)
     public static func crawlSwiftDocumentation(
         swiftOrgDirectory: URL,
         markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
@@ -206,8 +211,34 @@ extension Search.StrategyHelpers {
                 continue
             }
 
-            let filename = file.deletingPathExtension().lastPathComponent
-            let uri = "\(pageSource)://\(filename)"
+            // #1084: derive the URI slug from the page's `url`
+            // field (Apple's canonical URL), not from the on-disk
+            // filename. Pre-fix the URI was
+            // `swift-book://swift-book_documentation_the-swift-programming-language_closures`
+            // — the URL-encoded filename leaked into the URI. Tests
+            // (`CupertinoSearchTests`, `DocKindIntegrationTests`)
+            // already pinned the clean shape `swift-book://closures`.
+            // Apple's URL pattern is
+            // `.../the-swift-programming-language/<slug>/` (or
+            // `/documentation/<slug>/`), so the last non-empty path
+            // component IS the canonical Apple slug. Fallback to the
+            // on-disk filename only when the slug is empty
+            // (defensive — production pages always have a slug).
+            let uri: String = {
+                var slug = structuredPage.url.lastPathComponent
+                if slug.isEmpty {
+                    // Trailing-slash URL: drop the empty tail and
+                    // take the actual last component.
+                    slug = structuredPage.url.deletingLastPathComponent().lastPathComponent
+                }
+                if slug.hasSuffix(".html") {
+                    slug = String(slug.dropLast(".html".count))
+                }
+                if slug.isEmpty {
+                    return "\(pageSource)://\(file.deletingPathExtension().lastPathComponent)"
+                }
+                return "\(pageSource)://\(slug.lowercased())"
+            }()
 
             do {
                 // The Swift Book covers all platforms that ship Swift support.

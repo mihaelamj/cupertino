@@ -54,6 +54,17 @@ extension Search {
                 guard ext == "json" || ext == "md" else { continue }
                 // Skip crawl-manifest files (fix #110).
                 if fileURL.lastPathComponent == "metadata.json" { continue }
+                // #1084: skip URL-encoded cache snapshots. The
+                // swift-org/swift-book fetch pipeline writes a
+                // `https_docs.swift.org_<path>_<hash>.json` file per
+                // crawl version alongside the canonical
+                // `<path>.md`/`.json` pair. The cache snapshots are
+                // for re-fetching, not for indexing — indexing them
+                // produces duplicate rows (one per Swift version
+                // crawled) and mangled URIs derived from the URL-
+                // encoded filename. The canonical pair carries the
+                // same content with a clean filename → clean URI.
+                if fileURL.lastPathComponent.hasPrefix("https_") { continue }
                 var isDirectory: ObjCBool = false
                 if FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDirectory),
                    !isDirectory.boolValue {
