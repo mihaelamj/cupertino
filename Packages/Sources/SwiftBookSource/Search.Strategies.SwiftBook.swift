@@ -86,14 +86,7 @@ extension Search {
 /// `SwiftBookChapterVersions.floor(forSlug:)`'s default.
 private struct SwiftBookChapterVersionsResolver: Search.PlatformVersionsResolver {
     func versions(for url: URL) -> Search.PlatformVersions {
-        var slug = url.lastPathComponent
-        if slug.isEmpty {
-            slug = url.deletingLastPathComponent().lastPathComponent
-        }
-        if slug.hasSuffix(".html") {
-            slug = String(slug.dropLast(".html".count))
-        }
-        let floor = SwiftBookChapterVersions.floor(forSlug: slug)
+        let floor = SwiftBookChapterVersions.floor(forSlug: slug(from: url))
         return Search.PlatformVersions(
             iOS: floor.iOS,
             macOS: floor.macOS,
@@ -101,5 +94,24 @@ private struct SwiftBookChapterVersionsResolver: Search.PlatformVersionsResolver
             watchOS: floor.watchOS,
             visionOS: floor.visionOS
         )
+    }
+
+    /// #1103: stamp the chapter's Swift toolchain version into
+    /// `implementation_swift_version`. Chapters not in the per-
+    /// chapter override table return nil (universal baseline has
+    /// no useful version tag).
+    func implementationSwiftVersion(for url: URL) -> String? {
+        SwiftBookChapterVersions.floor(forSlug: slug(from: url)).swiftVersion
+    }
+
+    private func slug(from url: URL) -> String {
+        var slug = url.lastPathComponent
+        if slug.isEmpty {
+            slug = url.deletingLastPathComponent().lastPathComponent
+        }
+        if slug.hasSuffix(".html") {
+            slug = String(slug.dropLast(".html".count))
+        }
+        return slug
     }
 }

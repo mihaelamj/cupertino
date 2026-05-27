@@ -36,29 +36,47 @@ public enum SwiftBookChapterVersions {
         public let tvOS: String?
         public let watchOS: String?
         public let visionOS: String?
+        /// #1103: the Swift toolchain version this chapter's content
+        /// requires. Stamped onto `docs_metadata.implementation_swift_version`
+        /// so `cupertino search --source swift-book --swift 5.5
+        /// "concurrency"` can filter by toolchain version. `nil` for
+        /// the universal baseline (no useful version tag; chapters
+        /// like "the basics" predate the Swift-version era).
+        public let swiftVersion: String?
 
-        public init(iOS: String?, macOS: String?, tvOS: String?, watchOS: String?, visionOS: String?) {
+        public init(
+            iOS: String?,
+            macOS: String?,
+            tvOS: String?,
+            watchOS: String?,
+            visionOS: String?,
+            swiftVersion: String? = nil
+        ) {
             self.iOS = iOS
             self.macOS = macOS
             self.tvOS = tvOS
             self.watchOS = watchOS
             self.visionOS = visionOS
+            self.swiftVersion = swiftVersion
         }
 
         /// Default Swift baseline — Swift 1.0 / 2.0 era. Used for
         /// chapters not in the per-chapter override table.
         public static let universalSwiftBaseline = ChapterFloor(
-            iOS: "8.0", macOS: "10.9", tvOS: "9.0", watchOS: "2.0", visionOS: "1.0"
+            iOS: "8.0", macOS: "10.9", tvOS: "9.0", watchOS: "2.0", visionOS: "1.0",
+            swiftVersion: nil
         )
 
         /// Swift 5.5 (concurrency).
         public static let swift55 = ChapterFloor(
-            iOS: "13.0", macOS: "12.0", tvOS: "15.0", watchOS: "8.0", visionOS: "1.0"
+            iOS: "13.0", macOS: "12.0", tvOS: "15.0", watchOS: "8.0", visionOS: "1.0",
+            swiftVersion: "5.5"
         )
 
         /// Swift 5.9 (macros, parameter packs).
         public static let swift59 = ChapterFloor(
-            iOS: "17.0", macOS: "14.0", tvOS: "17.0", watchOS: "10.0", visionOS: "1.0"
+            iOS: "17.0", macOS: "14.0", tvOS: "17.0", watchOS: "10.0", visionOS: "1.0",
+            swiftVersion: "5.9"
         )
     }
 

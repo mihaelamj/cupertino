@@ -59,13 +59,14 @@ extension Search.StrategyHelpers {
     ///   - index: `Search.Database & Search.IndexWriter` actor (e.g.
     ///     `Search.Index`) that receives the indexed pages.
     ///   - progress: Optional progress callback.
-    // swiftlint:disable:next function_body_length
-    // (pre-#1084 baseline was 168 lines — file-walking + per-page
+    // pre-#1084 baseline was 168 lines: file-walking + per-page
     // decoding + poison defence + URI derivation + indexer call;
     // each stage is short on its own and splitting across helpers
     // would obscure the linear page-processing flow. #1095 added
     // the optional `platformVersions` param as a per-strategy
-    // override hook.)
+    // override hook; #1103 added the swift-version path that piggy-
+    // backs the same resolver.
+    // swiftlint:disable:next function_body_length function_parameter_count
     public static func crawlSwiftDocumentation(
         swiftOrgDirectory: URL,
         markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
@@ -267,6 +268,11 @@ extension Search.StrategyHelpers {
                 // the universal Swift baseline (iOS 8.0 / macOS
                 // 10.9 / tvOS 9.0 / watchOS 2.0 / visionOS 1.0).
                 let versions = platformVersions?.versions(for: structuredPage.url) ?? .universalSwift
+                // #1103: per-page Swift toolchain version when the
+                // resolver opts in (today swift-book's per-chapter
+                // table; default returns nil so other strategies
+                // keep the column NULL).
+                let swiftVersion = platformVersions?.implementationSwiftVersion(for: structuredPage.url)
                 try await index.indexStructuredDocument(
                     uri: uri,
                     source: pageSource,
@@ -280,7 +286,8 @@ extension Search.StrategyHelpers {
                     overrideMinVisionOS: versions.visionOS,
                     overrideAvailabilitySource: platformVersions == nil
                         ? "universal-swift"
-                        : "swift-book-chapter"
+                        : "swift-book-chapter",
+                    implementationSwiftVersion: swiftVersion
                 )
 
                 if !structuredPage.codeExamples.isEmpty {
