@@ -206,26 +206,20 @@ extension Search {
         /// when called through `any Search.SourceProvider`.
         func makeURIResourceStrategy() -> (any Search.URIResourceStrategy)?
 
-        /// 2026-05-26 post-#1056: does this source's indexing strategy
-        /// require a real on-disk corpus directory to function?
+        /// Does this source's indexing strategy require a real
+        /// on-disk corpus directory? Post-#1082 only alternate-input
+        /// sources whose strategy ignores the directory entirely
+        /// (today: `SampleCodeSource`, which reads
+        /// `env.sampleCatalogProvider`) override to `false`; the CLI
+        /// resolver supplies a `/dev/null` sentinel for them.
         ///
-        /// Pre-fix `CLIImpl.Command.Save.Indexers.resolveSourceDirectory`
-        /// had a hardcoded 2-arm switch over source-ids
-        /// (`swift-book` / `samples`) returning a `/dev/null` sentinel
-        /// URL so the `compactMap` downstream wouldn't drop their
-        /// strategy from the dispatch list (their strategy runs but
-        /// doesn't actually READ the directory — swift-book is a
-        /// view-source over swift-org's crawl, samples uses
-        /// `env.sampleCatalogProvider` instead). Adding a new
-        /// view-source or alternate-input source meant editing the
-        /// CLI switch.
-        ///
-        /// Default `true`: most sources have a real corpus directory
-        /// (web-crawled or otherwise materialised on disk).
-        /// SwiftBookSource and SampleCodeSource override `false`; the
-        /// CLI resolver then supplies a sentinel placeholder URL on
-        /// behalf of any provider that opted out, with zero per-source
-        /// knowledge in the central resolver.
+        /// View-sources that share another source's directory
+        /// (today: `SwiftBookSource` over swift-org) take a different
+        /// path: they declare `corpusDirectoryAlias` and inherit the
+        /// parent source's resolved directory + override via
+        /// `makeDocsIndexingDirectoryByKey`. They keep
+        /// `requiresCorpusDirectory == true` because their strategy
+        /// DOES read a directory — just not their own.
         var requiresCorpusDirectory: Bool { get }
 
         /// 2026-05-26 audit #1055 layer-2 part 3: is this source's
@@ -238,6 +232,48 @@ extension Search {
         /// override to `false`; every other source (default `true`)
         /// joins the docs-tier fan-out automatically.
         var isSearchTier: Bool { get }
+
+        /// #1082 follow-up: when non-nil, this provider is a
+        /// view-source whose corpus lives under another source's
+        /// directory. The string is the `definition.id` of the
+        /// "parent" source whose `corpusDirectory` this provider
+        /// shares. Consumers use this to:
+        ///
+        /// - **Fetch dispatch** (`allFetchableSources`): skip aliased
+        ///   providers — `fetch --source <parent>` already covers
+        ///   their content. Spawning a separate leg would race on the
+        ///   parent's session metadata and double-fetch identical
+        ///   URLs.
+        ///
+        /// - **Doctor inventory** (`checkDocumentationDirectories`):
+        ///   skip aliased providers — listing the same physical
+        ///   directory twice (once for each source-id) double-counts
+        ///   files and misleads users.
+        ///
+        /// - **Directory override propagation**
+        ///   (`makeDocsIndexingDirectoryByKey`): when the parent
+        ///   source has a CLI override (e.g. `--swift-org-dir
+        ///   /custom`), the aliased provider inherits it. Pre-#1082
+        ///   follow-up the override only propagated to the literal
+        ///   sourceID-keyed entry, so swift-book silently fell back
+        ///   to the default path while swift-org used the override.
+        ///
+        /// - **Save selection expansion** (`Save.Indexers`): `save
+        ///   --source <parent>` ALSO rebuilds the aliased providers'
+        ///   DBs (they read the same corpus that just got refreshed;
+        ///   leaving them stale would surprise the user).
+        ///
+        /// Default `nil`: most providers are not view-sources.
+        /// SwiftBookSource overrides to `"swift-org"` — its pages
+        /// live under the swift-org corpus tree, emitted by its own
+        /// strategy via `.swiftBookOnly` URL-prefix filtering.
+        ///
+        /// Distinct from `legacySourceIDAliases` (which is a set of
+        /// CANONICALISED alias source-ids the per-source DB-split
+        /// migrator should claim for this provider). Aliases there
+        /// run "in the past"; `corpusDirectoryAlias` runs "right now,
+        /// in parallel".
+        var corpusDirectoryAlias: String? { get }
     }
 
     /// Which dispatcher runner a source uses for `cupertino search` /
@@ -295,10 +331,11 @@ extension Search.SourceProvider {
     /// Default: no fetch capability. Sources whose data ships via
     /// `cupertino fetch` (apple-docs / hig / apple-archive /
     /// swift-evolution / swift-org / samples / packages) override
-    /// to return their bespoke strategy concrete. Sources without
-    /// a fetch step (today: `swift-book`, the view-source) inherit
-    /// nil — the CLI reports "Source 'X' has no fetch capability"
-    /// for those.
+    /// to return their bespoke strategy concrete. View-sources that
+    /// share another source's corpus (today: `SwiftBookSource`)
+    /// inherit nil — `cupertino fetch --source <parent>` covers
+    /// their content via shared URL-prefix crawling; spawning a
+    /// separate leg would double-fetch.
     public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? {
         nil
     }
@@ -312,12 +349,24 @@ extension Search.SourceProvider {
     }
 
     /// Default: this source needs a real on-disk corpus directory.
-    /// View-sources (today: `SwiftBookSource`) and alternate-input
-    /// sources (today: `SampleCodeSource`) override to `false`; the
+    /// Alternate-input sources whose strategy doesn't read the
+    /// directory at all (today: `SampleCodeSource`, which consumes
+    /// `env.sampleCatalogProvider` instead) override to `false`; the
     /// CLI resolver supplies a placeholder URL so the strategy still
-    /// runs in the dispatch fan-out without consuming the directory.
+    /// runs in the dispatch fan-out. View-sources that share another
+    /// source's directory (today: `SwiftBookSource`) declare
+    /// `corpusDirectoryAlias` instead — the resolver routes them to
+    /// the parent source's directory via the override-propagation
+    /// path, not the placeholder.
     public var requiresCorpusDirectory: Bool {
         true
+    }
+
+    /// Default: not a view-source. Providers that share another
+    /// source's on-disk corpus directory (today: `SwiftBookSource`
+    /// → `"swift-org"`) override.
+    public var corpusDirectoryAlias: String? {
+        nil
     }
 
     /// Default: no per-source enrichment passes. Sources with

@@ -313,10 +313,6 @@ extension Shared.Constants {
         /// Swift Evolution Proposals display name
         public static let swiftEvolution = "Swift Evolution Proposals"
 
-        /// The Swift Programming Language (a.k.a. The Swift Book)
-        /// display name. Added for #1082's SwiftBookSource.fetchInfo.
-        public static let swiftBook = "The Swift Programming Language"
-
         /// Swift Package Documentation display name
         public static let swiftPackages = "Swift Package Documentation"
 

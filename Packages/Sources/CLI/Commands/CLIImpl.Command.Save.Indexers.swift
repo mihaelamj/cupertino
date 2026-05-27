@@ -415,20 +415,39 @@ extension CLIImpl.Command.Save {
             // Per-source dispatch filter (#1037 follow-up). When
             // `selectedSourceIDs` is non-nil, narrow the groups to only
             // the destinations that contain at least one selected
-            // provider. Closes the round-7/8 critic findings around
-            // bucket-level over-build, disk-preflight over-estimate,
-            // and `--clear` blast radius.
+            // provider — OR a view-source aliased to one of the
+            // selected providers (post-#1082 follow-up). The latter
+            // rule ensures `cupertino save --source swift-org` also
+            // rebuilds `swift-book.db`: swift-book is a view-source
+            // over swift-org's corpus, so a fresh swift-org corpus
+            // implies a fresh swift-book index too. Leaving the
+            // aliased DB stale would surprise the user (they re-
+            // crawled but searches against the view-source still
+            // return old content).
             //
-            // View-source co-location is preserved: filtering selects
-            // DESTINATIONS, not individual providers. `--source
-            // swift-org` keeps swift-book in the same group (they
-            // share swift-documentation.db). User-direction settled
-            // 2026-05-25.
-            let groups: [Shared.Models.DatabaseDescriptor: [any Search.SourceProvider]]
+            // The expanded selection is computed once, up-front, so
+            // every consumer of `selectedSourceIDs` downstream
+            // (`makeIndexingRunInput`, the strategy compactMap, the
+            // disk-preflight estimator) sees the same set.
+            let effectiveSelection: Set<String>?
             if let selectedSourceIDs {
+                var expanded = selectedSourceIDs
+                for provider in productionRegistry.allEnabled {
+                    if let alias = provider.corpusDirectoryAlias,
+                       selectedSourceIDs.contains(alias) {
+                        expanded.insert(provider.definition.id)
+                    }
+                }
+                effectiveSelection = expanded
+            } else {
+                effectiveSelection = nil
+            }
+
+            let groups: [Shared.Models.DatabaseDescriptor: [any Search.SourceProvider]]
+            if let effectiveSelection {
                 groups = allGroups.filter { _, providers in
                     providers.contains { provider in
-                        selectedSourceIDs.contains(provider.definition.id)
+                        effectiveSelection.contains(provider.definition.id)
                     }
                 }
             } else {
@@ -564,36 +583,31 @@ extension CLIImpl.Command.Save {
         /// a sourceID-keyed dict (separate follow-up), this switch
         /// dissolves entirely.
         ///
-        /// SwiftBookSource and SampleCodeSource receive a sentinel
-        /// `/dev/null` URL: SwiftBookSource's `makeStrategy` is a
-        /// no-op (real emission runs in SwiftOrgStrategy);
-        /// SampleCodeStrategy ignores `env.sourceDirectory` and uses
-        /// `env.sampleCatalogProvider` instead. Both strategies
-        /// must still appear in the strategies list so the dispatch
-        /// stays uniform.
+        /// SampleCodeSource receives a sentinel `/dev/null` URL —
+        /// its strategy consumes `env.sampleCatalogProvider` instead
+        /// of reading the directory, but must still appear in the
+        /// strategies list so the dispatch stays uniform.
+        ///
+        /// SwiftBookSource (post-#1082 follow-up) is no longer a
+        /// sentinel: it resolves to swift-org's directory via the
+        /// `corpusDirectoryAlias` propagation in
+        /// `makeDocsIndexingDirectoryByKey`. Its strategy walks the
+        /// real corpus tree and emits swift-book-tagged pages.
         static func resolveSourceDirectory(
             for provider: any Search.SourceProvider,
             input: Search.DocsIndexingInput
         ) -> URL? {
             // #1045 Gap 4: registry-supplied dict wins. The Save
             // composition site populates `input.directoryByKey` from
-            // `provider.fetchInfo?.outputDir` for every registered
-            // provider, so a NEW source's directory resolves here
-            // without touching this resolver.
+            // `provider.fetchInfo?.outputDir` (with corpus-alias
+            // inheritance for view-sources, #1082) for every
+            // registered provider, so a NEW source's directory
+            // resolves here without touching this resolver.
             //
-            // 2026-05-26 post-#1056: pre-fix the fallthrough had a
-            // hardcoded 2-arm switch on source-id (`swift-book` +
-            // `samples`) returning a `/dev/null` placeholder so the
-            // downstream `compactMap` wouldn't drop their strategy
-            // from the dispatch list (those strategies need to RUN
-            // but don't actually READ the directory parameter —
-            // swift-book is a view-source over swift-org's crawl,
-            // samples consumes `env.sampleCatalogProvider`). Adding
-            // a new view-source / alternate-input source meant
-            // editing this file. Post-fix the provider declares its
-            // own `requiresCorpusDirectory` flag (default `true`);
-            // sources that opt out get the placeholder URL with zero
-            // per-source knowledge in this resolver.
+            // The `requiresCorpusDirectory` fallthrough remains for
+            // alternate-input sources (today: SampleCodeSource) that
+            // don't read a directory at all. View-sources go through
+            // the dict via `corpusDirectoryAlias`, not the sentinel.
             let sourceID = provider.definition.id
             if let mapped = input.directoryByKey[sourceID], let url = mapped {
                 return url

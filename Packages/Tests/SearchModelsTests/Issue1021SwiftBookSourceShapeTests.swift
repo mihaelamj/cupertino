@@ -21,21 +21,31 @@ struct Issue1021SwiftBookSourceShapeTests {
         #expect(def.properties.codeExamples == 0.9)
     }
 
-    @Test("SwiftBookSource.fetchInfo declares defaultOutputDirKey=.swiftOrg (view-source over swift-org's corpus dir, #1082)")
-    func fetchInfoSharesSwiftOrgDir() {
-        // Pre-#1082 `fetchInfo` was nil, which combined with
-        // `requiresCorpusDirectory: false` short-circuited the
-        // resolver to `/dev/null` and left `swift-book.db` empty.
-        // Post-#1082 fetchInfo is non-nil and declares
-        // `defaultOutputDirKey = .swiftOrg` so the resolver routes
-        // the strategy to the real swift-org corpus tree; the
-        // strategy's `.swiftBookOnly` scope filter then emits only
-        // swift-book-tagged pages into `swift-book.db`.
+    @Test("SwiftBookSource.fetchInfo is nil — view-source has no independent fetch leg (#1082 follow-up)")
+    func fetchInfoIsNil() {
+        // SwiftBookSource is a view-source over swift-org's corpus.
+        // `cupertino fetch --source swift-org` covers swift-book's
+        // pages via shared URL-prefix crawling; a separate
+        // swift-book fetch would race on swift-org's session and
+        // double-fetch identical URLs. fetchInfo == nil is the
+        // sentinel that excludes swift-book from
+        // `allFetchableSources()` + `Doctor.checkDocumentationDirectories`.
         let provider = SwiftBookSource()
-        let fetchInfo = try? #require(provider.fetchInfo)
-        #expect(fetchInfo?.sourceID == Shared.Constants.SourcePrefix.swiftBook)
-        #expect(fetchInfo?.defaultOutputDirKey == .swiftOrg)
-        #expect(fetchInfo?.isWebCrawlable == true)
+        #expect(provider.fetchInfo == nil)
+    }
+
+    @Test("SwiftBookSource.corpusDirectoryAlias == swift-org (routes resolver to swift-org's directory, #1082 follow-up)")
+    func corpusDirectoryAliasIsSwiftOrg() {
+        // Post-#1082 the resolver routes view-sources to the parent
+        // source's directory via this property. SwiftBookSource
+        // declares `swift-org` so:
+        //   - `makeDocsIndexingDirectoryByKey` sets
+        //     `directoryByKey["swift-book"]` to the resolved
+        //     swift-org URL (inheriting any --swift-org-dir override).
+        //   - `Save.Indexers` selection: `save --source swift-org`
+        //     auto-includes swift-book in the group fan-out.
+        let provider = SwiftBookSource()
+        #expect(provider.corpusDirectoryAlias == Shared.Constants.SourcePrefix.swiftOrg)
     }
 
     @Test("SwiftBookSource.destinationDB == .swiftBook (post #1038 'diff db for each source'; swift-book owns swift-book.db)")
@@ -61,8 +71,15 @@ struct Issue1021SwiftBookSourceShapeTests {
         #expect(indexer.displayName == "The Swift Programming Language")
     }
 
-    @Test("SwiftBookSource.makeStrategy returns a view-source strategy that emits zero items")
-    func makeStrategyIsNoop() {
+    @Test("SwiftBookSource.makeStrategy returns an active SwiftBookStrategy (post-#1082; no longer a no-op)")
+    func makeStrategyReturnsActiveStrategy() {
+        // Pre-#1082 the strategy was effectively a no-op because the
+        // resolver passed it `/dev/null` and the corpus walk found
+        // nothing. Post-fix the strategy is wired to receive
+        // swift-org's directory via `corpusDirectoryAlias` and emits
+        // swift-book-tagged pages into swift-book.db via the shared
+        // `crawlSwiftDocumentation` helper with `.swiftBookOnly`
+        // scope. The source-id pin remains; the comment changes.
         let provider = SwiftBookSource()
         let env = Search.IndexEnvironment(
             sourceDirectory: URL(fileURLWithPath: "/tmp"),
@@ -71,10 +88,6 @@ struct Issue1021SwiftBookSourceShapeTests {
         )
         let strategy = provider.makeStrategy(env: env)
         #expect(strategy.source == Shared.Constants.SourcePrefix.swiftBook)
-        // The strategy is a no-op; we can't easily test indexItems without a
-        // full Search.Database+IndexWriter fake. The source-id pin above is
-        // the load-bearing assertion: it confirms the strategy advertises
-        // itself as the swift-book source for the strategies-list dispatch.
     }
 }
 

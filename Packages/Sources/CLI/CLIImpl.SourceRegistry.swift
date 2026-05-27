@@ -123,31 +123,57 @@ extension CLIImpl {
     /// the latent regression where Gap-4's dict path bypassed the
     /// CLI's typed-field overrides: pre-fix the dict ALWAYS won, so
     /// `--docs-dir /custom` was silently ignored. Post-fix overrides
-    /// win, registry defaults backstop, fall through to nil for any
-    /// provider without a `fetchInfo` (the noop view-source case).
+    /// win, registry defaults backstop, view-sources inherit their
+    /// parent via `corpusDirectoryAlias` (#1082 follow-up), and any
+    /// provider without a `fetchInfo` + without an alias falls
+    /// through to nil.
     public static func makeDocsIndexingDirectoryByKey(
         registry: Search.SourceRegistry,
         paths: Shared.Paths,
         overrides: [String: URL?] = [:]
     ) -> [String: URL?] {
-        Dictionary(
-            uniqueKeysWithValues: registry.allEnabled.map { provider in
-                let sourceID = provider.definition.id
-                if let overrideEntry = overrides[sourceID], let url = overrideEntry {
-                    // #1046 (+ #779) resolution applied to overrides too —
-                    // user-supplied `--<source>-dir` paths may themselves
-                    // be symlinks (common `~/.cupertino-dev/<source>` setup).
-                    return (sourceID, url.resolvingSymlinksInPath() as URL?)
-                }
-                let dir: URL? = provider.fetchInfo.flatMap { fi in
-                    // #1046 (+ #779): resolve symlinks at construction
-                    // so per-source strategies receive the same resolved
-                    // URL shape `Indexer.DocsService.optionalDir` produces.
-                    paths.directory(named: fi.defaultOutputDirKey.rawValue).resolvingSymlinksInPath()
-                }
-                return (sourceID, dir)
+        // First pass: resolve each non-view-source provider's
+        // directory (override → fetchInfo dir → nil). Aliased
+        // providers are deferred so they can inherit the resolved
+        // parent value in the second pass.
+        var resolved: [String: URL?] = [:]
+        for provider in registry.allEnabled where provider.corpusDirectoryAlias == nil {
+            let sourceID = provider.definition.id
+            if let overrideEntry = overrides[sourceID], let url = overrideEntry {
+                // #1046 (+ #779): resolve symlinks at construction.
+                resolved[sourceID] = url.resolvingSymlinksInPath()
+                continue
             }
-        )
+            resolved[sourceID] = provider.fetchInfo.flatMap { fi in
+                paths.directory(named: fi.defaultOutputDirKey.rawValue).resolvingSymlinksInPath()
+            }
+        }
+        // Second pass: view-sources inherit the resolved parent
+        // entry (so `--swift-org-dir /custom` propagates to swift-book
+        // automatically). The explicit per-provider override still
+        // wins over the inherited parent value — a user who passes
+        // BOTH `--swift-org-dir A` and `--swift-book-dir B` gets the
+        // explicit B (rare but well-defined).
+        for provider in registry.allEnabled where provider.corpusDirectoryAlias != nil {
+            let sourceID = provider.definition.id
+            if let overrideEntry = overrides[sourceID], let url = overrideEntry {
+                resolved[sourceID] = url.resolvingSymlinksInPath()
+                continue
+            }
+            if let aliasParent = provider.corpusDirectoryAlias,
+               let parentEntry = resolved[aliasParent] {
+                resolved[sourceID] = parentEntry
+                continue
+            }
+            // Aliased provider whose parent isn't in the registry
+            // (shouldn't happen in production; defensive). Fall back
+            // to the same fetchInfo / nil shape the non-aliased
+            // branch uses.
+            resolved[sourceID] = provider.fetchInfo.flatMap { fi in
+                paths.directory(named: fi.defaultOutputDirKey.rawValue).resolvingSymlinksInPath()
+            }
+        }
+        return resolved
     }
 
     /// #1045 Gap 3: build the source-id → DocKind rawValue dict
