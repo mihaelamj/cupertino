@@ -41,7 +41,9 @@ extension Search.Index {
     /// immediately without touching the DB.
     @discardableResult
     public func applyAppleStaticConstraints(
-        lookup: (any Search.StaticConstraintsLookup)?
+        lookup: (any Search.StaticConstraintsLookup)?,
+        audit: (any Search.EnrichmentAuditObserver)? = nil,
+        dbPath: String = ""
     ) async throws -> Int {
         guard let lookup, let database else {
             return 0
@@ -50,6 +52,8 @@ extension Search.Index {
         guard !entries.isEmpty else {
             return 0
         }
+        audit?.recordPassStart(passIdentifier: "constraints", dbPath: dbPath)
+        let startedAt = Date()
 
         // Both prepared statements stay alive across the entry loop ,
         // SQLite reuses the bytecode per re-bind, which is the
@@ -96,7 +100,17 @@ extension Search.Index {
                 _ = sqlite3_exec(database, "ROLLBACK;", nil, nil, nil)
                 throw Search.Error.sqliteError("applyAppleStaticConstraints exact-update failed: \(errorMessage)")
             }
-            affected += Int(sqlite3_changes(database))
+            let exactChanges = Int(sqlite3_changes(database))
+            affected += exactChanges
+            if let audit, exactChanges > 0 {
+                audit.recordEntry(
+                    passIdentifier: "constraints",
+                    docURI: entry.docURI,
+                    value: joined,
+                    matchType: "exact",
+                    rowsAffected: exactChanges
+                )
+            }
 
             sqlite3_reset(prefixStmt)
             sqlite3_bind_text(prefixStmt, 1, (joined as NSString).utf8String, -1, nil)
@@ -106,7 +120,17 @@ extension Search.Index {
                 _ = sqlite3_exec(database, "ROLLBACK;", nil, nil, nil)
                 throw Search.Error.sqliteError("applyAppleStaticConstraints prefix-update failed: \(errorMessage)")
             }
-            affected += Int(sqlite3_changes(database))
+            let prefixChanges = Int(sqlite3_changes(database))
+            affected += prefixChanges
+            if let audit, prefixChanges > 0 {
+                audit.recordEntry(
+                    passIdentifier: "constraints",
+                    docURI: entry.docURI,
+                    value: joined,
+                    matchType: "prefix",
+                    rowsAffected: prefixChanges
+                )
+            }
         }
 
         guard sqlite3_exec(database, "COMMIT;", nil, nil, nil) == SQLITE_OK else {
@@ -114,6 +138,12 @@ extension Search.Index {
             _ = sqlite3_exec(database, "ROLLBACK;", nil, nil, nil)
             throw Search.Error.sqliteError("applyAppleStaticConstraints COMMIT failed: \(errorMessage)")
         }
+        audit?.recordPassEnd(
+            passIdentifier: "constraints",
+            totalRowsAffected: affected,
+            totalRowsSkipped: 0,
+            durationMs: Int(Date().timeIntervalSince(startedAt) * 1000)
+        )
         return affected
     }
 }

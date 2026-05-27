@@ -45,6 +45,13 @@ extension Indexer {
             /// docs-tier sources they didn't ask for.
             public let selectedSourceIDs: Set<String>?
 
+            /// 2026-05-27: passes through to
+            /// `Search.DocsIndexingInput.allowDegradedEnrichment`.
+            /// When true, save proceeds without the mandatory
+            /// `apple-constraints.json` (degrades to iter-1+2
+            /// enrichment, ~16% coverage). Default false (hard-fail).
+            public let allowDegradedEnrichment: Bool
+
             public init(
                 baseDir: URL,
                 docsDir: URL? = nil,
@@ -55,7 +62,8 @@ extension Indexer {
                 searchDB: URL? = nil,
                 clear: Bool = false,
                 directoryByKey: [String: URL?] = [:],
-                selectedSourceIDs: Set<String>? = nil
+                selectedSourceIDs: Set<String>? = nil,
+                allowDegradedEnrichment: Bool = false
             ) {
                 self.baseDir = baseDir
                 self.docsDir = docsDir
@@ -67,6 +75,7 @@ extension Indexer {
                 self.clear = clear
                 self.directoryByKey = directoryByKey
                 self.selectedSourceIDs = selectedSourceIDs
+                self.allowDegradedEnrichment = allowDegradedEnrichment
             }
         }
 

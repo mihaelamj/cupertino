@@ -86,6 +86,19 @@ extension Search.DocsIndexing {
         /// dispatch arm migrates to the dict.
         public let directoryByKey: [String: URL?]
 
+        /// 2026-05-27: when true, the runner proceeds even if
+        /// `apple-constraints.json` is missing from the base
+        /// directory, falling back to iter 1+2 enrichment (~16%
+        /// `doc_symbols.generic_constraints` coverage) instead of
+        /// iter 3 (~38%). Default is false (hard-fail on missing
+        /// file) so a fresh dev install doesn't silently land at
+        /// degraded coverage like the 9.5-hour Claw mini reindex
+        /// did. The CLI's `--allow-degraded-enrichment` flag flips
+        /// this for explicit opt-out cases (smoke saves against a
+        /// fixture corpus, fresh installs before
+        /// `cupertino-constraints-gen` ran).
+        public let allowDegradedEnrichment: Bool
+
         public init(
             searchDBPath: URL,
             docsDirectory: URL,
@@ -96,7 +109,8 @@ extension Search.DocsIndexing {
             clearExisting: Bool,
             markdownStrategy: any Search.MarkdownToStructuredPageStrategy,
             sampleCatalogProvider: any Search.SampleCatalog.Provider,
-            directoryByKey: [String: URL?] = [:]
+            directoryByKey: [String: URL?] = [:],
+            allowDegradedEnrichment: Bool = false
         ) {
             self.searchDBPath = searchDBPath
             self.docsDirectory = docsDirectory
@@ -108,6 +122,7 @@ extension Search.DocsIndexing {
             self.markdownStrategy = markdownStrategy
             self.sampleCatalogProvider = sampleCatalogProvider
             self.directoryByKey = directoryByKey
+            self.allowDegradedEnrichment = allowDegradedEnrichment
         }
     }
 

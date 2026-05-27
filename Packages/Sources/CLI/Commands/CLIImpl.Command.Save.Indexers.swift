@@ -153,7 +153,11 @@ extension CLIImpl.Command.Save {
             directoryByKey: saveDirectoryByKey,
             // #1059: thread the selection through so DocsService gates
             // its optional-dir presence-check info lines by source-id.
-            selectedSourceIDs: selectedSourceIDs
+            selectedSourceIDs: selectedSourceIDs,
+            // 2026-05-27: pass `--allow-degraded-enrichment` so the
+            // runner can hard-fail on missing apple-constraints.json
+            // unless the user opts out explicitly.
+            allowDegradedEnrichment: allowDegradedEnrichment
         )
 
         // Path-DI composition sub-root (#535): catalog actor takes
@@ -338,21 +342,65 @@ extension CLIImpl.Command.Save {
 
             // Load the authoritative Apple-type constraints once;
             // shared across every per-DB enrichment runner. (#759 iter 3)
+            //
+            // 2026-05-27: mandatory unless caller passed
+            // `--allow-degraded-enrichment`. Pre-fix the missing-file
+            // case silently degraded to iter 1+2 (~16% constraint
+            // coverage on doc_symbols) instead of iter 3 (~38%). A
+            // 9.5-hour Claw mini reindex finished in that degraded
+            // state with no warning; we caught it only by manually
+            // inspecting the DB after the fact. Now: hard-fail at the
+            // start of save so the user notices BEFORE burning 12
+            // hours of wall time.
             let constraintsPath = baseDirectory.appendingPathComponent("apple-constraints.json")
-            let staticConstraintsLookup: (any Search.StaticConstraintsLookup)? = {
+            let staticConstraintsLookup: (any Search.StaticConstraintsLookup)? = try {
                 guard FileManager.default.fileExists(atPath: constraintsPath.path) else {
-                    return nil
+                    if input.allowDegradedEnrichment {
+                        logger.warning(
+                            "apple-constraints.json absent from \(baseDirectory.path). " +
+                                "Save proceeding at iter 1+2 enrichment coverage (~16%) per " +
+                                "--allow-degraded-enrichment. Without the flag this is a hard error.",
+                            category: .search
+                        )
+                        return nil
+                    }
+                    throw Search.Error.invalidQuery(
+                        "apple-constraints.json missing from \(baseDirectory.path). " +
+                            "Without it the constraints enrichment pass silently runs at iter 1+2 " +
+                            "(~16% coverage) instead of iter 3 (~38%). Run `cupertino setup` to " +
+                            "fetch it, or `cupertino-constraints-gen` to produce it locally. To " +
+                            "save anyway with degraded coverage, pass --allow-degraded-enrichment."
+                    )
                 }
                 do {
                     return try AppleConstraintsKit.Table.from(fileURL: constraintsPath)
                 } catch {
-                    logger.warning(
-                        "Failed to load \(constraintsPath.lastPathComponent): \(error). Falling back to iter 1 + iter 2.",
-                        category: .search
+                    if input.allowDegradedEnrichment {
+                        logger.warning(
+                            "Failed to load \(constraintsPath.lastPathComponent): \(error). " +
+                                "Falling back to iter 1 + iter 2 per --allow-degraded-enrichment.",
+                            category: .search
+                        )
+                        return nil
+                    }
+                    throw Search.Error.invalidQuery(
+                        "Failed to parse \(constraintsPath.lastPathComponent): \(error). " +
+                            "Pass --allow-degraded-enrichment to proceed anyway."
                     )
-                    return nil
                 }
             }()
+
+            // Per-save enrichment audit JSONL writer. Captures
+            // pass-start / per-entry / pass-end events across every
+            // per-source DB in this run; the user can grep the
+            // resulting file to verify the constraints pass actually
+            // affected the rows it was supposed to. Lives next to the
+            // indexing audit log in the base dir.
+            let enrichmentAudit = CLIImpl.LiveEnrichmentAuditWriter(baseDirectory: baseDirectory)
+            logger.info(
+                "📒 Enrichment audit: \(enrichmentAudit.path.lastPathComponent)",
+                category: .search
+            )
 
             // Cross-DB SourceLookup so each per-DB index can resolve
             // any source-id at result-formatting time (a swift-org row
@@ -408,14 +456,25 @@ extension CLIImpl.Command.Save {
 
                 // Per-DB enrichment runner: passes bind to THIS index;
                 // the same `staticConstraintsLookup` table is reused.
+                // Each constraint-related pass receives the shared
+                // `enrichmentAudit` observer + the per-DB path so the
+                // JSONL audit can distinguish events from different DBs
+                // in the same save run.
+                let dbPathString = dbPath.lastPathComponent
                 let enrichmentRunner: any EnrichmentRunner = Enrichment.LiveRunner(
                     passes: [
                         Enrichment.SynonymsPass(searchIndex: index),
                         Enrichment.AppleConstraintsPass(
                             searchIndex: index,
-                            lookup: staticConstraintsLookup
+                            lookup: staticConstraintsLookup,
+                            audit: enrichmentAudit,
+                            dbPath: dbPathString
                         ),
-                        Enrichment.HierarchyPass(searchIndex: index),
+                        Enrichment.HierarchyPass(
+                            searchIndex: index,
+                            audit: enrichmentAudit,
+                            dbPath: dbPathString
+                        ),
                     ]
                 )
 

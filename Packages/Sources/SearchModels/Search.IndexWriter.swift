@@ -141,7 +141,9 @@ extension Search {
         /// is nil, the entries list is empty, or no row matched.
         @discardableResult
         func applyAppleStaticConstraints(
-            lookup: (any Search.StaticConstraintsLookup)?
+            lookup: (any Search.StaticConstraintsLookup)?,
+            audit: (any Search.EnrichmentAuditObserver)?,
+            dbPath: String
         ) async throws -> Int
 
         /// Run the hierarchy-derived constraint propagation pass. Walks
@@ -153,7 +155,10 @@ extension Search {
         /// were filled in from a parent. Zero when no parent rows
         /// carried constraints or no child row qualified for inheritance.
         @discardableResult
-        func propagateConstraintsFromParents() async throws -> Int
+        func propagateConstraintsFromParents(
+            audit: (any Search.EnrichmentAuditObserver)?,
+            dbPath: String
+        ) async throws -> Int
 
         /// Drop every row from every search-index table. Used by
         /// `IndexBuilder.buildIndex` when `--clear` is passed and by

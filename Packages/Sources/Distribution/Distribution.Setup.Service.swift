@@ -91,13 +91,6 @@ extension Distribution.SetupService {
             events: events
         )
 
-        // Hard-fail if any expected DB didn't appear post-extract.
-        // Iteration is driven by `placements` (composition-root list),
-        // so adding a 4th DB requires no edit here.
-        for placement in placements where !FileManager.default.fileExists(atPath: placement.path.path) {
-            throw Distribution.SetupError.missingFile(placement.descriptor.filename)
-        }
-
         // 1b. Apple-constraints sidecar download (#759 iter 3 enrichment input).
         //
         // `apple-constraints.json` is the authoritative Apple SDK
@@ -112,13 +105,21 @@ extension Distribution.SetupService {
         // The file ships in the cupertino-docs git tree at
         // `apple-constraints.json` (committed 2026-05-27 commit
         // 0860213a). Setup fetches it via the GitHub raw URL since
-        // it's not in the v1.2.0 release zip — adding it to a future
-        // release as a sibling asset is a separate workflow change.
+        // it's not in the v1.2.0 release zip.
         //
         // Optional + non-fatal: a setup that fails to fetch the
         // sidecar still ends in a usable state (saves degrade to iter
-        // 1+2 silently as they always have). Surfaced via a warning
-        // log + a `.constraintsFileMissing` outcome flag.
+        // 1+2 silently as they always have). Surfaced via the
+        // `Event.constraintsDownloadSkipped(reason:)` event.
+        //
+        // 2026-05-27: fetched BEFORE the placement hard-fail check
+        // below so the sidecar lands even when the main DB extract
+        // is mismatched (e.g. v1.2.0 zip ships pre-#1036 `search.db`
+        // but the binary expects post-split `apple-documentation.db`).
+        // Order matters: users hitting the placement throw would
+        // never have the constraints file, perpetuating the
+        // iter-1+2-only enrichment gap that the file is meant to
+        // close.
         let constraintsURLString = "https://raw.githubusercontent.com/mihaelamj/cupertino-docs/main/apple-constraints.json"
         let constraintsLocalURL = request.baseDir.appendingPathComponent("apple-constraints.json")
         do {
@@ -130,6 +131,13 @@ extension Distribution.SetupService {
         } catch {
             // Don't throw. Save still works without it.
             events.observe(event: .constraintsDownloadSkipped(reason: "\(error)"))
+        }
+
+        // Hard-fail if any expected DB didn't appear post-extract.
+        // Iteration is driven by `placements` (composition-root list),
+        // so adding a 4th DB requires no edit here.
+        for placement in placements where !FileManager.default.fileExists(atPath: placement.path.path) {
+            throw Distribution.SetupError.missingFile(placement.descriptor.filename)
         }
 
         // Stamp version on success. Non-fatal; the file is an

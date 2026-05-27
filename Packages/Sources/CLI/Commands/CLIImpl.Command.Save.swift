@@ -102,6 +102,22 @@ extension CLIImpl.Command {
         @Flag(name: .long, help: "Clear existing index before building")
         var clear: Bool = false
 
+        @Flag(
+            name: .long,
+            help: """
+            Allow the save to proceed without `apple-constraints.json` in \
+            the base directory. Default is to hard-fail when the file is \
+            missing: without it the constraints enrichment pass silently \
+            runs at iter-1+2 coverage (~16% of doc_symbols) instead of \
+            iter-3 (~38%), which is a real correctness regression for \
+            search-quality. Set this flag only when you know you don't \
+            need the authoritative Apple-SDK constraints (e.g. testing \
+            a non-docs source, smoke save against a tiny fixture, \
+            fresh dev install before `cupertino-constraints-gen` ran).
+            """
+        )
+        var allowDegradedEnrichment: Bool = false
+
         @Flag(name: .long, help: "Stream documentation from GitHub (instant setup, no local files needed)")
         var remote: Bool = false
 

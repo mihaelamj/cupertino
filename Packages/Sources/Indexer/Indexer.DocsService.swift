@@ -109,7 +109,8 @@ extension Indexer.DocsService {
             clearExisting: request.clear,
             markdownStrategy: markdownStrategy,
             sampleCatalogProvider: sampleCatalogProvider,
-            directoryByKey: request.directoryByKey
+            directoryByKey: request.directoryByKey,
+            allowDegradedEnrichment: request.allowDegradedEnrichment
         )
 
         let reporter = EventsToProgressReporter(events: events)
