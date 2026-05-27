@@ -1,3 +1,4 @@
+import AppleDocsSource
 import Foundation
 import SearchModels
 import SharedConstants
@@ -37,23 +38,16 @@ public struct SwiftBookSource: Search.SourceProvider {
         Self.definition
     }
 
-    /// `fetchInfo` stays nil: swift-book has no fetch leg of its own.
-    /// `cupertino fetch --source swift-org` covers swift-book's pages
-    /// via shared URL-prefix crawling. The corpus directory is routed
-    /// via `corpusDirectoryAlias` (below), which the CLI resolver
-    /// uses to inherit swift-org's directory + any `--swift-org-dir`
-    /// override.
+    /// #1093: swift-book is independently fetchable. Pre-#1093 it
+    /// was a view-source over swift-org's crawl
+    /// (`corpusDirectoryAlias = .swiftOrg`), which meant a fetch of
+    /// either source dragged in the other. Post-fix swift-book has
+    /// its own fetchInfo with `defaultOutputDirKey = .swiftBook`,
+    /// its own seed URL (`docs.swift.org/swift-book/`), and its own
+    /// corpus dir. The `corpusDirectoryAlias` property override is
+    /// dropped (default `nil` from the protocol extension).
     public var fetchInfo: Search.FetchInfo? {
-        nil
-    }
-
-    /// #1082: swift-book is a view-source over swift-org's corpus
-    /// tree. The resolver routes the SwiftBookStrategy to swift-org's
-    /// directory (inheriting any `--swift-org-dir` CLI override) by
-    /// reading this property. Pre-#1082 the strategy walked a
-    /// `/dev/null` placeholder and `swift-book.db` ended up empty.
-    public var corpusDirectoryAlias: String? {
-        Shared.Constants.SourcePrefix.swiftOrg
+        Self.fetchInfo
     }
 
     public var destinationDB: Shared.Models.DatabaseDescriptor {
@@ -87,13 +81,19 @@ public struct SwiftBookSource: Search.SourceProvider {
         Search.SwiftBookIndexer()
     }
 
-    // #1082 follow-up: no independent fetch strategy. SwiftBook is a
-    // view-source over swift-org's corpus (`corpusDirectoryAlias =
-    // "swift-org"`); `cupertino fetch --source swift-org` covers
-    // its pages via shared URL-prefix crawling. Spawning a separate
-    // swift-book fetch leg would race on swift-org's session
-    // metadata and double-fetch identical URLs. Inherits the
-    // default `nil` from the protocol extension.
+    /// #1093: swift-book has its own independent fetch leg seeded at
+    /// `docs.swift.org/swift-book/`. Crawls only the book pages
+    /// (~50), not swift.org's full content tree. Output dir is
+    /// `cupertino-fresh/swift-book/` (separate from swift-org's
+    /// dir). Allowed prefixes restrict the crawler to docs.swift.org
+    /// only — no traversal into www.swift.org.
+    public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? {
+        WebCrawlFetchStrategy(
+            defaultCrawlBaseURL: Shared.Constants.BaseURL.swiftBook,
+            defaultAllowedPrefixes: [Shared.Constants.BaseURL.swiftBook],
+            candidateSessionDirectories: []
+        )
+    }
 
     /// 2026-05-26 audit #1055: per-source read strategy. Shared
     /// `Search.DocsReadStrategy` resolves to this source's per-source

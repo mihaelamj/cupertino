@@ -108,27 +108,40 @@ extension Search.StrategyHelpers {
         var indexed = 0
         var skipped = 0
 
+        // #1093: pre-split, swift-org's fetch dropped swift-book pages
+        // into `swift-org/swift-book/` as a subdir, and the strategy
+        // used `extractFrameworkFromPath` (first path component =
+        // source-id) to scope-filter. Post-split each source's
+        // corpus dir contains only its own content (flat layout), so
+        // path-based scope is unreliable. Default to the strategy's
+        // own source-id (`summarySource`) when the path doesn't give
+        // a useful source-id, and skip scope-filtering for the
+        // strategy-owned case.
         for (idx, file) in docFiles.enumerated() {
-            let pageSource = Search.StrategyHelpers.extractFrameworkFromPath(
+            let extracted = Search.StrategyHelpers.extractFrameworkFromPath(
                 file, relativeTo: swiftOrgDirectory
-            ) ?? Shared.Constants.SourcePrefix.swiftOrg
-
-            // Per-page scope filter. Pages whose URL-prefix tag belongs
-            // to the other sub-source are silently skipped (no error
-            // log) since the sibling strategy will pick them up.
+            )
+            let pageSource: String
             switch scope {
             case .both:
-                break
+                pageSource = extracted ?? Shared.Constants.SourcePrefix.swiftOrg
             case .swiftOrgOnly:
-                if pageSource != Shared.Constants.SourcePrefix.swiftOrg {
+                // Skip pages explicitly tagged as the SIBLING source
+                // (legacy mixed-corpus layout where the path first
+                // component was the source-id). Files in a flat per-
+                // source dir don't carry that tag — they default to
+                // this strategy's source.
+                if extracted == Shared.Constants.SourcePrefix.swiftBook {
                     skipped += 1
                     continue
                 }
+                pageSource = Shared.Constants.SourcePrefix.swiftOrg
             case .swiftBookOnly:
-                if pageSource != Shared.Constants.SourcePrefix.swiftBook {
+                if extracted == Shared.Constants.SourcePrefix.swiftOrg {
                     skipped += 1
                     continue
                 }
+                pageSource = Shared.Constants.SourcePrefix.swiftBook
             }
 
             let structuredPage: Shared.Models.StructuredDocumentationPage

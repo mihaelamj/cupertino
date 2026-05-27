@@ -21,31 +21,27 @@ struct Issue1021SwiftBookSourceShapeTests {
         #expect(def.properties.codeExamples == 0.9)
     }
 
-    @Test("SwiftBookSource.fetchInfo is nil — view-source has no independent fetch leg (#1082 follow-up)")
-    func fetchInfoIsNil() {
-        // SwiftBookSource is a view-source over swift-org's corpus.
-        // `cupertino fetch --source swift-org` covers swift-book's
-        // pages via shared URL-prefix crawling; a separate
-        // swift-book fetch would race on swift-org's session and
-        // double-fetch identical URLs. fetchInfo == nil is the
-        // sentinel that excludes swift-book from
-        // `allFetchableSources()` + `Doctor.checkDocumentationDirectories`.
+    @Test("SwiftBookSource.fetchInfo declares an independent fetch leg (#1093)")
+    func fetchInfoIndependent() throws {
+        // #1093: swift-book is now an independently-fetchable source.
+        // `cupertino fetch --source swift-book` seeds at
+        // docs.swift.org/swift-book/ and crawls only the book — no
+        // longer dragged through swift-org's combined pass.
         let provider = SwiftBookSource()
-        #expect(provider.fetchInfo == nil)
+        let info = try #require(provider.fetchInfo)
+        #expect(info.sourceID == Shared.Constants.SourcePrefix.swiftBook)
+        #expect(info.defaultOutputDirKey == .swiftBook)
+        #expect(info.isWebCrawlable == true)
     }
 
-    @Test("SwiftBookSource.corpusDirectoryAlias == swift-org (routes resolver to swift-org's directory, #1082 follow-up)")
-    func corpusDirectoryAliasIsSwiftOrg() {
-        // Post-#1082 the resolver routes view-sources to the parent
-        // source's directory via this property. SwiftBookSource
-        // declares `swift-org` so:
-        //   - `makeDocsIndexingDirectoryByKey` sets
-        //     `directoryByKey["swift-book"]` to the resolved
-        //     swift-org URL (inheriting any --swift-org-dir override).
-        //   - `Save.Indexers` selection: `save --source swift-org`
-        //     auto-includes swift-book in the group fan-out.
+    @Test("SwiftBookSource.corpusDirectoryAlias == nil post-#1093 (no longer a view-source)")
+    func corpusDirectoryAliasIsNil() {
+        // #1082 made swift-book a view-source over swift-org's
+        // corpus via this property. #1093 splits them: swift-book
+        // has its own corpus dir, own fetch leg. The alias override
+        // is dropped — defaults to nil from the protocol extension.
         let provider = SwiftBookSource()
-        #expect(provider.corpusDirectoryAlias == Shared.Constants.SourcePrefix.swiftOrg)
+        #expect(provider.corpusDirectoryAlias == nil)
     }
 
     @Test("SwiftBookSource.destinationDB == .swiftBook (post #1038 'diff db for each source'; swift-book owns swift-book.db)")

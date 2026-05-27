@@ -10,9 +10,13 @@ import SharedConstants
 public struct SwiftOrgSource: Search.SourceProvider {
     public init() {}
 
-    public var definition: Search.SourceDefinition { Self.definition }
+    public var definition: Search.SourceDefinition {
+        Self.definition
+    }
 
-    public var fetchInfo: Search.FetchInfo? { Self.fetchInfo }
+    public var fetchInfo: Search.FetchInfo? {
+        Self.fetchInfo
+    }
 
     /// Post #1038: swift-org gets its own dedicated DB
     /// (`swift-org.db`) rather than the pre-#1038 view-source
@@ -21,7 +25,9 @@ public struct SwiftOrgSource: Search.SourceProvider {
     /// `Search.SwiftOrgStrategy.indexItems` which calls the shared
     /// `Search.StrategyHelpers.crawlSwiftDocumentation` helper with
     /// `scope: .swiftOrgOnly`.
-    public var destinationDB: Shared.Models.DatabaseDescriptor { .swiftOrg }
+    public var destinationDB: Shared.Models.DatabaseDescriptor {
+        .swiftOrg
+    }
 
     public var capabilities: Search.Capabilities {
         .init(
@@ -46,18 +52,18 @@ public struct SwiftOrgSource: Search.SourceProvider {
         Search.SwiftOrgIndexer()
     }
 
-    /// 2026-05-26 audit Finding 9.7 + 11.1: per-source fetch strategy.
-    /// Constructs `AppleDocsSource.WebCrawlFetchStrategy` with
-    /// swift-org's canonical seed + the multi-host prefix allowlist
-    /// (covers both `www.swift.org` and `docs.swift.org` so the
-    /// view-source `swift-book` pages get crawled in the same pass).
+    /// #1093: swift-org's fetch crawls ONLY swift.org. Pre-fix the
+    /// allowedPrefixes also included `docs.swift.org/swift-book/`
+    /// so swift-book pages were dragged in via the same pass —
+    /// combined crawl was slow and the two sources couldn't be
+    /// refreshed independently. Post-fix swift-book has its own
+    /// fetch leg (`SwiftBookSource.makeFetchStrategy`) seeded
+    /// directly at `docs.swift.org/swift-book/`; `--source swift-org`
+    /// no longer traverses the book.
     public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? {
         WebCrawlFetchStrategy(
             defaultCrawlBaseURL: Self.fetchInfo.crawlBaseURLs.first ?? Shared.Constants.BaseURL.swiftOrg,
-            defaultAllowedPrefixes: [
-                Shared.Constants.BaseURL.swiftOrg,
-                Shared.Constants.BaseURL.swiftBook,
-            ],
+            defaultAllowedPrefixes: [Shared.Constants.BaseURL.swiftOrg],
             candidateSessionDirectories: []
         )
     }
