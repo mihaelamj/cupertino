@@ -19,24 +19,34 @@ public struct PackagesFetchStrategy: Search.SourceFetchStrategy {
     public init() {}
 
     public func run(env: Search.FetchEnvironment) async throws {
-        if env.skipMetadata, env.skipArchives, !env.annotateAvailability {
+        // #1108: stage 1 (SPI metadata + star-count refresh) is now
+        // opt-in via `--refresh-metadata`; archives + annotation are
+        // independent stages with their own opt-out / opt-in flags.
+        // Reject the empty-pipeline combo with a diagnostic that
+        // names the current CLI surface, not the removed
+        // `--skip-metadata` flag.
+        if !env.refreshMetadata, env.skipArchives, !env.annotateAvailability {
             env.logger.error(
-                "❌ Both --skip-metadata and --skip-archives passed without --annotate-availability — nothing to do."
+                "❌ --skip-archives passed without --refresh-metadata or --annotate-availability. Nothing to do."
             )
             throw FetchError.nothingToDo
         }
 
-        if ProcessInfo.processInfo.environment[Shared.Constants.EnvVar.githubToken] == nil {
+        // GitHub token is only consulted by the stage-1 metadata
+        // refresh (star-count sort hits api.github.com). The archive
+        // download uses anonymous codeload.github.com, no token
+        // needed. Only nag about the missing token when stage 1 is
+        // actually about to run.
+        if env.refreshMetadata,
+           ProcessInfo.processInfo.environment[Shared.Constants.EnvVar.githubToken] == nil {
             env.logger.info(Shared.Constants.Message.gitHubTokenTip)
             env.logger.info("   \(Shared.Constants.Message.rateLimitWithoutToken)")
             env.logger.info("   \(Shared.Constants.Message.rateLimitWithToken)")
             env.logger.info("   \(Shared.Constants.Message.exportGitHubToken)\n")
         }
 
-        if !env.skipMetadata {
+        if env.refreshMetadata {
             try await runPackageMetadataStage(env: env)
-        } else {
-            env.logger.info("⏭  --skip-metadata: skipping Swift Package Index metadata refresh")
         }
 
         if !env.skipArchives {
@@ -347,7 +357,7 @@ public struct PackagesFetchStrategy: Search.SourceFetchStrategy {
         case packagesDirectoryMissing
         public var description: String {
             switch self {
-            case .nothingToDo: return "--skip-metadata + --skip-archives without --annotate-availability — nothing to do"
+            case .nothingToDo: return "--skip-archives without --refresh-metadata or --annotate-availability: nothing to do"
             case .noPriorityPackages: return "No priority packages found"
             case .packagesDirectoryMissing: return "Packages directory missing — run stage 2 first"
             }

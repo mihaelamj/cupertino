@@ -20,7 +20,7 @@ Specifies which source to fetch. Each canonical id matches one of the per-source
 | `swift-org` | Swift.org documentation |
 | `swift-book` | The Swift Programming Language (view-source; co-crawled by swift-org via URL-prefix tagging) |
 | `swift-evolution` | Swift Evolution proposals |
-| `packages` | Swift package metadata + GitHub source archives (#217, see `--skip-metadata` / `--skip-archives`) |
+| `packages` | Swift package source archives (#217). Stage 2 by default; pass `--refresh-metadata` for the SPI metadata + stars (#1108). See `--skip-archives`. |
 | `apple-sample-code` | Apple sample code, legacy bundle download (prefer `samples`) |
 | `samples` | Apple sample code from GitHub (recommended) |
 | `apple-archive` | Apple Archive legacy programming guides |

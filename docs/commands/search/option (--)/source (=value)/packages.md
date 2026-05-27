@@ -63,8 +63,9 @@ cupertino save
 To fetch package source archives (optional):
 
 ```bash
-# Fetch source archives for priority packages (#217, bundled into --source packages)
-cupertino fetch --source packages --skip-metadata
+# Fetch source archives for priority packages (#217). Post-#1108 stage 2
+# is the default, so no flag is needed.
+cupertino fetch --source packages
 
 # Rebuild index
 cupertino save

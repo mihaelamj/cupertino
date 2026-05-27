@@ -24,8 +24,9 @@ Walks every `<owner>/<repo>/` subdir under `~/.cupertino/packages/` and writes a
 # Full packages pipeline including annotation
 cupertino fetch --source packages --annotate-availability
 
-# Re-annotate without re-fetching
-cupertino fetch --source packages --skip-metadata --skip-archives --annotate-availability
+# Re-annotate without re-fetching (post-#1108 stage 1 is opt-in, so skipping
+# archives + opting into annotation is enough)
+cupertino fetch --source packages --skip-archives --annotate-availability
 ```
 
 ## Notes

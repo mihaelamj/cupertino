@@ -41,35 +41,47 @@ struct FetchCommandTests {
 
 // MARK: - #217 packages-merge tests
 
-/// Coverage for #217: `--source packages` now runs metadata refresh + archive
-/// download as two stages, gated by `--skip-metadata` / `--skip-archives`.
-/// These tests exercise argument parsing and the both-skipped early-exit
-/// guard without touching the network.
-@Suite("Fetch Command — packages merge (#217)")
+/// Coverage for #217 / #1108: `--source packages` runs the archive
+/// download (stage 2) by default; stage 1 (SPI metadata + star-count
+/// refresh) is opt-in via `--refresh-metadata`. These tests exercise
+/// argument parsing and the empty-pipeline early-exit guard without
+/// touching the network.
+@Suite("Fetch Command — packages flags (#217 + #1108)")
 struct FetchPackagesMergeTests {
-    @Test("--skip-metadata parses to true; archives flag defaults to false")
-    func skipMetadataParses() throws {
-        let cmd = try CLIImpl.Command.Fetch.parse(["--source", "packages", "--skip-metadata"])
-        #expect(cmd.skipMetadata == true)
+    @Test("--refresh-metadata parses to true; archives flag defaults to false")
+    func refreshMetadataParses() throws {
+        let cmd = try CLIImpl.Command.Fetch.parse(["--source", "packages", "--refresh-metadata"])
+        #expect(cmd.refreshMetadata == true)
         #expect(cmd.skipArchives == false)
     }
 
-    @Test("--skip-archives parses to true; metadata flag defaults to false")
+    @Test("--skip-archives parses to true; refresh flag defaults to false")
     func skipArchivesParses() throws {
         let cmd = try CLIImpl.Command.Fetch.parse(["--source", "packages", "--skip-archives"])
-        #expect(cmd.skipMetadata == false)
+        #expect(cmd.refreshMetadata == false)
         #expect(cmd.skipArchives == true)
     }
 
-    @Test("Default --source packages invocation has both skip flags false")
+    @Test("Default --source packages invocation runs stage 2 only (refreshMetadata + skipArchives both false)")
     func defaultsAreFalse() throws {
         let cmd = try CLIImpl.Command.Fetch.parse(["--source", "packages"])
-        #expect(cmd.skipMetadata == false)
+        #expect(cmd.refreshMetadata == false)
         #expect(cmd.skipArchives == false)
     }
 
-    @Test("Both skip flags together exits with failure before any network call")
-    func bothSkipsErrors() async throws {
+    @Test("#1108: removed --skip-metadata flag no longer parses")
+    func skipMetadataNoLongerExists() {
+        do {
+            _ = try CLIImpl.Command.Fetch.parse(["--source", "packages", "--skip-metadata"])
+            Issue.record("Expected --skip-metadata to fail parsing post-#1108; it was removed in favor of --refresh-metadata")
+        } catch {
+            // ArgumentParser raises an "unknown option" error. Any
+            // thrown error here is the success path for this test.
+        }
+    }
+
+    @Test("--skip-archives without --refresh-metadata or --annotate-availability exits with nothing-to-do")
+    func skipArchivesWithoutPeersErrors() async throws {
         // Sandbox output dir so the guard's createDirectory doesn't write
         // into the user's real ~/.cupertino/packages/.
         let tempDir = FileManager.default.temporaryDirectory
@@ -78,15 +90,15 @@ struct FetchPackagesMergeTests {
 
         var cmd = try CLIImpl.Command.Fetch.parse([
             "--source", "packages",
-            "--skip-metadata",
             "--skip-archives",
             "--output-dir", tempDir.path,
         ])
 
-        // 2026-05-26 audit Finding 9.7+11.1: `PackagesFetchStrategy`
-        // lifted from CLI throws its own `FetchError.nothingToDo`
-        // (not `ExitCode.failure`). The user-visible outcome is the
-        // same: the CLI exits non-zero. Test accepts any thrown Error.
+        // Post-#1108 the empty-pipeline combo is `--skip-archives`
+        // without either `--refresh-metadata` or `--annotate-
+        // availability`. `PackagesFetchStrategy` throws
+        // `FetchError.nothingToDo`; CLI surfaces this as a non-zero
+        // exit. Any thrown Error is success.
         await #expect(throws: Error.self) {
             try await cmd.run()
         }

@@ -194,7 +194,7 @@ extension CLIImpl.Command {
             name: .long,
             help: """
             Run the Swift Package Index metadata + star-count refresh stage of `--source packages` \
-            (10,995-package metadata pull, throttled at ~1.5s per package without GITHUB_TOKEN, \
+            (10,995-package metadata pull, throttled at ~1.2s per package without GITHUB_TOKEN, \
             ~4 hours total). Off by default. Only the TUI's stars-sort consumes the output, \
             and the load-bearing archive download (stage 2) doesn't need it. Pass this flag \
             when you actually want the refreshed metadata.
@@ -204,7 +204,12 @@ extension CLIImpl.Command {
 
         @Flag(
             name: .long,
-            help: "Skip the GitHub archive download stage of `--source packages` (run only the metadata refresh; only meaningful with `--refresh-metadata`)."
+            help: """
+            Skip the GitHub archive download stage of `--source packages`. Pair with \
+            `--refresh-metadata` to run only the metadata refresh, or with \
+            `--annotate-availability` to re-annotate an existing on-disk corpus without \
+            downloading anything.
+            """
         )
         var skipArchives: Bool = false
 
@@ -379,10 +384,11 @@ extension CLIImpl.Command {
                 onlyAccepted: onlyAccepted,
                 limit: limit,
                 // #1108: stage 1 (SPI metadata + star-count refresh) is
-                // now opt-in. The FetchEnvironment field stays named
-                // `skipMetadata` for the strategy code; the CLI flag is
-                // the inverse opt-in `--refresh-metadata`.
-                skipMetadata: !refreshMetadata,
+                // opt-in via `--refresh-metadata`. CLI flag and
+                // FetchEnvironment field share the same polarity post-
+                // critic; the inverted `skipMetadata` field was renamed
+                // here to match.
+                refreshMetadata: refreshMetadata,
                 skipArchives: skipArchives,
                 annotateAvailability: annotateAvailability,
                 recurse: recurse,

@@ -8,7 +8,7 @@ extension Search {
     /// 2026-05-26 audit Finding 9.7 + 11.1: composition-root-supplied
     /// state required by a `Search.SourceFetchStrategy` to do its
     /// work. Each shipped source's CLI-flag set differs (e.g.
-    /// `--only-accepted` is only meaningful for swift-evolution; `--skip-metadata` /
+    /// `--only-accepted` is only meaningful for swift-evolution; `--refresh-metadata` /
     /// `--skip-archives` / `--annotate-availability` only for packages).
     /// We carry every flag on the env value and let each strategy
     /// read what it needs; this keeps `Search.SourceProvider.makeFetchStrategy`
@@ -49,9 +49,11 @@ extension Search {
 
         /// Maximum items to fetch (packages metadata, code archives).
         public let limit: Int?
-        /// Skip the Swift Package Index metadata refresh stage of
-        /// `--source packages` (run only the archive download).
-        public let skipMetadata: Bool
+        /// Opt into the Swift Package Index metadata + star-count
+        /// refresh stage of `--source packages`. Off by default; only
+        /// the TUI's stars-sort consumes the output, so the indexing
+        /// fetch pipeline never needs it. (#1108)
+        public let refreshMetadata: Bool
         /// Skip the GitHub archive download stage of `--source packages`
         /// (run only the metadata refresh).
         public let skipArchives: Bool
@@ -101,7 +103,7 @@ extension Search {
             discoveryModeRawValue: String = "auto",
             onlyAccepted: Bool = true,
             limit: Int? = nil,
-            skipMetadata: Bool = false,
+            refreshMetadata: Bool = false,
             skipArchives: Bool = false,
             annotateAvailability: Bool = false,
             recurse: Bool = true,
@@ -126,7 +128,7 @@ extension Search {
             self.discoveryModeRawValue = discoveryModeRawValue
             self.onlyAccepted = onlyAccepted
             self.limit = limit
-            self.skipMetadata = skipMetadata
+            self.refreshMetadata = refreshMetadata
             self.skipArchives = skipArchives
             self.annotateAvailability = annotateAvailability
             self.recurse = recurse
