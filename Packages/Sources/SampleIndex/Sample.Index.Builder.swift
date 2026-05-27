@@ -267,14 +267,14 @@ extension Sample.Index {
             // aggregation (#1111) when present, then to the per-
             // framework lookup from `SampleFrameworkAvailability`
             // (`100+` framework slugs). Only stamp when an exact
-            // signal exists — unknown unframework samples with no
+            // signal exists. Unknown unframework samples with no
             // @available stay NULL rather than claiming 5-platform
             // support the sample probably doesn't have.
             let frameworks = entry?.frameworks ?? []
             let inferredFrameworkProbe = frameworks.first
                 ?? SampleFrameworkAvailability.frameworkFromProjectId(projectId)
                 ?? ""
-            let availabilityInfo = resolveSampleAvailability(
+            let availabilityInfo = Self.resolveSampleAvailability(
                 parsedDeploymentTargets: parsedDeploymentTargets,
                 aggregatedAvailability: aggregatedAvailability,
                 frameworkProbe: inferredFrameworkProbe
@@ -376,23 +376,29 @@ extension Sample.Index {
         ///
         /// Priority:
         /// 1. `Package.swift platforms:` declarations (verified
-        ///    by-hand by the sample author) → tagged `sample-swift`.
-        /// 2. **#1111:** aggregate of per-file `@available(...)`
-        ///    attributes (MAX iOS / macOS / etc. across all observed
-        ///    occurrences) → tagged `sample-available-aggregated`.
-        ///    This is the most precise signal we have, derived from
-        ///    the sample's own source.
-        /// 3. Exact `SampleFrameworkAvailability` match for the
-        ///    framework probe (catalog `frameworks` field or the
-        ///    project-id prefix when the catalog has no entry) →
-        ///    tagged `sample-framework-inferred`.
-        /// 4. Otherwise NULL platforms + nil source. Stamping the
+        ///    by-hand by the sample author): tagged `sample-swift`.
+        ///    Authoritative; supersedes everything else.
+        /// 2. MAX-merge of (per-file `@available` aggregate, framework
+        ///    introduction floor). Each platform takes the higher of
+        ///    the two; the row carries whichever signal contributed
+        ///    the dominant value. Tagged `sample-available-aggregated`
+        ///    when any platform's value came from the aggregator,
+        ///    else `sample-framework-inferred`.
+        ///    Rationale: a single back-port helper marked
+        ///    `@available(iOS 11.0, *)` shouldn't pull a SwiftUI
+        ///    sample's `min_ios` below SwiftUI's introduction
+        ///    version. The aggregator surfaces ceilings that
+        ///    individual `@available` attributes require; the
+        ///    framework table surfaces ceilings the framework
+        ///    itself requires. The sample needs BOTH to compile, so
+        ///    the floor is the MAX.
+        /// 3. Otherwise NULL platforms + nil source. Stamping the
         ///    universal-Apple fallback for unknown frameworks
         ///    produces false-positive `--min-tvos`/`--min-watchos`
         ///    matches (e.g. iOS-only CarPlay claiming tvOS 9.0),
         ///    so unknown unframework samples with no @available
         ///    deliberately remain NULL.
-        func resolveSampleAvailability(
+        static func resolveSampleAvailability(
             parsedDeploymentTargets: [String: String],
             aggregatedAvailability: Search.PlatformVersions?,
             frameworkProbe: String
@@ -403,25 +409,91 @@ extension Sample.Index {
                     availabilitySource: "sample-swift"
                 )
             }
-            if let aggregated = aggregatedAvailability,
-               let dict = Self.platformVersionsToDict(aggregated), !dict.isEmpty {
-                return SampleAvailability(
-                    deploymentTargets: dict,
-                    availabilitySource: "sample-available-aggregated"
-                )
-            }
-            guard !frameworkProbe.isEmpty else {
-                return SampleAvailability(deploymentTargets: [:], availabilitySource: nil)
-            }
-            let lookup = SampleFrameworkAvailability.versions(for: frameworkProbe)
-            guard lookup.isExact else {
-                return SampleAvailability(deploymentTargets: [:], availabilitySource: nil)
-            }
-            let dict = Self.platformVersionsToDict(lookup.versions) ?? [:]
-            return SampleAvailability(
-                deploymentTargets: dict,
-                availabilitySource: dict.isEmpty ? nil : "sample-framework-inferred"
+            // Framework-tier floor (may be nil for unknown frameworks
+            // / empty probes; treated as no signal).
+            let frameworkAvailability: Search.PlatformVersions? = {
+                guard !frameworkProbe.isEmpty else { return nil }
+                let lookup = SampleFrameworkAvailability.versions(for: frameworkProbe)
+                return lookup.isExact ? lookup.versions : nil
+            }()
+            // MAX-merge per platform; record whether the
+            // aggregator contributed a higher value than the
+            // framework so the row's `availability_source` reflects
+            // the true dominant signal.
+            let merged = Self.maxMergePlatformVersions(
+                aggregatedAvailability,
+                frameworkAvailability
             )
+            guard let merged, let dict = Self.platformVersionsToDict(merged.versions), !dict.isEmpty else {
+                return SampleAvailability(deploymentTargets: [:], availabilitySource: nil)
+            }
+            let source: String = merged.aggregatedContributed
+                ? "sample-available-aggregated"
+                : "sample-framework-inferred"
+            return SampleAvailability(deploymentTargets: dict, availabilitySource: source)
+        }
+
+        /// Per-platform MAX of two `Search.PlatformVersions` values
+        /// (either may be nil; either may have nil per-platform
+        /// fields). Also reports whether the aggregator's value won
+        /// any platform's MAX: the deciding bit for the
+        /// `sample-available-aggregated` vs `sample-framework-inferred`
+        /// tag. Treats version strings as dotted-int sequences,
+        /// matching `SampleAvailableAttributeAggregator.SemanticVersion`.
+        static func maxMergePlatformVersions(
+            _ aggregated: Search.PlatformVersions?,
+            _ framework: Search.PlatformVersions?
+        ) -> (versions: Search.PlatformVersions, aggregatedContributed: Bool)? {
+            if aggregated == nil, framework == nil { return nil }
+            var aggregatedContributed = false
+            func merge(
+                _ aggregatedValue: String?,
+                _ frameworkValue: String?
+            ) -> String? {
+                switch (aggregatedValue, frameworkValue) {
+                case (nil, nil): return nil
+                case (.some(let value), nil):
+                    aggregatedContributed = true
+                    return value
+                case (nil, .some(let value)):
+                    return value
+                case (.some(let aggValue), .some(let frmValue)):
+                    if compareDottedVersions(aggValue, frmValue) >= 0 {
+                        if aggValue != frmValue { aggregatedContributed = true }
+                        return aggValue
+                    }
+                    return frmValue
+                }
+            }
+            let versions = Search.PlatformVersions(
+                iOS: merge(aggregated?.iOS, framework?.iOS),
+                macOS: merge(aggregated?.macOS, framework?.macOS),
+                tvOS: merge(aggregated?.tvOS, framework?.tvOS),
+                watchOS: merge(aggregated?.watchOS, framework?.watchOS),
+                visionOS: merge(aggregated?.visionOS, framework?.visionOS)
+            )
+            // Force at least one non-nil component before reporting.
+            if versions.iOS == nil, versions.macOS == nil, versions.tvOS == nil,
+               versions.watchOS == nil, versions.visionOS == nil {
+                return nil
+            }
+            return (versions, aggregatedContributed)
+        }
+
+        /// Compare two dotted-int version strings: returns negative,
+        /// zero, or positive in the same shape as `String.compare`.
+        /// Missing components are treated as 0 (so `"14"` ==
+        /// `"14.0"`). Non-int components return 0 to be conservative.
+        static func compareDottedVersions(_ lhs: String, _ rhs: String) -> Int {
+            let lhsParts = lhs.split(separator: ".").compactMap { Int($0) }
+            let rhsParts = rhs.split(separator: ".").compactMap { Int($0) }
+            let count = max(lhsParts.count, rhsParts.count)
+            for idx in 0..<count {
+                let left = idx < lhsParts.count ? lhsParts[idx] : 0
+                let right = idx < rhsParts.count ? rhsParts[idx] : 0
+                if left != right { return left - right }
+            }
+            return 0
         }
 
         /// Map a `Search.PlatformVersions` to the dict shape
@@ -639,7 +711,7 @@ extension Sample.Index {
             let inferredFrameworkProbe = frameworks.first
                 ?? SampleFrameworkAvailability.frameworkFromProjectId(projectId)
                 ?? ""
-            let availabilityInfo = resolveSampleAvailability(
+            let availabilityInfo = Self.resolveSampleAvailability(
                 parsedDeploymentTargets: parsedDeploymentTargets,
                 aggregatedAvailability: aggregatedAvailability,
                 frameworkProbe: inferredFrameworkProbe
@@ -663,10 +735,33 @@ extension Sample.Index {
             // Index project
             try await database.indexProject(project)
 
-            // Index all files (with AST extraction for Swift files)
+            // Index all files (with AST extraction for Swift files).
+            // #1111 critic-pass: also persist per-file
+            // `available_attrs_json` via the pre-computed
+            // `directoryFileAvailability` lookup, matching the
+            // indexProject (zip) path. Pre-fix this column was always
+            // NULL on directory-imported rows.
             let extractor = ASTIndexer.Extractor()
+            let availabilityByRelpath = Dictionary(
+                uniqueKeysWithValues: directoryFileAvailability.map { ($0.relpath, $0.attributes) }
+            )
+            let encoder = JSONEncoder()
             for file in files {
-                try await database.indexFile(file)
+                var availableAttrsJSON: String?
+                if file.fileExtension == "swift",
+                   let attrs = availabilityByRelpath[file.path], !attrs.isEmpty {
+                    if let data = try? encoder.encode(attrs) {
+                        availableAttrsJSON = String(data: data, encoding: .utf8)
+                    }
+                }
+
+                let fileWithAvailability = File(
+                    projectId: file.projectId,
+                    path: file.path,
+                    content: file.content,
+                    availableAttrsJSON: availableAttrsJSON
+                )
+                try await database.indexFile(fileWithAvailability)
 
                 // Extract symbols from Swift files (#81)
                 if file.fileExtension == "swift" {

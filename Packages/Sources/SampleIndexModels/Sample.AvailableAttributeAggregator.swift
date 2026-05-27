@@ -60,10 +60,22 @@ public enum SampleAvailableAttributeAggregator {
 
     /// Tuples `(platform, version)` parsed from a raw `@available(...)`
     /// payload (the text between the outer parens, e.g.
-    /// `"(iOS 14.0, macOS 11.0, *)"`). Skips `*`, `unavailable`,
-    /// `deprecated:`, `renamed:` and other non-version atoms. Tolerates
-    /// extra whitespace, optional comma trailing the platform name, and
-    /// version numbers like `14`, `14.0`, `14.0.1`.
+    /// `"(iOS 14.0, macOS 11.0, *)"`). Handles both Swift `@available`
+    /// grammars:
+    ///
+    /// 1. **Shorthand** (multi-platform): `(iOS 14.0, macOS 11.0, *)`.
+    ///    Each comma-separated chunk is one `<platform> <version>`
+    ///    pair plus a trailing `*`.
+    /// 2. **Labeled** (single-platform):
+    ///    `(iOS, introduced: 14.0, deprecated: 17.0, message: "...")`.
+    ///    One platform identifier followed by named labels. Only
+    ///    `introduced:` yields an introduction-floor occurrence;
+    ///    `deprecated:` / `obsoleted:` / `message:` / `renamed:` are
+    ///    not introduction signals.
+    ///
+    /// Skips `*`, `unavailable`, and non-version labels. Tolerates
+    /// extra whitespace and version numbers like `14`, `14.0`,
+    /// `14.0.1`.
     static func parseOccurrences(from raw: String) -> [Occurrence] {
         // Strip outer parens if present so a caller can pass either
         // `(iOS 14.0, ...)` or `iOS 14.0, ...`. The sidecar emits the
@@ -73,35 +85,88 @@ public enum SampleAvailableAttributeAggregator {
             payload = String(payload.dropFirst().dropLast())
         }
 
+        let chunks = payload
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+        // Detect labeled form by the presence of any colon-labeled
+        // chunk; the labeled grammar binds to a SINGLE platform per
+        // attribute, with introduction/deprecation/etc. as siblings.
+        if chunks.contains(where: { isLabeledArgument($0) }) {
+            guard
+                let platform = chunks.first(where: { isBarePlatformIdentifier($0) }),
+                let introducedVersion = chunks.lazy
+                .compactMap({ introducedVersion(from: $0) })
+                .first
+            else {
+                return []
+            }
+            return [Occurrence(platform: platform, version: introducedVersion)]
+        }
+
+        // Shorthand grammar: each chunk is one `<platform> <version>`
+        // pair, plus a trailing `*`.
         var results: [Occurrence] = []
-        // Split on commas; each chunk is one platform-version pair OR
-        // a non-version atom (`*`, `deprecated: ...`, `unavailable`).
-        for chunk in payload.split(separator: ",") {
-            let trimmed = chunk.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard let occurrence = parseSingle(chunk: trimmed) else { continue }
+        for chunk in chunks {
+            guard let occurrence = parseShorthandChunk(chunk) else { continue }
             results.append(occurrence)
         }
         return results
     }
 
-    private static func parseSingle(chunk: String) -> Occurrence? {
+    /// True iff the chunk contains a `<label>:` token (introduced:,
+    /// deprecated:, obsoleted:, message:, renamed:), regardless of
+    /// what follows. Pure shape probe; the actual label semantics live
+    /// in `introducedVersion(from:)`.
+    private static func isLabeledArgument(_ chunk: String) -> Bool {
+        chunk.contains(":")
+    }
+
+    /// True iff the chunk is a bare platform identifier (no digits,
+    /// no labels, not `*`, not `unavailable`). Used only on the
+    /// labeled-grammar path.
+    private static func isBarePlatformIdentifier(_ chunk: String) -> Bool {
+        guard !chunk.isEmpty, chunk != "*" else { return false }
+        if chunk.caseInsensitiveCompare("unavailable") == .orderedSame { return false }
+        if chunk.contains(":") { return false }
+        for scalar in chunk.unicodeScalars where scalar.isASCIIDigit {
+            return false
+        }
+        return true
+    }
+
+    /// If the chunk is an `introduced: X.Y` label, return the parsed
+    /// version; otherwise nil. `deprecated:` / `obsoleted:` /
+    /// `message:` / `renamed:` are deliberately not introduction
+    /// signals; they would lower the floor incorrectly.
+    private static func introducedVersion(from chunk: String) -> SemanticVersion? {
+        guard let colonIdx = chunk.firstIndex(of: ":") else { return nil }
+        let label = chunk[..<colonIdx]
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        guard label == "introduced" else { return nil }
+        let versionPart = chunk[chunk.index(after: colonIdx)...]
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return SemanticVersion(versionPart)
+    }
+
+    /// Shorthand grammar parser: `"iOS 14.0"` → (iOS, 14.0). Tolerates
+    /// `"iOS14.0"` (no space). Returns nil for `*`, `unavailable`, or
+    /// chunks that don't fit the shape.
+    private static func parseShorthandChunk(_ chunk: String) -> Occurrence? {
         guard !chunk.isEmpty else { return nil }
         if chunk == "*" { return nil }
-        if chunk.contains(":") { return nil } // deprecated:, renamed:, message:, introduced:, obsoleted:
         if chunk.caseInsensitiveCompare("unavailable") == .orderedSame { return nil }
 
         // The chunk is "<platform>[<sep>]<version>" where sep is one or
-        // more whitespace chars or, in malformed forms, none. We
-        // tolerate both `iOS14.0` (no space) and `iOS 14.0` (one+
-        // spaces). Find the boundary where the platform identifier
-        // ends and the version digits begin.
+        // more whitespace chars or, in malformed forms, none. Find the
+        // boundary where the platform identifier ends and the version
+        // digits begin.
         let scalars = Array(chunk.unicodeScalars)
         var boundary = scalars.endIndex
-        for (idx, scalar) in scalars.enumerated() {
-            if scalar.properties.isASCIIHexDigit, scalar.isASCIIDigit {
-                boundary = idx
-                break
-            }
+        for (idx, scalar) in scalars.enumerated() where scalar.isASCIIDigit {
+            boundary = idx
+            break
         }
         guard boundary > 0, boundary < scalars.endIndex else { return nil }
 
@@ -148,8 +213,17 @@ public enum SampleAvailableAttributeAggregator {
     /// surface for a tiny utility.
     struct SemanticVersion: Comparable, Equatable {
         let components: [Int]
+        /// Always emit at least major.minor (`14` becomes `"14.0"`),
+        /// matching the storage shape the sample-swift and
+        /// sample-framework-inferred tiers use. Pre-fix this echoed
+        /// the input shape verbatim, so `@available(iOS 14, *)`
+        /// landed `"14"` while every other tier stored `"14.0"`:
+        /// same logical version, two distinct column values.
         var formatted: String {
-            components.map(String.init).joined(separator: ".")
+            let padded = components.count >= 2
+                ? components
+                : components + Array(repeating: 0, count: 2 - components.count)
+            return padded.map(String.init).joined(separator: ".")
         }
 
         init?(_ string: String) {

@@ -130,14 +130,16 @@ struct Issue1111SampleAvailableAggregationTests {
         #expect(result?.iOS == "17.0.1")
     }
 
-    @Test("Major-only versions compare correctly against major.minor")
+    @Test("Major-only versions compare correctly against major.minor (and stamp \"14.0\")")
     func majorOnlyVersionsCompare() {
         let attrs = [
             Attribute(line: 1, raw: "(iOS 14, *)", platforms: ["iOS", "*"]),
             Attribute(line: 2, raw: "(iOS 13.5, *)", platforms: ["iOS", "*"]),
         ]
         let result = Aggregator.aggregate(attributes: attrs)
-        #expect(result?.iOS == "14")
+        // `14` is logically greater than `13.5`; stored as padded "14.0"
+        // for column-shape parity with the other availability tiers.
+        #expect(result?.iOS == "14.0")
     }
 
     @Test("Unrecognised platform tokens (linux, OpenBSD) are silently ignored")
@@ -148,5 +150,54 @@ struct Issue1111SampleAvailableAggregationTests {
         ]
         let result = Aggregator.aggregate(attributes: attrs)
         #expect(result == nil)
+    }
+
+    @Test("Labeled @available form: introduced: X.Y is parsed")
+    func labeledIntroducedForm() {
+        let attrs = [
+            Attribute(
+                line: 5,
+                raw: "(iOS, introduced: 14.0, deprecated: 17.0)",
+                platforms: ["iOS"]
+            ),
+        ]
+        let result = Aggregator.aggregate(attributes: attrs)
+        #expect(result?.iOS == "14.0")
+        #expect(result?.macOS == nil)
+    }
+
+    @Test("Labeled @available form: message + renamed labels don't lower the floor")
+    func labeledWithMessageLabel() {
+        let attrs = [
+            Attribute(
+                line: 5,
+                raw: "(macOS, introduced: 11.0, message: \"use newAPI()\", renamed: \"newAPI\")",
+                platforms: ["macOS"]
+            ),
+        ]
+        let result = Aggregator.aggregate(attributes: attrs)
+        #expect(result?.macOS == "11.0")
+    }
+
+    @Test("Labeled @available form: deprecated-only (no introduced) yields no occurrence")
+    func labeledDeprecatedOnlyYieldsNothing() {
+        let attrs = [
+            Attribute(
+                line: 5,
+                raw: "(iOS, deprecated: 17.0, message: \"...\")",
+                platforms: ["iOS"]
+            ),
+        ]
+        let result = Aggregator.aggregate(attributes: attrs)
+        #expect(result == nil)
+    }
+
+    @Test("Padded version format: @available(iOS 14, *) stamps \"14.0\", not \"14\"")
+    func paddedVersionFormat() {
+        let attrs = [
+            Attribute(line: 1, raw: "(iOS 14, *)", platforms: ["iOS", "*"]),
+        ]
+        let result = Aggregator.aggregate(attributes: attrs)
+        #expect(result?.iOS == "14.0")
     }
 }
