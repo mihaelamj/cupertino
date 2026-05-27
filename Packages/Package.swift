@@ -556,6 +556,14 @@ let targets: [Target] = {
             "CoreProtocols",
             "CorePackageIndexingModels",
             "ASTIndexer",
+            // #1078: the HIG-specific SQL pass
+            // (`Search.Index.applyHIGPlatformInference`) iterates the
+            // shared `HIGPlatformRules.rules` table so the rule set
+            // doesn't drift between the indexer strategy (HIGSource)
+            // and the post-hoc SQL backfill. HIGPlatformInferencePass
+            // is foundation-only (Foundation only), so this dep stays
+            // within the per-package-import-contract envelope.
+            "HIGPlatformInferencePass",
         ]
     )
     let searchSQLiteTestsTarget = Target.testTarget(

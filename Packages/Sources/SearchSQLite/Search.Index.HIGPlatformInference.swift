@@ -1,4 +1,5 @@
 import Foundation
+import HIGPlatformInferencePass
 import SearchModels
 import SQLite3
 
@@ -39,31 +40,13 @@ extension Search.Index {
         audit?.recordPassStart(passIdentifier: "hig-platforms", dbPath: dbPath)
         let startedAt = Date()
 
-        // (URI LIKE pattern, platforms to KEEP populated)
-        // Every other min_<platform> column gets set to NULL on a
-        // matching row.
-        //
-        // Patterns target Apple's canonical HIG URL slugs (post-#1076
-        // the crawler derives filenames from URL last-path-component,
-        // so the dehyphenated `-appledeveloperdocumentation` duplicates
-        // no longer exist on disk; the parallel patterns the pre-#1076
-        // commit carried as a band-aid have been removed). If a future
-        // Apple URL adds a topic with combined keywords (e.g.
-        // `designing-for-ios-and-mac`), add the rule explicitly rather
-        // than relying on substring overlap.
-        let rules: [(pattern: String, keep: Set<String>)] = [
-            ("%designing-for-watchos%", ["watchos"]),
-            ("%watch-faces%", ["watchos"]),
-            ("%designing-for-tvos%", ["tvos"]),
-            ("%designing-for-visionos%", ["visionos"]),
-            ("%spatial-layout%", ["visionos"]),
-            ("%designing-for-macos%", ["macos"]),
-            ("%mac-catalyst%", ["ios", "macos"]),
-            ("%carplay%", ["ios"]),
-            ("%designing-for-ipados%", ["ios"]),
-            ("%designing-for-ios%", ["ios"]),
-        ]
-        let allPlatforms = ["ios", "macos", "tvos", "watchos", "visionos"]
+        // #1078: iterate the shared `HIGPlatformRules` table
+        // (foundation-tier, also consumed by `Search.Strategies.HIG`
+        // at index time and by `Crawler.HIG.inferPlatforms` at fetch
+        // time). The SQL pass converts each rule's URL-substring to a
+        // `%<substring>%` LIKE pattern; the strategy + crawler match
+        // the same substring directly. One table, three consumers.
+        let allPlatforms = HIGPlatformRules.allPlatforms
 
         guard sqlite3_exec(database, "BEGIN TRANSACTION;", nil, nil, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(database))
@@ -71,7 +54,7 @@ extension Search.Index {
         }
 
         var totalAffected = 0
-        for rule in rules {
+        for rule in HIGPlatformRules.rules {
             // Build the SET clause: NULL every non-kept platform.
             let nullClauses = allPlatforms
                 .filter { !rule.keep.contains($0) }
@@ -90,6 +73,7 @@ extension Search.Index {
                 .filter { !rule.keep.contains($0) }
                 .map { "min_\($0) IS NOT NULL" }
                 .joined(separator: " OR ")
+            let likePattern = "%\(rule.urlSubstring)%"
             let selectSQL = """
             SELECT uri FROM docs_metadata
             WHERE uri LIKE ?
@@ -101,7 +85,7 @@ extension Search.Index {
                 _ = sqlite3_exec(database, "ROLLBACK;", nil, nil, nil)
                 throw Search.Error.sqliteError("applyHIGPlatformInference SELECT prepare failed: \(errorMessage)")
             }
-            sqlite3_bind_text(selectStmt, 1, (rule.pattern as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(selectStmt, 1, (likePattern as NSString).utf8String, -1, nil)
             var matchedURIs: [String] = []
             while sqlite3_step(selectStmt) == SQLITE_ROW {
                 if let cStr = sqlite3_column_text(selectStmt, 0) {
@@ -120,7 +104,7 @@ extension Search.Index {
                 _ = sqlite3_exec(database, "ROLLBACK;", nil, nil, nil)
                 throw Search.Error.sqliteError("applyHIGPlatformInference prepare failed: \(errorMessage)")
             }
-            sqlite3_bind_text(stmt, 1, (rule.pattern as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(stmt, 1, (likePattern as NSString).utf8String, -1, nil)
             guard sqlite3_step(stmt) == SQLITE_DONE else {
                 let errorMessage = String(cString: sqlite3_errmsg(database))
                 _ = sqlite3_exec(database, "ROLLBACK;", nil, nil, nil)

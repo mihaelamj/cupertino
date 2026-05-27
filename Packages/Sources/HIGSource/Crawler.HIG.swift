@@ -1,6 +1,7 @@
 import CoreProtocols
 import CrawlerModels
 import Foundation
+import HIGPlatformInferencePass
 import LoggingModels
 import SharedConstants
 
@@ -161,8 +162,16 @@ extension Crawler {
                 // Determine category from URL path
                 let category = extractCategory(from: url)
 
-                // Determine platforms from content
-                let platforms = extractPlatforms(from: html)
+                // #1078: derive platforms from the URL slug, not from
+                // HTML substring matching. Pre-fix `extractPlatforms`
+                // lowercased the entire HTML and looked for the
+                // tokens "ios"/"macos"/"watchos"/"visionos"/"tvos" —
+                // every HIG page's nav/footer mentions ALL of them,
+                // so every page reported all 5 platforms regardless
+                // of topic. Post-fix: rule-table lookup against the
+                // URL slug (single source of truth shared with the
+                // indexer strategy + SQL pass via HIGPlatformRules).
+                let platforms = Self.inferPlatforms(forURL: url)
 
                 let page = Page(
                     url: url,
@@ -286,27 +295,26 @@ extension Crawler {
             }
         }
 
-        private func extractPlatforms(from html: String) -> [Platform] {
-            var platforms: [Platform] = []
-            let content = html.lowercased()
-
-            if content.contains("ios") || content.contains("iphone") || content.contains("ipad") {
-                platforms.append(.iOS)
-            }
-            if content.contains("macos") || content.contains("mac ") {
-                platforms.append(.macOS)
-            }
-            if content.contains("watchos") || content.contains("apple watch") {
-                platforms.append(.watchOS)
-            }
-            if content.contains("visionos") || content.contains("apple vision") {
-                platforms.append(.visionOS)
-            }
-            if content.contains("tvos") || content.contains("apple tv") {
-                platforms.append(.tvOS)
-            }
-
-            return platforms.isEmpty ? [.all] : platforms
+        /// #1078: derive applicable platforms from the URL slug via
+        /// `HIGPlatformRules`. Returns `[.iOS, .macOS, .tvOS,
+        /// .watchOS, .visionOS]` for cross-platform topics, the
+        /// rule's `keep` set for platform-specific topics. The empty
+        /// case is not reachable (the rules table's fallthrough is
+        /// "all 5 platforms"), so the legacy `.all` sentinel is no
+        /// longer emitted from this path; the enum case stays for
+        /// backward-compat in case any caller still constructs it.
+        nonisolated static func inferPlatforms(forURL url: URL) -> [Platform] {
+            let keep = HIGPlatformRules.applicablePlatforms(for: url.absoluteString)
+            // Preserve a stable display order (iOS, macOS, watchOS,
+            // visionOS, tvOS) — matches the order the HIG markdown
+            // body line used pre-fix.
+            var result: [Platform] = []
+            if keep.contains("ios") { result.append(.iOS) }
+            if keep.contains("macos") { result.append(.macOS) }
+            if keep.contains("watchos") { result.append(.watchOS) }
+            if keep.contains("visionos") { result.append(.visionOS) }
+            if keep.contains("tvos") { result.append(.tvOS) }
+            return result
         }
 
         private func extractHIGLinks(from html: String, baseURL: URL) -> [URL] {
