@@ -241,20 +241,28 @@ extension Search.StrategyHelpers {
             }()
 
             do {
-                // The Swift Book covers all platforms that ship Swift support.
-                let isSwiftBook = pageSource == Shared.Constants.SourcePrefix.swiftBook
+                // #1088: both swift-org AND swift-book carry Swift-
+                // language-level content that applies to every
+                // platform Swift runs on. Pre-#1088 only swift-book
+                // got the universal Swift baseline; swift-org rows
+                // landed with all-NULL platform columns, making any
+                // `--min-<platform>` filter exclude the entire
+                // source. Now both sub-sources receive the same
+                // baseline (iOS 8.0 / macOS 10.9 / tvOS 9.0 /
+                // watchOS 2.0 / visionOS 1.0 — Swift's introduction
+                // version on each platform).
                 try await index.indexStructuredDocument(
                     uri: uri,
                     source: pageSource,
                     framework: pageSource,
                     page: structuredPage,
                     jsonData: jsonString,
-                    overrideMinIOS: isSwiftBook ? "8.0" : nil,
-                    overrideMinMacOS: isSwiftBook ? "10.9" : nil,
-                    overrideMinTvOS: isSwiftBook ? "9.0" : nil,
-                    overrideMinWatchOS: isSwiftBook ? "2.0" : nil,
-                    overrideMinVisionOS: isSwiftBook ? "1.0" : nil,
-                    overrideAvailabilitySource: isSwiftBook ? "universal" : nil
+                    overrideMinIOS: "8.0",
+                    overrideMinMacOS: "10.9",
+                    overrideMinTvOS: "9.0",
+                    overrideMinWatchOS: "2.0",
+                    overrideMinVisionOS: "1.0",
+                    overrideAvailabilitySource: "universal-swift"
                 )
 
                 if !structuredPage.codeExamples.isEmpty {
