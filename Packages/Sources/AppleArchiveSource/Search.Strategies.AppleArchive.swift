@@ -112,8 +112,20 @@ extension Search {
                     ?? Search.StrategyHelpers.extractTitle(from: content)
                     ?? file.deletingPathExtension().lastPathComponent
                 let bookTitle = metadata["book"] ?? guideID
-                let baseFramework = metadata["framework"] ?? bookTitle
-                let framework = Search.StrategyHelpers.expandFrameworkSynonyms(baseFramework)
+                // #1090: use the canonical framework name from the
+                // .md frontmatter directly. Pre-fix we called
+                // `expandFrameworkSynonyms` which joined the
+                // canonical name with its synonyms via ", " (e.g.
+                // "CoreGraphics" → "CoreGraphics, Quartz2D"), and
+                // the joined string landed in `docs_metadata.framework`.
+                // The synonym-search responsibility now lives on the
+                // `framework_aliases.synonyms` field (post-#1042), so
+                // the framework field no longer needs to carry
+                // alternative names inline. Quartz2D is the C-level
+                // drawing API inside CoreGraphics — not a separate
+                // framework. Dropping the join surfaces the canonical
+                // name in search output.
+                let framework = metadata["framework"] ?? bookTitle
 
                 let filename = file.deletingPathExtension().lastPathComponent
                 let uri = "apple-archive://\(guideID)/\(filename)"
