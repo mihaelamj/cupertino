@@ -246,21 +246,55 @@ extension Sample.Index {
 
             // #228 phase 2: parse Package.swift platforms BEFORE indexProject
             // so the projects-table row carries deployment targets directly.
-            let deploymentTargets = readPackageSwiftPlatforms(in: projectRoot)
+            let parsedDeploymentTargets = readPackageSwiftPlatforms(in: projectRoot)
+
+            // #1104: 633/634 Apple sample projects ship as Xcode
+            // projects (no Package.swift) so `parsedDeploymentTargets`
+            // is empty for them. Pre-fix the row landed with all
+            // `min_<platform>` NULL, making any `--min-<platform>`
+            // filter exclude every sample. Fall back to per-
+            // framework lookup from
+            // `SampleFrameworkAvailability` (top ~30 frameworks
+            // covering the sample-code corpus). Unknown frameworks
+            // get the universal Apple baseline (iOS 8.0 / macOS
+            // 10.9 / etc).
+            let frameworks = entry?.frameworks ?? []
+            let primaryFramework = frameworks.first ?? ""
+            let deploymentTargets: [String: String]
+            let availabilitySource: String?
+            if !parsedDeploymentTargets.isEmpty {
+                deploymentTargets = parsedDeploymentTargets
+                availabilitySource = "sample-swift"
+            } else if !primaryFramework.isEmpty {
+                let fallback = SampleFrameworkAvailability.versions(for: primaryFramework)
+                var dict: [String: String] = [:]
+                // Keys match `Sample.Index.Database.bindMin`'s lookup
+                // ("iOS"/"macOS"/etc., not lowercased).
+                if let ver = fallback.iOS { dict["iOS"] = ver }
+                if let ver = fallback.macOS { dict["macOS"] = ver }
+                if let ver = fallback.tvOS { dict["tvOS"] = ver }
+                if let ver = fallback.watchOS { dict["watchOS"] = ver }
+                if let ver = fallback.visionOS { dict["visionOS"] = ver }
+                deploymentTargets = dict
+                availabilitySource = dict.isEmpty ? nil : "sample-framework-inferred"
+            } else {
+                deploymentTargets = [:]
+                availabilitySource = nil
+            }
 
             // Create project record (with availability metadata populated)
             let project = Project(
                 id: projectId,
                 title: entry?.title ?? titleFromProjectId(projectId),
                 description: entry?.description ?? "",
-                frameworks: entry?.frameworks ?? [],
+                frameworks: frameworks,
                 readme: readme,
                 webURL: entry?.webURL ?? "",
                 zipFilename: zipFilename,
                 fileCount: files.count,
                 totalSize: totalSize,
                 deploymentTargets: deploymentTargets,
-                availabilitySource: deploymentTargets.isEmpty ? nil : "sample-swift"
+                availabilitySource: availabilitySource
             )
 
             // Index project
