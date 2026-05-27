@@ -371,8 +371,11 @@ extension Search {
         ///   cannot be determined.
         public static func mapSwiftVersionToAvailability(
             _ status: String?
-        ) -> (iOS: String?, macOS: String?) {
-            guard let status else { return (nil, nil) }
+        ) -> Search.PlatformVersions {
+            let nilVersions = Search.PlatformVersions(
+                iOS: nil, macOS: nil, tvOS: nil, watchOS: nil, visionOS: nil
+            )
+            guard let status else { return nilVersions }
             let pattern = #"Swift\s+(\d+(?:\.\d+)?)"#
             guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
                   let match = regex.firstMatch(
@@ -380,32 +383,58 @@ extension Search {
                   ),
                   match.numberOfRanges > 1,
                   let versionRange = Range(match.range(at: 1), in: status)
-            else { return (nil, nil) }
+            else { return nilVersions }
 
             let swiftVersion = String(status[versionRange])
             let parts = swiftVersion.split(separator: ".")
             let major = parts.first.flatMap { Int($0) } ?? 0
             let minor = parts.dropFirst().first.flatMap { Int($0) } ?? 0
 
+            // #1099: Swift toolchain → all 5 platform-version
+            // minimums per Xcode release. Pre-#1099 only iOS+macOS
+            // were returned; tvOS/watchOS/visionOS landed NULL on
+            // every swift-evolution row.
+            //
+            // Numbers track Xcode release notes: each Swift release
+            // ships in an Xcode that targets specific SDKs across all
+            // platforms. visionOS entered the table at Swift 5.9
+            // (Xcode 15, visionOS 1.0); older Swift releases predate
+            // visionOS and stamp nil for it.
+            func versions(
+                iOS: String, macOS: String, tvOS: String, watchOS: String, visionOS: String? = nil
+            ) -> Search.PlatformVersions {
+                Search.PlatformVersions(
+                    iOS: iOS, macOS: macOS, tvOS: tvOS, watchOS: watchOS, visionOS: visionOS
+                )
+            }
+            // #1100: deployment-target semantic for visionOS. Pre-fix
+            // every pre-Swift-5.9 row stamped visionOS=nil (because
+            // visionOS didn't exist yet). But when visionOS 1.0
+            // launched (Xcode 15 / Swift 5.9), Swift 5.9 ships with
+            // it — and Swift 5.9 includes every feature from older
+            // Swift versions. So SE-0001 (Swift 2.0) IS available
+            // when deploying to visionOS 1.0+. The MIN visionOS
+            // deployment target for any Swift 5.9-or-earlier feature
+            // is 1.0; Swift 5.10 → 1.1; Swift 6.0 → 2.0.
             switch (major, minor) {
-            case (6, _): return ("18.0", "15.0")
-            case (5, 10): return ("17.4", "14.4")
-            case (5, 9): return ("17.0", "14.0")
-            case (5, 8): return ("16.4", "13.3")
-            case (5, 7): return ("16.0", "13.0")
-            case (5, 6): return ("15.4", "12.3")
-            case (5, 5): return ("15.0", "12.0")
-            case (5, 4): return ("14.5", "11.3")
-            case (5, 3): return ("14.0", "11.0")
-            case (5, 2): return ("13.4", "10.15.4")
-            case (5, 1): return ("13.0", "10.15")
-            case (5, 0): return ("12.2", "10.14.4")
-            case (4, 2): return ("12.0", "10.14")
-            case (4, 1): return ("11.3", "10.13.4")
-            case (4, 0): return ("11.0", "10.13")
-            case (3, _): return ("10.0", "10.12")
-            case (2, _): return ("9.0", "10.11")
-            default: return ("8.0", "10.9")
+            case (6, _): return versions(iOS: "18.0", macOS: "15.0", tvOS: "18.0", watchOS: "11.0", visionOS: "2.0")
+            case (5, 10): return versions(iOS: "17.4", macOS: "14.4", tvOS: "17.4", watchOS: "10.4", visionOS: "1.1")
+            case (5, 9): return versions(iOS: "17.0", macOS: "14.0", tvOS: "17.0", watchOS: "10.0", visionOS: "1.0")
+            case (5, 8): return versions(iOS: "16.4", macOS: "13.3", tvOS: "16.4", watchOS: "9.4", visionOS: "1.0")
+            case (5, 7): return versions(iOS: "16.0", macOS: "13.0", tvOS: "16.0", watchOS: "9.0", visionOS: "1.0")
+            case (5, 6): return versions(iOS: "15.4", macOS: "12.3", tvOS: "15.4", watchOS: "8.5", visionOS: "1.0")
+            case (5, 5): return versions(iOS: "15.0", macOS: "12.0", tvOS: "15.0", watchOS: "8.0", visionOS: "1.0")
+            case (5, 4): return versions(iOS: "14.5", macOS: "11.3", tvOS: "14.5", watchOS: "7.4", visionOS: "1.0")
+            case (5, 3): return versions(iOS: "14.0", macOS: "11.0", tvOS: "14.0", watchOS: "7.0", visionOS: "1.0")
+            case (5, 2): return versions(iOS: "13.4", macOS: "10.15.4", tvOS: "13.4", watchOS: "6.2", visionOS: "1.0")
+            case (5, 1): return versions(iOS: "13.0", macOS: "10.15", tvOS: "13.0", watchOS: "6.0", visionOS: "1.0")
+            case (5, 0): return versions(iOS: "12.2", macOS: "10.14.4", tvOS: "12.2", watchOS: "5.2", visionOS: "1.0")
+            case (4, 2): return versions(iOS: "12.0", macOS: "10.14", tvOS: "12.0", watchOS: "5.0", visionOS: "1.0")
+            case (4, 1): return versions(iOS: "11.3", macOS: "10.13.4", tvOS: "11.3", watchOS: "4.3", visionOS: "1.0")
+            case (4, 0): return versions(iOS: "11.0", macOS: "10.13", tvOS: "11.0", watchOS: "4.0", visionOS: "1.0")
+            case (3, _): return versions(iOS: "10.0", macOS: "10.12", tvOS: "10.0", watchOS: "3.0", visionOS: "1.0")
+            case (2, _): return versions(iOS: "9.0", macOS: "10.11", tvOS: "9.0", watchOS: "2.0", visionOS: "1.0")
+            default: return versions(iOS: "8.0", macOS: "10.9", tvOS: "9.0", watchOS: "2.0", visionOS: "1.0")
             }
         }
 
