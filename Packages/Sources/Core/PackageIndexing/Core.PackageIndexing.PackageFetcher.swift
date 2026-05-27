@@ -16,6 +16,7 @@ extension Core.PackageIndexing {
     // `:disable:next type_body_length` on the actor declaration.)
     // swiftlint:disable:next type_body_length
     public actor PackageFetcher {
+        // swiftlint:disable:next force_try
         private let packageListURL = try! URL(knownGood: Shared.Constants.BaseURL.swiftPackageList)
         private let outputDirectory: URL
         private let limit: Int?
@@ -275,6 +276,29 @@ extension Core.PackageIndexing {
             // Separate priority packages from regular packages
             let prioritySet = Set(priorityURLs)
             let regularURLs = packageURLs.filter { !prioritySet.contains($0) }
+
+            // 2026-05-27: skip the star-count phase entirely when no
+            // GITHUB_TOKEN is set in the environment. The phase exists
+            // purely to sort packages by popularity before downloading
+            // archives; download CONTENT is identical with or without
+            // the sort. Without a token the GitHub REST API caps at 60
+            // requests/hour (10,989 packages would need 183 hours), so
+            // a fresh fetch on an unauthenticated machine ends up
+            // throttled in stage 1 making zero progress on the actual
+            // archive download in stage 2. Without star sort, regular
+            // packages are downloaded in the order returned by
+            // `downloadPackageList()` (alphabetical-ish from the Swift
+            // Package Index), which is fine.
+            //
+            // Users with rate-limit headroom can still get sort by
+            // exporting GITHUB_TOKEN before running `cupertino fetch`;
+            // the phase fires as before in that case.
+            let hasToken = !(ProcessInfo.processInfo.environment[Shared.Constants.EnvVar.githubToken]?.isEmpty ?? true)
+            guard hasToken else {
+                logInfo("   ⏭  No GITHUB_TOKEN set, skipping star-count sort (would need 183+ hours at 60 req/h).")
+                logInfo("   Set GITHUB_TOKEN to enable popularity-sort (5000 req/h authenticated).")
+                return priorityURLs + regularURLs
+            }
 
             // Quick fetch: only get star counts (much lighter than full metadata)
             var packageStars: [(url: String, stars: Int)] = []
