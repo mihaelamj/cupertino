@@ -564,6 +564,16 @@ let targets: [Target] = {
             // is foundation-only (Foundation only), so this dep stays
             // within the per-package-import-contract envelope.
             "HIGPlatformInferencePass",
+            // #1114: the SampleAvailableAttributeAggregator lives in
+            // SampleIndexModels (per #1111 first use site). The
+            // aggregator is per-source-name-agnostic pure logic over
+            // ASTIndexer.AvailabilityParsers.Attribute; the packages
+            // indexer now consumes it the same way. Naming follow-up
+            // tracked separately; the dep here is foundation-only
+            // (SampleIndexModels has deps on Foundation, ASTIndexer,
+            // SearchModels, SharedConstants only — no actors, no
+            // I/O, no SQLite).
+            "SampleIndexModels",
         ]
     )
     let searchSQLiteTestsTarget = Target.testTarget(
