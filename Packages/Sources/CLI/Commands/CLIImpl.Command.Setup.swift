@@ -368,6 +368,14 @@ private final class SetupRenderer: @unchecked Sendable {
             printRaw("\(clearLine)")
             Cupertino.Context.composition.logging.recording.info("   ✓ Extracted")
 
+        case .constraintsDownloadSkipped(let reason):
+            Cupertino.Context.composition.logging.recording.warning(
+                "Apple-constraints sidecar download failed: \(reason). Setup completed; "
+                    + "`cupertino save` will run with iter-1+2 enrichment only (~16% constraint coverage). "
+                    + "Re-run `cupertino setup` once network resolves, or run "
+                    + "`cupertino-constraints-gen` locally to produce the file."
+            )
+
         case .finished:
             break
         }

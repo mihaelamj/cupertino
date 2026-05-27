@@ -98,6 +98,40 @@ extension Distribution.SetupService {
             throw Distribution.SetupError.missingFile(placement.descriptor.filename)
         }
 
+        // 1b. Apple-constraints sidecar download (#759 iter 3 enrichment input).
+        //
+        // `apple-constraints.json` is the authoritative Apple SDK
+        // constraints table produced by `cupertino-constraints-gen`
+        // from the cupertino-symbolgraphs corpus. The cupertino
+        // indexer reads it during `save` and runs
+        // `Search.Index.applyAppleStaticConstraints` which lifts
+        // `doc_symbols.generic_constraints` coverage from ~16% (iter
+        // 1+2 only) to ~38% (with iter 3). Without it the indexer
+        // silently degrades.
+        //
+        // The file ships in the cupertino-docs git tree at
+        // `apple-constraints.json` (committed 2026-05-27 commit
+        // 0860213a). Setup fetches it via the GitHub raw URL since
+        // it's not in the v1.2.0 release zip — adding it to a future
+        // release as a sibling asset is a separate workflow change.
+        //
+        // Optional + non-fatal: a setup that fails to fetch the
+        // sidecar still ends in a usable state (saves degrade to iter
+        // 1+2 silently as they always have). Surfaced via a warning
+        // log + a `.constraintsFileMissing` outcome flag.
+        let constraintsURLString = "https://raw.githubusercontent.com/mihaelamj/cupertino-docs/main/apple-constraints.json"
+        let constraintsLocalURL = request.baseDir.appendingPathComponent("apple-constraints.json")
+        do {
+            try await downloadConstraintsSidecar(
+                from: constraintsURLString,
+                to: constraintsLocalURL,
+                events: events
+            )
+        } catch {
+            // Don't throw. Save still works without it.
+            events.observe(event: .constraintsDownloadSkipped(reason: "\(error)"))
+        }
+
         // Stamp version on success. Non-fatal; the file is an
         // optimization, not correctness — but #673 Phase B surfaces the
         // failure on stderr so a broken stamp (which makes
@@ -156,6 +190,33 @@ extension Distribution.SetupService {
         // extracted DBs are already in place + the setup completed).
         try? FileManager.default.removeItem(at: zipURL)
         events.observe(event: .extractComplete(label: label))
+    }
+
+    /// Fetch the `apple-constraints.json` sidecar from cupertino-docs's
+    /// raw GitHub URL. Distinct from `downloadAndExtract` because the
+    /// sidecar is a single JSON file, not a zip archive needing
+    /// extraction.
+    ///
+    /// 2026-05-27: added after a fresh Claw mini reindex ran 9.5 hours
+    /// without the constraints file present, locking in ~16% constraint
+    /// coverage instead of the ~38% the v0.1.1 symbolgraph corpus would
+    /// have delivered. The sidecar is now committed to
+    /// cupertino-docs/main; setup pulls it as a sibling artifact so
+    /// fresh installs get the full enrichment path automatically.
+    private static func downloadConstraintsSidecar(
+        from urlString: String,
+        to localURL: URL,
+        events: any Distribution.SetupService.EventObserving
+    ) async throws {
+        let label = "Apple constraints sidecar"
+        events.observe(event: .downloadStart(label: label))
+        try await Distribution.ArtifactDownloader.download(
+            from: urlString,
+            to: localURL,
+            progress: DownloadProgressForwarder(label: label, events: events)
+        )
+        let bytes = (try? FileManager.default.attributesOfItem(atPath: localURL.path)[.size] as? Int64) ?? 0
+        events.observe(event: .downloadComplete(label: label, sizeBytes: bytes))
     }
 
     /// Rename pre-existing DBs to `.backup-<version>-<iso8601>` siblings
