@@ -11,6 +11,11 @@ extension Search {
     /// but never write to the search index.  Centralising these helpers keeps each strategy
     /// type focused on orchestration while ensuring a single, well-tested implementation
     /// of every shared concern (file discovery, deduplication, front-matter parsing, etc.).
+    // swiftlint:disable:next type_body_length
+    // (this enum is the shared-helper namespace used by every
+    // SourceIndexingStrategy concrete; splitting across types would
+    // scatter related discovery + parsing logic. Pre-#1086 baseline
+    // was 376 lines; #1086 added the cache-snapshot dedup helper.)
     public enum StrategyHelpers {
         // MARK: - File Discovery
 
@@ -54,17 +59,6 @@ extension Search {
                 guard ext == "json" || ext == "md" else { continue }
                 // Skip crawl-manifest files (fix #110).
                 if fileURL.lastPathComponent == "metadata.json" { continue }
-                // #1084: skip URL-encoded cache snapshots. The
-                // swift-org/swift-book fetch pipeline writes a
-                // `https_docs.swift.org_<path>_<hash>.json` file per
-                // crawl version alongside the canonical
-                // `<path>.md`/`.json` pair. The cache snapshots are
-                // for re-fetching, not for indexing — indexing them
-                // produces duplicate rows (one per Swift version
-                // crawled) and mangled URIs derived from the URL-
-                // encoded filename. The canonical pair carries the
-                // same content with a clean filename → clean URI.
-                if fileURL.lastPathComponent.hasPrefix("https_") { continue }
                 var isDirectory: ObjCBool = false
                 if FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDirectory),
                    !isDirectory.boolValue {
@@ -72,23 +66,100 @@ extension Search {
                 }
             }
 
-            // First pass: collect JSON files and record their base names.
-            for file in allFiles where file.pathExtension.lowercased() == "json" {
-                let basename = file.deletingPathExtension().lastPathComponent
+            // #1086: partition cache-snapshot vs canonical files. The
+            // swift-org/swift-book fetch pipeline writes a new
+            // `https_docs.swift.org_<path>_<8hex>.json` per crawl
+            // alongside the (older, never-overwritten) canonical
+            // `<path>.md`/`.json` pair. The cache file with the
+            // latest mtime carries the freshest content. #1084
+            // (predecessor) dropped all cache files, which made the
+            // index serve the stale canonical content. #1086 picks
+            // the most-recent cache file per stem and falls back to
+            // the canonical only when no cache covers the stem.
+            let cacheFiles = allFiles.filter { $0.lastPathComponent.hasPrefix("https_") }
+            let canonicalFiles = allFiles.filter { !$0.lastPathComponent.hasPrefix("https_") }
+            let latestCacheByStem = Self.latestCacheSnapshotPerStem(in: cacheFiles)
+            let coveredStems = Set(latestCacheByStem.keys)
+            for (_, cacheFile) in latestCacheByStem {
+                docFiles.append(cacheFile)
+            }
+
+            // For canonical files NOT covered by a cache snapshot,
+            // apply the legacy `.md`/`.json` sibling dedup so a
+            // topic with both canonical forms contributes one row.
+            for file in canonicalFiles where file.pathExtension.lowercased() == "json" {
+                let stem = file.deletingPathExtension().lastPathComponent
+                guard !coveredStems.contains(stem) else { continue }
                 let dir = file.deletingLastPathComponent().path
-                jsonFiles.insert("\(dir)/\(basename)")
+                jsonFiles.insert("\(dir)/\(stem)")
                 docFiles.append(file)
             }
-            // Second pass: add Markdown files only when no JSON sibling was found.
-            for file in allFiles where file.pathExtension.lowercased() == "md" {
-                let basename = file.deletingPathExtension().lastPathComponent
+            for file in canonicalFiles where file.pathExtension.lowercased() == "md" {
+                let stem = file.deletingPathExtension().lastPathComponent
+                guard !coveredStems.contains(stem) else { continue }
                 let dir = file.deletingLastPathComponent().path
-                if !jsonFiles.contains("\(dir)/\(basename)") {
+                if !jsonFiles.contains("\(dir)/\(stem)") {
                     docFiles.append(file)
                 }
             }
 
             return docFiles
+        }
+
+        /// #1086: group `https_*.json` cache files by their stem
+        /// (everything between the `https_<host>_` prefix and the
+        /// `_<8hex>.json` suffix). For each stem, return the file
+        /// with the latest filesystem modification time. The stem
+        /// matches the canonical file's basename so callers can
+        /// detect "this stem is already covered by a cache snapshot"
+        /// without parsing the JSON.
+        ///
+        /// Files that don't match the expected
+        /// `https_<host>_<stem>_<8hex>.json` pattern are silently
+        /// skipped (defensive — production cache files always
+        /// follow it).
+        private static func latestCacheSnapshotPerStem(in files: [URL]) -> [String: URL] {
+            // Pattern: `^https_` + host + `_` + stem + `_<8hex>.json`
+            //   - host has at least one `.` (`docs.swift.org`,
+            //     `developer.apple.com`)
+            //   - stem is the URL path with `/` → `_`
+            //   - hash is exactly 8 lowercase-hex chars
+            //
+            // The greedy capture on the stem swallows everything up
+            // to the LAST `_<8hex>.json` suffix.
+            let regex: NSRegularExpression
+            do {
+                regex = try NSRegularExpression(
+                    pattern: #"^https_[^_]+(?:\.[^_/]+)+_(.+)_[0-9a-f]{8}\.json$"#,
+                    options: []
+                )
+            } catch {
+                return [:]
+            }
+            var winnerByStem: [String: URL] = [:]
+            var mtimeByStem: [String: Date] = [:]
+            for file in files where file.pathExtension.lowercased() == "json" {
+                let name = file.lastPathComponent
+                guard
+                    let match = regex.firstMatch(
+                        in: name,
+                        options: [],
+                        range: NSRange(name.startIndex..<name.endIndex, in: name)
+                    ),
+                    let stemRange = Range(match.range(at: 1), in: name)
+                else {
+                    continue
+                }
+                let stem = String(name[stemRange])
+                let mtime = (try? file.resourceValues(forKeys: [.contentModificationDateKey]))?
+                    .contentModificationDate ?? .distantPast
+                if let existing = mtimeByStem[stem], existing >= mtime {
+                    continue
+                }
+                winnerByStem[stem] = file
+                mtimeByStem[stem] = mtime
+            }
+            return winnerByStem
         }
 
         /// Recursively find all `.md` files under `directory`.
