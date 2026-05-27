@@ -46,12 +46,81 @@ struct Issue1110ArchiveSizeProbeTests {
         } catch {
             Issue.record("Unexpected error: \(error)")
         }
-        // Pre-fix the GET would have been issued for every ref in
-        // candidateRefs (HEAD/main/master = 3 GETs). Post-fix: 3 HEADs
-        // (one per ref, each bails). Each HEAD increments the counter
-        // once; no GET ever runs.
-        #expect(Issue1110Stub.requestCount >= 1, "observed: \(Issue1110Stub.observedMethods)")
+        // The probe throws on the first oversize verdict, exiting the
+        // candidateRefs loop. Exactly 1 HEAD and 0 GETs (not one HEAD
+        // per ref as a prior comment incorrectly claimed).
+        #expect(Issue1110Stub.requestCount == 1, "observed: \(Issue1110Stub.observedMethods)")
         #expect(Issue1110Stub.getRequestCount == 0, "observed: \(Issue1110Stub.observedMethods)")
+    }
+
+    // swiftlint:disable:next function_body_length
+    @Test("Multi-ref: HEAD probe runs per ref until one returns oversize")
+    func multiRefHeadProbePerRef() async {
+        // First ref (HEAD) HEAD-probes 404; loop tries `main`, whose
+        // HEAD-probe reports oversize. Total: 2 HEADs, 0 GETs.
+        Issue1110Stub.reset()
+        Issue1110Stub.handler = { request in
+            let path = request.url?.path ?? ""
+            if path.hasSuffix("/tar.gz/HEAD") {
+                let resp = HTTPURLResponse(
+                    url: request.url!,
+                    statusCode: 404,
+                    httpVersion: "HTTP/1.1",
+                    headerFields: nil
+                )!
+                return (resp, Data())
+            }
+            if path.hasSuffix("/tar.gz/main") {
+                let resp = HTTPURLResponse(
+                    url: request.url!,
+                    statusCode: 200,
+                    httpVersion: "HTTP/1.1",
+                    headerFields: ["Content-Length": "\(100 * 1024 * 1024)"]
+                )!
+                return (resp, Data())
+            }
+            // master: never reached in this test
+            let resp = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 404,
+                httpVersion: "HTTP/1.1",
+                headerFields: nil
+            )!
+            return (resp, Data())
+        }
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [Issue1110Stub.self]
+        let session = URLSession(configuration: config)
+        let extractor = Core.PackageIndexing.PackageArchiveExtractor(
+            session: session,
+            candidateRefs: ["HEAD", "main", "master"],
+            maxTarballBytes: 50 * 1024 * 1024
+        )
+
+        do {
+            _ = try await extractor.fetchAndExtract(
+                owner: "test",
+                repo: "multi-ref",
+                destination: URL(fileURLWithPath: "/dev/null")
+            )
+            Issue.record("Expected tarballTooLarge from the main-ref HEAD probe")
+        } catch let error as Core.PackageIndexing.PackageArchiveExtractor.ExtractError {
+            switch error {
+            case .tarballTooLarge(let bytes):
+                #expect(bytes == 100 * 1024 * 1024)
+            default:
+                Issue.record("Wrong ExtractError: \(error)")
+            }
+        } catch {
+            Issue.record("Unexpected error: \(error)")
+        }
+        // HEAD/HEAD-ref + HEAD/main-ref = 2 HEADs. `master` is never
+        // probed because `main` already threw. 0 GETs.
+        #expect(Issue1110Stub.getRequestCount == 0, "observed: \(Issue1110Stub.observedMethods)")
+        // Stub records "HEAD" via .uppercased() so the count check is
+        // method-by-method consistent.
+        let headCount = Issue1110Stub.observedMethods.filter { $0 == "HEAD" }.count
+        #expect(headCount == 2, "observed: \(Issue1110Stub.observedMethods)")
     }
 
     @Test("HEAD reports Content-Length within ceiling: GET runs")

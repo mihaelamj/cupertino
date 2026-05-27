@@ -57,14 +57,21 @@ extension Core.PackageIndexing {
                 // #1110 HEAD probe: bail before the GET when the
                 // server exposes Content-Length and the archive
                 // exceeds maxTarballBytes. Saves the 270 MB of wasted
-                // bytes-on-wire seen on `tuist/tuist` repro. HEAD
-                // returning nil (codeload sometimes doesn't expose
-                // Content-Length on dynamic tarballs, transient
-                // error) falls through to the GET, which keeps the
-                // post-download size check as a safety net.
-                if let size = await probeTarballSize(owner: owner, repo: repo, ref: ref),
-                   size > maxTarballBytes {
+                // bytes-on-wire seen on `tuist/tuist` repro. The
+                // probe also short-circuits the GET when HEAD 404s
+                // (the GET would 404 too; one round-trip saved per
+                // missing ref). HEAD returning .unknown (codeload
+                // omits Content-Length on dynamic tarballs,
+                // transient error) falls through to the GET, which
+                // keeps the post-download size check as a safety
+                // net.
+                switch await probeTarballSize(owner: owner, repo: repo, ref: ref) {
+                case .oversize(let size):
                     throw ExtractError.tarballTooLarge(size)
+                case .absent:
+                    continue
+                case .ok, .unknown:
+                    break
                 }
 
                 switch await downloadTarball(owner: owner, repo: repo, ref: ref) {
@@ -86,38 +93,51 @@ extension Core.PackageIndexing {
             throw ExtractError.tarballNotFound
         }
 
-        /// HEAD-probe the tarball URL and return the server's
-        /// `Content-Length` when available. Returns nil for any
-        /// non-200, missing-header, or transient-error case; the
-        /// caller's downstream GET still carries the post-download
-        /// size guard, so a nil-from-HEAD doesn't compromise the
-        /// ceiling, it just gives up the bytes-on-wire savings for
-        /// that one repo.
+        /// Outcome of a HEAD probe against the tarball URL. The
+        /// caller uses the verdict to short-circuit the corresponding
+        /// GET when the ref is either absent (404) or already over
+        /// the size ceiling.
+        private enum ProbeVerdict {
+            /// HEAD 200 with `Content-Length` over `maxTarballBytes`.
+            /// Caller should throw `tarballTooLarge` without GET.
+            case oversize(Int)
+            /// HEAD 200 with `Content-Length` within ceiling.
+            /// Caller proceeds to GET.
+            case ok
+            /// HEAD 404. The GET would also 404; skip this ref.
+            case absent
+            /// HEAD 200 without `Content-Length`, or a non-{200,404}
+            /// status, or a transient error. Caller proceeds to GET
+            /// and the post-download size check is the safety net.
+            case unknown
+        }
+
+        /// HEAD-probe the tarball URL and return a verdict. See
+        /// `ProbeVerdict` cases for the caller-side meaning of each.
         private func probeTarballSize(
             owner: String,
             repo: String,
             ref: String
-        ) async -> Int? {
+        ) async -> ProbeVerdict {
             let urlString = "https://codeload.github.com/\(owner)/\(repo)/tar.gz/\(ref)"
-            guard let url = URL(string: urlString) else { return nil }
+            guard let url = URL(string: urlString) else { return .unknown }
             var request = URLRequest(url: url)
             request.httpMethod = "HEAD"
             request.setValue(Shared.Constants.App.userAgent, forHTTPHeaderField: "User-Agent")
             request.timeoutInterval = 30
             do {
                 let (_, response) = try await session.data(for: request)
-                guard
-                    let http = response as? HTTPURLResponse,
-                    http.statusCode == 200
-                else { return nil }
+                guard let http = response as? HTTPURLResponse else { return .unknown }
+                if http.statusCode == 404 { return .absent }
+                guard http.statusCode == 200 else { return .unknown }
                 guard
                     let lengthHeader = http.value(forHTTPHeaderField: "Content-Length"),
                     let length = Int(lengthHeader),
                     length > 0
-                else { return nil }
-                return length
+                else { return .unknown }
+                return length > maxTarballBytes ? .oversize(length) : .ok
             } catch {
-                return nil
+                return .unknown
             }
         }
 
