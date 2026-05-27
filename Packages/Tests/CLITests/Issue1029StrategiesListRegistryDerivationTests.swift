@@ -45,78 +45,96 @@ struct Issue1029StrategiesListRegistryDerivationTests {
     @Test("PackagesSource is filtered out by destinationDB != .packages (not in strategies list)")
     func packagesSourceExcludedByDestinationDB() {
         let registry = CLIImpl.makeProductionSourceRegistry()
+        let allIDs = Set(registry.allEnabled.map(\.definition.id))
         let searchOnlyProviders = registry.allEnabled.filter { $0.destinationDB != .packages }
         let searchOnlyIDs = Set(searchOnlyProviders.map(\.definition.id))
+        // PackagesSource is gone; every other registered source remains.
         #expect(!searchOnlyIDs.contains(Shared.Constants.SourcePrefix.packages))
-        #expect(searchOnlyProviders.count == 7) // 8 total - 1 PackagesSource
+        #expect(
+            allIDs.contains(Shared.Constants.SourcePrefix.packages),
+            "PackagesSource must be in the registry (so the filter has something to filter)"
+        )
+        #expect(searchOnlyIDs == allIDs.subtracting([Shared.Constants.SourcePrefix.packages]))
     }
 
-    @Test("With all input directories present, derived strategies list has 7 entries (6 real + 1 SwiftBook noop)")
-    func fullInputProducesSevenStrategies() {
-        let input = Self.fullInput
+    /// Resolves which providers' strategies survive the dispatch
+    /// fan-out under a given input, expressed as the set of
+    /// provider `definition.id` values. Used by the two by-id pin
+    /// tests below to assert specific providers in/out of the list.
+    private func dispatchedProviderIDs(input: Search.DocsIndexingInput) -> Set<String> {
         let registry = CLIImpl.makeProductionSourceRegistry()
         let logger = LoggingModels.Logging.NoopRecording()
-        let strategies = registry.allEnabled
-            .filter { $0.destinationDB != .packages }
-            .compactMap { provider -> (any Search.SourceIndexingStrategy)? in
-                guard let dir = CLIImpl.Command.Save.LiveDocsIndexingRunner.resolveSourceDirectory(for: provider, input: input) else {
-                    return nil
-                }
-                let env = Search.IndexEnvironment(
-                    sourceDirectory: dir,
-                    logger: logger,
-                    markdownStrategy: input.markdownStrategy,
-                    importLogSink: nil,
-                    sampleCatalogProvider: input.sampleCatalogProvider
-                )
-                return provider.makeStrategy(env: env)
+        var dispatched: Set<String> = []
+        for provider in registry.allEnabled where provider.destinationDB != .packages {
+            guard let dir = CLIImpl.Command.Save.LiveDocsIndexingRunner.resolveSourceDirectory(for: provider, input: input) else {
+                continue
             }
-        // Pluggability invariant: with every docs-tier directory
-        // present, the strategies list has one entry per docs-tier
-        // provider in the registry. Adding a new docs-tier source
-        // (registered + a directoryByKey entry) auto-grows the
-        // count without editing this assertion.
-        let expectedDocsTierProviders = registry.allEnabled
-            .filter { $0.destinationDB != .packages }
-            .count
-        #expect(strategies.count == expectedDocsTierProviders)
+            let env = Search.IndexEnvironment(
+                sourceDirectory: dir,
+                logger: logger,
+                markdownStrategy: input.markdownStrategy,
+                importLogSink: nil,
+                sampleCatalogProvider: input.sampleCatalogProvider
+            )
+            _ = provider.makeStrategy(env: env)
+            dispatched.insert(provider.definition.id)
+        }
+        return dispatched
     }
 
-    @Test("With minimal input (only docsDirectory + samples), derived strategies list has 2 entries (apple-docs + samples)")
-    func minimalInputSkipsOptionalDirs() {
-        let input = Self.minimalInput
-        let registry = CLIImpl.makeProductionSourceRegistry()
-        let logger = LoggingModels.Logging.NoopRecording()
-        let strategies = registry.allEnabled
-            .filter { $0.destinationDB != .packages }
-            .compactMap { provider -> (any Search.SourceIndexingStrategy)? in
-                guard let dir = CLIImpl.Command.Save.LiveDocsIndexingRunner.resolveSourceDirectory(for: provider, input: input) else {
-                    return nil
-                }
-                let env = Search.IndexEnvironment(
-                    sourceDirectory: dir,
-                    logger: logger,
-                    markdownStrategy: input.markdownStrategy,
-                    importLogSink: nil,
-                    sampleCatalogProvider: input.sampleCatalogProvider
-                )
-                return provider.makeStrategy(env: env)
-            }
-        // Pluggability invariant: with minimal input, the strategies
-        // list = (providers whose dir is supplied via directoryByKey)
-        // + (sentinel providers that opt out of requiresCorpusDirectory).
-        // Post-#1082 swift-book is no longer a sentinel — it requires
-        // the swift-org dir, which is absent here, so it drops.
-        let expected = registry.allEnabled
-            .filter { $0.destinationDB != .packages }
-            .filter { provider in
-                if let supplied = input.directoryByKey[provider.definition.id], supplied != nil {
-                    return true
-                }
-                return !provider.requiresCorpusDirectory
-            }
-            .count
-        #expect(strategies.count == expected)
+    @Test("With all input directories present, every docs-tier provider's strategy appears (each named)")
+    func fullInputContainsEachDocsTierStrategy() {
+        // Assert each shipped docs-tier source IS present by id.
+        // Hardcoded-count tests broke on new sources (pluggability
+        // violation); fully-derived tests were tautological vs the
+        // production resolver. Naming each source-id catches
+        // regressions where a SPECIFIC provider falls out of the
+        // dispatch (e.g. a future refactor breaks the swift-book
+        // alias propagation and SwiftBookStrategy disappears),
+        // without forcing the test to know the literal count.
+        let dispatched = dispatchedProviderIDs(input: Self.fullInput)
+        for expectedID in [
+            Shared.Constants.SourcePrefix.appleDocs,
+            Shared.Constants.SourcePrefix.hig,
+            Shared.Constants.SourcePrefix.appleArchive,
+            Shared.Constants.SourcePrefix.swiftEvolution,
+            Shared.Constants.SourcePrefix.swiftOrg,
+            Shared.Constants.SourcePrefix.swiftBook,
+            Shared.Constants.SourcePrefix.samples,
+        ] {
+            #expect(dispatched.contains(expectedID), "\(expectedID) provider's strategy must dispatch with fullInput")
+        }
+    }
+
+    @Test("With minimal input (only docsDirectory + samples), only apple-docs + samples strategies fire — each named")
+    func minimalInputProducesAppleDocsAndSamples() {
+        // Assert by provider source-id, not by count, so future
+        // sources don't force test edits AND so we catch regressions
+        // where a specific provider unexpectedly drops in/out.
+        let dispatched = dispatchedProviderIDs(input: Self.minimalInput)
+        // apple-docs has its dir supplied via directoryByKey →
+        // appears. samples is requiresCorpusDirectory=false →
+        // appears via sentinel.
+        #expect(dispatched.contains(Shared.Constants.SourcePrefix.appleDocs))
+        #expect(dispatched.contains(Shared.Constants.SourcePrefix.samples))
+        // swift-org / swift-evolution / apple-archive / hig have NO
+        // dir entry → resolver returns nil → compactMap drops them.
+        for missingID in [
+            Shared.Constants.SourcePrefix.swiftOrg,
+            Shared.Constants.SourcePrefix.swiftEvolution,
+            Shared.Constants.SourcePrefix.appleArchive,
+            Shared.Constants.SourcePrefix.hig,
+        ] {
+            #expect(!dispatched.contains(missingID), "\(missingID) must NOT dispatch without its directory")
+        }
+        // swift-book is aliased to swift-org. With swift-org's dir
+        // absent from the minimal input's directoryByKey, swift-book
+        // ALSO drops out (post-#1082: view-source inherits parent's
+        // entry, which is absent, so the aliased entry is also nil).
+        #expect(
+            !dispatched.contains(Shared.Constants.SourcePrefix.swiftBook),
+            "view-source over an absent parent must drop with the parent"
+        )
     }
 }
 

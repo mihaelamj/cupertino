@@ -1,5 +1,8 @@
-// swiftlint:disable line_length
-// (long lines are descriptive `.disabled("OUTSTANDING — Cluster …")` audit-recipe strings; readability beats wrapping here)
+// swiftlint:disable line_length type_body_length
+// (long lines are descriptive `.disabled("OUTSTANDING — Cluster …")` audit-recipe strings; readability beats
+// wrapping here. The 400+ line type body is a per-cluster check matrix for the pluggability contract — each
+// @Test is one cluster's structural assertion + a STATUS comment explaining the violation it pins;
+// splitting across types would scatter the audit narrative.)
 
 import AppleArchiveSource
 import AppleDocsSource
@@ -847,19 +850,24 @@ struct Issue1042PluggabilityContractTests {
     @Test("Search.SourceProvider.requiresCorpusDirectory drops the hardcoded swift-book + samples sentinel switch in resolveSourceDirectory")
     func requiresCorpusDirectoryIsRegistryDriven() {
         // STATUS: PASSES. Post-#1082: SwiftBookSource no longer
-        // overrides `requiresCorpusDirectory` to false. Pre-#1082 the
-        // false override worked WITH a nil `fetchInfo` to short-
-        // circuit the resolver to `/dev/null`, which left
-        // `swift-book.db` empty (strategy walked an empty dir). Post-
-        // fix SwiftBookSource declares a real `fetchInfo` with
-        // `defaultOutputDirKey = .swiftOrg` (shared with
-        // SwiftOrgSource), the resolver routes the strategy to the
-        // real swift-org corpus tree, and the strategy's
-        // `.swiftBookOnly` scope filter emits the swift-book pages
-        // into `swift-book.db`. Only SampleCodeSource still opts out
-        // (it consumes `env.sampleCatalogProvider`, not a directory).
+        // overrides `requiresCorpusDirectory` to false. The view-
+        // source-directory routing happens via
+        // `corpusDirectoryAlias` (resolver inherits parent's
+        // directory + override) — `requiresCorpusDirectory` stays
+        // true because the strategy DOES read a directory (just not
+        // its own). Only SampleCodeSource still opts out (it
+        // consumes `env.sampleCatalogProvider`, not a directory).
+        //
+        // Collect seenIDs explicitly so the post-loop assertion can
+        // confirm the pin-relevant sources were actually iterated.
+        // Without this, the test silently passes if SwiftBookSource
+        // is removed from the registry composition (the loop simply
+        // never encounters it, the default branch never executes for
+        // it, the pin disappears).
         let registry = registryWithFake()
+        var seenIDs: Set<String> = []
         for prov in registry.allEnabled {
+            seenIDs.insert(prov.definition.id)
             switch prov.definition.id {
             case Shared.Constants.SourcePrefix.samples:
                 #expect(
@@ -873,6 +881,18 @@ struct Issue1042PluggabilityContractTests {
                 )
             }
         }
+        // Pin: both swift-book (the post-#1082 view-source) and
+        // samples (the sentinel) must be in the iterated set. If
+        // either is silently removed from production, the relevant
+        // branch above never fires for it.
+        #expect(
+            seenIDs.contains(Shared.Constants.SourcePrefix.swiftBook),
+            "SwiftBookSource must remain in the registry — the default-branch pin depends on it being iterated"
+        )
+        #expect(
+            seenIDs.contains(Shared.Constants.SourcePrefix.samples),
+            "SampleCodeSource must remain in the registry — the false-override pin depends on it being iterated"
+        )
     }
 
     @Test("Search.SourceProvider.isSearchTier declares which providers join the docs-tier FTS fan-out")
