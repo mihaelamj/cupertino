@@ -24,7 +24,7 @@ The `fetch` command is the unified fetching command that handles both web crawli
   - `apple-docs` - Apple Developer Documentation (web crawl)
   - `swift-org` - Swift.org Documentation (web crawl)
   - `swift-evolution` - Swift Evolution Proposals (web crawl)
-  - `packages` - Swift Package Index metadata + GitHub source archives ([#217](https://github.com/mihaelamj/cupertino/issues/217), see `--skip-metadata` / `--skip-archives`)
+  - `packages` - Swift package source archives (#217). Stage 2 by default; pass `--refresh-metadata` to also pull the SPI metadata + stars (#1108).
   - `apple-sample-code` - Apple Sample Code (direct download from Apple, legacy bundle path, requires auth)
   - `samples` - Apple Sample Code (git clone from GitHub, recommended)
   - `apple-archive` - Apple Archive guides (legacy programming guides)
@@ -73,8 +73,8 @@ No-op in `--discovery-mode json-only` and `--discovery-mode webview-only`.
 
 - [--output-dir](output-dir.md) - Output directory for downloaded resources
 - [--limit](limit.md) - Maximum number of items to fetch (packages / apple-sample-code sources only)
-- `--skip-metadata` - Skip the metadata-refresh stage of `--source packages` ([#217](https://github.com/mihaelamj/cupertino/issues/217))
-- `--skip-archives` - Skip the archive-download stage of `--source packages` ([#217](https://github.com/mihaelamj/cupertino/issues/217))
+- [--refresh-metadata](option%20%28--%29/refresh-metadata.md) - Opt into the SPI metadata + star-count refresh stage of `--source packages` (off by default post-[#1108](https://github.com/mihaelamj/cupertino/issues/1108))
+- [--skip-archives](option%20%28--%29/skip-archives.md) - Skip the archive-download stage of `--source packages` ([#217](https://github.com/mihaelamj/cupertino/issues/217))
 - `--annotate-availability` - Opt-in stage 3: walk the on-disk packages corpus and write per-package `availability.json` (deployment targets + `@available` attrs) ([#219](https://github.com/mihaelamj/cupertino/issues/219))
 - `--fast` - Use higher concurrency and shorter timeouts for `--source availability` (faster but more aggressive)
 

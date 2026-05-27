@@ -57,22 +57,24 @@ extension CLIImpl.Command {
               hig               Human Interface Guidelines
               apple-archive     Apple Archive guides (legacy Core Animation, Quartz 2D, KVO/KVC, etc.)
               availability      Update API availability metadata for an existing docs corpus (on-disk maintenance pass; not a registry source)
-              packages          Swift package metadata + source archives, two-stage fetch:
-                                  Stage 1: refresh metadata from Swift Package Index
-                                  Stage 2: download GitHub source archives
-                                Use --skip-metadata or --skip-archives to run only one stage.
+              packages          Swift package archives from `codeload.github.com`.
+                                Default: stage 2 only (download the curated priority archives).
+                                Pass --refresh-metadata to ALSO run stage 1 (re-pull the
+                                10,995-package list + star counts from Swift Package Index;
+                                only the TUI's stars-sort consumes this output, so the
+                                default skips it). --skip-archives still runs stage 1 alone.
                                 Use --annotate-availability after stage 2 to write availability.json.
               apple-sample-code Sample code zip archives from Apple (legacy bundle download; prefer 'samples')
               samples           Apple sample-code projects from GitHub (recommended)
               all               Run all sources in parallel
 
             EXAMPLES
-              cupertino fetch                                  # Apple docs (default)
-              cupertino fetch --source swift-evolution         # Swift Evolution proposals
-              cupertino fetch --source packages                # package metadata + archives
-              cupertino fetch --source packages --skip-metadata    # archives only
-              cupertino fetch --source packages --skip-archives    # metadata only
-              cupertino fetch --source samples                 # Apple sample-code from GitHub
+              cupertino fetch                                       # Apple docs (default)
+              cupertino fetch --source swift-evolution              # Swift Evolution proposals
+              cupertino fetch --source packages                     # priority package archives (fast)
+              cupertino fetch --source packages --refresh-metadata  # also re-pull 10,995-pkg list + stars (TUI)
+              cupertino fetch --source packages --skip-archives     # metadata refresh only
+              cupertino fetch --source samples                      # Apple sample-code from GitHub
             """
         )
 
@@ -81,7 +83,7 @@ extension CLIImpl.Command {
             help: """
             Source to fetch (canonical id from the registry post-#1007 source-unification): \
             apple-docs (Apple), swift-org (Swift.org), swift-evolution (Swift Evolution), \
-            packages (Swift package metadata + archives, see --skip-metadata / --skip-archives), \
+            packages (Swift package archives; pass --refresh-metadata for the TUI's stars-sort list), \
             apple-sample-code (sample code zip from Apple), samples (sample code from GitHub, recommended), \
             apple-archive (Apple Archive guides), hig (Human Interface Guidelines), \
             availability (API version info for existing docs, maintenance pass), \
@@ -190,13 +192,24 @@ extension CLIImpl.Command {
 
         @Flag(
             name: .long,
-            help: "Skip the Swift Package Index metadata refresh stage of `--source packages` (run only the archive download)."
+            help: """
+            Run the Swift Package Index metadata + star-count refresh stage of `--source packages` \
+            (10,995-package metadata pull, throttled at ~1.2s per package without GITHUB_TOKEN, \
+            ~4 hours total). Off by default. Only the TUI's stars-sort consumes the output, \
+            and the load-bearing archive download (stage 2) doesn't need it. Pass this flag \
+            when you actually want the refreshed metadata.
+            """
         )
-        var skipMetadata: Bool = false
+        var refreshMetadata: Bool = false
 
         @Flag(
             name: .long,
-            help: "Skip the GitHub archive download stage of `--source packages` (run only the metadata refresh)."
+            help: """
+            Skip the GitHub archive download stage of `--source packages`. Pair with \
+            `--refresh-metadata` to run only the metadata refresh, or with \
+            `--annotate-availability` to re-annotate an existing on-disk corpus without \
+            downloading anything.
+            """
         )
         var skipArchives: Bool = false
 
@@ -370,7 +383,12 @@ extension CLIImpl.Command {
                 discoveryModeRawValue: discoveryMode.rawValue,
                 onlyAccepted: onlyAccepted,
                 limit: limit,
-                skipMetadata: skipMetadata,
+                // #1108: stage 1 (SPI metadata + star-count refresh) is
+                // opt-in via `--refresh-metadata`. CLI flag and
+                // FetchEnvironment field share the same polarity post-
+                // critic; the inverted `skipMetadata` field was renamed
+                // here to match.
+                refreshMetadata: refreshMetadata,
                 skipArchives: skipArchives,
                 annotateAvailability: annotateAvailability,
                 recurse: recurse,

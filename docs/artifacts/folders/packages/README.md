@@ -9,9 +9,9 @@ Swift package metadata from the Swift Package Index + GitHub, plus extracted sou
 ## Created By
 
 ```bash
-cupertino fetch --source packages                     # both stages
-cupertino fetch --source packages --skip-archives     # stage 1 only (metadata)
-cupertino fetch --source packages --skip-metadata     # stage 2 only (archives)
+cupertino fetch --source packages                                   # stage 2 only (archives, default)
+cupertino fetch --source packages --refresh-metadata                # stage 1 + stage 2
+cupertino fetch --source packages --refresh-metadata --skip-archives  # stage 1 only (metadata)
 ```
 
 ## Structure

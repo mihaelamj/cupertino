@@ -94,8 +94,8 @@ extension Indexer {
                 } else {
                     lines.append("    ⚠  availability.json sidecars  (\(stats.sidecars)/\(stats.packages))")
                     lines.append(
-                        "       Missing \(stats.packages - stats.sidecars) — run "
-                            + "`cupertino fetch --source packages --skip-metadata --skip-archives "
+                        "       Missing \(stats.packages - stats.sidecars). Run "
+                            + "`cupertino fetch --source packages --skip-archives "
                             + "--annotate-availability` to backfill."
                     )
                 }
