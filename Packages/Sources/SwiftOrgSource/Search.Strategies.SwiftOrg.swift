@@ -113,7 +113,9 @@ extension Search {
 /// content with no Apple-platform applicability — they get NULL
 /// `min_<platform>` columns. Everything else (blog posts, articles,
 /// install guides, DocC docs) inherits the universal Swift baseline.
-private struct SwiftOrgPlatformResolver: Search.PlatformVersionsResolver {
+// #1116: internal (was private) so the per-resolver tagging behaviour
+// can be unit-tested directly.
+struct SwiftOrgPlatformResolver: Search.PlatformVersionsResolver {
     func versions(for url: URL) -> Search.PlatformVersions {
         // The URL path encoded the source layout: swift-book/ pages
         // get filename-derived slugs; the rest carry the full
@@ -121,13 +123,26 @@ private struct SwiftOrgPlatformResolver: Search.PlatformVersionsResolver {
         // sits under `/documentation/server/...` and serialises to
         // filenames starting `documentation_server_`. Check both
         // the URL path itself and the slug-form.
-        let path = url.path.lowercased()
-        let slug = url.lastPathComponent.lowercased()
-        if path.contains("/documentation/server/") || slug.hasPrefix("documentation_server_") {
+        if isServerSide(url) {
             return Search.PlatformVersions(
                 iOS: nil, macOS: nil, tvOS: nil, watchOS: nil, visionOS: nil
             )
         }
         return .universalSwift
+    }
+
+    /// #1116: source-specific tag. Pre-fix every resolver-stamped
+    /// row carried `"swift-book-chapter"` because the helper had
+    /// the label hardcoded. Server-side Linux-deployment rows tag
+    /// `swift-org-linux-server`; cross-platform Swift content tags
+    /// `swift-org-universal`.
+    func availabilitySource(for url: URL) -> String? {
+        isServerSide(url) ? "swift-org-linux-server" : "swift-org-universal"
+    }
+
+    private func isServerSide(_ url: URL) -> Bool {
+        let path = url.path.lowercased()
+        let slug = url.lastPathComponent.lowercased()
+        return path.contains("/documentation/server/") || slug.hasPrefix("documentation_server_")
     }
 }
