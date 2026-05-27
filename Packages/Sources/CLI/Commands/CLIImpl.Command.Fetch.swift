@@ -52,7 +52,8 @@ extension CLIImpl.Command {
             SOURCES (--source). Post-#1031 each source is the canonical ID from the per-source target registry.
 
               apple-docs        Apple developer documentation (default)
-              swift-org         Swift.org documentation
+              swift-org         Swift.org documentation (swift-org content; swift-book ships separately, #1093)
+              swift-book        The Swift Programming Language book (docs.swift.org/swift-book/)
               swift-evolution   Swift Evolution proposals
               hig               Human Interface Guidelines
               apple-archive     Apple Archive guides (legacy Core Animation, Quartz 2D, KVO/KVC, etc.)
@@ -70,6 +71,7 @@ extension CLIImpl.Command {
 
             EXAMPLES
               cupertino fetch                                       # Apple docs (default)
+              cupertino fetch --source swift-book                   # The Swift Programming Language book
               cupertino fetch --source swift-evolution              # Swift Evolution proposals
               cupertino fetch --source packages                     # priority package archives (fast)
               cupertino fetch --source packages --refresh-metadata  # also re-pull 10,995-pkg list + stars (TUI)
@@ -82,7 +84,8 @@ extension CLIImpl.Command {
             name: .long,
             help: """
             Source to fetch (canonical id from the registry post-#1007 source-unification): \
-            apple-docs (Apple), swift-org (Swift.org), swift-evolution (Swift Evolution), \
+            apple-docs (Apple), swift-org (Swift.org), swift-book (The Swift Programming Language book), \
+            swift-evolution (Swift Evolution), \
             packages (Swift package archives; pass --refresh-metadata for the TUI's stars-sort list), \
             apple-sample-code (sample code zip from Apple), samples (sample code from GitHub, recommended), \
             apple-archive (Apple Archive guides), hig (Human Interface Guidelines), \
