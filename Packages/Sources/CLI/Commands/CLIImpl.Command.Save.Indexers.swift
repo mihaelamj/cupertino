@@ -147,6 +147,15 @@ extension CLIImpl.Command.Save {
                 swiftOrgDir.map { URL(fileURLWithPath: $0).expandingTildeInPath },
             Shared.Constants.SourcePrefix.appleArchive:
                 archiveDir.map { URL(fileURLWithPath: $0).expandingTildeInPath },
+            // #1063: hig + swift-book join the override dict so
+            // their --*-dir flags route through the registry-derived
+            // resolution path. Pre-fix neither was overridable; users
+            // had to symlink `<base>/{hig,swift-book}` to their
+            // corpus dir before running save.
+            Shared.Constants.SourcePrefix.hig:
+                higDir.map { URL(fileURLWithPath: $0).expandingTildeInPath },
+            Shared.Constants.SourcePrefix.swiftBook:
+                swiftBookDir.map { URL(fileURLWithPath: $0).expandingTildeInPath },
         ]
         let saveDirectoryByKey = CLIImpl.makeDocsIndexingDirectoryByKey(
             registry: CLIImpl.makeProductionSourceRegistry(),
@@ -160,7 +169,14 @@ extension CLIImpl.Command.Save {
             evolutionDir: evolutionDir.map { URL(fileURLWithPath: $0).expandingTildeInPath },
             swiftOrgDir: swiftOrgDir.map { URL(fileURLWithPath: $0).expandingTildeInPath },
             archiveDir: archiveDir.map { URL(fileURLWithPath: $0).expandingTildeInPath },
-            higDir: nil,
+            // #1063: --hig-dir / --swift-book-dir override the
+            // default `<base>/<key>` resolution per source.
+            // swift-book is resolved via the directoryByKey dict
+            // (its corpus is treated as a view-source on swift-org
+            // post-#1093 but ships its own URL key); the override
+            // layers in through CLIImpl.makeDocsIndexingDirectoryByKey
+            // below.
+            higDir: higDir.map { URL(fileURLWithPath: $0).expandingTildeInPath },
             searchDB: resolvedSearchDB,
             clear: clear,
             directoryByKey: saveDirectoryByKey,
