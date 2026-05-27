@@ -1,4 +1,5 @@
 import Foundation
+import HIGPlatformInferencePass
 import LoggingModels
 import SearchModels
 import SearchStrategyHelpers
@@ -144,19 +145,31 @@ extension Search {
                     )
                     let pageJSON = Search.StrategyHelpers.encodeStructuredPageToJSON(structuredPage)
 
-                    // HIG applies universally to all Apple platforms.
+                    // #1078: per-topic platform inference via the
+                    // shared `HIGPlatformRules` table. Pre-fix every
+                    // HIG row was stamped with the universal earliest
+                    // version of every Apple platform (iOS 2.0,
+                    // macOS 10.0, tvOS 9.0, watchOS 2.0, visionOS 1.0)
+                    // regardless of topic; the post-#1073 SQL pass
+                    // remediated this by NULLing non-applicable
+                    // columns post-hoc. Now the strategy supplies the
+                    // correct nil/version per platform at index time,
+                    // so the data is honest from the start (the SQL
+                    // pass remains as a backfill safety net for any
+                    // pre-#1078 indexes still in the wild).
+                    let versions = HIGPlatformRules.minimumVersions(for: uri)
                     try await index.indexStructuredDocument(
                         uri: uri,
                         source: source,
                         framework: category,
                         page: structuredPage,
                         jsonData: pageJSON,
-                        overrideMinIOS: "2.0",
-                        overrideMinMacOS: "10.0",
-                        overrideMinTvOS: "9.0",
-                        overrideMinWatchOS: "2.0",
-                        overrideMinVisionOS: "1.0",
-                        overrideAvailabilitySource: "universal"
+                        overrideMinIOS: versions.iOS,
+                        overrideMinMacOS: versions.macOS,
+                        overrideMinTvOS: versions.tvOS,
+                        overrideMinWatchOS: versions.watchOS,
+                        overrideMinVisionOS: versions.visionOS,
+                        overrideAvailabilitySource: "hig-topic-inferred"
                     )
                     indexed += 1
                 } catch {
