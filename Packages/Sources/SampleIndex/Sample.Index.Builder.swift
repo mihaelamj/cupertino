@@ -253,34 +253,20 @@ extension Sample.Index {
             // is empty for them. Pre-fix the row landed with all
             // `min_<platform>` NULL, making any `--min-<platform>`
             // filter exclude every sample. Fall back to per-
-            // framework lookup from
-            // `SampleFrameworkAvailability` (top ~30 frameworks
-            // covering the sample-code corpus). Unknown frameworks
-            // get the universal Apple baseline (iOS 8.0 / macOS
-            // 10.9 / etc).
+            // framework lookup from `SampleFrameworkAvailability`
+            // (top ~55 frameworks covering the sample-code corpus).
+            // Only stamp when the lookup is exact — unknown
+            // frameworks leave platforms NULL rather than claiming
+            // 5-platform support the framework probably doesn't
+            // have.
             let frameworks = entry?.frameworks ?? []
-            let primaryFramework = frameworks.first ?? ""
-            let deploymentTargets: [String: String]
-            let availabilitySource: String?
-            if !parsedDeploymentTargets.isEmpty {
-                deploymentTargets = parsedDeploymentTargets
-                availabilitySource = "sample-swift"
-            } else if !primaryFramework.isEmpty {
-                let fallback = SampleFrameworkAvailability.versions(for: primaryFramework)
-                var dict: [String: String] = [:]
-                // Keys match `Sample.Index.Database.bindMin`'s lookup
-                // ("iOS"/"macOS"/etc., not lowercased).
-                if let ver = fallback.iOS { dict["iOS"] = ver }
-                if let ver = fallback.macOS { dict["macOS"] = ver }
-                if let ver = fallback.tvOS { dict["tvOS"] = ver }
-                if let ver = fallback.watchOS { dict["watchOS"] = ver }
-                if let ver = fallback.visionOS { dict["visionOS"] = ver }
-                deploymentTargets = dict
-                availabilitySource = dict.isEmpty ? nil : "sample-framework-inferred"
-            } else {
-                deploymentTargets = [:]
-                availabilitySource = nil
-            }
+            let inferredFrameworkProbe = frameworks.first
+                ?? SampleFrameworkAvailability.frameworkFromProjectId(projectId)
+                ?? ""
+            let availabilityInfo = resolveSampleAvailability(
+                parsedDeploymentTargets: parsedDeploymentTargets,
+                frameworkProbe: inferredFrameworkProbe
+            )
 
             // Create project record (with availability metadata populated)
             let project = Project(
@@ -293,8 +279,8 @@ extension Sample.Index {
                 zipFilename: zipFilename,
                 fileCount: files.count,
                 totalSize: totalSize,
-                deploymentTargets: deploymentTargets,
-                availabilitySource: availabilitySource
+                deploymentTargets: availabilityInfo.deploymentTargets,
+                availabilitySource: availabilityInfo.availabilitySource
             )
 
             // Index project
@@ -356,7 +342,7 @@ extension Sample.Index {
             try writeAvailabilitySidecar(
                 nextTo: zipURL,
                 projectId: projectId,
-                deploymentTargets: deploymentTargets,
+                deploymentTargets: availabilityInfo.deploymentTargets,
                 fileAvailability: fileAvailability
             )
 
@@ -371,6 +357,60 @@ extension Sample.Index {
                 return [:]
             }
             return ASTIndexer.AvailabilityParsers.parsePlatforms(from: manifest)
+        }
+
+        /// Resolved availability stamp from a project's parsed
+        /// `Package.swift` deployment targets and a framework probe.
+        /// Source of truth shared by both indexing paths.
+        struct SampleAvailability {
+            let deploymentTargets: [String: String]
+            let availabilitySource: String?
+        }
+
+        /// #1104 + critic-pass: pick the strongest signal available
+        /// for a sample's deployment targets.
+        ///
+        /// Priority:
+        /// 1. `Package.swift platforms:` declarations (verified
+        ///    by-hand by the sample author) → tagged `sample-swift`.
+        /// 2. Exact `SampleFrameworkAvailability` match for the
+        ///    framework probe (catalog `frameworks` field or the
+        ///    project-id prefix when the catalog has no entry) →
+        ///    tagged `sample-framework-inferred`.
+        /// 3. Otherwise NULL platforms + nil source. Stamping the
+        ///    universal-Apple fallback for unknown frameworks
+        ///    produces false-positive `--min-tvos`/`--min-watchos`
+        ///    matches (e.g. iOS-only CarPlay claiming tvOS 9.0),
+        ///    so unknown frameworks deliberately remain NULL.
+        func resolveSampleAvailability(
+            parsedDeploymentTargets: [String: String],
+            frameworkProbe: String
+        ) -> SampleAvailability {
+            if !parsedDeploymentTargets.isEmpty {
+                return SampleAvailability(
+                    deploymentTargets: parsedDeploymentTargets,
+                    availabilitySource: "sample-swift"
+                )
+            }
+            guard !frameworkProbe.isEmpty else {
+                return SampleAvailability(deploymentTargets: [:], availabilitySource: nil)
+            }
+            let lookup = SampleFrameworkAvailability.versions(for: frameworkProbe)
+            guard lookup.isExact else {
+                return SampleAvailability(deploymentTargets: [:], availabilitySource: nil)
+            }
+            var dict: [String: String] = [:]
+            // Keys match `Sample.Index.Database.bindMin`'s lookup
+            // ("iOS"/"macOS"/etc., not lowercased).
+            if let ver = lookup.versions.iOS { dict["iOS"] = ver }
+            if let ver = lookup.versions.macOS { dict["macOS"] = ver }
+            if let ver = lookup.versions.tvOS { dict["tvOS"] = ver }
+            if let ver = lookup.versions.watchOS { dict["watchOS"] = ver }
+            if let ver = lookup.versions.visionOS { dict["visionOS"] = ver }
+            return SampleAvailability(
+                deploymentTargets: dict,
+                availabilitySource: dict.isEmpty ? nil : "sample-framework-inferred"
+            )
         }
 
         /// Write `<projectId>.availability.json` next to the zip in
@@ -534,17 +574,33 @@ extension Sample.Index {
             // Calculate totals
             let totalSize = files.reduce(0) { $0 + $1.size }
 
+            // #1104: same per-framework availability fallback as
+            // `indexProject` so directory-only projects (cupertino-
+            // sample-code git-clone path with no zips) also land with
+            // honest `min_<platform>` columns instead of all NULL.
+            let parsedDeploymentTargets = readPackageSwiftPlatforms(in: projectRoot)
+            let frameworks = entry?.frameworks ?? []
+            let inferredFrameworkProbe = frameworks.first
+                ?? SampleFrameworkAvailability.frameworkFromProjectId(projectId)
+                ?? ""
+            let availabilityInfo = resolveSampleAvailability(
+                parsedDeploymentTargets: parsedDeploymentTargets,
+                frameworkProbe: inferredFrameworkProbe
+            )
+
             // Create project record
             let project = Project(
                 id: projectId,
                 title: entry?.title ?? titleFromProjectId(projectId),
                 description: entry?.description ?? "",
-                frameworks: entry?.frameworks ?? [],
+                frameworks: frameworks,
                 readme: readme,
                 webURL: entry?.webURL ?? "",
                 zipFilename: "", // No ZIP file for extracted directories
                 fileCount: files.count,
-                totalSize: totalSize
+                totalSize: totalSize,
+                deploymentTargets: availabilityInfo.deploymentTargets,
+                availabilitySource: availabilityInfo.availabilitySource
             )
 
             // Index project
