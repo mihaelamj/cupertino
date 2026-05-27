@@ -1,5 +1,8 @@
-// swiftlint:disable line_length
-// (long lines are descriptive `.disabled("OUTSTANDING — Cluster …")` audit-recipe strings; readability beats wrapping here)
+// swiftlint:disable line_length type_body_length
+// (long lines are descriptive `.disabled("OUTSTANDING — Cluster …")` audit-recipe strings; readability beats
+// wrapping here. The 400+ line type body is a per-cluster check matrix for the pluggability contract — each
+// @Test is one cluster's structural assertion + a STATUS comment explaining the violation it pins;
+// splitting across types would scatter the audit narrative.)
 
 import AppleArchiveSource
 import AppleDocsSource
@@ -85,7 +88,9 @@ private struct ContractFakeSourceProvider: Search.SourceProvider {
         .swiftOrg
     }
 
-    var fetchInfo: Search.FetchInfo? { nil }
+    var fetchInfo: Search.FetchInfo? {
+        nil
+    }
 
     var capabilities: Search.Capabilities {
         Search.Capabilities(
@@ -95,7 +100,9 @@ private struct ContractFakeSourceProvider: Search.SourceProvider {
         )
     }
 
-    var legacySourceIDAliases: Set<String> { [] }
+    var legacySourceIDAliases: Set<String> {
+        []
+    }
 
     func makeStrategy(env _: Search.IndexEnvironment) -> any Search.SourceIndexingStrategy {
         preconditionFailure("Contract test never invokes makeStrategy; #935 covers the strategy roundtrip path")
@@ -628,8 +635,13 @@ struct Issue1042PluggabilityContractTests {
         // assertion below pins both shapes.
         struct FakeURIResourceStrategy: SearchModels.Search.URIResourceStrategy {
             let scheme: String
-            func listResources(env _: SearchModels.Search.URIResourceEnvironment) async throws -> [SearchModels.Search.URIResource] { [] }
-            func readMarkdown(uri _: String, env _: SearchModels.Search.URIResourceEnvironment) async throws -> String? { nil }
+            func listResources(env _: SearchModels.Search.URIResourceEnvironment) async throws -> [SearchModels.Search.URIResource] {
+                []
+            }
+
+            func readMarkdown(uri _: String, env _: SearchModels.Search.URIResourceEnvironment) async throws -> String? {
+                nil
+            }
         }
         let strategies: [any SearchModels.Search.URIResourceStrategy] = [
             FakeURIResourceStrategy(scheme: ContractFakeSourceProvider.fakeID),
@@ -837,23 +849,26 @@ struct Issue1042PluggabilityContractTests {
 
     @Test("Search.SourceProvider.requiresCorpusDirectory drops the hardcoded swift-book + samples sentinel switch in resolveSourceDirectory")
     func requiresCorpusDirectoryIsRegistryDriven() {
-        // STATUS: PASSES (post-#1056 follow-up). Pre-fix
-        // `CLIImpl.Command.Save.Indexers.resolveSourceDirectory` had
-        // a hardcoded 2-arm switch on source-id (swift-book +
-        // samples) returning a `/dev/null` placeholder so the
-        // downstream `compactMap` wouldn't drop their strategy. Post-
-        // fix the provider declares its own `requiresCorpusDirectory`
-        // flag (default `true`); SwiftBookSource + SampleCodeSource
-        // override `false`. The resolver checks the flag and
-        // supplies the placeholder URL with zero per-source knowledge.
+        // STATUS: PASSES. Post-#1082: SwiftBookSource no longer
+        // overrides `requiresCorpusDirectory` to false. The view-
+        // source-directory routing happens via
+        // `corpusDirectoryAlias` (resolver inherits parent's
+        // directory + override) — `requiresCorpusDirectory` stays
+        // true because the strategy DOES read a directory (just not
+        // its own). Only SampleCodeSource still opts out (it
+        // consumes `env.sampleCatalogProvider`, not a directory).
+        //
+        // Collect seenIDs explicitly so the post-loop assertion can
+        // confirm the pin-relevant sources were actually iterated.
+        // Without this, the test silently passes if SwiftBookSource
+        // is removed from the registry composition (the loop simply
+        // never encounters it, the default branch never executes for
+        // it, the pin disappears).
         let registry = registryWithFake()
+        var seenIDs: Set<String> = []
         for prov in registry.allEnabled {
+            seenIDs.insert(prov.definition.id)
             switch prov.definition.id {
-            case Shared.Constants.SourcePrefix.swiftBook:
-                #expect(
-                    prov.requiresCorpusDirectory == false,
-                    "SwiftBookSource is a view-source; should opt out"
-                )
             case Shared.Constants.SourcePrefix.samples:
                 #expect(
                     prov.requiresCorpusDirectory == false,
@@ -866,6 +881,18 @@ struct Issue1042PluggabilityContractTests {
                 )
             }
         }
+        // Pin: both swift-book (the post-#1082 view-source) and
+        // samples (the sentinel) must be in the iterated set. If
+        // either is silently removed from production, the relevant
+        // branch above never fires for it.
+        #expect(
+            seenIDs.contains(Shared.Constants.SourcePrefix.swiftBook),
+            "SwiftBookSource must remain in the registry — the default-branch pin depends on it being iterated"
+        )
+        #expect(
+            seenIDs.contains(Shared.Constants.SourcePrefix.samples),
+            "SampleCodeSource must remain in the registry — the false-override pin depends on it being iterated"
+        )
     }
 
     @Test("Search.SourceProvider.isSearchTier declares which providers join the docs-tier FTS fan-out")

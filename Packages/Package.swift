@@ -778,11 +778,11 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
-            // 2026-05-26 audit Finding 9.7 + 11.1: SwiftBookSource is
-            // a view-source over swift-org's crawl — its fetch
-            // strategy delegates to AppleDocsSource's shared
-            // `WebCrawlFetchStrategy` seeded with swift-org's URL.
-            "AppleDocsSource",
+            // #1082 follow-up: SwiftBookSource no longer carries a
+            // fetch strategy of its own (view-source over swift-org;
+            // `cupertino fetch --source swift-org` covers it). The
+            // pre-existing AppleDocsSource dep is dropped — no
+            // cross-source target import.
         ]
     )
 
