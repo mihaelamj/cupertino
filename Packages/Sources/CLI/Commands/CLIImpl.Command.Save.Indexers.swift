@@ -208,11 +208,29 @@ extension CLIImpl.Command.Save {
         // The rename swap also handles SQLite's WAL/SHM files implicitly
         // because Search.Index disconnects cleanly inside DocsService.run
         // before returning (WAL checkpoints into the main file on close).
+        //
+        // 2026-05-27 (#1062): post-#1036 per-source DB split the runner
+        // writes directly to `<base>/<destinationDB.filename>` per
+        // source and never touches `searchDBURL` (the sidecar path).
+        // The sidecar at `<base>/search.db.in-flight` is therefore not
+        // created by the run; attempting the rename throws "file
+        // doesn't exist" after a successful save. Gate the rename on
+        // sidecar existence so per-source saves complete cleanly. The
+        // legacy bucket-tier search.db path (if any future code path
+        // re-introduces it) still gets the atomic-rename treatment.
+        // A deeper refactor that creates per-destination-DB sidecars
+        // is tracked as the proper #1062 close-out.
         if let sidecarPath, !isDryRun {
-            try Self.atomicReplaceWithSidecar(actual: actualSearchDB, sidecar: sidecarPath)
-            Cupertino.Context.composition.logging.recording.info(
-                "✅ Sidecar atomic-renamed to \(actualSearchDB.lastPathComponent) (#673 Phase G crash-safety)"
-            )
+            if FileManager.default.fileExists(atPath: sidecarPath.path) {
+                try Self.atomicReplaceWithSidecar(actual: actualSearchDB, sidecar: sidecarPath)
+                Cupertino.Context.composition.logging.recording.info(
+                    "✅ Sidecar atomic-renamed to \(actualSearchDB.lastPathComponent) (#673 Phase G crash-safety)"
+                )
+            }
+            // No `else` branch with a log line — the post-#1036 per-source
+            // path is the common case now; logging on every save would be
+            // noise. The sidecar's crash-protection guarantee is silently
+            // degraded for per-source DBs until #1062's proper close.
         }
         if isDryRun {
             try? FileManager.default.removeItem(at: resolvedSearchDB)

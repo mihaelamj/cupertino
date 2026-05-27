@@ -2,6 +2,10 @@
 
 ### Fixed
 
+- **fix(#1062): per-source save no longer errors on missing sidecar atomic-rename.** Pre-fix `cupertino save --source <X>` succeeded end-to-end but emitted a trailing `Error: "search.db.in-flight" couldn't be moved` after the success banner. Post-#1036 per-source DB split, `LiveDocsIndexingRunner` writes directly to `<base>/<destinationDB.filename>` (line 381 in Save.Indexers.swift); the sidecar URL passed in `Indexer.DocsService.Request.searchDB` is never written to, so the post-success atomic-rename of `<base>/search.db.in-flight` → `<base>/search.db` fails with `NSCocoaErrorDomain` "former doesn't exist". Quick fix: gate the rename on sidecar existence — if the runner never wrote a sidecar (per-source case), skip the rename silently. Exit code goes back to 0, the DB is correct (verified: `apple-archive.db` and `hig.db` both fully populated + queryable). The deeper architectural fix (per-destination-DB sidecars so per-source saves also get #673 Phase G crash-protection) stays tracked at #1062.
+
+### Fixed
+
 - **fix(#1059): `cupertino save --source <X>` no longer spams `ℹ️  <Y> directory not found at …` info lines for unrelated docs-tier sources.** Pre-fix `Indexer.DocsService.run` unconditionally probed all 4 optional docs-tier corpus directories (swift-evolution, swift-org, apple-archive, hig) and emitted a `missingOptionalSource` event for each that wasn't on disk — even when the user had explicitly scoped the save to a single source via `--source`. A user reindexing only `apple-docs` got 4 spurious info lines for sources they hadn't fetched. Fix: new `Indexer.DocsService.Request.selectedSourceIDs: Set<String>?` field threads the selection through; `run` skips the probe for any source-id outside the selection. `nil` selection (legacy callers + `--all`) keeps the original full-fan-out behaviour. Spotted during the 2026-05-27 apple-docs reindex on Claw mini. New `Issue1059OptionalDirScopeTests` (3 assertions) pins the contract: nil → 4 probes, single-source → 0 unrelated probes, narrow-selection → only the selected source probed. 2774/2774 tests green.
 
 ### Changed
