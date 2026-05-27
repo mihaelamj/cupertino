@@ -69,8 +69,37 @@ extension Search {
                 scope: .swiftBookOnly,
                 summarySource: source,
                 into: index,
-                progress: progress
+                progress: progress,
+                platformVersions: SwiftBookChapterVersionsResolver()
             )
         }
+    }
+}
+
+// MARK: - #1095 chapter-version resolver
+
+/// Bridges the per-chapter `SwiftBookChapterVersions` table into the
+/// shared `crawlSwiftDocumentation` helper. Looks up each page's
+/// URL slug (last path component) and returns the matching
+/// `Search.PlatformVersions`. Chapters not in the table fall back
+/// to the universal Swift baseline via
+/// `SwiftBookChapterVersions.floor(forSlug:)`'s default.
+private struct SwiftBookChapterVersionsResolver: Search.PlatformVersionsResolver {
+    func versions(for url: URL) -> Search.PlatformVersions {
+        var slug = url.lastPathComponent
+        if slug.isEmpty {
+            slug = url.deletingLastPathComponent().lastPathComponent
+        }
+        if slug.hasSuffix(".html") {
+            slug = String(slug.dropLast(".html".count))
+        }
+        let floor = SwiftBookChapterVersions.floor(forSlug: slug)
+        return Search.PlatformVersions(
+            iOS: floor.iOS,
+            macOS: floor.macOS,
+            tvOS: floor.tvOS,
+            watchOS: floor.watchOS,
+            visionOS: floor.visionOS
+        )
     }
 }
