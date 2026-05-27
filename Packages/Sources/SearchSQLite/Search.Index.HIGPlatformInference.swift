@@ -70,6 +70,39 @@ extension Search.Index {
                 .joined(separator: ", ")
             guard !nullClauses.isEmpty else { continue }
 
+            // Select matching URIs FIRST so the audit log carries
+            // real per-URI evidence (mirrors AppleStaticConstraints
+            // and HierarchyPass: every recordEntry's docURI is an
+            // actual document URI, not a LIKE pattern). The SELECT
+            // also lets us narrow the UPDATE to rows that still need
+            // it (idempotent re-run accounting): only rows with a
+            // non-NULL min_<other> column qualify.
+            let needsUpdateClause = allPlatforms
+                .filter { !rule.keep.contains($0) }
+                .map { "min_\($0) IS NOT NULL" }
+                .joined(separator: " OR ")
+            let selectSQL = """
+            SELECT uri FROM docs_metadata
+            WHERE uri LIKE ?
+              AND (\(needsUpdateClause));
+            """
+            var selectStmt: OpaquePointer?
+            guard sqlite3_prepare_v2(database, selectSQL, -1, &selectStmt, nil) == SQLITE_OK else {
+                let errorMessage = String(cString: sqlite3_errmsg(database))
+                _ = sqlite3_exec(database, "ROLLBACK;", nil, nil, nil)
+                throw Search.Error.sqliteError("applyHIGPlatformInference SELECT prepare failed: \(errorMessage)")
+            }
+            sqlite3_bind_text(selectStmt, 1, (rule.pattern as NSString).utf8String, -1, nil)
+            var matchedURIs: [String] = []
+            while sqlite3_step(selectStmt) == SQLITE_ROW {
+                if let cStr = sqlite3_column_text(selectStmt, 0) {
+                    matchedURIs.append(String(cString: cStr))
+                }
+            }
+            sqlite3_finalize(selectStmt)
+
+            guard !matchedURIs.isEmpty else { continue }
+
             let sql = "UPDATE docs_metadata SET \(nullClauses) WHERE uri LIKE ?;"
             var stmt: OpaquePointer?
             defer { sqlite3_finalize(stmt) }
@@ -84,16 +117,18 @@ extension Search.Index {
                 _ = sqlite3_exec(database, "ROLLBACK;", nil, nil, nil)
                 throw Search.Error.sqliteError("applyHIGPlatformInference step failed: \(errorMessage)")
             }
-            let affected = Int(sqlite3_changes(database))
-            totalAffected += affected
-            if let audit, affected > 0 {
-                audit.recordEntry(
-                    passIdentifier: "hig-platforms",
-                    docURI: rule.pattern,
-                    value: "keep=\(rule.keep.sorted().joined(separator: ","))",
-                    matchType: "uri-pattern",
-                    rowsAffected: affected
-                )
+            totalAffected += matchedURIs.count
+            if let audit {
+                let value = "keep=\(rule.keep.sorted().joined(separator: ","))"
+                for uri in matchedURIs {
+                    audit.recordEntry(
+                        passIdentifier: "hig-platforms",
+                        docURI: uri,
+                        value: value,
+                        matchType: "uri-pattern",
+                        rowsAffected: 1
+                    )
+                }
             }
         }
 

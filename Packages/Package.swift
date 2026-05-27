@@ -1390,10 +1390,17 @@ let targets: [Target] = {
         // contract test in Issue1042PluggabilityContractTests can
         // build a DocsResourceProvider with the per-source URI
         // strategy concretes.
+        // EnrichmentModels + HIGSource added in #1073 so
+        // Issue1073PluggabilityContractTests can assert HIGSource's
+        // makeSourceSpecificEnrichmentPasses override returns a
+        // non-empty list + the production call-site grep in
+        // CLIImpl.Command.Save.Indexers.swift iterates providers.
         dependencies: [
             "AppleArchiveSource",
             "AppleDocsSource",
             "CLI", "CupertinoComposition", "Diagnostics", "Distribution", "DistributionModels",
+            "EnrichmentModels",
+            "HIGSource",
             "MCPSupport",
             "Services", "ServicesModels", "RemoteSyncModels", "SearchSQLite",
             "SwiftEvolutionSource",
