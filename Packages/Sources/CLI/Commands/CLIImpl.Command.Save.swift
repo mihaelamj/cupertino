@@ -93,6 +93,12 @@ extension CLIImpl.Command {
         @Option(name: .long, help: "Optional. Directory containing Apple Archive documentation (maintainer workflow).")
         var archiveDir: String?
 
+        @Option(name: .long, help: "Optional. Directory containing HIG corpus (#1063, maintainer workflow).")
+        var higDir: String?
+
+        @Option(name: .long, help: "Optional. Directory containing the Swift Book corpus (#1063, maintainer workflow).")
+        var swiftBookDir: String?
+
         @Option(name: .long, help: "Metadata file path")
         var metadataFile: String?
 
