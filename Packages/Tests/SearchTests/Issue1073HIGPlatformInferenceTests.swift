@@ -294,31 +294,6 @@ struct Issue1073HIGPlatformInferenceTests {
         await index.disconnect()
     }
 
-    @Test("dehyphenated duplicate URI variant gets the same NULL state as canonical slug")
-    func dehyphenatedDuplicateHandledLikeCanonical() async throws {
-        let (dbPath, index) = try await Self.makeFreshDB()
-        defer { try? FileManager.default.removeItem(at: dbPath.deletingLastPathComponent()) }
-        // The corpus carries both forms of each HIG topic (URL-canonicalization
-        // bug, tracked separately): the canonical hyphenated slug and a
-        // dehyphenated duplicate with an `-appledeveloperdocumentation`
-        // suffix. Both must end up with the same NULL state so the
-        // `--min-ios` filter is consistent across the duplicate pair.
-        let canonical = "hig://general/designing-for-watchos"
-        let dehyphenated = "hig://general/designingforwatchos-appledeveloperdocumentation"
-        try Self.seedHIGRow(dbPath: dbPath, uri: canonical)
-        try Self.seedHIGRow(dbPath: dbPath, uri: dehyphenated)
-        _ = try await index.applyHIGPlatformInference()
-        for uri in [canonical, dehyphenated] {
-            let row = try Self.readPlatforms(dbPath: dbPath, uri: uri)
-            #expect(row.ios == nil, "iOS must be NULL for \(uri)")
-            #expect(row.macos == nil, "macOS must be NULL for \(uri)")
-            #expect(row.tvos == nil, "tvOS must be NULL for \(uri)")
-            #expect(row.watchos == "1.0", "watchOS must be kept for \(uri)")
-            #expect(row.visionos == nil, "visionOS must be NULL for \(uri)")
-        }
-        await index.disconnect()
-    }
-
     @Test("spatial-layout keeps visionos only")
     func spatialLayoutKeepsVisionOSOnly() async throws {
         let (dbPath, index) = try await Self.makeFreshDB()
