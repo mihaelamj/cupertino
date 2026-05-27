@@ -295,7 +295,23 @@ extension CLIImpl.Command.Search {
                 framework: nil,
                 language: nil,
                 limit: limit,
-                includeArchive: false
+                includeArchive: false,
+                // 2026-05-27 (#1073 follow-up): thread the platform-
+                // version filters through to the SQL so `--min-ios 16`
+                // actually excludes HIG rows whose `min_ios` is NULL
+                // (the watchOS/visionOS/macOS-specific topics that
+                // #1073's pass NULL-stamped). Pre-fix the HIG runner
+                // built a SearchQuery WITHOUT these arguments, so the
+                // CLI flags were silently dropped on the HIG path and
+                // the user-facing acceptance check from #1074 always
+                // failed even after the underlying data fix landed.
+                // Matches the docs runner's shape directly above.
+                minimumiOS: minIos,
+                minimumMacOS: minMacos,
+                minimumTvOS: minTvos,
+                minimumWatchOS: minWatchos,
+                minimumVisionOS: minVisionos,
+                minimumSwift: swift
             ))
         }
 

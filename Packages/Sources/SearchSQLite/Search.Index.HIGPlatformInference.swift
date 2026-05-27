@@ -42,17 +42,37 @@ extension Search.Index {
         // (URI LIKE pattern, platforms to KEEP populated)
         // Every other min_<platform> column gets set to NULL on a
         // matching row.
+        //
+        // The cupertino corpus carries two variants of each HIG page
+        // due to a known URL-canonicalization gap (see memory
+        // `cupertino-url-canonicalization-bug.md`): the hyphenated
+        // canonical slug (`hig://general/designing-for-watchos`) and a
+        // dehyphenated duplicate emitted by a sibling scraper path
+        // (`hig://general/designingforwatchos-appledeveloperdocumentation`).
+        // Until the canonicalizer is fixed, this pass carries parallel
+        // patterns for both variants so the user-facing search filter
+        // covers both URIs of every duplicated topic. CarPlay is a
+        // single word so its pattern needs no twin.
         let rules: [(pattern: String, keep: Set<String>)] = [
             ("%designing-for-watchos%", ["watchos"]),
+            ("%designingforwatchos%", ["watchos"]),
             ("%watch-faces%", ["watchos"]),
+            ("%watchfaces%", ["watchos"]),
             ("%designing-for-tvos%", ["tvos"]),
+            ("%designingfortvos%", ["tvos"]),
             ("%designing-for-visionos%", ["visionos"]),
+            ("%designingforvisionos%", ["visionos"]),
             ("%spatial-layout%", ["visionos"]),
+            ("%spatiallayout%", ["visionos"]),
             ("%designing-for-macos%", ["macos"]),
+            ("%designingformacos%", ["macos"]),
             ("%mac-catalyst%", ["ios", "macos"]),
+            ("%maccatalyst%", ["ios", "macos"]),
             ("%carplay%", ["ios"]),
             ("%designing-for-ipados%", ["ios"]),
+            ("%designingforipados%", ["ios"]),
             ("%designing-for-ios%", ["ios"]),
+            ("%designingforios%", ["ios"]),
         ]
         let allPlatforms = ["ios", "macos", "tvos", "watchos", "visionos"]
 
