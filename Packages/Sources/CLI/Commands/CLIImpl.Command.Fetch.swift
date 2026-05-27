@@ -259,13 +259,28 @@ extension CLIImpl.Command {
         /// (`<X>Source/<X>Source.FetchStrategy.swift`); CLI no longer
         /// owns the per-source fetch dispatch.
         private mutating func runRegistryFetchStrategy() async throws {
+            // 2026-05-27: `--source apple-sample-code` runs the
+            // Apple-CDN downloader (`Sample.Core.Downloader` in
+            // CoreSampleCodeWebKit), not the GitHub clone path.
+            //
+            // The #1007 refactor retired this dispatch with the
+            // rationale "bundled corpus + GitHub catalog cover the
+            // same content", canonicalizing `apple-sample-code` to
+            // `samples`. That's a resilience regression: the GitHub
+            // `cupertino-sample-code` repo is a convenience shortcut
+            // owned by the maintainer; if it disappears (account
+            // issue, accidental delete, repo rename), users can't
+            // fetch samples at all. Apple's CDN is source-of-truth.
+            // Restore the Apple-CDN dispatch alongside the GitHub one:
+            // `--source samples` keeps the fast clone path,
+            // `--source apple-sample-code` does the slow-but-resilient
+            // Apple-side download.
+            if source == Shared.Constants.SourcePrefix.appleSampleCode {
+                try await runAppleCDNSampleCodeDownload()
+                return
+            }
             let registry = CupertinoComposition.makeProductionSourceRegistry()
-            // Canonicalize legacy `apple-sample-code` alias to `samples`
-            // (SampleCodeSource's registered id) so the lookup hits.
-            let canonicalSourceID = source == Shared.Constants.SourcePrefix.appleSampleCode
-                ? Shared.Constants.SourcePrefix.samples
-                : source
-            guard let entry = registry.entry(for: canonicalSourceID) else {
+            guard let entry = registry.entry(for: source) else {
                 let validIDs = registry.allEnabled.map(\.definition.id).sorted()
                 let validList = (["all", "availability"] + validIDs).joined(separator: ", ")
                 throw ValidationError("Unknown --source value '\(source)'. Valid sources: \(validList).")
@@ -281,6 +296,35 @@ extension CLIImpl.Command {
             try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
             let env = await MainActor.run { makeFetchEnvironment(outputDirectory: outputURL) }
             try await strategy.run(env: env)
+        }
+
+        /// `--source apple-sample-code` Apple-CDN downloader path.
+        /// Re-instated 2026-05-27 after the #1007 refactor retired it
+        /// (rationale "bundled corpus + GitHub catalog cover the same
+        /// content"). The GitHub repo is a maintainer-owned convenience
+        /// shortcut; Apple's CDN is the resilient source-of-truth.
+        ///
+        /// Output dir resolves to `<base>/sample-code` (matches the
+        /// `samples` GitHub path so a subsequent
+        /// `cupertino save --source samples` finds the corpus
+        /// uniformly).
+        private mutating func runAppleCDNSampleCodeDownload() async throws {
+            let outputURL: URL
+            if let outputDir {
+                outputURL = URL(fileURLWithPath: outputDir).expandingTildeInPath
+            } else {
+                outputURL = Shared.Paths.live().sampleCodeDirectory
+            }
+            try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
+            let downloader = await MainActor.run {
+                Sample.Core.Downloader(
+                    outputDirectory: outputURL,
+                    maxSamples: nil,
+                    forceDownload: false,
+                    logger: Cupertino.Context.composition.logging.recording
+                )
+            }
+            _ = try await downloader.download(progress: nil)
         }
 
         /// Resolve the output directory for a per-source fetch.
