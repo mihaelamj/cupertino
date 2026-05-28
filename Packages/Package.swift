@@ -1433,6 +1433,12 @@ let targets: [Target] = {
             "TestSupport",
         ]
     )
+    // Local-only real-DB enrichment battery. No package deps: it probes the
+    // shipped per-source DBs read-only via SQLite3 and skips when absent.
+    let enrichmentBatteryTestsTarget = Target.testTarget(
+        name: "EnrichmentBatteryTests",
+        dependencies: []
+    )
 
     let cupertinoTargets: [Target] = [
         loggingModelsTarget,
@@ -1559,6 +1565,8 @@ let targets: [Target] = {
         mockAIAgentTestsTarget,
         // TUI Tests
         tuiTestsTarget,
+        // Local-only real-DB enrichment battery
+        enrichmentBatteryTestsTarget,
     ]
     #else
     let cupertinoTargets: [Target] = []
