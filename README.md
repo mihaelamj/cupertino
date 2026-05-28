@@ -790,6 +790,7 @@ Optional sources (Swift Evolution / Swift.org / Apple Archive / HIG) are auto-de
 - **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Homebrew distribution and CI/CD setup
 - **[docs/commands/](docs/commands/)** - Command-specific documentation
 - **[docs/tools/](docs/tools/)** - MCP-tool-specific documentation
+- **[docs/roadmap-maintenance-protocol.md](docs/roadmap-maintenance-protocol.md)** - Maintainer roadmap update protocol
 
 ### Command Documentation
 
