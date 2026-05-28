@@ -232,11 +232,11 @@ Add to `.cursor/mcp.json` in your project (or `~/.cursor/mcp.json` for global ac
 
 ### Use with VS Code (GitHub Copilot)
 
-Add to `.vscode/mcp.json` in your workspace:
+Add to `.mcp.json` in your workspace:
 
 ```json
 {
-  "servers": {
+  "mcpServers": {
     "cupertino": {
       "type": "stdio",
       "command": "/opt/homebrew/bin/cupertino",
