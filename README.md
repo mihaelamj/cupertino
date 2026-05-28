@@ -142,7 +142,7 @@ cupertino fetch --source apple-docs          # Apple Developer Documentation
 cupertino fetch --source swift-org         # Swift.org documentation
 cupertino fetch --source swift-evolution     # Swift Evolution proposals
 cupertino fetch --source packages      # Swift package metadata + GitHub archives
-cupertino fetch --source apple-sample-code          # Sample code from Apple (requires auth)
+cupertino fetch --source apple-sample-code          # Sample code from Apple (Apple CDN, no auth)
 cupertino fetch --source samples       # Sample code from GitHub (recommended)
 cupertino fetch --source apple-archive       # Apple Archive programming guides
 cupertino fetch --source hig           # Human Interface Guidelines
@@ -185,7 +185,7 @@ cupertino serve
 ### Manual Setup (Advanced)
 
 ```bash
-# Download Apple documentation (~12+ days for ~404,000+ raw pages, indexed down to ~277,640)
+# Download Apple documentation (~12+ days for ~404,000+ raw pages, indexed down to ~352,712)
 # Takes time due to 0.05s default delay between requests
 cupertino fetch --source apple-docs --max-pages 15000
 
@@ -253,7 +253,7 @@ args = ["serve", "--no-reap"]
 > **Why `--no-reap`?** Codex spawns a fresh `cupertino serve` per tool
 > call. Without `--no-reap`, each new instance kills its predecessor as
 > a stale sibling, and the in-flight transport closes (`Transport closed`
-> error on every tool call — see #280). Claude Desktop / Cursor users
+> error on every tool call; see #280). Claude Desktop / Cursor users
 > keep the default (reap on) so MCP-host config reloads don't leak
 > orphan servers.
 >
@@ -529,7 +529,7 @@ A UIKit view controller that manages a SwiftUI view hierarchy.
 
 Cupertino includes pre-indexed catalog data bundled directly into the application:
 
-- **Swift Packages Catalog** (183 Apple-official packages with full source + metadata in `packages.db`; the previous 9,699-entry embedded URL list was removed in #194 — `packages.db` is now the canonical corpus, shipped via `cupertino setup`)
+- **Swift Packages Catalog** (183 Apple-official packages with full source + metadata in `packages.db`; the previous 9,699-entry embedded URL list was removed in #194; `packages.db` is now the canonical corpus, shipped via `cupertino setup`)
   - Curated from Swift Package Index + GitHub API
   - Includes package metadata, stars, licenses, descriptions, deployment-target platforms, **and** authored `swift-tools-version` (#225)
   - Updated by re-running `cupertino fetch --source packages` then `cupertino save --source packages`
@@ -568,7 +568,7 @@ These catalogs are indexed during `cupertino save --all` and enable instant sear
 - **Tools**: Search and read capabilities for AI agents
   - **Documentation Tools** (requires `cupertino save --all`):
     - `search` - **Unified full-text search** across every indexed source: Apple Developer Documentation, sample code, Human Interface Guidelines, Apple Archive, Swift Evolution, swift.org, the Swift Book, and Swift package metadata. Replaces the pre-[#239](https://github.com/mihaelamj/cupertino/issues/239) per-source tools (`search_docs`, `search_hig`, `search_samples`, `search_all`).
-      - Parameters: `query` (required), `source` (optional: `all`, `apple-docs`, `samples`, `hig`, `apple-archive`, `swift-evolution`, `swift-org`, `swift-book`, `packages`), `framework`, `language`, `include_archive`, `limit`, `min_ios`, `min_macos`, `min_tvos`, `min_watchos`, `min_visionos`, `min_swift` (all optional)
+      - Parameters: `query` (required), `source` (optional: `all`, `apple-docs`, `samples`, `hig`, `apple-archive`, `swift-evolution`, `swift-org`, `swift-book`, `packages`), `framework`, `language`, `include_archive`, `limit`, `min_ios`, `min_macos`, `min_tvos`, `min_watchos`, `min_visionos`, `min_swift`, `apple_imports` (all optional)
       - Platform filtering (#226, #732): the 5 `min_*` parameters apply on every source whose data carries platform-availability metadata (apple-docs, apple-archive, packages, swift-evolution, swift-org, swift-book, samples). Multi-platform values AND-combine (e.g. `min_ios=18.0` + `min_macos=14.0` keeps only results that satisfy both). HIG content has no version axis and the filter doesn't apply there; the response prefixes a `platform_filter_partial` notice when HIG contributes to the result set so AI clients know the filter was non-uniform. Malformed `min_*` values (`"v18.0"`, `""`, `"18..0"`) are rejected at the MCP boundary with a clear `invalidArgument` error frame instead of silently no-oping.
     - `list_frameworks` - List indexed frameworks with document counts
     - `read_document` - Read document by URI with format option
@@ -585,6 +585,8 @@ These catalogs are indexed during `cupertino save --all` and enable instant sear
     - `search_property_wrappers` - Find `@State`, `@Observable`, `@MainActor` usage patterns
     - `search_concurrency` - Find `async`/`await`, actor, `Sendable` patterns
     - `search_conformances` - Find types by protocol conformance (`View`, `Codable`, etc.)
+    - `search_generics` - Find symbols by generic constraint (`Sendable`, `Hashable`, `View`)
+    - `get_inheritance` - Walk class inheritance chains (ancestors / descendants)
 
 ### 5. Intelligent Crawling
 
@@ -613,7 +615,7 @@ See [docs/commands/](docs/commands/) for detailed usage and options.
 
 ## Architecture
 
-Cupertino uses an **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** architecture: 46 strict-producer SPM targets across 58 source packages. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full breakdown and [`docs/package-import-contract.md`](docs/package-import-contract.md) for the strict per-target import rules.
+Cupertino uses an **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** architecture: 49 strict-producer SPM targets across 63 source packages. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full breakdown and [`docs/package-import-contract.md`](docs/package-import-contract.md) for the strict per-target import rules.
 
 ```
 Foundation tier:   SharedConstants, LoggingModels, MCPCore, MCPSharedTools, Resources
@@ -678,7 +680,7 @@ make lint                   # Lint with SwiftLint
 ### Testing
 
 **Test Suite:**
-- 330+ test functions across 207 test files (parameterized tests expand to ~2,300+ runtime cases)
+- 2,989 test functions across 327 test files (457 `@Suite`s); parameterized `@Test(arguments:)` cases expand further at runtime
 - Swift Testing framework (`@Test`, `@Suite`, `#expect`) with `withDependencies` for injection
 - Includes unit tests, integration tests (real WKWebView + real Apple docs), and formatter tests
 
@@ -807,7 +809,7 @@ Issues and pull requests are welcome! I'd love to hear how you're using Cupertin
 
 For questions and discussion, use [GitHub Discussions](https://github.com/mihaelamj/cupertino/discussions).
 
-I prefer collaboration over competition — if you're working on something similar, let's find ways to work together.
+I prefer collaboration over competition. If you're working on something similar, let's find ways to work together.
 
 Don't hesitate to submit a PR because of code style. I'd rather have your contribution than perfect formatting.
 
@@ -819,7 +821,7 @@ For development setup, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 **Released:** v1.2.0 "ironclad" on 2026-05-20. `databaseVersion` is `1.2.0`; `cupertino setup` downloads the v1.2.0 bundle (352,712 documents across 420 frameworks, 0 poison rows under all 13 audit categories, schema `user_version = 18`).
 
-Headline jump from v1.1.0: **rank-1 accuracy on canonical-lookup queries went from 52% to 92%** on the 50-query Phase 1 corpus. **30 / 30 modern Swift wins on the deprecation pair corpus** (was 27 / 30). **Zero regressions across 110 paired queries.** Live dashboard at <https://cupertino.aleahim.com/>; full release write-up at `docs/release-writeup-v1.2.0.md`; harness at `scripts/eval/search-quality-phase1.py` (reproducible — two runs against the same `(binary, search.db)` pair produce byte-identical per-query ranks).
+Headline jump from v1.1.0: **rank-1 accuracy on canonical-lookup queries went from 52% to 92%** on the 50-query Phase 1 corpus. **30 / 30 modern Swift wins on the deprecation pair corpus** (was 27 / 30). **Zero regressions across 110 paired queries.** Live dashboard at <https://cupertino.aleahim.com/>; full release write-up at `docs/release-writeup-v1.2.0.md`; harness at `scripts/eval/search-quality-phase1.py` (reproducible: two runs against the same `(binary, search.db)` pair produce byte-identical per-query ranks).
 
 **Previously released:** v1.1.0 on 2026-05-14 (refactor release: namespacing + Crawler extract + DI epic kickoff; 285,735 documents, schema 13). v1.0.2 on 2026-05-11 (URL canonicalization + re-indexed bundle, 277,640 documents).
 
@@ -843,9 +845,10 @@ MIT License - see [LICENSE](LICENSE) for details
 
 ## Related Repositories
 
-- **[cupertino-desktop](https://github.com/mihaelamj/cupertino-desktop)** - Native macOS desktop app with graphical interface
 - **[cupertino-docs](https://github.com/mihaelamj/cupertino-docs)** - Pre-built documentation archive for quick installation
 - **[cupertino-sample-code](https://github.com/mihaelamj/cupertino-sample-code)** - Apple sample code repository mirror
+- **[cupertino-packages](https://github.com/mihaelamj/cupertino-packages)** - Swift package source corpus indexed into `packages.db`
+- **[cupertino-symbolgraphs](https://github.com/mihaelamj/cupertino-symbolgraphs)** - Apple SDK symbol-graph corpus, the source for the `apple-constraints.json` and `apple-conformances.json` enrichment tables
 
 The docs and sample-code repositories will be used by the planned `make install (full)` command (see [#52](https://github.com/mihaelamj/cupertino/issues/52)), providing pre-built documentation and sample code to avoid the initial 20+ hour crawl.
 
