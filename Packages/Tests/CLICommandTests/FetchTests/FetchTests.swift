@@ -80,8 +80,33 @@ struct FetchPackagesMergeTests {
         }
     }
 
+    @Test("--request-delay parses and defaults to crawler default")
+    func requestDelayParses() throws {
+        let defaultCommand = try CLIImpl.Command.Fetch.parse(["--source", "apple-docs"])
+        #expect(defaultCommand.requestDelay == 0.05)
+
+        let delayedCommand = try CLIImpl.Command.Fetch.parse([
+            "--source", "apple-docs",
+            "--request-delay", "0.25",
+        ])
+        #expect(delayedCommand.requestDelay == 0.25)
+    }
+
+    @Test("--request-delay rejects negative values before fetching")
+    func requestDelayRejectsNegativeValues() async throws {
+        var cmd = try CLIImpl.Command.Fetch.parse([
+            "--source", "apple-docs",
+            "--request-delay", "-0.1",
+        ])
+
+        await #expect(throws: (any Error).self) {
+            try await cmd.run()
+        }
+    }
+
     @Test("--skip-archives without --refresh-metadata or --annotate-availability exits with nothing-to-do")
     func skipArchivesWithoutPeersErrors() async throws {
+
         // Sandbox output dir so the guard's createDirectory doesn't write
         // into the user's real ~/.cupertino/packages/.
         let tempDir = FileManager.default.temporaryDirectory

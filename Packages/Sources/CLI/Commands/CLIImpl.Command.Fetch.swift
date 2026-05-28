@@ -104,6 +104,9 @@ extension CLIImpl.Command {
         @Option(name: .long, help: "Maximum depth to crawl")
         var maxDepth: Int = 15
 
+        @Option(name: .long, help: "Delay in seconds between crawler requests")
+        var requestDelay: TimeInterval = 0.05
+
         @Option(name: .long, help: "Output directory for documentation")
         var outputDir: String?
 
@@ -230,6 +233,8 @@ extension CLIImpl.Command {
         mutating func run() async throws {
             // #781: invocation banner before any other work.
             Cupertino.Context.composition.logging.logInvocation()
+
+            try validateRequestDelay()
 
             logStartMessage()
 
@@ -374,6 +379,7 @@ extension CLIImpl.Command {
                 outputDirectory: outputDirectory,
                 maxPages: maxPages,
                 maxDepth: maxDepth,
+                requestDelay: requestDelay,
                 force: force,
                 startClean: startClean,
                 retryErrors: retryErrors,
@@ -609,6 +615,14 @@ extension CLIImpl.Command {
         // enqueueURLsFromFile + collectBaselineURLs + lowercaseDocPath all lifted
         // to Ingest.Session in #247.
         // checkForSession lifted to Ingest.Session.checkForSession (#247)
+
+        private func validateRequestDelay() throws {
+            guard requestDelay.isFinite, requestDelay >= 0 else {
+                throw ValidationError("--request-delay must be a finite value >= 0")
+            }
+        }
+
+
         // #673 Phase D iter-5: 174-line body — Stage 2 of the
         // packages fetch: priority-catalog load → resolve → per-archive
         // download → magic-bytes validation → on-disk catalog write →
