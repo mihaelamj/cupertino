@@ -89,7 +89,13 @@ extension Crawler {
                     // Crawl each page
                     for (index, page) in pages.enumerated() {
                         do {
-                            try await crawlPage(page, to: guideDir, framework: guide.framework, stats: &stats)
+                            try await crawlPage(
+                                page,
+                                to: guideDir,
+                                framework: guide.framework,
+                                guideID: bookJSON.uid,
+                                stats: &stats
+                            )
                             totalPages += 1
 
                             // Crawler.AppleArchiveProgress callback
@@ -193,6 +199,7 @@ extension Crawler {
             _ page: Page,
             to guideDir: URL,
             framework: String,
+            guideID: String,
             stats: inout Crawler.AppleArchiveStatistics
         ) async throws {
             // Determine output path - preserve directory structure
@@ -227,7 +234,7 @@ extension Crawler {
             let parsed = parseArchiveHTML(html, page: page)
 
             // Convert to markdown
-            let markdown = convertToMarkdown(parsed, framework: framework)
+            let markdown = convertToMarkdown(parsed, framework: framework, guideID: guideID)
 
             // Save
             try markdown.write(to: outputPath, atomically: true, encoding: .utf8)
@@ -315,13 +322,16 @@ extension Crawler {
             return String(html[articleStart.upperBound..<articleEnd.lowerBound])
         }
 
-        private func convertToMarkdown(_ parsed: ParsedPage, framework: String) -> String {
+        private func convertToMarkdown(_ parsed: ParsedPage, framework: String, guideID: String) -> String {
             var lines: [String] = []
 
             // YAML front matter
             lines.append("---")
             lines.append("title: \"\(escapeYAML(parsed.title))\"")
             lines.append("book: \"\(escapeYAML(parsed.bookTitle))\"")
+            // Guide identifier stamped into the document so the indexer reads
+            // it from content, never from the corpus folder (Principle 7).
+            lines.append("guide: \"\(escapeYAML(guideID))\"")
             if !framework.isEmpty {
                 lines.append("framework: \"\(escapeYAML(framework))\"")
             }
