@@ -26,7 +26,7 @@ The relative path to the file within the project. Use `read-sample` to list avai
 
 ### --format
 
-Output format: `text` (default), `json`, or `markdown`.
+Output format: `text` (default), `json`, or `markdown` / `md`.
 
 ### --sample-db
 

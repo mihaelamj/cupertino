@@ -16,7 +16,7 @@ Lists all frameworks in the search index with their document counts. Use this to
 
 ### --format
 
-Output format: `text` (default), `json`, or `markdown`.
+Output format: `text` (default), `json`, or `markdown` / `md`.
 
 ### --search-db
 

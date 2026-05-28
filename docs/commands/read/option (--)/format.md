@@ -17,7 +17,7 @@ Controls how the document content is formatted in the output. Different formats 
 | Format | Description |
 |--------|-------------|
 | `json` | Structured JSON object (default) |
-| `markdown` | Rendered markdown content |
+| `markdown`, `md` | Rendered markdown content |
 
 ## Default
 

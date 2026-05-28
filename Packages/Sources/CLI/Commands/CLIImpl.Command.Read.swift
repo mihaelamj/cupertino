@@ -51,7 +51,7 @@ extension CLIImpl.Command {
 
         @Option(
             name: .long,
-            help: "Output format: json (default), markdown"
+            help: CLIImpl.Command.OutputFormatArgument.jsonDefaultHelp
         )
         var format: OutputFormat = .json
 
@@ -275,5 +275,9 @@ extension CLIImpl.Command.Read {
     enum OutputFormat: String, ExpressibleByArgument, CaseIterable {
         case json
         case markdown
+
+        init?(argument: String) {
+            self.init(rawValue: CLIImpl.Command.OutputFormatArgument.normalize(argument))
+        }
     }
 }

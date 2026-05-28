@@ -24,7 +24,7 @@ Maximum number of results to return. Defaults to 50.
 
 ### --format
 
-Output format: `text` (default), `json`, or `markdown`.
+Output format: `text` (default), `json`, or `markdown` / `md`.
 
 ### --sample-db
 
