@@ -4,9 +4,9 @@
 >
 > *v1.2.0 "ironclad" (2026-05-20) was the most recent bundle release.* Search-quality release: rank-1 accuracy on canonical-lookup queries jumped from 52% to 92% on the Phase 1 corpus, zero regressions across 110 paired queries, 30 / 30 modern Swift wins on the deprecation-pair corpus. `databaseVersion` is `1.2.0`: `cupertino setup` downloads `cupertino-databases-v1.2.0.zip` (690 MiB compressed, sha256 `097d6633…f47747`) carrying **352,712 indexed documents across 420 frameworks**, `search.db` `user_version` 18, `packages.db` 5, `samples.db` 4, **0 poison rows** across the 13-category audit. Full write-up at `docs/release-writeup-v1.2.0.md`. See the [v1.2.0 release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.2.0).
 
-**Apple Documentation Crawler & MCP Server**
+**Apple documentation CLI for humans and MCP server for AI agents**
 
-A Swift-based tool to crawl, index, and serve Apple's developer documentation to AI agents via the Model Context Protocol (MCP).
+Cupertino is a CLI for human developers and an MCP server for AI agents. Both surfaces use the same local index of Apple documentation, Swift packages, sample code, Human Interface Guidelines, Swift Evolution proposals, and Swift.org pages.
 
 [![Swift 6.3+](https://img.shields.io/badge/Swift-6.3+-orange.svg)](https://swift.org)
 [![macOS 15+](https://img.shields.io/badge/macOS-15+-blue.svg)](https://www.apple.com/macos)
@@ -18,11 +18,12 @@ A Swift-based tool to crawl, index, and serve Apple's developer documentation to
 
 ## What is Cupertino?
 
-Cupertino is a local, structured, AI-ready documentation system for Apple platforms. It:
+Cupertino is a local, structured documentation system for Apple platforms. It:
 
 - **Crawls** Apple Developer documentation, Swift.org, Swift Evolution proposals, Human Interface Guidelines, Apple Archive legacy guides, and Swift package metadata
 - **Indexes** everything into a fast, searchable SQLite FTS5 database with field-weighted BM25 (BM25F) ranking and AST-extracted symbol columns
-- **Serves** documentation to AI agents like Claude via the Model Context Protocol
+- **Runs** as a terminal CLI for developers who want fast local `search`, `read`, `doctor`, and `setup` commands
+- **Serves** the same corpus to AI agents like Claude, ChatGPT, Codex, Cursor, and Copilot via the Model Context Protocol
 - **Provides** offline access to 352,712+ documentation pages across 420 frameworks (v1.2.0 bundle)
 
 ### Why Build This?
@@ -31,7 +32,7 @@ Cupertino is a local, structured, AI-ready documentation system for Apple platfo
 - **Offline development**: Work with full documentation without internet access
 - **Deterministic search**: Same query always returns same results
 - **Local control**: Own your documentation, inspect the database, script workflows
-- **AI-first design**: Built specifically for AI agent integration via MCP
+- **Dual-consumer design**: Use it directly at the terminal or wire it into an MCP-capable AI client
 
 ## Quick Start
 
@@ -62,6 +63,8 @@ brew install cupertino
 cupertino setup
 ```
 
+After `brew install`, you can run `cupertino search "<query>"` at the terminal, or add `cupertino serve` as an MCP server in your AI client config. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for distribution notes and the MCP client sections below for Claude, Codex, Cursor, VS Code, and other hosts.
+
 **Or build from source:**
 
 ```bash
@@ -78,6 +81,47 @@ swift build -c release
 sudo ln -sf "$(pwd)/.build/release/cupertino" /usr/local/bin/cupertino
 ```
 
+### Two Ways to Use the Same Index
+
+**Human CLI example:**
+
+```text
+$ cupertino search "NavigationStack" --format text --limit 2
+Question: NavigationStack
+Searched: apple-docs, samples, swift-evolution, swift-org, swift-book, packages
+
+======================================================================
+[1] NavigationStack  •  source: apple-docs  •  score: 0.0324
+    apple-docs://swiftui/documentation_swiftui_navigationstack
+----------------------------------------------------------------------
+A view that displays a root view and enables navigation to additional views.
+
+▶ Read full: cupertino read "apple-docs://swiftui/documentation_swiftui_navigationstack" --source apple-docs
+
+----------------------------------------------------------------------
+See also -- drill into one source:
+  cupertino search "NavigationStack" --source apple-docs
+  cupertino search "NavigationStack" --source samples
+
+💡 Narrow with --source <name>: apple-docs, samples, hig, apple-archive, swift-evolution, swift-org, swift-book, packages
+💡 Filter by platform: --platform iOS --min-version 16.0  (or macOS / tvOS / watchOS / visionOS)
+```
+
+**MCP tool-call example:**
+
+```json
+{
+  "name": "search",
+  "arguments": {
+    "query": "NavigationStack",
+    "source": "apple-docs",
+    "limit": 2
+  }
+}
+```
+
+Both examples query the same local databases. The CLI prints a terminal-friendly result with scores and follow-up commands; the MCP server returns structured tool results that an AI client can read, cite, and follow with `read_document`.
+
 **Demo Video:** [Watch on YouTube](https://youtu.be/B-mRdainTMA)
 
 ### Quick Reference
@@ -85,6 +129,9 @@ sudo ln -sf "$(pwd)/.build/release/cupertino" /usr/local/bin/cupertino
 ```bash
 # Quick Setup (Recommended) - download pre-built databases (~30 seconds)
 cupertino setup                      # Download databases from GitHub
+cupertino search "NavigationStack" --format text --limit 5
+cupertino read "apple-docs://swiftui/documentation_swiftui_navigationstack" --source apple-docs --format markdown
+cupertino doctor                     # Check local database health
 cupertino serve                      # Start MCP server
 
 # Alternative: Build from GitHub (~45 minutes)
