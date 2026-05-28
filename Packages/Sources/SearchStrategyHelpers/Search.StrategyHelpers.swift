@@ -213,6 +213,22 @@ extension Search {
             return String(framework)
         }
 
+        /// Framework identifier read from the document's own developer.apple.com
+        /// URL: the path segment immediately after `/documentation/`
+        /// (`…/documentation/swiftui/lazyvgrid` → `swiftui`). Content-derived
+        /// and lossless — it depends only on the document, never on where the
+        /// corpus happens to sit on disk. This is the authoritative source for
+        /// the stored `framework`; `extractFrameworkFromPath` is a fallback for
+        /// the rare page that carries no recognisable Apple doc URL.
+        public static func frameworkFromDocumentationURL(_ url: URL) -> String? {
+            let parts = url.pathComponents
+            guard let docIndex = parts.firstIndex(of: "documentation"), docIndex + 1 < parts.count else {
+                return nil
+            }
+            let framework = parts[docIndex + 1]
+            return framework.isEmpty ? nil : framework
+        }
+
         /// Lowercase a single path component for canonical comparison.
         ///
         /// Mirrors `URLUtilities.normalize`, which deliberately does **not** collapse
