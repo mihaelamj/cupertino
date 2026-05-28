@@ -12,6 +12,10 @@ Release archive (per-version notes, audits, McNemar diffs, bundle-rebuild detail
 
 **Each content source must be 100% pluggable, not 80% with caveats.** Adding a new source (WWDC transcripts [#58](https://github.com/mihaelamj/cupertino/issues/58), Swift Forums [#89](https://github.com/mihaelamj/cupertino/issues/89), Tech Talks [#273](https://github.com/mihaelamj/cupertino/issues/273), any future source) must be a PR that touches no existing source concrete, no static registry dictionary, no closed enum. Same standard for databases: adding a new DB is one `Distribution.DatabaseHealthCheck` conformer + one list append.
 
+**The axiom, stated as a rule to read every session:** a new source touches **no existing source concrete, no static registry dictionary, no closed enum, no central switch**. A closed enum is allowed only when a new source *reuses* its cases without adding one.
+
+**Corollary (guards and preflights):** any "this source needs input file X" rule (missing `apple-constraints.json`, missing per-package `availability.json`, any future enrichment input) must be a declaration the source *carries* (`SourceDefinition.requiredEnrichmentInputs`), enforced by ONE generic composition-root preflight iterating every active source. A literal-filename `if` in central save logic is a per-source edit-point, i.e. an axiom violation. Never add a hardcoded per-source guard; express it declaratively. (The producer tool `cupertino-constraints-gen` is axiom-neutral: not a content source, so a localized guard there is fine.)
+
 This is the load-bearing goal of the [#919](https://github.com/mihaelamj/cupertino/issues/919) declarative source + DB pluggability epic. Do not declare any plug-in / descriptor / registry refactor "done" until the end-to-end 2-file PR claim is empirically proven.
 
 **Ordered critical path** (full doc at `docs/plans/2026-05-22-source-independence-day.md`):

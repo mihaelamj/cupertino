@@ -32,6 +32,7 @@ extension AppleDocsSource {
             .howTo: 60,
             .troubleshooting: 50,
         ],
-        baseURL: URL(string: Shared.Constants.BaseURL.appleDeveloper + "/documentation")
+        baseURL: URL(string: Shared.Constants.BaseURL.appleDeveloper + "/documentation"),
+        requiredEnrichmentInputs: [.appleConstraints]
     )
 }

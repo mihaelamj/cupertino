@@ -380,6 +380,15 @@ extension CLIImpl.Command {
             let effectiveBase = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
                 ?? Shared.Paths.live().baseDirectory
 
+            // Enrichment-input preflight (#919 Source Independence Axiom): one
+            // generic check enforces every selected source's declared
+            // `requiredEnrichmentInputs`, replacing the former hardcoded
+            // apple-constraints (#1072) and per-package availability guards.
+            try runEnrichmentInputPreflight(
+                selectedSourceIDs: selectedSourceIDs,
+                effectiveBase: effectiveBase
+            )
+
             if buildDocs {
                 try await runDocsIndexer(
                     effectiveBase: effectiveBase,
@@ -607,6 +616,36 @@ extension CLIImpl.Command {
 /// bar, framework-by-framework status). Stays here until that pipeline
 /// is consolidated under `Indexer.*Service`.
 extension CLIImpl.Command.Save {
+    /// #919 Source Independence Axiom: enforce every selected source's declared
+    /// `requiredEnrichmentInputs` via one generic preflight
+    /// (`Search.EnrichmentInputPreflight`). Replaces the former hardcoded
+    /// apple-constraints (#1072) and per-package availability guards, each a
+    /// per-source edit-point in central save logic. Adding a source's
+    /// requirement is one literal on its definition; this method never changes.
+    func runEnrichmentInputPreflight(selectedSourceIDs: Set<String>, effectiveBase: URL) throws {
+        let registry = CLIImpl.makeProductionSourceRegistry()
+        let selectedDefinitions = registry.allEnabled
+            .map(\.definition)
+            .filter { selectedSourceIDs.contains($0.id) }
+        let packagesCorpusRoot = packagesDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
+            ?? effectiveBase.appendingPathComponent(Shared.Constants.Directory.packages)
+        let missingInputs = SearchModels.Search.EnrichmentInputPreflight.missing(
+            definitions: selectedDefinitions,
+            baseDirectory: effectiveBase,
+            corpusDirectoryByID: [Shared.Constants.SourcePrefix.packages: packagesCorpusRoot]
+        )
+        guard !missingInputs.isEmpty else { return }
+        guard allowDegradedEnrichment else {
+            throw SearchModels.Search.Error.invalidQuery(
+                SearchModels.Search.EnrichmentInputPreflight.failureMessage(missingInputs)
+            )
+        }
+        let recording = Cupertino.Context.composition.logging.recording
+        for line in SearchModels.Search.EnrichmentInputPreflight.lines(missingInputs) {
+            recording.info("⚠️  \(line) Proceeding per --allow-degraded-enrichment.", category: .cli)
+        }
+    }
+
     /// GoF Strategy seam (`RemoteSync.DocumentIndexing`) that forwards each
     /// document fetched by `RemoteSync.Indexer.run` into the binary's
     /// `Search.Index` database.

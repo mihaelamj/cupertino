@@ -146,6 +146,20 @@ extension Search {
             dbPath: String
         ) async throws -> Int
 
+        /// Reads the `Search.StaticConformancesLookup` entries and overwrites
+        /// the `conformances` column on matching `doc_symbols` rows with the
+        /// authoritative SDK conformance set (exact + hash-prefix match, same
+        /// shape as `applyAppleStaticConstraints`). Idempotent. Zero when
+        /// `lookup` is nil, entries are empty, or no row matched. A default
+        /// extension returns 0 so non-search-index conformers need not
+        /// implement it.
+        @discardableResult
+        func applyAppleStaticConformances(
+            lookup: (any Search.StaticConformancesLookup)?,
+            audit: (any Search.EnrichmentAuditObserver)?,
+            dbPath: String
+        ) async throws -> Int
+
         /// Run the hierarchy-derived constraint propagation pass. Walks
         /// the indexed inheritance edges and propagates parent
         /// constraints onto descendants where the child symbol has no
@@ -282,5 +296,18 @@ public extension Search.IndexWriter {
             minWatchOS: minWatchOS,
             minVisionOS: minVisionOS
         )
+    }
+
+    /// Default: no-op (returns 0). Only the SQLite-backed search index
+    /// (`Search.Index`) overrides this with the real conformance apply; other
+    /// `IndexWriter` conformers (the packages writer, test fakes) need not.
+    @discardableResult
+    func applyAppleStaticConformances(
+        lookup: (any Search.StaticConformancesLookup)?,
+        audit _: (any Search.EnrichmentAuditObserver)?,
+        dbPath _: String
+    ) async throws -> Int {
+        _ = lookup
+        return 0
     }
 }

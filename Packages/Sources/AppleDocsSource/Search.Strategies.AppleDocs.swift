@@ -281,7 +281,11 @@ extension Search {
                     ))
                     continue
                 }
-                if Search.StrategyHelpers.titleLooksLikePlaceholderError(structuredPage.title, url: structuredPage.url) {
+                if Search.StrategyHelpers.titleLooksLikePlaceholderError(
+                    structuredPage.title,
+                    url: structuredPage.url,
+                    hasContent: structuredPage.declaration != nil
+                ) {
                     logger.error(
                         "⛔ Skipping placeholder-title page (#588 indexer defence): " +
                             "title=\(structuredPage.title.prefix(60)) " +
@@ -540,7 +544,11 @@ extension Search {
                 // data fetch fails after the page chrome was already
                 // rendered. Empty / whitespace-only titles fall under the
                 // same gate.
-                if Search.StrategyHelpers.titleLooksLikePlaceholderError(title, url: parsedURL) {
+                if Search.StrategyHelpers.titleLooksLikePlaceholderError(
+                    title,
+                    url: parsedURL,
+                    hasContent: content.contains("\"declaration\"")
+                ) {
                     logger.error(
                         "⛔ Skipping placeholder-title page (#588 indexer defence): " +
                             "url=\(url) title=\(title.prefix(60))",

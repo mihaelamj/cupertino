@@ -45,17 +45,17 @@ extension ConstraintsGen.Command {
 
         mutating func run() async throws {
             let inputURLs = try resolveInputURLs()
-            guard !inputURLs.isEmpty else {
-                throw GenerateError.noInputs
-            }
 
             var byURI: [String: [String]] = [:]
+            var unreadable: [String] = []
+            var unparseable: [String] = []
 
             for url in inputURLs {
                 let data: Data
                 do {
                     data = try Data(contentsOf: url)
                 } catch {
+                    unreadable.append(url.lastPathComponent)
                     if verbose {
                         FileHandle.standardError.write(Data("⚠ skipping unreadable file \(url.path): \(error)\n".utf8))
                     }
@@ -66,6 +66,7 @@ extension ConstraintsGen.Command {
                 do {
                     entries = try AppleConstraintsKit.Extractor.extractEntries(from: data)
                 } catch {
+                    unparseable.append(url.lastPathComponent)
                     if verbose {
                         FileHandle.standardError.write(Data("⚠ skipping unparseable file \(url.path): \(error)\n".utf8))
                     }
@@ -85,6 +86,18 @@ extension ConstraintsGen.Command {
                 .map { Search.StaticConstraintEntry(docURI: $0.key, constraints: $0.value) }
                 .sorted { $0.docURI < $1.docURI }
 
+            // Refuse to emit a degraded table. A 0-entry apple-constraints.json
+            // silently strips Apple generic-constraint enrichment from every
+            // consuming DB (apple-docs, samples, packages), and the loss is only
+            // visible by inspecting the DB afterwards. Hard-fail with the fix.
+            guard !merged.isEmpty else {
+                throw GenerateError.noConstraintsExtracted(
+                    inputCount: inputURLs.count,
+                    unreadable: unreadable,
+                    unparseable: unparseable
+                )
+            }
+
             let table = AppleConstraintsKit.Table(entries: merged)
             let jsonData = try table.jsonData()
 
@@ -97,7 +110,15 @@ extension ConstraintsGen.Command {
         private func resolveInputURLs() throws -> [URL] {
             switch (symbolGraphFiles.isEmpty, fromDirectory) {
             case (true, .some(let dir)):
-                return try scanDirectory(URL(fileURLWithPath: dir))
+                let dirURL = URL(fileURLWithPath: dir)
+                let hits = try scanDirectory(dirURL)
+                // Directory resolved but holds no symbol graphs (e.g. an empty
+                // cupertino-symbolgraphs checkout). Name the fix rather than
+                // the generic "no inputs" message.
+                guard !hits.isEmpty else {
+                    throw GenerateError.emptySymbolGraphDirectory(path: dirURL.path)
+                }
+                return hits
             case (false, .none):
                 return symbolGraphFiles.map { URL(fileURLWithPath: $0) }
             case (false, .some):
@@ -126,6 +147,8 @@ extension ConstraintsGen.Command {
         enum GenerateError: Swift.Error, CustomStringConvertible {
             case noInputs
             case conflictingInputs
+            case emptySymbolGraphDirectory(path: String)
+            case noConstraintsExtracted(inputCount: Int, unreadable: [String], unparseable: [String])
 
             var description: String {
                 switch self {
@@ -133,7 +156,35 @@ extension ConstraintsGen.Command {
                     return "No input files provided. Pass either positional .symbols.json paths OR --from-directory."
                 case .conflictingInputs:
                     return "Cannot mix positional file list with --from-directory; pick one."
+                case .emptySymbolGraphDirectory(let path):
+                    return Self.symbolGraphHelp(lead: "No *.symbols.json files found under \(path).")
+                case .noConstraintsExtracted(let inputCount, let unreadable, let unparseable):
+                    var lead = "Read \(inputCount) input file(s) but extracted 0 constraints"
+                    if !unreadable.isEmpty {
+                        lead += "; unreadable: \(unreadable.joined(separator: ", "))"
+                    }
+                    if !unparseable.isEmpty {
+                        lead += "; unparseable: \(unparseable.joined(separator: ", "))"
+                    }
+                    lead += "."
+                    return Self.symbolGraphHelp(lead: lead)
                 }
+            }
+
+            /// Shared remediation text for the two "no usable symbol graphs"
+            /// failures. Names the producer command so the operator can
+            /// recover without reading the source.
+            private static func symbolGraphHelp(lead: String) -> String {
+                """
+                \(lead)
+                apple-constraints.json must NOT be written from an empty or degraded symbol-graph set.
+                Every consuming DB (apple-docs, samples, packages) would otherwise silently lose its Apple generic-constraint enrichment.
+                Produce symbol graphs, then re-run:
+                  swift symbolgraph-extract -module-name <Framework> -target <triple> \\
+                    -sdk "$(xcrun --show-sdk-path)" -output-dir <dir>
+                  cupertino-constraints-gen generate --from-directory <dir> -o apple-constraints.json
+                The cupertino-symbolgraphs corpus is the canonical home for these *.symbols.json files.
+                """
             }
         }
     }

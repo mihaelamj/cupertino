@@ -48,6 +48,37 @@ Query-time layer (operates on the stored enrichments above; not stored data, so 
 
 > **Verification note (2026-05-28).** The 20 stored types were checked against the live per-source DBs (the 4 query-time types are behaviors, not DB rows, and are verified in code). All 20 stored types are present and populated EXCEPT one corpus-dependent caveat: **Framework Aliasing (#11)** requires the `framework` column to carry real framework identifiers (`corebluetooth`, `foundation`). It is wired correctly in code (`registerFrameworkAlias(identifier: framework, …)` then `updateFrameworkSynonyms`), but synonyms only land when the apple-docs corpus is indexed with `--docs-dir` pointed at the `docs/` subdirectory (so `extractFrameworkFromPath` yields the real framework). If `--docs-dir` points one level too high, every row gets `framework = "docs"`, the alias rows degenerate, and the 22 synonyms never attach. Validate with `SELECT SUM(synonyms IS NOT NULL) FROM framework_aliases` after a rebuild.
 
+## Generation & action matrix
+
+For each enrichment: whether `cupertino save` produces it automatically, the prep action it needs (only two do), the **generated file** (the concrete `.db` / sidecar artifact written), the **input file** it reads (if any), and the **columns / tables** it adds. Only **Constraint Resolution** (#9, needs `apple-constraints.json`) and **package availability** (#3 / #4 / #17, need `--annotate-availability`) require a prep action; everything else is automatic in `save`. The query-time types (#21-24) generate no file and add no column (they run at search time over the stored enrichments). The docs `.db` set is `apple-documentation.db` / `hig.db` / `swift-org.db` / `swift-book.db` / `swift-evolution.db` / `apple-archive.db`; samples is `apple-sample-code.db`; packages is `packages.db`.
+
+| # | Enrichment | Auto in `save`? | Prep action needed | Generated file | Reads (input file) | Columns / tables it adds |
+|---|---|---|---|---|---|---|
+| 1 | Lexical Index (FTS5) | Yes | none | all 8 `.db` | none | FTS tables `docs_fts`, `doc_code_fts`, `doc_symbols_fts`, `sample_code_fts`, `projects_fts`, `files_fts`, `file_symbols_fts`, `package_files_fts` |
+| 2 | Symbol Field Boosting | Yes | none | docs `.db`, `apple-sample-code.db`, `packages.db` | none | FTS cols `symbols`, `symbol_components` (BM25F 5.0 / 1.5 applied at query) |
+| 3 | Deployment Floors | docs: yes; packages: only once annotated | packages: `cupertino fetch --source packages --annotate-availability --skip-archives` | all 8 `.db` | packages: `availability.json` | `min_ios` / `min_macos` / `min_tvos` / `min_watchos` / `min_visionos` + `availability_source` on `docs_metadata`, `sample_code_metadata`, `projects`, `package_metadata` |
+| 4 | Toolchain Stamping | Yes (`Package.swift` fallback) | packages: `--annotate-availability` for an accurate value | `swift-evolution.db`, `swift-book.db`, `packages.db` | packages: `availability.json` (else `Package.swift` line 1) | `implementation_swift_version` (docs), `swift_tools_version` (packages) |
+| 5 | AST Symbol Extraction | Yes | none | docs `.db`, `apple-sample-code.db`, `packages.db` | none | tables `doc_symbols` / `file_symbols` / `package_symbols`; cols: 16 `kind`s, `is_async`, `is_throws`, `is_public`, `is_static`, `signature`, `attributes`, `conformances`, `generic_params` |
+| 6 | Import Capture | Yes | none | docs `.db`, `apple-sample-code.db`, `packages.db` | none | tables `doc_imports` / `file_imports` / `package_imports` (+ `is_exported`) |
+| 7 | Identifier Splitting | Yes | none | docs `.db`, `apple-sample-code.db`, `packages.db` | none | col `symbol_components` |
+| 8 | Availability Capture | Yes | none | `apple-sample-code.db`, `packages.db` | none | col `available_attrs_json` (samples `files`, packages `package_files`) |
+| 9 | Constraint Resolution | pass is automatic; the **input is a prerequisite** | generate `apple-constraints.json` (AppleConstraintsKit from cupertino-symbolgraphs); #1072 guard hard-fails if absent (unless `--allow-degraded-enrichment`) | `apple-documentation.db`, `apple-sample-code.db`, `packages.db` | `apple-constraints.json` | col `generic_constraints` on `doc_symbols` (docs), `file_symbols` (samples), `package_symbols` (packages) |
+| 10 | Constraint Propagation | Yes (rides on #9) | none | `apple-documentation.db` | none | `generic_constraints` (parent→child propagated rows) |
+| 11 | Framework Aliasing | Yes (needs correct `--docs-dir`, see note above) | none | `apple-documentation.db` | none | table `framework_aliases` (`identifier`, `import_name`, `display_name`, `synonyms`) |
+| 12 | Platform Applicability | Yes | none | `hig.db` | none | NULLs `min_<platform>` columns on HIG-topic rows (subtractive) |
+| 13 | Apple-Framework Usage | Yes | none | `packages.db` | none | col `package_metadata.apple_imports_json` |
+| 14 | Structured Projection | Yes | none | docs `.db` | none | table `docs_structured` (`declaration`, `abstract`, `overview`, `module`, `platforms`, `conforms_to`, `inherited_by`, `conforming_types`, `attributes`) |
+| 15 | Inheritance Graph | Yes | none | `apple-documentation.db` | none | table `inheritance` (`parent_uri`, `child_uri`) |
+| 16 | Code Example Extraction | Yes | none | docs `.db` | none | table `doc_code_examples` + FTS `doc_code_fts` |
+| 17 | Availability Aggregation | Yes | packages / samples: `--annotate-availability` | `availability.json` sidecars (per-sample / per-package), then `apple-sample-code.db`, `packages.db` | per-file `@available` (in-DB) + `Package.swift` floor | MAX-merged `min_<platform>` + `availability_source` tagged `sample-available-aggregated` / `package-available-aggregated` |
+| 18 | Dependency Closure | Yes (needs `Package.resolved` in corpus) | none | `packages.db` | `Package.swift` / `Package.resolved` (corpus) | col `package_metadata.parents_json` |
+| 19 | Acquisition Provenance | Yes | none | all 8 `.db` | none | col `source_type` (`appleJSON` / `appleWebKit` / `custom` / `swiftOrg`) |
+| 20 | Row Bookkeeping | Yes | none | all 8 `.db` | none | cols `content_hash`, `word_count`, `json_data`, `kind`; table `samples_schema_version`; `PRAGMA user_version` stamps |
+| 21 | Rank Fusion (RRF) | Yes (query-time) | none | none | none | none, fuses stored per-source ranks |
+| 22 | Intent Routing | Yes (query-time) | none | none | none | none, prunes fetchers, applies authority weights (#254) |
+| 23 | Kind-Aware Reranking | Yes (query-time) | none | none | none | none, post-fusion reranking (#256 / #610) |
+| 24 | AST Boilerplate Demotion | Yes (query-time) | none | none | none | none, signal-rank `ORDER BY` on 4 AST commands (#177) |
+
 ---
 
 ## A. Full-text search layer (FTS5)
@@ -91,6 +122,8 @@ Raw Swift source becomes structured symbol rows in `doc_symbols` / `file_symbols
 20. **`@available` attribute extraction** (`AvailabilityParsers.extractAvailability`): every `@available(...)` occurrence with line, raw text, and platform list. Multi-line attributes captured correctly via the AST walk. Persisted per-file as `available_attrs_json` (samples `files`, packages `package_files`).
 
 ## E. Symbolgraph-derived constraints (cupertino-symbolgraphs)
+
+> Input pipeline (how the corpus is generated, where `apple-constraints.json` comes from, and where each artifact lives): [symbolgraph-corpus.md](symbolgraph-corpus.md).
 
 21. **`AppleConstraintsKit`**: parses `swift symbolgraph-extract` JSON from the **cupertino-symbolgraphs** corpus repo (for example the SwiftUI graph, hundreds of MB) into a filtered constraint table. Maps symbolgraph identity to an `apple-docs://` URI, keeps `conformance` and `superclass` constraints, drops `sameType` and layout requirements. Output is `apple-constraints.json`: measured at **61,040 entries, ~10.5 MB** on disk, consumed by the constraints enrichment pass. Verified landing real symbolgraph-only constraints into the DBs (e.g. SwiftUI `View` conformances that the DocC markdown never spells out).
 22. **`AppleSymbolGraphsKit.FrameworkModuleMap`**: the set of valid Apple module names (per design notes, on the order of a couple hundred), used by the packages apple-imports pass to recognise which imports are Apple frameworks.

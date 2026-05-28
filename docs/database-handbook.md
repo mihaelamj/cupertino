@@ -29,6 +29,7 @@ After this sequence, every database question has a named home to point at.
 |---|---|
 | `docs/architecture/database.md` | Methods-style reference. Every table, every FTS5 config, every indexer stage, every query-layer trick (BM25F weights, RRF, intent routing). §10 has the related-work comparison to Dash, Algolia, Sourcegraph Zoekt, DevDocs, PostgreSQL FTS. |
 | `docs/enrichment-inventory.md` | The flat checklist of every add-on cupertino layers on top of raw SQLite content: FTS5 tables, platform/version columns, AST-extracted symbol data, symbolgraph-derived constraints, the 7 enrichment passes, structured-doc + inheritance extraction. Pairs with the architecture doc (which carries the full DDL); this is the "name every enrichment" index. |
+| `docs/symbolgraph-corpus.md` | The input side of the constraints enrichment (#9/#10): how the Apple SDK symbol-graph corpus is generated (`cupertino-symbolgraphs-gen` or the published GitHub Release), how `cupertino-constraints-gen` turns it into `apple-constraints.json`, where every artifact in the chain lives, and which is committed vs gitignored vs released. |
 | `docs/PRINCIPLES.md` | The **why** behind the design (lossless URIs, collisions at the door, garbage filtered at input, 10× scale headroom). |
 | `docs/design/cupertino.md` | System-wide design including the crawl-to-bundle pipeline that produces the corpus the database indexes. |
 | `docs/ARCHITECTURE.md` | Package structure across the whole codebase (which target owns what). |

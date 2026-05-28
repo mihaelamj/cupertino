@@ -1418,6 +1418,11 @@ let targets: [Target] = {
             "MCPSupport",
             "Services", "ServicesModels", "RemoteSyncModels", "SearchSQLite",
             "SwiftEvolutionSource",
+            // #962 MCP/CLI parity guard: the MCP tool-name constants
+            // (SharedConstants) cross-checked against the CLI subcommand
+            // surface (CommandConfiguration via ArgumentParser).
+            "SharedConstants",
+            .product(name: "ArgumentParser", package: "swift-argument-parser"),
         ]
     )
     let mockAIAgentTestsTarget = Target.testTarget(
