@@ -10,11 +10,17 @@ import SharedConstants
 public struct SwiftEvolutionSource: Search.SourceProvider {
     public init() {}
 
-    public var definition: Search.SourceDefinition { Self.definition }
+    public var definition: Search.SourceDefinition {
+        Self.definition
+    }
 
-    public var fetchInfo: Search.FetchInfo? { Self.fetchInfo }
+    public var fetchInfo: Search.FetchInfo? {
+        Self.fetchInfo
+    }
 
-    public var destinationDB: Shared.Models.DatabaseDescriptor { .swiftEvolution }
+    public var destinationDB: Shared.Models.DatabaseDescriptor {
+        .swiftEvolution
+    }
 
     public var capabilities: Search.Capabilities {
         .init(
@@ -48,11 +54,5 @@ public struct SwiftEvolutionSource: Search.SourceProvider {
     /// DB via `env.docsDBURLs[sourceID]`.
     public func makeReadStrategy() -> (any Search.SourceReadStrategy)? {
         Search.DocsReadStrategy(sourceID: definition.id)
-    }
-
-    /// 2026-05-26 audit Cluster 12 follow-up: per-source MCP-resource
-    /// URI strategy for the `swift-evolution://` scheme.
-    public func makeURIResourceStrategy() -> (any Search.URIResourceStrategy)? {
-        SwiftEvolutionURIResourceStrategy()
     }
 }

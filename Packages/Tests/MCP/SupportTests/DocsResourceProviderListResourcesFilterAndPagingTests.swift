@@ -1,264 +1,104 @@
-import AppleArchiveSource
-import AppleDocsSource
 import Foundation
 import LoggingModels
 import MCPCore
 @testable import MCPSupport
 import SearchModels
 import SharedConstants
-import SwiftEvolutionSource
 import Testing
 
-// Covers the framework-root filter + cursor pagination + loud-metadata-
-// load behaviour added to
-// `MCP.Support.DocsResourceProvider.listResources` in #568.
+// Covers the cursor-pagination contract on
+// `MCP.Support.DocsResourceProvider.listResources` (#568 + #595).
 //
-// Pre-fix shape (silent on v1.1.0, loud on v1.2.0-staged): every entry in
-// `CrawlMetadata.pages` became one apple-docs resource, giving 55k+
-// entries against the live corpus and 11.1 MB JSON responses. Post-fix
-// shape: only framework-root pages become resources, and a result with
-// more than `pageSize` items returns the first slice + a `nextCursor`.
+// 2026-05-28 (Principle 7): the resources list is now built purely
+// from the DB-backed `MarkdownLookupStrategy.listResources()` seam, so
+// these tests drive the provider with a stub lookup returning a
+// controllable entry list. The framework-root vs full-document
+// enumeration policy is exercised separately against a real
+// `Search.Index` in `DocsResourceProviderDBBackedTests`.
 //
-// The malformed-URL skip behaviour is covered separately in
-// `DocsResourceProviderMalformedURLSkipTests`; this suite only verifies
-// the count + filter + pagination contract.
+// Pinned contract: a result longer than `pageSize` returns the first
+// slice + a `nextCursor`; following the cursor returns the tail with
+// no further cursor; a malformed cursor throws `invalidArgument`.
 
-@Suite("MCP.Support.DocsResourceProvider listResources filter + paging", .serialized)
+/// Stub lookup returning a fixed list (read path unused here).
+private struct ListStubLookup: MCP.Support.MarkdownLookupStrategy {
+    let entries: [Search.URIResource]
+    func lookup(uri _: String) async throws -> String? {
+        nil
+    }
+
+    func listResources() async throws -> [Search.URIResource] {
+        entries
+    }
+}
+
+@Suite("MCP.Support.DocsResourceProvider listResources paging", .serialized)
 struct DocsResourceProviderListResourcesFilterAndPagingTests {
     // MARK: - Helpers
 
-    private func makeProvider(in tempRoot: URL) -> MCP.Support.DocsResourceProvider {
-        let evolutionDir = tempRoot.appendingPathComponent("swift-evolution")
-        let archiveDir = tempRoot.appendingPathComponent("archive")
-        let config = Shared.Configuration(
-            crawler: Shared.Configuration.Crawler(outputDirectory: tempRoot),
-            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempRoot)
-        )
-        // 2026-05-26 audit Cluster 12 follow-up: strategies + scheme map.
-        let appleDocs = AppleDocsURIResourceStrategy()
-        let evolution = SwiftEvolutionURIResourceStrategy()
-        let archive = AppleArchiveURIResourceStrategy()
-        return MCP.Support.DocsResourceProvider(
-            configuration: config,
-            resourceStrategies: [appleDocs, evolution, archive],
-            directoriesByScheme: [
-                appleDocs.scheme: tempRoot,
-                evolution.scheme: evolutionDir,
-                archive.scheme: archiveDir,
-            ],
-            markdownLookup: nil,
+    private func makeProvider(entries: [Search.URIResource]) -> MCP.Support.DocsResourceProvider {
+        MCP.Support.DocsResourceProvider(
+            knownURISchemes: [Shared.Constants.Search.appleDocsScheme],
+            markdownLookup: ListStubLookup(entries: entries),
             logger: Logging.NoopRecording()
         )
     }
 
-    private func framework(name: String) -> (key: String, page: Shared.Models.PageMetadata) {
-        // Framework root: path is exactly `/documentation/<framework>`, no trailing component.
-        let url = "https://developer.apple.com/documentation/\(name)"
-        return (url, Shared.Models.PageMetadata(
-            url: url,
-            framework: name,
-            filePath: "/dev/null",
-            contentHash: name,
-            depth: 0
-        ))
-    }
-
-    private func deepPage(framework: String, slug: String) -> (key: String, page: Shared.Models.PageMetadata) {
-        // Deep page (NOT a framework root): one or more path components under the framework.
-        let url = "https://developer.apple.com/documentation/\(framework)/\(slug)"
-        return (url, Shared.Models.PageMetadata(
-            url: url,
-            framework: framework,
-            filePath: "/dev/null",
-            contentHash: "\(framework)/\(slug)",
-            depth: 1
-        ))
-    }
-
-    // MARK: - Filter
-
-    @Test("Filter: framework-root pages survive, deep symbol pages are dropped")
-    func filterKeepsRootsDropsDeepPages() async throws {
-        let tempRoot = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cupertino-listres-filter-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempRoot) }
-
-        var pages: [String: Shared.Models.PageMetadata] = [:]
-        let (rootKey, rootPage) = framework(name: "swiftui")
-        pages[rootKey] = rootPage
-        for slug in ["list", "view", "init(_:)", "anonymous-field-0", "unnamed-struct"] {
-            let (key, page) = deepPage(framework: "swiftui", slug: slug)
-            pages[key] = page
-        }
-
-        let provider = makeProvider(in: tempRoot)
-        await provider.injectMetadataForTesting(Shared.Models.CrawlMetadata(pages: pages))
-
-        let result = try await provider.listResources(cursor: nil)
-        let appleDocs = result.resources.filter {
-            $0.uri.hasPrefix(Shared.Constants.Search.appleDocsScheme)
-        }
-        #expect(appleDocs.count == 1, "Only the framework root should survive the filter")
-    }
-
-    @Test("Filter: framework-root URL with trailing slash still counts as root")
-    func filterAcceptsTrailingSlash() async throws {
-        let tempRoot = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cupertino-listres-trailingslash-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempRoot) }
-
-        let url = "https://developer.apple.com/documentation/swiftui/"
-        let page = Shared.Models.PageMetadata(
-            url: url,
-            framework: "swiftui",
-            filePath: "/dev/null",
-            contentHash: "swiftui",
-            depth: 0
+    private func appleDocsEntry(name: String) -> Search.URIResource {
+        Search.URIResource(
+            uri: "\(Shared.Constants.Search.appleDocsScheme)\(name)",
+            name: name,
+            description: "Documentation: \(name)"
         )
-        let provider = makeProvider(in: tempRoot)
-        await provider.injectMetadataForTesting(Shared.Models.CrawlMetadata(pages: [url: page]))
-
-        let result = try await provider.listResources(cursor: nil)
-        let appleDocs = result.resources.filter {
-            $0.uri.hasPrefix(Shared.Constants.Search.appleDocsScheme)
-        }
-        #expect(appleDocs.count == 1)
     }
 
-    @Test("Filter: case-insensitive match between URL path and framework name")
-    func filterCaseInsensitive() async throws {
-        let tempRoot = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cupertino-listres-caseins-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempRoot) }
+    // MARK: - Count cap
 
-        // Apple's JSON API returns mixed-case framework names; the canonical URL is lowercased.
-        let url = "https://developer.apple.com/documentation/SwiftUI"
-        let page = Shared.Models.PageMetadata(
-            url: url,
-            framework: "swiftui",
-            filePath: "/dev/null",
-            contentHash: "swiftui",
-            depth: 0
-        )
-        let provider = makeProvider(in: tempRoot)
-        await provider.injectMetadataForTesting(Shared.Models.CrawlMetadata(pages: [url: page]))
-
+    @Test("Count cap: a large entry list collapses to ≤ pageSize resources per page")
+    func countCapAgainstLargeList() async throws {
+        var entries: [Search.URIResource] = []
+        for index in 0..<(MCP.Support.DocsResourceProvider.pageSize + 200) {
+            entries.append(appleDocsEntry(name: "framework\(String(format: "%04d", index))"))
+        }
+        let provider = makeProvider(entries: entries)
         let result = try await provider.listResources(cursor: nil)
-        let appleDocs = result.resources.filter {
-            $0.uri.hasPrefix(Shared.Constants.Search.appleDocsScheme)
-        }
-        #expect(appleDocs.count == 1)
-    }
-
-    // MARK: - Count cap (the contract that pins the bug regression shut)
-
-    @Test("Count cap: a 60k-page corpus collapses to ≤ pageSize apple-docs resources")
-    func countCapAgainst60kCorpus() async throws {
-        let tempRoot = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cupertino-listres-cap-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempRoot) }
-
-        // 100 framework roots + 599 deep pages per framework ≈ 60k entries,
-        // mirroring the live `metadata.json` shape that surfaced the bug.
-        var pages: [String: Shared.Models.PageMetadata] = [:]
-        for frameworkIndex in 0..<100 {
-            let frameworkName = "framework\(frameworkIndex)"
-            let (rootKey, rootPage) = framework(name: frameworkName)
-            pages[rootKey] = rootPage
-            for slug in 0..<599 {
-                let (deepKey, deepPageMeta) = deepPage(framework: frameworkName, slug: "deep-\(slug)")
-                pages[deepKey] = deepPageMeta
-            }
-        }
-        #expect(pages.count == 100 * 600, "fixture should be exactly 60,000 pages")
-
-        let provider = makeProvider(in: tempRoot)
-        await provider.injectMetadataForTesting(Shared.Models.CrawlMetadata(pages: pages))
-
-        let result = try await provider.listResources(cursor: nil)
-        let appleDocs = result.resources.filter {
-            $0.uri.hasPrefix(Shared.Constants.Search.appleDocsScheme)
-        }
-        // Filter alone would yield 100 frameworks; the pageSize cap is the
-        // second line of defence. The pinned contract: never more than
-        // `MCP.Support.DocsResourceProvider.pageSize` apple-docs resources
-        // in a single page, no matter what the corpus shape is.
-        #expect(appleDocs.count <= MCP.Support.DocsResourceProvider.pageSize)
-        // And every survivor is a framework root.
-        for resource in appleDocs {
-            #expect(!resource.uri.contains("/deep-"), "deep-page URI leaked past filter: \(resource.uri)")
-        }
+        #expect(result.resources.count <= MCP.Support.DocsResourceProvider.pageSize)
     }
 
     // MARK: - Pagination
 
     @Test("Pagination: first page returns pageSize items + nextCursor when more remain")
     func paginationFirstPage() async throws {
-        let tempRoot = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cupertino-listres-page1-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempRoot) }
-
-        // Need strictly more than pageSize framework roots so a nextCursor must be issued.
-        var pages: [String: Shared.Models.PageMetadata] = [:]
         let pageSize = MCP.Support.DocsResourceProvider.pageSize
         let total = pageSize + 50
+        var entries: [Search.URIResource] = []
         for index in 0..<total {
-            let (key, page) = framework(name: "framework\(String(format: "%04d", index))")
-            pages[key] = page
+            entries.append(appleDocsEntry(name: "framework\(String(format: "%04d", index))"))
         }
-
-        let provider = makeProvider(in: tempRoot)
-        await provider.injectMetadataForTesting(Shared.Models.CrawlMetadata(pages: pages))
-
-        let firstPage = try await provider.listResources(cursor: nil)
+        let firstPage = try await makeProvider(entries: entries).listResources(cursor: nil)
         #expect(firstPage.resources.count == pageSize)
         #expect(firstPage.nextCursor != nil)
     }
 
     @Test("Pagination: nextCursor returns the remaining tail and no further nextCursor")
     func paginationSecondPageExhausts() async throws {
-        let tempRoot = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cupertino-listres-page2-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempRoot) }
-
-        var pages: [String: Shared.Models.PageMetadata] = [:]
         let pageSize = MCP.Support.DocsResourceProvider.pageSize
         let total = pageSize + 50
+        var entries: [Search.URIResource] = []
         for index in 0..<total {
-            let (key, page) = framework(name: "framework\(String(format: "%04d", index))")
-            pages[key] = page
+            entries.append(appleDocsEntry(name: "framework\(String(format: "%04d", index))"))
         }
-
-        let provider = makeProvider(in: tempRoot)
-        await provider.injectMetadataForTesting(Shared.Models.CrawlMetadata(pages: pages))
-
+        let provider = makeProvider(entries: entries)
         let firstPage = try await provider.listResources(cursor: nil)
         let nextCursor = try #require(firstPage.nextCursor)
         let secondPage = try await provider.listResources(cursor: nextCursor)
-        #expect(secondPage.resources.count == 50, "second page should hold the remaining 50 framework roots")
+        #expect(secondPage.resources.count == 50, "second page should hold the remaining 50 entries")
         #expect(secondPage.nextCursor == nil, "second page is the final slice; nextCursor must be nil")
     }
 
     @Test("Pagination: invalid cursor throws invalidArgument (#595 — strict, was lenient pre-fix)")
     func paginationInvalidCursorThrows() async throws {
-        let tempRoot = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cupertino-listres-badcursor-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempRoot) }
-
-        let (key, page) = framework(name: "swiftui")
-        let provider = makeProvider(in: tempRoot)
-        await provider.injectMetadataForTesting(Shared.Models.CrawlMetadata(pages: [key: page]))
-
-        // Pre-#595 this silently returned page 1, trapping paginating
-        // clients in an infinite re-fetch loop. Post-#595 it throws
-        // invalidArgument; the JSON-RPC layer surfaces -32602.
+        let provider = makeProvider(entries: [appleDocsEntry(name: "swiftui")])
         await #expect(throws: Shared.Core.ToolError.self) {
             _ = try await provider.listResources(cursor: "🚫not-a-cursor")
         }
@@ -266,13 +106,7 @@ struct DocsResourceProviderListResourcesFilterAndPagingTests {
 
     @Test("Pagination: empty / nil cursor remains the 'first page' bootstrap call (regression check)")
     func paginationEmptyCursorReturnsFirstPage() async throws {
-        let tempRoot = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cupertino-listres-emptycursor-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempRoot) }
-        let (key, page) = framework(name: "swiftui")
-        let provider = makeProvider(in: tempRoot)
-        await provider.injectMetadataForTesting(Shared.Models.CrawlMetadata(pages: [key: page]))
+        let provider = makeProvider(entries: [appleDocsEntry(name: "swiftui")])
         let emptyResult = try await provider.listResources(cursor: "")
         #expect(emptyResult.resources.count == 1)
         let nilResult = try await provider.listResources(cursor: nil as String?)
