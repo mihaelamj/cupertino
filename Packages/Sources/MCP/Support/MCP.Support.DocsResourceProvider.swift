@@ -238,60 +238,22 @@ extension MCP.Support {
         // MARK: - Filter
 
         public func readResource(uri: String) async throws -> MCP.Core.Protocols.ReadResourceResult {
-            let markdown: String
-
-            // Try database first if a markdown lookup was injected
-            if let markdownLookup {
-                if let dbContent = try await markdownLookup.lookup(uri: uri) {
-                    // Found in database - return markdown
-                    let contents = MCP.Core.Protocols.ResourceContents.text(
-                        MCP.Core.Protocols.TextResourceContents(
-                            uri: uri,
-                            mimeType: MCP.SharedTools.Copy.mimeTypeMarkdown,
-                            text: dbContent
-                        )
-                    )
-                    return MCP.Core.Protocols.ReadResourceResult(contents: [contents])
-                }
-            }
-
-            // Database lookup failed or no index — strategy dispatch.
-            // Each strategy answers for its own URI scheme. The first
-            // strategy that recognises the URI (by `hasPrefix(scheme)`)
-            // and resolves it returns the content; if it recognises
-            // the URI but the resource is missing on disk (returns
-            // nil), throw `notFound`. If no strategy recognises the
-            // URI's scheme at all, throw `invalidURI`.
-            guard let strategy = resourceStrategies.first(where: { uri.hasPrefix($0.scheme) }) else {
-                throw Shared.Core.ToolError.invalidURI(uri)
-            }
-            guard let directory = directoriesByScheme[strategy.scheme] else {
+            // Principle 7: resolve content from the DB only — never the
+            // filesystem. There is no fallback. A document that isn't in the
+            // DB is `notFound`; tests guarantee the indexer puts it there.
+            guard let markdownLookup else {
                 throw Shared.Core.ToolError.notFound(uri)
             }
-            // Apple-docs reads metadata in its strategy via env; the
-            // other strategies ignore the metadata field. Load it best-
-            // effort; a missing metadata file is non-fatal because the
-            // filesystem probe in each strategy doesn't depend on it.
-            let envMetadata: Shared.Models.CrawlMetadata? = await (try? getMetadata())
-            let env = Search.URIResourceEnvironment(
-                sourceDirectory: directory,
-                metadata: envMetadata,
-                logger: logger
-            )
-            guard let resolved = try await strategy.readMarkdown(uri: uri, env: env) else {
+            guard let dbContent = try await markdownLookup.lookup(uri: uri) else {
                 throw Shared.Core.ToolError.notFound(uri)
             }
-            markdown = resolved
-
-            // Create resource contents
             let contents = MCP.Core.Protocols.ResourceContents.text(
                 MCP.Core.Protocols.TextResourceContents(
                     uri: uri,
                     mimeType: MCP.SharedTools.Copy.mimeTypeMarkdown,
-                    text: markdown
+                    text: dbContent
                 )
             )
-
             return MCP.Core.Protocols.ReadResourceResult(contents: [contents])
         }
 

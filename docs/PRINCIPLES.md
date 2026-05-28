@@ -168,11 +168,20 @@ expressions of "correctness first" at the import layer.
 
 ## 7. The database is the single source of truth
 
-Once built, the database is self-contained. Every query serves from the
-DB alone — the shipped tool has only the DB (fetched via `cupertino
+This is a **first principle**, not a preference. Once built, the database
+is self-contained and authoritative. Every query serves from the DB
+**alone** — the shipped tool has only the DB (fetched via `cupertino
 setup`); the corpus directory is a **build-time input, never a runtime
-dependency**. No `search` / `read` / resource path may read a document
-from the filesystem.
+dependency**.
+
+**No query-time code path may touch the filesystem to resolve document
+content or to enumerate documents.** Not as a primary path, not as a
+fallback, not "best-effort if the corpus happens to be present."
+`search`, `read`, and MCP `resources/{list,read}` resolve everything from
+the DB. A query path that reads a file is a bug, full stop — there is no
+configuration in which it is acceptable, because the only thing a typical
+user has is the DB. If the data a query needs isn't in the DB, the fix is
+to put it in the DB at build time, never to reach outside for it.
 
 **No stored value may be derived from filesystem layout.** A document's
 identity — its framework, category, guide, source — is a property of the
