@@ -706,9 +706,9 @@ log show --predicate 'subsystem == "com.cupertino.cli" AND category == "crawler"
 log stream --predicate 'subsystem == "com.cupertino.cli"'
 ```
 
-**Categories**: crawler, mcp, search, cli, samples, package-downloader, evolution, archive, hig
+**Categories**: crawler, mcp, search, cli, transport, evolution, samples, package-downloader, archive, hig
 
-> **MCP requests are not in os.log.** The MCP server writes its JSON-RPC request and response traffic and its lifecycle messages to **stderr**, not os.log. To watch MCP traffic, capture the server's stderr (`cupertino serve 2>/tmp/cupertino-mcp.log`) or open your MCP client's server-output panel. The os.log channel above carries CLI and setup or diagnostic output.
+> **MCP JSON-RPC wire traffic is on stderr, not os.log.** The stdio transport writes each request and response message (the `→`/`←` wire traffic) to **stderr**, because stdout carries the protocol itself. To watch the wire traffic, capture the server's stderr (`cupertino serve 2>/tmp/cupertino-mcp.log`) or open your MCP client's server-output panel. MCP server lifecycle and diagnostic messages (index availability, load failures) are logged to os.log under the `mcp` category, so the `com.cupertino.cli` predicate above still surfaces them.
 
 ## Performance
 
