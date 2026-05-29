@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Usage question or discussion
+    url: https://github.com/mihaelamj/cupertino/issues?q=is%3Aissue
+    about: Search existing issues first. For open-ended questions, open a Feature / enhancement issue and describe what you are trying to do.

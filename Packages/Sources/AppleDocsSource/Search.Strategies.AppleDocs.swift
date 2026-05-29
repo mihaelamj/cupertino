@@ -177,7 +177,11 @@ extension Search {
                     skipped += 1
                     continue
                 }
-                let framework = Search.StrategyHelpers.canonicalPathComponent(rawFramework)
+                // On-disk layout is only a fallback signal. The authoritative
+                // framework comes from the document's own URL (see below, once
+                // the page is decoded); the corpus folder must never determine
+                // a stored value.
+                let pathFramework = Search.StrategyHelpers.canonicalPathComponent(rawFramework)
 
                 let structuredPage: Shared.Models.StructuredDocumentationPage
                 let jsonString: String
@@ -205,7 +209,7 @@ extension Search {
                         continue
                     }
                     let pageURL = URL(
-                        string: "\(Shared.Constants.BaseURL.appleDeveloperDocs)\(framework)/" +
+                        string: "\(Shared.Constants.BaseURL.appleDeveloperDocs)\(pathFramework)/" +
                             "\(file.deletingPathExtension().lastPathComponent)"
                     )
                     guard let converted = markdownStrategy.convert(markdown: mdContent, url: pageURL) else {
@@ -230,6 +234,15 @@ extension Search {
                     }
                     jsonString = json
                 }
+
+                // Authoritative framework: read from the document's own URL,
+                // not the corpus folder. `pathFramework` is the last-resort
+                // fallback for the rare page whose URL has no /documentation/
+                // segment. This is what keeps `framework` a property of the
+                // document rather than of where the file happened to live.
+                let framework = Search.StrategyHelpers.canonicalPathComponent(
+                    Search.StrategyHelpers.frameworkFromDocumentationURL(structuredPage.url) ?? pathFramework
+                )
 
                 // #284 indexer-side defences.
                 if Search.StrategyHelpers.titleLooksLikeHTTPErrorTemplate(structuredPage.title) {
@@ -268,7 +281,11 @@ extension Search {
                     ))
                     continue
                 }
-                if Search.StrategyHelpers.titleLooksLikePlaceholderError(structuredPage.title, url: structuredPage.url) {
+                if Search.StrategyHelpers.titleLooksLikePlaceholderError(
+                    structuredPage.title,
+                    url: structuredPage.url,
+                    hasContent: structuredPage.declaration != nil
+                ) {
                     logger.error(
                         "⛔ Skipping placeholder-title page (#588 indexer defence): " +
                             "title=\(structuredPage.title.prefix(60)) " +
@@ -527,7 +544,11 @@ extension Search {
                 // data fetch fails after the page chrome was already
                 // rendered. Empty / whitespace-only titles fall under the
                 // same gate.
-                if Search.StrategyHelpers.titleLooksLikePlaceholderError(title, url: parsedURL) {
+                if Search.StrategyHelpers.titleLooksLikePlaceholderError(
+                    title,
+                    url: parsedURL,
+                    hasContent: content.contains("\"declaration\"")
+                ) {
                     logger.error(
                         "⛔ Skipping placeholder-title page (#588 indexer defence): " +
                             "url=\(url) title=\(title.prefix(60))",

@@ -166,6 +166,52 @@ paid once.
 This principle is **why** the previous five exist. They're operational
 expressions of "correctness first" at the import layer.
 
+## 7. The database is the single source of truth
+
+This is a **first principle**, not a preference. Once built, the database
+is self-contained and authoritative. Every query serves from the DB
+**alone** — the shipped tool has only the DB (fetched via `cupertino
+setup`); the corpus directory is a **build-time input, never a runtime
+dependency**.
+
+**No query-time code path may touch the filesystem to resolve document
+content or to enumerate documents.** Not as a primary path, not as a
+fallback, not "best-effort if the corpus happens to be present."
+`search`, `read`, and MCP `resources/{list,read}` resolve everything from
+the DB. A query path that reads a file is a bug, full stop — there is no
+configuration in which it is acceptable, because the only thing a typical
+user has is the DB. If the data a query needs isn't in the DB, the fix is
+to put it in the DB at build time, never to reach outside for it.
+
+**No stored value may be derived from filesystem layout.** A document's
+identity — its framework, category, guide, source — is a property of the
+document, not of the folder it happens to sit in. Derive it from the
+document's own content (its canonical URL or fields), exactly as the
+lossless URI does (principle 1). The directory you pass to `cupertino
+save` (`--docs-dir`, `--hig-dir`, …) must never determine a stored
+column; it only tells the indexer where to read the input files.
+
+**If an attribute is needed and isn't in the document, add it to the
+document at crawl time** (a frontmatter key, a JSON field) so it lands
+in the DB — never re-derive it from where the file lives. "Add it to the
+DB" beats "read it from the folder," always.
+
+### Why this principle exists
+
+2026-05-28: `apple-documentation.db` was built with `--docs-dir` pointed
+one level too high. `extractFrameworkFromPath` takes the first path
+component relative to that directory, so every page got
+`framework = "docs"` (351,495 / 354,963 rows) instead of its real
+framework. Framework aliasing and framework-scoped search silently
+broke. The truth was never lost — it sits in every URI — but a stored
+column had been made a function of an operator-supplied path. The fix:
+derive `framework` from the document's own URL
+(`Search.StrategyHelpers.frameworkFromDocumentationURL`); the folder is a
+last-resort fallback only. Any source that still keys a stored value off
+the corpus folder (HIG category, archive guide, swift-org/book
+framework) is on the same fault line and must move to the document's URL
+or have the value stamped into the document at crawl time.
+
 ---
 
 ## Companion docs

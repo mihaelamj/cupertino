@@ -213,6 +213,22 @@ extension Search {
             return String(framework)
         }
 
+        /// Framework identifier read from the document's own developer.apple.com
+        /// URL: the path segment immediately after `/documentation/`
+        /// (`…/documentation/swiftui/lazyvgrid` → `swiftui`). Content-derived
+        /// and lossless — it depends only on the document, never on where the
+        /// corpus happens to sit on disk. This is the authoritative source for
+        /// the stored `framework`; `extractFrameworkFromPath` is a fallback for
+        /// the rare page that carries no recognisable Apple doc URL.
+        public static func frameworkFromDocumentationURL(_ url: URL) -> String? {
+            let parts = url.pathComponents
+            guard let docIndex = parts.firstIndex(of: "documentation"), docIndex + 1 < parts.count else {
+                return nil
+            }
+            let framework = parts[docIndex + 1]
+            return framework.isEmpty ? nil : framework
+        }
+
         /// Lowercase a single path component for canonical comparison.
         ///
         /// Mirrors `URLUtilities.normalize`, which deliberately does **not** collapse
@@ -797,17 +813,30 @@ extension Search {
         ///     as a placeholder. Defaults to `nil` for callers (and tests)
         ///     that don't have it.
         /// - Returns: `true` if the title is a placeholder; indexer should skip.
-        public static func titleLooksLikePlaceholderError(_ title: String, url: URL? = nil) -> Bool {
+        public static func titleLooksLikePlaceholderError(
+            _ title: String,
+            url: URL? = nil,
+            hasContent: Bool = false
+        ) -> Bool {
             let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             if trimmed.isEmpty { return true }
             if trimmed == "apple developer documentation" { return true }
             if trimmed == "error" {
+                // A page titled "error" that carries real member content (a
+                // declaration) is a genuine `.error` member, not the
+                // failed-fetch shell Apple's JS app renders on a data-fetch
+                // failure (which has no declaration). Keep it regardless of
+                // the URL slug shape. This spares WebKitJS `.error` properties
+                // (e.g. `FileReader.error`), whose URL leaf is the
+                // `<id>-error` slug (`1629843-error`), not bare `error`, and
+                // which the leaf check below would otherwise drop.
+                if hasContent { return false }
                 guard let url else {
-                    // No URL context — be conservative, don't reject
+                    // No URL context, so be conservative: don't reject
                     // (downstream tier-C check still surfaces conflicts).
                     return false
                 }
-                // Apple's slug for an enum case named `error` is literally
+                // Apple's DocC slug for an enum case named `error` is literally
                 // "error" (or "error()" for parameterless method-like
                 // shapes). Strip trailing parens before comparing.
                 let leaf = url.lastPathComponent

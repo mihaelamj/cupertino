@@ -920,29 +920,27 @@ let targets: [Target] = {
 
     let mcpSupportTarget = Target.target(
         name: "MCPSupport",
-        // 2026-05-26 audit Cluster 12 follow-up: SearchModels carries
-        // `Search.URIResourceStrategy` + `Search.URIResourceEnvironment`
-        // — the seam the per-source URI dispatch consumes. Foundation
-        // tier import (gof-di-rules § 4-8 allows it).
+        // SearchModels carries `Search.URIResource` + the
+        // `Search.ResourceListMode` seam the DB-backed MCP resources
+        // path consumes. Foundation tier import (gof-di-rules § 4-8
+        // allows it).
         dependencies: ["MCPCore", "MCPSharedTools", "SearchModels", "SharedConstants", "LoggingModels"],
         path: "Sources/MCP/Support"
     )
     let mcpSupportTestsTarget = Target.testTarget(
         name: "MCPSupportTests",
-        // 2026-05-26 audit Cluster 12 follow-up: per-source URI
-        // strategy concretes live in their owning source targets
-        // (AppleDocsSource / SwiftEvolutionSource / AppleArchiveSource);
-        // tests that build a DocsResourceProvider need access to
-        // instantiate them.
+        // 2026-05-28 (Principle 7): the resources path is DB-backed.
+        // Tests build a real per-source `Search.Index` (SearchSQLite)
+        // and assert read + list resolve from the DB with no filesystem
+        // access.
         dependencies: [
-            "AppleDocsSource",
-            "AppleArchiveSource",
             "MCPSupport",
             "MCPCore",
             "MCPSharedTools",
+            "SearchAPI",
             "SearchModels",
+            "SearchSQLite",
             "SharedConstants",
-            "SwiftEvolutionSource",
             "TestSupport",
         ],
         path: "Tests/MCP/SupportTests"
@@ -1313,14 +1311,13 @@ let targets: [Target] = {
     let serveTestsTarget = Target.testTarget(
         name: "ServeTests",
         dependencies: [
-            "AppleArchiveSource",
-            "AppleDocsSource",
             "CLI",
             "CrawlerWebKit",
             "MCPCore",
             "MCPSupport",
             "SearchAPI",
             "SearchModels",
+            "SearchSQLite",
             "SearchToolProvider",
             "SampleIndex",
             "SampleIndexSQLite",
@@ -1328,7 +1325,6 @@ let targets: [Target] = {
             "Services",
             "ServicesModels",
             "SharedConstants",
-            "SwiftEvolutionSource",
             "TestSupport",
         ],
         path: "Tests/CLICommandTests/ServeTests"
@@ -1422,6 +1418,11 @@ let targets: [Target] = {
             "MCPSupport",
             "Services", "ServicesModels", "RemoteSyncModels", "SearchSQLite",
             "SwiftEvolutionSource",
+            // #962 MCP/CLI parity guard: the MCP tool-name constants
+            // (SharedConstants) cross-checked against the CLI subcommand
+            // surface (CommandConfiguration via ArgumentParser).
+            "SharedConstants",
+            .product(name: "ArgumentParser", package: "swift-argument-parser"),
         ]
     )
     let mockAIAgentTestsTarget = Target.testTarget(
@@ -1432,6 +1433,12 @@ let targets: [Target] = {
             "SampleIndexSQLite",
             "TestSupport",
         ]
+    )
+    // Local-only real-DB enrichment battery. No package deps: it probes the
+    // shipped per-source DBs read-only via SQLite3 and skips when absent.
+    let enrichmentBatteryTestsTarget = Target.testTarget(
+        name: "EnrichmentBatteryTests",
+        dependencies: []
     )
 
     let cupertinoTargets: [Target] = [
@@ -1559,6 +1566,8 @@ let targets: [Target] = {
         mockAIAgentTestsTarget,
         // TUI Tests
         tuiTestsTarget,
+        // Local-only real-DB enrichment battery
+        enrichmentBatteryTestsTarget,
     ]
     #else
     let cupertinoTargets: [Target] = []

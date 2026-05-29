@@ -79,7 +79,25 @@ extension Search {
                         totalBytes: files.reduce(Int64(0)) { $0 + Int64($1.byteSize) },
                         tarballBytes: tarballBytes ?? 0
                     )
-                    let availability = Self.loadAvailability(at: dir)
+                    var availability = Self.loadAvailability(at: dir)
+                    // #861 robustness: the swift-tools-version lives on
+                    // Package.swift line 1 and must never depend on the
+                    // presence of availability.json. When the annotator
+                    // output is absent, loadAvailability returns nil and the
+                    // toolchain stamp would silently vanish even though
+                    // Package.swift carries it. Build a minimal payload from
+                    // Package.swift so swiftToolsVersion is captured
+                    // regardless (the @available floors still require the
+                    // annotator's availability.json).
+                    if availability == nil,
+                       let swiftTools = Self.readSwiftToolsVersionFromPackageManifest(at: dir) {
+                        availability = PackageIndex.AvailabilityPayload(
+                            deploymentTargets: [:],
+                            attributesByRelpath: [:],
+                            source: "package-swift",
+                            swiftToolsVersion: swiftTools
+                        )
+                    }
                     let outcome = try await index.index(
                         resolved: resolved.resolvedPackage,
                         extraction: result,

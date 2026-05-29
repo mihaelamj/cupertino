@@ -103,11 +103,15 @@ extension Search {
                     continue
                 }
 
-                let guideID = Search.StrategyHelpers.extractFrameworkFromPath(
-                    file, relativeTo: archiveDirectory
-                ) ?? "unknown"
-
                 let metadata = Search.StrategyHelpers.extractArchiveMetadata(from: content)
+                // Guide identifier is a property of the document: the crawler
+                // stamps it into the frontmatter (`guide:`). Read it from
+                // there; fall back to the on-disk layout only for legacy
+                // corpora that predate the key (Principle 7: no stored value
+                // derived from filesystem layout).
+                let guideID = metadata["guide"]
+                    ?? Search.StrategyHelpers.extractFrameworkFromPath(file, relativeTo: archiveDirectory)
+                    ?? "unknown"
                 let title = metadata["title"]
                     ?? Search.StrategyHelpers.extractTitle(from: content)
                     ?? file.deletingPathExtension().lastPathComponent

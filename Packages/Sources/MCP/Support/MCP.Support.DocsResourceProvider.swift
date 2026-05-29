@@ -8,30 +8,41 @@ import SharedConstants
 // MARK: - Documentation Resource Provider
 
 extension MCP.Support {
-    /// Strategy for resolving a resource URI to pre-rendered markdown
-    /// out of a search-index database (or any other source). GoF
-    /// Strategy pattern: returns `nil` if the URI is not present;
-    /// throws if the lookup itself fails. `DocsResourceProvider`
-    /// treats either as a fall-back trigger to read from the
-    /// filesystem.
+    /// Strategy for resolving + enumerating MCP resources purely out of
+    /// the per-source SQLite databases. GoF Strategy pattern (1994
+    /// p. 315): the provider names the contract, the composition root
+    /// supplies the concrete that reaches the per-source DBs.
+    ///
+    /// Principle 7 (`docs/PRINCIPLES.md`): the database is the single
+    /// source of truth. Both methods resolve content / enumeration from
+    /// the DBs alone; no filesystem path is ever consulted. A document
+    /// absent from the DB is `notFound`; the resources list is whatever
+    /// the per-source DBs can enumerate.
     ///
     /// Replaces the previous
     /// `MarkdownLookup = @Sendable (String) async throws -> String?`
     /// closure typealias. Conforming types name the contract, make
-    /// captured state explicit, and produce one-line test mocks
-    /// instead of inline closures.
+    /// captured state explicit, and produce one-line test mocks instead
+    /// of inline closures.
     public protocol MarkdownLookupStrategy: Sendable {
+        /// Resolve a URI to its pre-rendered markdown out of the matching
+        /// per-source DB. Returns `nil` when the URI is not present (the
+        /// provider maps that to `notFound`); throws on a real DB error.
         func lookup(uri: String) async throws -> String?
+
+        /// Enumerate every MCP resource the per-source DBs can list.
+        /// Each entry's `uri` is directly readable via `lookup(uri:)`.
+        /// Enumeration is DB-backed; no filesystem is consulted.
+        func listResources() async throws -> [Search.URIResource]
     }
 
     /// Provides crawled documentation as MCP resources.
     ///
-    /// The provider's database lookup is injected as a
+    /// The provider's read + list behaviour is injected as a
     /// `MarkdownLookupStrategy` conformer rather than a concrete
     /// `Search.Index` value, so this target stays free of any
-    /// behavioural dependency on Search. Consumers wire the strategy
-    /// at the call site (CLI/MCP entrypoint) — typically a small
-    /// adapter around `Search.Index.getDocumentContent(uri:format:)`.
+    /// behavioural dependency on Search. The composition root
+    /// (CLI `serve`) wires the per-source-DB-backed concrete.
     public actor DocsResourceProvider: MCP.Core.ResourceProvider {
         /// Maximum number of resources returned in a single
         /// `listResources` page. Pinned by
@@ -39,128 +50,62 @@ extension MCP.Support {
         /// MCP cursor protocol (2025-06-18) makes pagination optional;
         /// we issue a `nextCursor` only when the underlying sorted
         /// result is strictly longer than `pageSize`.
-        ///
-        /// The current bundle yields ~1,000 sorted resources
-        /// (~420 framework roots + 483 Swift Evolution proposals +
-        /// 96 Apple Archive guides + a handful of curated entries), so
-        /// 500 keeps the typical first page well under typical MCP
-        /// client message-size limits without forcing every consumer
-        /// to follow a cursor.
         public static let pageSize: Int = 500
 
-        private let configuration: Shared.Configuration
-        private var metadata: Shared.Models.CrawlMetadata?
         private let markdownLookup: (any MCP.Support.MarkdownLookupStrategy)?
         /// GoF Strategy seam for log emission (1994 p. 315).
         private let logger: any LoggingModels.Logging.Recording
 
-        /// 2026-05-26 audit Cluster 12 follow-up: registry-supplied
-        /// per-source URI resource strategies. Pre-fix the resource
-        /// provider had 3 hardcoded `if uri.hasPrefix(...)` arms in
-        /// `readResource` + 3 source-specific blocks in `listResources`
-        /// (apple-docs / swift-evolution / apple-archive), each carrying
-        /// 30-50 LOC of bespoke URI parsing + filesystem probing +
-        /// (apple-docs only) JSON-vs-md decode logic. Post-fix each
-        /// per-source target supplies its own
-        /// `Search.URIResourceStrategy` concrete; the dispatcher
-        /// iterates this list. Adding a new MCP-resource source is one
-        /// `makeURIResourceStrategy()` override on the provider.
-        private let resourceStrategies: [any Search.URIResourceStrategy]
-
-        /// Per-scheme on-disk corpus directory. The composition root
-        /// builds this from each provider's
-        /// `fetchInfo.defaultOutputDirKey` resolved via `Shared.Paths`
-        /// (honouring `--evolution-dir` + apple-docs CLI overrides).
-        private let directoriesByScheme: [String: URL]
-
-        /// Set of URI schemes the dispatcher recognises. Derived from
-        /// `resourceStrategies.map(\.scheme)` so the set stays in sync
-        /// with the strategies list automatically.
+        /// Set of URI schemes the provider advertises. Supplied by the
+        /// composition root from the registered docs-tier sources'
+        /// schemes so the set stays in sync with the production source
+        /// registry. Kept as a value (not derived from a filesystem
+        /// strategy list) so the resources path touches no disk.
         public nonisolated let knownURISchemes: Set<String>
 
         public init(
-            configuration: Shared.Configuration,
-            resourceStrategies: [any Search.URIResourceStrategy],
-            directoriesByScheme: [String: URL],
+            knownURISchemes: Set<String> = [],
             markdownLookup: (any MCP.Support.MarkdownLookupStrategy)? = nil,
             logger: any LoggingModels.Logging.Recording
         ) {
-            self.configuration = configuration
-            self.resourceStrategies = resourceStrategies
-            self.directoriesByScheme = directoriesByScheme
+            self.knownURISchemes = knownURISchemes
             self.markdownLookup = markdownLookup
             self.logger = logger
-            knownURISchemes = Set(resourceStrategies.map(\.scheme))
-            // Metadata will be loaded lazily on first access
         }
 
         // MARK: - ResourceProvider
 
         public func listResources(cursor: String?) async throws -> MCP.Core.Protocols.ListResourcesResult {
-            var resources: [MCP.Core.Protocols.Resource] = []
-
-            // Apple-docs metadata is loaded lazily here (the only
-            // strategy that consumes it; the swift-evolution +
-            // apple-archive strategies enumerate the filesystem and
-            // ignore the env's metadata field). The metadata load is
-            // wrapped in the same do/catch that pre-fix surrounded the
-            // apple-docs slice — bug #568 hid this branch by silently
-            // swallowing the throw, post-fix we log loud-fail at .error
-            // so `cupertino doctor` users can grep for it.
-            var loadedMetadata: Shared.Models.CrawlMetadata?
-            do {
-                loadedMetadata = try await getMetadata()
-            } catch {
-                logger.error(
-                    "DocsResourceProvider: apple-docs slice unavailable (\(error)); "
-                        + "resources/list will exclude apple-docs entries this call",
-                    category: .mcp
-                )
+            // Principle 7: enumerate from the per-source DBs only — never
+            // the filesystem. With no lookup wired the list is empty
+            // (no DBs to enumerate).
+            guard let markdownLookup else {
+                return MCP.Core.Protocols.ListResourcesResult(resources: [], nextCursor: nil)
             }
 
-            // Per-strategy fan-out. Each strategy returns its own slice
-            // of URIResource entries; the dispatcher maps to
-            // MCP.Core.Protocols.Resource at the boundary. A strategy
-            // whose directory is missing or unreadable contributes an
-            // empty slice (and a debug-level log); the call still
-            // returns everything else.
-            for strategy in resourceStrategies {
-                guard let directory = directoriesByScheme[strategy.scheme] else {
-                    logger.warning(
-                        "DocsResourceProvider: no directory configured for scheme '\(strategy.scheme)' "
-                            + "— skipping that slice of resources/list",
-                        category: .mcp
-                    )
-                    continue
-                }
-                let env = Search.URIResourceEnvironment(
-                    sourceDirectory: directory,
-                    metadata: loadedMetadata,
-                    logger: logger
+            let entries: [Search.URIResource]
+            do {
+                entries = try await markdownLookup.listResources()
+            } catch {
+                // DB enumeration errors are non-fatal: log loud-fail at
+                // .error (so `cupertino doctor` users can grep for it)
+                // and return an empty page rather than failing the whole
+                // call.
+                logger.error(
+                    "DocsResourceProvider: resources/list DB enumeration failed (\(error)); "
+                        + "returning an empty page this call",
+                    category: .mcp
                 )
-                do {
-                    let slice = try await strategy.listResources(env: env)
-                    resources.append(contentsOf: slice.map { entry in
-                        MCP.Core.Protocols.Resource(
-                            uri: entry.uri,
-                            name: entry.name,
-                            description: entry.description,
-                            mimeType: MCP.SharedTools.Copy.mimeTypeMarkdown
-                        )
-                    })
-                } catch {
-                    // Source-specific listResources errors are
-                    // non-fatal; the dispatcher carries on with the
-                    // other slices. Pre-fix swift-evolution + apple-
-                    // archive used a silent `catch {}` here — keep
-                    // that behaviour for those slices but emit a
-                    // debug-level log so the path isn't completely
-                    // invisible.
-                    logger.warning(
-                        "DocsResourceProvider: \(strategy.scheme) slice failed: \(error)",
-                        category: .mcp
-                    )
-                }
+                return MCP.Core.Protocols.ListResourcesResult(resources: [], nextCursor: nil)
+            }
+
+            var resources = entries.map { entry in
+                MCP.Core.Protocols.Resource(
+                    uri: entry.uri,
+                    name: entry.name,
+                    description: entry.description,
+                    mimeType: MCP.SharedTools.Copy.mimeTypeMarkdown
+                )
             }
 
             // Sort by name (stable input for pagination — same cursor
@@ -171,10 +116,7 @@ extension MCP.Support {
             // and is valid. Non-empty but malformed cursors throw
             // `invalidArgument` so a buggy client gets a JSON-RPC
             // error frame (`-32602`) instead of silently restarting
-            // pagination on every call (#595). The MCP spec leaves the
-            // cursor string opaque, but a server that silently swallows
-            // bad cursors traps paginating clients in an infinite "first
-            // page" loop — they never notice their cursor was wrong.
+            // pagination on every call (#595).
             let offset = try Self.decodeOffset(from: cursor)
             return paginate(resources, offset: offset)
         }
@@ -214,9 +156,7 @@ extension MCP.Support {
         ///   `Shared.Core.ToolError.invalidArgument("cursor", ...)`.
         ///   That surfaces to the JSON-RPC layer as a `-32602
         ///   invalidParams` error frame, which is the correct behaviour
-        ///   for a malformed pagination cursor (#595). Pre-fix this
-        ///   returned 0 silently and trapped paginating clients in an
-        ///   endless loop of re-fetching page 1.
+        ///   for a malformed pagination cursor (#595).
         static func decodeOffset(from cursor: String?) throws -> Int {
             // No cursor = "first page". This is the valid bootstrap call.
             guard let cursor, !cursor.isEmpty else { return 0 }
@@ -235,63 +175,25 @@ extension MCP.Support {
             return offset
         }
 
-        // MARK: - Filter
+        // MARK: - readResource
 
         public func readResource(uri: String) async throws -> MCP.Core.Protocols.ReadResourceResult {
-            let markdown: String
-
-            // Try database first if a markdown lookup was injected
-            if let markdownLookup {
-                if let dbContent = try await markdownLookup.lookup(uri: uri) {
-                    // Found in database - return markdown
-                    let contents = MCP.Core.Protocols.ResourceContents.text(
-                        MCP.Core.Protocols.TextResourceContents(
-                            uri: uri,
-                            mimeType: MCP.SharedTools.Copy.mimeTypeMarkdown,
-                            text: dbContent
-                        )
-                    )
-                    return MCP.Core.Protocols.ReadResourceResult(contents: [contents])
-                }
-            }
-
-            // Database lookup failed or no index — strategy dispatch.
-            // Each strategy answers for its own URI scheme. The first
-            // strategy that recognises the URI (by `hasPrefix(scheme)`)
-            // and resolves it returns the content; if it recognises
-            // the URI but the resource is missing on disk (returns
-            // nil), throw `notFound`. If no strategy recognises the
-            // URI's scheme at all, throw `invalidURI`.
-            guard let strategy = resourceStrategies.first(where: { uri.hasPrefix($0.scheme) }) else {
-                throw Shared.Core.ToolError.invalidURI(uri)
-            }
-            guard let directory = directoriesByScheme[strategy.scheme] else {
+            // Principle 7: resolve content from the DB only — never the
+            // filesystem. There is no fallback. A document that isn't in the
+            // DB is `notFound`; tests guarantee the indexer puts it there.
+            guard let markdownLookup else {
                 throw Shared.Core.ToolError.notFound(uri)
             }
-            // Apple-docs reads metadata in its strategy via env; the
-            // other strategies ignore the metadata field. Load it best-
-            // effort; a missing metadata file is non-fatal because the
-            // filesystem probe in each strategy doesn't depend on it.
-            let envMetadata: Shared.Models.CrawlMetadata? = await (try? getMetadata())
-            let env = Search.URIResourceEnvironment(
-                sourceDirectory: directory,
-                metadata: envMetadata,
-                logger: logger
-            )
-            guard let resolved = try await strategy.readMarkdown(uri: uri, env: env) else {
+            guard let dbContent = try await markdownLookup.lookup(uri: uri) else {
                 throw Shared.Core.ToolError.notFound(uri)
             }
-            markdown = resolved
-
-            // Create resource contents
             let contents = MCP.Core.Protocols.ResourceContents.text(
                 MCP.Core.Protocols.TextResourceContents(
                     uri: uri,
                     mimeType: MCP.SharedTools.Copy.mimeTypeMarkdown,
-                    text: markdown
+                    text: dbContent
                 )
             )
-
             return MCP.Core.Protocols.ReadResourceResult(contents: [contents])
         }
 
@@ -315,76 +217,5 @@ extension MCP.Support {
 
             return MCP.Core.Protocols.ListResourceTemplatesResult(resourceTemplates: templates)
         }
-
-        // MARK: - Private Methods
-
-        private func loadMetadata() {
-            let metadataURL = configuration.changeDetection.metadataFile
-
-            // #568 retrospective: the previous shape was a silent
-            // early-return when the file was missing and a `.warning`
-            // log when the parse threw. That combination is exactly
-            // how the v1.1.0 brew binary masked the bug — the
-            // outermost catch in `listResources` then swallowed the
-            // `noData` throw and the user saw a swift-evolution-only
-            // list. Both miss-paths now log at `.error` with full
-            // context so `cupertino doctor` and ad-hoc grep can spot
-            // them.
-            guard FileManager.default.fileExists(atPath: metadataURL.path) else {
-                logger.error(
-                    "DocsResourceProvider: metadata file absent at '\(metadataURL.path)'; "
-                        + "apple-docs slice of resources/list will be empty",
-                    category: .mcp
-                )
-                return
-            }
-
-            do {
-                metadata = try Shared.Models.CrawlMetadata.load(from: metadataURL)
-            } catch {
-                logger.error(
-                    "DocsResourceProvider: failed to parse metadata at '\(metadataURL.path)' "
-                        + "(\(error)); apple-docs slice of resources/list will be empty",
-                    category: .mcp
-                )
-            }
-        }
-
-        // MARK: - Test Support
-
-        /// Seed the cached metadata directly. Test-only path so MCPSupportTests
-        /// can exercise `listResources` against a hand-crafted `CrawlMetadata`
-        /// (including malformed-URL rows) without bootstrapping a real
-        /// crawl + metadata.json fixture on disk.
-        func injectMetadataForTesting(_ metadata: Shared.Models.CrawlMetadata) {
-            self.metadata = metadata
-        }
-
-        // MARK: - Metadata
-
-        private func getMetadata() async throws -> Shared.Models.CrawlMetadata {
-            if let metadata {
-                return metadata
-            }
-
-            // Reload if not cached
-            loadMetadata()
-
-            guard let metadata else {
-                let cmd = "\(Shared.Constants.App.commandName) \(Shared.Constants.Command.crawl)"
-                throw Shared.Core.ToolError.noData("No documentation has been crawled yet. Run '\(cmd)' first.")
-            }
-
-            return metadata
-        }
-
-        // 2026-05-26 audit Cluster 12 follow-up: `parseAppleDocsURI`,
-        // `parseEvolutionURI`, `parseArchiveURI`, `extractTitle`,
-        // `isFrameworkRootPage`, and `listArchiveResources` lifted into
-        // per-source `Search.URIResourceStrategy` concretes
-        // (`AppleDocsURIResourceStrategy` /
-        // `SwiftEvolutionURIResourceStrategy` /
-        // `AppleArchiveURIResourceStrategy`). Adding a new MCP-resource
-        // source no longer requires editing this file.
     }
 }

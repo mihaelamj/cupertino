@@ -60,6 +60,8 @@ extension CLIImpl.Command {
         )
         var searchDb: String?
 
+        @OptionGroup var platformFloors: CLIImpl.PlatformFloorOptions
+
         mutating func run() async throws {
             let recording = Cupertino.Context.composition.logging.recording
             guard limit > 0 else {
@@ -88,11 +90,12 @@ extension CLIImpl.Command {
             )
             defer { Task { await index.disconnect() } }
 
-            let results = try await index.searchConcurrencyPatterns(
+            let rawResults = try await index.searchConcurrencyPatterns(
                 pattern: pattern,
                 framework: framework,
                 limit: limit
             )
+            let results = try await index.applyingPlatformFloors(to: rawResults, floors: platformFloors.floors())
 
             switch format {
             case .text:

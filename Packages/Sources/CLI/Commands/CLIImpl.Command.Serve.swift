@@ -107,7 +107,6 @@ extension CLIImpl.Command {
             )
 
             let evolutionURL = paths.swiftEvolutionDirectory
-            let archiveURL = paths.archiveDirectory
             let searchDBURL = paths.searchDatabase
             let sampleDBURL = Sample.Index.databasePath(baseDirectory: paths.baseDirectory)
             let packagesDBURL = paths.packagesDatabase
@@ -140,10 +139,7 @@ extension CLIImpl.Command {
 
             await registerProviders(
                 server: server,
-                config: config,
                 paths: paths,
-                evolutionURL: evolutionURL,
-                archiveURL: archiveURL,
                 searchDBURL: searchDBURL,
                 sampleDBURL: sampleDBURL,
                 packagesDBURL: packagesDBURL
@@ -175,13 +171,9 @@ extension CLIImpl.Command {
             await server.waitForCompletion()
         }
 
-        // swiftlint:disable:next function_parameter_count
         private func registerProviders(
             server: MCP.Core.Server,
-            config: Shared.Configuration,
             paths: Shared.Paths,
-            evolutionURL: URL,
-            archiveURL: URL,
             searchDBURL: URL,
             sampleDBURL: URL,
             packagesDBURL: URL
@@ -195,58 +187,48 @@ extension CLIImpl.Command {
             let searchIndex: SearchModule.Index? = searchLoadResult.index
             let searchIndexDisabledReason: String? = searchLoadResult.disabledReason
 
-            // Register resource provider with optional search-index markdown
-            // lookup. The provider doesn't see the SearchAPI target; it just
-            // gets a strategy that returns markdown for a URI, or nil if the
-            // URI isn't indexed. This keeps MCPSupport free of the SearchAPI
-            // import per the DI epic (#406).
-            let markdownLookup: (any MCP.Support.MarkdownLookupStrategy)?
-            if let searchIndex {
-                markdownLookup = LiveMarkdownLookupStrategy(searchIndex: searchIndex)
-            } else {
-                markdownLookup = nil
-            }
-            // 2026-05-26 audit Cluster 12 follow-up: collect each
-            // registered provider's `Search.URIResourceStrategy` (the
-            // 3 source-specific MCP-resource concretes today —
-            // apple-docs / swift-evolution / apple-archive; nil for
-            // every other source by the protocol's default extension)
-            // and the matching on-disk corpus directory per scheme.
-            // The dispatcher in `MCP.Support.DocsResourceProvider`
-            // iterates the strategy list; adding a new MCP-resource
-            // source is one `makeURIResourceStrategy()` override on
-            // the provider, no edits to Serve or the dispatcher.
+            // 2026-05-28 (Principle 7): the MCP `resources/{list,read}`
+            // path is served PURELY from the per-source SQLite DBs, the
+            // same read path the MCP search/read TOOLS use
+            // (`Services.ReadService` + the production source registry).
+            // No filesystem is consulted; the legacy monolithic
+            // `search.db` is no longer built post-#1036, so the previous
+            // single-`Search.Index`-over-`search.db` wrapper resolved
+            // nil in production.
             //
-            // Directory resolution is uniform: every URI strategy's
-            // directory resolves via `Shared.Paths.directory(named:)`
-            // keyed by the provider's `fetchInfo.defaultOutputDirKey.rawValue`
-            // (falling back to `definition.id` when fetchInfo is nil).
-            //
-            // 2026-05-27 post-#1057 mechanical hunt: pre-fix this loop
-            // had a 3-arm switch on source-id (apple-docs /
-            // swift-evolution / apple-archive) that picked
-            // `paths.docsDirectory` / `evolutionURL` / `archiveURL`
-            // for the 3 historical sources. All three of those values
-            // are themselves derived from `paths.directory(named:)`
-            // (post-Cluster-13 the typed accessors delegate to the
-            // generic one), so the switch was redundant — adding a new
-            // URI-resource source needed a new case for no reason.
-            // Cull: every provider routes through the single generic
-            // lookup. The legacy `evolutionURL` + `archiveURL`
-            // parameters stay (other call sites consume them).
+            // The composition root assembles the per-source docs DB map
+            // + the docs-tier providers and hands them to
+            // `LiveMarkdownLookupStrategy`. Adding a new docs source is
+            // still a 2-file PR: the new source's provider declares its
+            // `resourceListMode` and the registry append wires it here
+            // automatically — no edit to Serve or the MCP dispatcher.
             let resourceRegistry = CLIImpl.makeProductionSourceRegistry()
-            var resourceStrategies: [any SearchModels.Search.URIResourceStrategy] = []
-            var directoriesByScheme: [String: URL] = [:]
-            for provider in resourceRegistry.allEnabled {
-                guard let strategy = provider.makeURIResourceStrategy() else { continue }
-                resourceStrategies.append(strategy)
-                let dirKey = provider.fetchInfo?.defaultOutputDirKey.rawValue ?? provider.definition.id
-                directoriesByScheme[strategy.scheme] = paths.directory(named: dirKey)
-            }
+            let resourceProviders = resourceRegistry.allEnabled
+            let docsDBURLs: [String: URL] = resourceProviders
+                .filter { $0.destinationDB != .packages && $0.destinationDB != .appleSampleCode }
+                .reduce(into: [:]) { dict, provider in
+                    dict[provider.definition.id] = paths.baseDirectory
+                        .appendingPathComponent(provider.destinationDB.filename)
+                }
+            // Schemes the provider advertises: `<sourceID>://` for every
+            // docs source whose DB can enumerate MCP-resource URIs.
+            let knownURISchemes = Set(
+                resourceProviders
+                    .filter { $0.resourceListMode != .none }
+                    .map { "\($0.definition.id)://" }
+            )
+            let markdownLookup = LiveMarkdownLookupStrategy(
+                providers: resourceProviders,
+                docsDBURLs: docsDBURLs,
+                samplesDBURL: sampleDBURL,
+                packagesDBURL: packagesDBURL,
+                searchDatabaseFactory: LiveSearchDatabaseFactory(),
+                sampleDatabaseFactory: LiveSampleIndexDatabaseFactory(),
+                packageFileLookup: LivePackageFileLookupStrategy(),
+                logger: Cupertino.Context.composition.logging.recording
+            )
             let resourceProvider = MCP.Support.DocsResourceProvider(
-                configuration: config,
-                resourceStrategies: resourceStrategies,
-                directoriesByScheme: directoriesByScheme,
+                knownURISchemes: knownURISchemes,
                 markdownLookup: markdownLookup,
                 logger: Cupertino.Context.composition.logging.recording
             )

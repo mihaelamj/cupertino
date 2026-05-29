@@ -78,6 +78,8 @@ extension CLIImpl.Command {
         )
         var searchDb: String?
 
+        @OptionGroup var platformFloors: CLIImpl.PlatformFloorOptions
+
         mutating func run() async throws {
             let recording = Cupertino.Context.composition.logging.recording
             guard limit > 0 else {
@@ -103,13 +105,14 @@ extension CLIImpl.Command {
             )
             defer { Task { await index.disconnect() } }
 
-            let results = try await index.searchSymbols(
+            let rawResults = try await index.searchSymbols(
                 query: query,
                 kind: kind,
                 isAsync: isAsync ? true : nil,
                 framework: framework,
                 limit: limit
             )
+            let results = try await index.applyingPlatformFloors(to: rawResults, floors: platformFloors.floors())
 
             switch format {
             case .text:

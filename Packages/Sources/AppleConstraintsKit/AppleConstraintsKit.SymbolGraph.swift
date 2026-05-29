@@ -32,10 +32,15 @@ extension AppleConstraintsKit {
         public struct Document: Decodable, Sendable {
             public let module: Module
             public let symbols: [Symbol]
+            /// Top-level relationship edges (`conformsTo` / `inheritsFrom` /
+            /// `memberOf` / ...). Optional so the constraints-only path and
+            /// trivial extension files with no relationships decode unchanged.
+            public let relationships: [Relationship]?
 
-            public init(module: Module, symbols: [Symbol]) {
+            public init(module: Module, symbols: [Symbol], relationships: [Relationship]? = nil) {
                 self.module = module
                 self.symbols = symbols
+                self.relationships = relationships
             }
         }
 
@@ -55,11 +60,60 @@ extension AppleConstraintsKit {
             public let pathComponents: [String]
             public let kind: Kind
             public let swiftGenerics: SwiftGenerics?
+            /// Stable Unique Symbol Reference (`identifier.precise`, e.g.
+            /// `s:7SwiftUI4ViewP`). Optional so existing constraints-only
+            /// fixtures that omit it still decode. The conformance extractor
+            /// uses it to resolve a relationship's `source`/`target` USR back
+            /// to a symbol's `pathComponents`.
+            public let identifier: Identifier?
 
-            public init(pathComponents: [String], kind: Kind, swiftGenerics: SwiftGenerics? = nil) {
+            public init(
+                pathComponents: [String],
+                kind: Kind,
+                swiftGenerics: SwiftGenerics? = nil,
+                identifier: Identifier? = nil
+            ) {
                 self.pathComponents = pathComponents
                 self.kind = kind
                 self.swiftGenerics = swiftGenerics
+                self.identifier = identifier
+            }
+        }
+
+        /// Stable symbol identity. We read only `precise` (the USR);
+        /// `interfaceLanguage` and the rest are dropped at decode.
+        public struct Identifier: Decodable, Sendable {
+            public let precise: String
+
+            public init(precise: String) {
+                self.precise = precise
+            }
+        }
+
+        /// One relationship edge from the symbol-graph's top-level
+        /// `relationships` array. `source` / `target` are USRs; the
+        /// conformance extractor resolves `source` to a `pathComponents`
+        /// path (this module's symbols) and prefers `targetFallback` (the
+        /// display name, e.g. `"SwiftUICore.View"`) for the protocol name,
+        /// since `target` often points at another module not in this file.
+        public struct Relationship: Decodable, Sendable {
+            public let kind: String
+            public let source: String
+            public let target: String
+            public let targetFallback: String?
+
+            public init(kind: String, source: String, target: String, targetFallback: String? = nil) {
+                self.kind = kind
+                self.source = source
+                self.target = target
+                self.targetFallback = targetFallback
+            }
+
+            /// True for the structural edges the conformance graph keeps:
+            /// `conformsTo` (T : SomeProtocol) and `inheritsFrom`
+            /// (class : Superclass). `memberOf` and the rest are dropped.
+            public var contributesToConformanceGraph: Bool {
+                kind == "conformsTo" || kind == "inheritsFrom"
             }
         }
 

@@ -142,6 +142,7 @@ extension CLIImpl.Command.Search {
         }
     }
 
+    // swiftlint:disable:next function_body_length
     func runSampleSearch() async throws {
         // GoF Factory Method (1994 p. 107): composition sub-root.
         let searchDatabaseFactory: any SearchModule.DatabaseFactory = LiveSearchDatabaseFactory()
@@ -154,7 +155,20 @@ extension CLIImpl.Command.Search {
                 text: query,
                 framework: framework,
                 searchFiles: true,
-                limit: limit
+                limit: limit,
+                // #1130: thread the 5-field platform filter through
+                // to the samples search route. Pre-fix
+                // `--min-ios` / `--min-macos` / etc. were dropped here
+                // (the Query was built without them), so
+                // `cupertino search --source samples --min-ios 16`
+                // silently returned the unfiltered set. The DB +
+                // service layers already support the filter (#732);
+                // only this CLI call site was missing the wiring.
+                minIOS: minIos,
+                minMacOS: minMacos,
+                minTvOS: minTvos,
+                minWatchOS: minWatchos,
+                minVisionOS: minVisionos
             ))
         }
 

@@ -25,11 +25,17 @@ import SharedConstants
 public struct AppleDocsSource: Search.SourceProvider {
     public init() {}
 
-    public var definition: Search.SourceDefinition { Self.definition }
+    public var definition: Search.SourceDefinition {
+        Self.definition
+    }
 
-    public var fetchInfo: Search.FetchInfo? { Self.fetchInfo }
+    public var fetchInfo: Search.FetchInfo? {
+        Self.fetchInfo
+    }
 
-    public var destinationDB: Shared.Models.DatabaseDescriptor { .appleDocumentation }
+    public var destinationDB: Shared.Models.DatabaseDescriptor {
+        .appleDocumentation
+    }
 
     public var capabilities: Search.Capabilities {
         .init(
@@ -77,11 +83,11 @@ public struct AppleDocsSource: Search.SourceProvider {
         Search.DocsReadStrategy(sourceID: definition.id)
     }
 
-    /// 2026-05-26 audit Cluster 12 follow-up: per-source MCP-resource
-    /// URI strategy for the `apple-docs://` scheme. Carries the lifted
-    /// URI parser + framework-root filter + JSON-vs-md probe sequence
-    /// that pre-fix lived in `MCP.Support.DocsResourceProvider`.
-    public func makeURIResourceStrategy() -> (any Search.URIResourceStrategy)? {
-        AppleDocsURIResourceStrategy()
+    /// Apple-docs' corpus is ~350k pages, so resources/list enumerates
+    /// one entry per framework root (`apple-docs://<framework>`, ~398
+    /// readable rows) instead of every sub-page. (Principle 7: the
+    /// roots come straight from the per-source DB.)
+    public var resourceListMode: Search.ResourceListMode {
+        .frameworkRoots
     }
 }

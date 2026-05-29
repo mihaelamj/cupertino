@@ -1,6 +1,4 @@
 import AppKit
-import AppleArchiveSource
-import AppleDocsSource
 @testable import Core
 import CoreProtocols
 import CrawlerModels
@@ -11,32 +9,45 @@ import LoggingModels
 @testable import MCPSupport
 @testable import SearchAPI
 import SearchModels
+@testable import SearchSQLite
 @testable import SearchToolProvider
 import SharedConstants
-import SwiftEvolutionSource
 import Testing
 import TestSupport
 
-// 2026-05-26 audit Cluster 12 follow-up: file-local helper to build the
-// canonical 3-strategy bundle the production composition root wires.
-// Tests construct `MCP.Support.DocsResourceProvider` with the same
-// strategy concretes that ship in prod (one URI scheme per source).
-private func makeURIResourceTestBundle(
-    crawlOutputDirectory: URL,
-    evolutionDir: URL,
-    archiveDir: URL
-) -> (strategies: [any SearchModels.Search.URIResourceStrategy], directoriesByScheme: [String: URL]) {
-    let appleDocs = AppleDocsURIResourceStrategy()
-    let evolution = SwiftEvolutionURIResourceStrategy()
-    let archive = AppleArchiveURIResourceStrategy()
-    return (
-        strategies: [appleDocs, evolution, archive],
-        directoriesByScheme: [
-            appleDocs.scheme: crawlOutputDirectory,
-            evolution.scheme: evolutionDir,
-            archive.scheme: archiveDir,
-        ]
-    )
+/// 2026-05-28 (Principle 7): the MCP `resources/{list,read}` path is
+/// served PURELY from the per-source SQLite DBs. This file-local lookup
+/// is the test-side equivalent of the production
+/// `LiveMarkdownLookupStrategy` (internal to the CLI target, not
+/// importable here): read + list both resolve from a real `Search.Index`
+/// with no filesystem access.
+private struct IndexBackedLookup: MCP.Support.MarkdownLookupStrategy {
+    let dbURL: URL
+    let mode: Search.ResourceListMode
+
+    func lookup(uri: String) async throws -> String? {
+        let index = try await Search.Index(
+            dbPath: dbURL,
+            logger: Logging.NoopRecording(),
+            indexers: [:],
+            sourceLookup: .empty
+        )
+        let content = try await index.getDocumentContent(uri: uri, format: .markdown)
+        await index.disconnect()
+        return content
+    }
+
+    func listResources() async throws -> [Search.URIResource] {
+        let index = try await Search.Index(
+            dbPath: dbURL,
+            logger: Logging.NoopRecording(),
+            indexers: [:],
+            sourceLookup: .empty
+        )
+        let entries = try await index.listResourceEntries(mode: mode)
+        await index.disconnect()
+        return entries
+    }
 }
 
 // MARK: - Test Doubles
@@ -79,56 +90,42 @@ struct MCPCommandTests {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("cupertino-mcp-test-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
-
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-        // Create a test markdown file
-        let testFile = tempDir.appendingPathComponent("swift/documentation_swift.md")
-        try FileManager.default.createDirectory(
-            at: testFile.deletingLastPathComponent(),
-            withIntermediateDirectories: true
+        // Build a per-source apple-docs DB with a framework-root row.
+        let dbURL = tempDir.appendingPathComponent("apple-documentation.db")
+        let index = try await Search.Index(
+            dbPath: dbURL,
+            logger: Logging.NoopRecording(),
+            indexers: [:],
+            sourceLookup: .empty
         )
-        try "# Swift\n\nTest content about Swift language.".write(to: testFile, atomically: true, encoding: .utf8)
-
-        // Create metadata.json for the test file
-        let pageMetadata = Shared.Models.PageMetadata(
-            url: "https://developer.apple.com/documentation/swift",
+        try await index.indexDocument(Search.IndexDocumentParams(
+            uri: "apple-docs://swift",
+            source: "apple-docs",
             framework: "swift",
-            filePath: testFile.path,
+            title: "Swift",
+            content: "Test content about Swift language.",
+            filePath: "/n/a",
             contentHash: "test-hash",
-            depth: 0
-        )
-        let metadata = Shared.Models.CrawlMetadata(pages: [pageMetadata.url: pageMetadata])
-        let metadataFile = tempDir.appendingPathComponent("metadata.json")
-        try metadata.save(to: metadataFile)
+            lastCrawled: Date()
+        ))
+        await index.disconnect()
 
         let server = MCP.Core.Server(name: "test-server", version: "1.0.0")
-        let config = Shared.Configuration(
-            crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
-            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
-            output: Shared.Configuration.Output()
-        )
-        let uriBundle = makeURIResourceTestBundle(
-            crawlOutputDirectory: tempDir,
-            evolutionDir: tempDir,
-            archiveDir: tempDir
-        )
         let provider = MCP.Support.DocsResourceProvider(
-            configuration: config,
-            resourceStrategies: uriBundle.strategies,
-            directoriesByScheme: uriBundle.directoriesByScheme,
+            knownURISchemes: [Shared.Constants.Search.appleDocsScheme],
+            markdownLookup: IndexBackedLookup(dbURL: dbURL, mode: .frameworkRoots),
             logger: Logging.NoopRecording()
         )
 
         await server.registerResourceProvider(provider)
 
-        // List resources
+        // List resources — DB-backed, no filesystem.
         let listResult = try await provider.listResources(cursor: nil)
         let resources = listResult.resources
 
         #expect(!resources.isEmpty, "Should have at least one resource")
-
-        // Check if any resource contains "swift" (test data may not be first in list)
         let hasSwiftResource = resources.contains { $0.uri.contains("swift") }
         #expect(hasSwiftResource, "Should have at least one resource with 'swift' in URI")
         if let swiftResource = resources.first(where: { $0.uri.contains("swift") }) {
@@ -145,36 +142,34 @@ struct MCPCommandTests {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("cupertino-mcp-read-test-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
-
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-        // Create test markdown
-        let testContent = "# Swift Documentation\n\nThis is test content about the Swift language."
-        let testFile = tempDir.appendingPathComponent("swift/documentation_swift.md")
-        try FileManager.default.createDirectory(
-            at: testFile.deletingLastPathComponent(),
-            withIntermediateDirectories: true
+        let dbURL = tempDir.appendingPathComponent("apple-documentation.db")
+        let index = try await Search.Index(
+            dbPath: dbURL,
+            logger: Logging.NoopRecording(),
+            indexers: [:],
+            sourceLookup: .empty
         )
-        try testContent.write(to: testFile, atomically: true, encoding: .utf8)
+        try await index.indexDocument(Search.IndexDocumentParams(
+            uri: "apple-docs://swift/documentation_swift",
+            source: "apple-docs",
+            framework: "swift",
+            title: "Swift Documentation",
+            content: "# Swift Documentation\n\nThis is test content about the Swift language.",
+            filePath: "/n/a",
+            contentHash: "test-hash",
+            lastCrawled: Date()
+        ))
+        await index.disconnect()
 
-        let config = Shared.Configuration(
-            crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
-            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
-            output: Shared.Configuration.Output()
-        )
-        let uriBundle = makeURIResourceTestBundle(
-            crawlOutputDirectory: tempDir,
-            evolutionDir: tempDir,
-            archiveDir: tempDir
-        )
         let provider = MCP.Support.DocsResourceProvider(
-            configuration: config,
-            resourceStrategies: uriBundle.strategies,
-            directoriesByScheme: uriBundle.directoriesByScheme,
+            knownURISchemes: [Shared.Constants.Search.appleDocsScheme],
+            markdownLookup: IndexBackedLookup(dbURL: dbURL, mode: .allDocuments),
             logger: Logging.NoopRecording()
         )
 
-        // Read resource
+        // Read resource — resolved from the DB.
         let result = try await provider.readResource(uri: "apple-docs://swift/documentation_swift")
 
         #expect(!result.contents.isEmpty, "Content should not be empty")
@@ -304,47 +299,44 @@ struct MCPCommandTests {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("cupertino-evolution-provider-test-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
-
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-        // Create test proposal
-        let testProposal = "# SE-0255: Implicit returns from single-expression functions\n\nTest content."
-        let testFile = tempDir.appendingPathComponent("SE-0255-omit-return.md")
-        try testProposal.write(to: testFile, atomically: true, encoding: .utf8)
+        let dbURL = tempDir.appendingPathComponent("swift-evolution.db")
+        let index = try await Search.Index(
+            dbPath: dbURL,
+            logger: Logging.NoopRecording(),
+            indexers: [:],
+            sourceLookup: .empty
+        )
+        try await index.indexDocument(Search.IndexDocumentParams(
+            uri: "swift-evolution://SE-0255",
+            source: "swift-evolution",
+            framework: "swift-evolution",
+            title: "SE-0255: Implicit returns from single-expression functions",
+            content: "# SE-0255: Implicit returns\n\nTest content.",
+            filePath: "/n/a",
+            contentHash: "h",
+            lastCrawled: Date()
+        ))
+        await index.disconnect()
 
-        let config = Shared.Configuration(
-            crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
-            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
-            output: Shared.Configuration.Output()
-        )
-        let uriBundle = makeURIResourceTestBundle(
-            crawlOutputDirectory: tempDir,
-            evolutionDir: tempDir,
-            archiveDir: tempDir
-        )
         let provider = MCP.Support.DocsResourceProvider(
-            configuration: config,
-            resourceStrategies: uriBundle.strategies,
-            directoriesByScheme: uriBundle.directoriesByScheme,
+            knownURISchemes: [Shared.Constants.Search.swiftEvolutionScheme],
+            markdownLookup: IndexBackedLookup(dbURL: dbURL, mode: .allDocuments),
             logger: Logging.NoopRecording()
         )
 
-        // List resources
         let listResult = try await provider.listResources(cursor: nil as String?)
         let resources = listResult.resources
 
         #expect(!resources.isEmpty, "Should have evolution proposals")
-
-        // Check if any resource contains "SE-" (test data may not be first in list)
         let hasProposal = resources.contains { $0.uri.contains("SE-") }
         #expect(hasProposal, "Should have at least one resource with 'SE-' in URI")
         if let proposal = resources.first(where: { $0.uri.contains("SE-") }) {
             print("   ✅ Found proposal: \(proposal.uri)")
         }
 
-        // Read resource
         let readResult = try await provider.readResource(uri: "swift-evolution://SE-0255")
-
         if let firstContent = readResult.contents.first,
            case let .text(textContent) = firstContent {
             #expect(textContent.text.contains("SE-0255"), "Content should contain proposal number")
@@ -361,33 +353,40 @@ struct MCPCommandTests {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("cupertino-st-provider-test-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
-
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-        // Create test SE proposal
-        let seProposal = "# SE-0255: Implicit returns\n\n* Status: **Implemented (Swift 5.1)**\n\nTest content."
-        let seFile = tempDir.appendingPathComponent("SE-0255-omit-return.md")
-        try seProposal.write(to: seFile, atomically: true, encoding: .utf8)
-
-        // Create test ST proposal
-        let stProposal = "# Refactor Bug Inits\n\nSwift Testing proposal about refactoring bug initializers."
-        let stFile = tempDir.appendingPathComponent("ST-0001-refactor-bug-inits.md")
-        try stProposal.write(to: stFile, atomically: true, encoding: .utf8)
-
-        let config = Shared.Configuration(
-            crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
-            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
-            output: Shared.Configuration.Output()
+        let dbURL = tempDir.appendingPathComponent("swift-evolution.db")
+        let index = try await Search.Index(
+            dbPath: dbURL,
+            logger: Logging.NoopRecording(),
+            indexers: [:],
+            sourceLookup: .empty
         )
-        let uriBundle = makeURIResourceTestBundle(
-            crawlOutputDirectory: tempDir,
-            evolutionDir: tempDir,
-            archiveDir: tempDir
-        )
+        try await index.indexDocument(Search.IndexDocumentParams(
+            uri: "swift-evolution://SE-0255",
+            source: "swift-evolution",
+            framework: "swift-evolution",
+            title: "SE-0255: Implicit returns",
+            content: "# SE-0255: Implicit returns\n\nTest content.",
+            filePath: "/n/a",
+            contentHash: "h-se",
+            lastCrawled: Date()
+        ))
+        try await index.indexDocument(Search.IndexDocumentParams(
+            uri: "swift-evolution://ST-0001",
+            source: "swift-evolution",
+            framework: "swift-evolution",
+            title: "Refactor Bug Inits",
+            content: "# Refactor Bug Inits\n\nSwift Testing proposal about refactoring bug initializers.",
+            filePath: "/n/a",
+            contentHash: "h-st",
+            lastCrawled: Date()
+        ))
+        await index.disconnect()
+
         let provider = MCP.Support.DocsResourceProvider(
-            configuration: config,
-            resourceStrategies: uriBundle.strategies,
-            directoriesByScheme: uriBundle.directoriesByScheme,
+            knownURISchemes: [Shared.Constants.Search.swiftEvolutionScheme],
+            markdownLookup: IndexBackedLookup(dbURL: dbURL, mode: .allDocuments),
             logger: Logging.NoopRecording()
         )
 
@@ -419,21 +418,22 @@ struct MCPCommandTests {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("cupertino-error-test-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tempDir) }
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-        let config = Shared.Configuration(
-            crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
-            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
-            output: Shared.Configuration.Output()
+        // Empty per-source DB: a read of any URI must throw notFound,
+        // with no filesystem fallback.
+        let dbURL = tempDir.appendingPathComponent("apple-documentation.db")
+        let index = try await Search.Index(
+            dbPath: dbURL,
+            logger: Logging.NoopRecording(),
+            indexers: [:],
+            sourceLookup: .empty
         )
-        let uriBundle = makeURIResourceTestBundle(
-            crawlOutputDirectory: tempDir,
-            evolutionDir: tempDir,
-            archiveDir: tempDir
-        )
+        await index.disconnect()
+
         let provider = MCP.Support.DocsResourceProvider(
-            configuration: config,
-            resourceStrategies: uriBundle.strategies,
-            directoriesByScheme: uriBundle.directoriesByScheme,
+            knownURISchemes: [Shared.Constants.Search.appleDocsScheme],
+            markdownLookup: IndexBackedLookup(dbURL: dbURL, mode: .frameworkRoots),
             logger: Logging.NoopRecording()
         )
 
@@ -518,47 +518,32 @@ struct MCPServerIntegrationTests {
             logger: Logging.NoopRecording()
         )
         try await builder.buildIndex()
+        // The crawl uses Noop parsers (no network content), so the
+        // build may not produce indexable rows. Seed one explicit
+        // apple-docs row so Step 5's DB-backed resources/list is
+        // deterministic and exercises the read path end-to-end.
+        try await searchIndex.indexDocument(Search.IndexDocumentParams(
+            uri: "apple-docs://swift",
+            source: "apple-docs",
+            framework: "swift",
+            title: "Swift",
+            content: "Swift is a powerful programming language.",
+            filePath: "/n/a",
+            contentHash: "workflow-seed",
+            lastCrawled: Date()
+        ))
         print("   ✅ Index built")
 
         // Step 3: Initialize MCP server
         print("\n   🚀 Step 3: Starting MCP server...")
         let server = MCP.Core.Server(name: "test-server", version: "1.0.0")
 
-        // Register providers. evolutionDirectory + archiveDirectory point at
-        // sibling dirs that don't exist so listResources only emits the
-        // apple-docs entries from the metadata. Pre-#535 the test relied on
-        // archiveDirectory silently defaulting to ~/.cupertino/archive via
-        // BinaryConfig.shared and sorting a real archive resource first;
-        // strict DI removes that, so we also pre-seed a markdown file at
-        // the path the apple-docs URI fallback expects so Step 5's
-        // readResource(uri:) succeeds without depending on the host's
-        // production ~/.cupertino layout.
-        let mcpConfig = Shared.Configuration(
-            crawler: Shared.Configuration.Crawler(outputDirectory: tempDir),
-            changeDetection: Shared.Configuration.ChangeDetection(outputDirectory: tempDir),
-            output: Shared.Configuration.Output()
-        )
-        let seededDocsPath = tempDir
-            .appendingPathComponent("swift")
-            .appendingPathComponent("documentation_swift.md")
-        try FileManager.default.createDirectory(
-            at: seededDocsPath.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
-        try "# Swift\n\nSeeded by completeMCPWorkflow.".write(
-            to: seededDocsPath,
-            atomically: true,
-            encoding: .utf8
-        )
-        let docsUriBundle = makeURIResourceTestBundle(
-            crawlOutputDirectory: tempDir,
-            evolutionDir: tempDir.appendingPathComponent("nonexistent-evolution"),
-            archiveDir: tempDir.appendingPathComponent("nonexistent-archive")
-        )
+        // Register providers. 2026-05-28 (Principle 7): the resource
+        // provider reads the SAME `search.db` the index was just built
+        // into, via the DB-backed lookup — no filesystem corpus access.
         let docsProvider = MCP.Support.DocsResourceProvider(
-            configuration: mcpConfig,
-            resourceStrategies: docsUriBundle.strategies,
-            directoriesByScheme: docsUriBundle.directoriesByScheme,
+            knownURISchemes: [Shared.Constants.Search.appleDocsScheme],
+            markdownLookup: IndexBackedLookup(dbURL: searchDbPath, mode: .allDocuments),
             logger: Logging.NoopRecording()
         )
         let searchProvider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: nil)

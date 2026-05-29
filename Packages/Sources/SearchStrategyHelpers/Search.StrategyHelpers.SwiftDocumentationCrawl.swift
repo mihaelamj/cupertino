@@ -122,30 +122,28 @@ extension Search.StrategyHelpers {
         // a useful source-id, and skip scope-filtering for the
         // strategy-owned case.
         for (idx, file) in docFiles.enumerated() {
-            let extracted = Search.StrategyHelpers.extractFrameworkFromPath(
+            // Legacy INPUT filter only — never a stored value. The pre-#1038
+            // mixed corpus tagged each page's sub-source via the first path
+            // component; a flat per-source corpus carries no such tag, so this
+            // skip never fires there. It only selects which input files to
+            // index. The stored source is determined from content below
+            // (Principle 7: no stored value derived from filesystem layout).
+            let legacyPathTag = Search.StrategyHelpers.extractFrameworkFromPath(
                 file, relativeTo: swiftOrgDirectory
             )
-            let pageSource: String
             switch scope {
             case .both:
-                pageSource = extracted ?? Shared.Constants.SourcePrefix.swiftOrg
+                break
             case .swiftOrgOnly:
-                // Skip pages explicitly tagged as the SIBLING source
-                // (legacy mixed-corpus layout where the path first
-                // component was the source-id). Files in a flat per-
-                // source dir don't carry that tag — they default to
-                // this strategy's source.
-                if extracted == Shared.Constants.SourcePrefix.swiftBook {
+                if legacyPathTag == Shared.Constants.SourcePrefix.swiftBook {
                     skipped += 1
                     continue
                 }
-                pageSource = Shared.Constants.SourcePrefix.swiftOrg
             case .swiftBookOnly:
-                if extracted == Shared.Constants.SourcePrefix.swiftOrg {
+                if legacyPathTag == Shared.Constants.SourcePrefix.swiftOrg {
                     skipped += 1
                     continue
                 }
-                pageSource = Shared.Constants.SourcePrefix.swiftBook
             }
 
             let structuredPage: Shared.Models.StructuredDocumentationPage
@@ -199,6 +197,22 @@ extension Search.StrategyHelpers {
                     continue
                 }
                 jsonString = json
+            }
+
+            // Stored sub-source comes from the strategy's own identity, never
+            // the corpus folder. The legacy `.both` mixed mode disambiguates
+            // from the document URL (swift-book pages live under
+            // `/the-swift-programming-language/`), not the path.
+            let pageSource: String
+            switch scope {
+            case .swiftOrgOnly:
+                pageSource = Shared.Constants.SourcePrefix.swiftOrg
+            case .swiftBookOnly:
+                pageSource = Shared.Constants.SourcePrefix.swiftBook
+            case .both:
+                pageSource = structuredPage.url.path.contains("the-swift-programming-language")
+                    ? Shared.Constants.SourcePrefix.swiftBook
+                    : Shared.Constants.SourcePrefix.swiftOrg
             }
 
             let title = structuredPage.title
