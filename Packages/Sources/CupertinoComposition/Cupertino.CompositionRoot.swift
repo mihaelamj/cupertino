@@ -1,9 +1,11 @@
 import AppleArchiveSource
 import AppleDocsSource
+import CoreSampleCode
 import HIGSource
 import PackagesSource
 import SampleCodeSource
 import SearchModels
+import SharedConstants
 import SwiftBookSource
 import SwiftEvolutionSource
 import SwiftOrgSource
@@ -44,7 +46,7 @@ public enum CupertinoComposition {
         var registry = Search.SourceRegistry()
         registry.register(AppleDocsSource())
         registry.register(HIGSource())
-        registry.register(SampleCodeSource())
+        registry.register(SampleCodeSource(fetcherFactory: Sample.Core.LiveGitHubFetcherFactory()))
         registry.register(AppleArchiveSource())
         registry.register(SwiftEvolutionSource())
         registry.register(SwiftOrgSource())

@@ -93,31 +93,31 @@ EXEMPT_TARGETS=(
     MockAIAgent
     ReleaseTool
     ConstraintsGen
+    # Canonical production composition root: registers every
+    # `<X>Source` provider. #536 lift 3 moved the GitHub-fetch wiring
+    # here, so it injects `Sample.Core.LiveGitHubFetcherFactory` into
+    # `SampleCodeSource` and legitimately imports the `CoreSampleCode`
+    # concrete like the binary composition roots above.
+    CupertinoComposition
     # WebKit-companion siblings (#904); each extends its parent
     # producer's types so it legitimately imports the parent. They are
     # themselves on FORBIDDEN_MODULES (no other consumer may import them);
     # only the composition root binaries link them.
     CoreJSONParserWebKit
     CoreSampleCodeWebKit
-    # 2026-05-26 audit Finding 9.7 + 11.1: per-source targets that
-    # ship a `Search.SourceFetchStrategy` concrete (or that own a
-    # bespoke producer's machinery for THEIR concern). The Phase B
-    # rule (#503) forbids cross-concern producer imports. A per-source
-    # target importing the producer for ITS OWN concern is NOT a
-    # cross-concern import — `PackagesSource` importing
-    # `CorePackageIndexing` is the same concern (Swift Packages);
-    # `SampleCodeSource` importing `CoreSampleCode` is the same
-    # concern (Apple sample-code). The Crawler.<X> concretes for
-    # HIG / Evolution / AppleArchive / AppleDocs were physically
-    # lifted INTO their respective source targets in this audit, so
-    # those four don't need an exemption. Packages + Sample-code
-    # still depend on the cross-cutting CoreSampleCode /
-    # CorePackageIndexing producers (the SwiftPackageIndex resolver
-    # + GitHubFetcher live there). Exempting acknowledges the
-    # "per-source target IS a composition root for its concern"
-    # architectural extension to the Phase B contract.
+    # 2026-05-26 audit Finding 9.7 + 11.1: per-source target that still
+    # owns a cross-cutting producer import for ITS OWN concern. The
+    # Phase B rule (#503) forbids cross-concern producer imports; a
+    # per-source target importing the producer for its own concern is
+    # not cross-concern. `PackagesSource` importing `CorePackageIndexing`
+    # is the same concern (Swift Packages). The Crawler.<X> concretes for
+    # HIG / Evolution / AppleArchive / AppleDocs were physically lifted
+    # INTO their respective source targets, so those four don't need an
+    # exemption. `SampleCodeSource` graduated out of this list in #536
+    # lift 3: its GitHub-fetch concrete is now reached through the
+    # `Sample.Core.GitHubFetcherFactory` seam, wired at
+    # CupertinoComposition. PackagesSource follows in #536 lift 5.
     PackagesSource
-    SampleCodeSource
 )
 
 # Grandfathered targets — pre-existing leaks acknowledged here so

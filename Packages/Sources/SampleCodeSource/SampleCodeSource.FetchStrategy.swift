@@ -1,4 +1,3 @@
-import CoreSampleCode
 import CoreSampleCodeModels
 import CrawlerModels
 import Foundation
@@ -9,9 +8,16 @@ import SharedConstants
 // MARK: - SampleCodeFetchStrategy
 
 /// 2026-05-26 audit Finding 9.7 + 11.1: per-source fetch strategy
-/// for `--source samples`. Wraps `Sample.Core.GitHubFetcher`
-/// (refreshes sample-code metadata from GitHub). Lifted from
+/// for `--source samples`. Drives `Sample.Core.GitHubFetcher`
+/// (refreshes sample-code metadata from GitHub) through the
+/// `Sample.Core.GitHubFetcherFactory` seam. Lifted from
 /// `CLIImpl.Command.Fetch.runSamplesFetch`.
+///
+/// #536 (lift 3): the concrete fetcher lives in the `CoreSampleCode`
+/// producer; this strategy depends only on the `GitHubFetcherFactory`
+/// seam in the foundation-only `CoreSampleCodeModels` target. The
+/// composition root injects the `Live` factory via
+/// `SampleCodeSource(fetcherFactory:)`.
 ///
 /// The legacy `apple-sample-code` alias historically routed to a
 /// different fetch (`Sample.Core.Downloader` against Apple's
@@ -20,10 +26,14 @@ import SharedConstants
 /// path is retired (the bundled corpus + the GitHub-based catalog
 /// cover the same content).
 public struct SampleCodeFetchStrategy: Search.SourceFetchStrategy {
-    public init() {}
+    private let fetcherFactory: any Sample.Core.GitHubFetcherFactory
+
+    public init(fetcherFactory: any Sample.Core.GitHubFetcherFactory) {
+        self.fetcherFactory = fetcherFactory
+    }
 
     public func run(env: Search.FetchEnvironment) async throws {
-        let fetcher = Sample.Core.GitHubFetcher(
+        let fetcher = fetcherFactory.makeFetcher(
             outputDirectory: env.outputDirectory,
             logger: env.logger
         )

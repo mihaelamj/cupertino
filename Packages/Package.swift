@@ -354,7 +354,7 @@ let targets: [Target] = {
     // ---------- CoreSampleCodeModels (foundation-only seam — Observer protocol for GitHubFetcher) ----------
     let coreSampleCodeModelsTarget = Target.target(
         name: "CoreSampleCodeModels",
-        dependencies: ["SharedConstants"]
+        dependencies: ["SharedConstants", "LoggingModels"]
     )
     let coreSampleCodeModelsTestsTarget = Target.testTarget(
         name: "CoreSampleCodeModelsTests",
@@ -505,6 +505,11 @@ let targets: [Target] = {
             "SharedConstants",
             "TestSupport",
             "LoggingModels",
+            // #536 (lift 3): Issue1012 shape tests construct
+            // SampleCodeSource, which now takes a
+            // `Sample.Core.GitHubFetcherFactory` seam; a local stub
+            // conformer needs the foundation-only models target.
+            "CoreSampleCodeModels",
         ] + allSourceTargetDeps
     )
 
@@ -721,9 +726,10 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
-            // 2026-05-26 audit Finding 9.7 + 11.1: SampleCodeFetchStrategy
-            // wraps `Sample.Core.GitHubFetcher`.
-            "CoreSampleCode",
+            // #536 (lift 3): SampleCodeFetchStrategy drives the GitHub
+            // fetch through the `Sample.Core.GitHubFetcherFactory` seam
+            // in CoreSampleCodeModels; the `CoreSampleCode` producer is
+            // wired in at the composition root, not imported here.
             "CoreSampleCodeModels",
             "CrawlerModels",
         ]
@@ -852,6 +858,13 @@ let targets: [Target] = {
         name: "CupertinoComposition",
         dependencies: [
             "SearchModels",
+            // #536 (lift 3): composition root wires the `CoreSampleCode`
+            // producer's `Sample.Core.LiveGitHubFetcherFactory` into
+            // `SampleCodeSource`. SampleCodeSource itself stays
+            // foundation-only (depends on the seam, not this concrete).
+            // SharedConstants carries the `Sample.Core` namespace anchor.
+            "CoreSampleCode",
+            "SharedConstants",
         ] + allSourceTargetDeps
     )
 
