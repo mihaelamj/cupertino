@@ -697,16 +697,18 @@ Cupertino uses **os.log** for structured logging:
 
 ```bash
 # View all logs
-log show --predicate 'subsystem == "com.cupertino"' --last 1h
+log show --predicate 'subsystem == "com.cupertino.cli"' --last 1h
 
 # View specific category
-log show --predicate 'subsystem == "com.cupertino" AND category == "crawler"' --last 1h
+log show --predicate 'subsystem == "com.cupertino.cli" AND category == "crawler"' --last 1h
 
 # Stream live logs
-log stream --predicate 'subsystem == "com.cupertino"'
+log stream --predicate 'subsystem == "com.cupertino.cli"'
 ```
 
-**Categories**: crawler, mcp, search, cli, transport, pdf, evolution, samples
+**Categories**: crawler, mcp, search, cli, transport, evolution, samples, package-downloader, archive, hig
+
+> **MCP JSON-RPC wire traffic is on stderr, not os.log.** The stdio transport writes each request and response message (the `→`/`←` wire traffic) to **stderr**, because stdout carries the protocol itself. To watch the wire traffic, capture the server's stderr (`cupertino serve 2>/tmp/cupertino-mcp.log`) or open your MCP client's server-output panel. MCP server lifecycle and diagnostic messages (index availability, load failures) are logged to os.log under the `mcp` category, so the `com.cupertino.cli` predicate above still surfaces them.
 
 ## Performance
 

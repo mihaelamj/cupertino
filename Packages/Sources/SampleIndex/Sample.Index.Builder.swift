@@ -17,7 +17,7 @@ extension Sample.Index {
     public actor Builder {
         private let database: any Sample.Index.Reader & Sample.Index.Writer
         private let sampleCodeDirectory: URL
-        private let logger = os.Logger(subsystem: "com.cupertino", category: "SampleIndex")
+        private let logger = os.Logger(subsystem: Shared.Constants.Logging.subsystem, category: "samples")
 
         public init(
             database: any Sample.Index.Reader & Sample.Index.Writer,
