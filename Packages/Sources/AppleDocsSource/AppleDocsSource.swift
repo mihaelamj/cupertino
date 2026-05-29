@@ -23,7 +23,16 @@ import SharedConstants
 /// - `makeIndexer()`: constructs `Search.AppleDocsIndexer` (the
 ///   indexer concrete also in this target).
 public struct AppleDocsSource: Search.SourceProvider {
-    public init() {}
+    /// #536 lift 4: the web-crawl engine (`WebCrawlFetchStrategy` +
+    /// `Crawler.AppleDocs` + `Ingest`) moved out of this target into the
+    /// macOS-only `Crawler` producer. This provider depends only on the
+    /// `Search.WebCrawlStrategyFactory` seam; the composition root injects
+    /// the live factory.
+    private let webCrawlStrategyFactory: any Search.WebCrawlStrategyFactory
+
+    public init(webCrawlStrategyFactory: any Search.WebCrawlStrategyFactory) {
+        self.webCrawlStrategyFactory = webCrawlStrategyFactory
+    }
 
     public var definition: Search.SourceDefinition {
         Self.definition
@@ -65,11 +74,12 @@ public struct AppleDocsSource: Search.SourceProvider {
     }
 
     /// 2026-05-26 audit Finding 9.7 + 11.1: per-source fetch strategy.
-    /// `WebCrawlFetchStrategy` is shared with `SwiftOrgSource` +
-    /// `SwiftBookSource` — each constructs its own instance with its
-    /// own seed URL + allowedPrefixes.
+    /// The shared `WebCrawlFetchStrategy` is produced by the injected
+    /// `Search.WebCrawlStrategyFactory` (#536 lift 4); swift-org +
+    /// swift-book get their own instances with their own seed URL +
+    /// allowedPrefixes the same way.
     public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? {
-        WebCrawlFetchStrategy(
+        webCrawlStrategyFactory.makeStrategy(
             defaultCrawlBaseURL: Self.fetchInfo.crawlBaseURLs.first ?? "",
             defaultAllowedPrefixes: nil,
             candidateSessionDirectories: []

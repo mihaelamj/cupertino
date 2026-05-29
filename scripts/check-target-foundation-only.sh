@@ -248,11 +248,16 @@ STRICT_PRODUCERS=(
     CoreJSONParser
     CorePackageIndexing
     CoreSampleCode
+    # #536 lift 4: shared web-crawl engine (WebCrawlFetchStrategy +
+    # Crawler.AppleDocs + Ingest) extracted out of AppleDocsSource into
+    # this neutral producer. Foundation-only: imports CoreProtocols +
+    # CrawlerModels + SearchModels + SharedConstants + LoggingModels
+    # (+ Foundation / os) only. (The pre-#536-lift-4 stale `Crawler` +
+    # `Ingest` entries pointed at deleted dirs; this is the real target.)
     Crawler
     Distribution
     Enrichment
     Indexer
-    Ingest
     Logging
     MCPSupport
     RemoteSync

@@ -1,6 +1,7 @@
 import AppleArchiveSource
 import AppleDocsSource
 import CoreSampleCode
+import Crawler
 import HIGSource
 import PackagesSource
 import SampleCodeSource
@@ -43,14 +44,18 @@ public enum CupertinoComposition {
     /// - `cupertino fetch` source list
     /// - `cupertino search`'s unified-search fan-out source list
     public static func makeProductionSourceRegistry() -> Search.SourceRegistry {
+        // #536 lift 4: one shared web-crawl strategy factory injected
+        // into the three web-crawl source providers; the macOS-only
+        // Crawler engine concrete is wired here, at the composition root.
+        let webCrawlStrategyFactory = LiveWebCrawlStrategyFactory()
         var registry = Search.SourceRegistry()
-        registry.register(AppleDocsSource())
+        registry.register(AppleDocsSource(webCrawlStrategyFactory: webCrawlStrategyFactory))
         registry.register(HIGSource())
         registry.register(SampleCodeSource(fetcherFactory: Sample.Core.LiveGitHubFetcherFactory()))
         registry.register(AppleArchiveSource())
         registry.register(SwiftEvolutionSource())
-        registry.register(SwiftOrgSource())
-        registry.register(SwiftBookSource())
+        registry.register(SwiftOrgSource(webCrawlStrategyFactory: webCrawlStrategyFactory))
+        registry.register(SwiftBookSource(webCrawlStrategyFactory: webCrawlStrategyFactory))
         registry.register(PackagesSource())
         return registry
     }

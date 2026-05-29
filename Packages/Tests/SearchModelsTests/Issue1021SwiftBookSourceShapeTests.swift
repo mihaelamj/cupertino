@@ -10,7 +10,7 @@ import Testing
 struct Issue1021SwiftBookSourceShapeTests {
     @Test("SwiftBookSource.definition carries the swift-book id + intents + intentPriority")
     func definitionShape() {
-        let provider = SwiftBookSource()
+        let provider = SwiftBookSource(webCrawlStrategyFactory: StubWebCrawlStrategyFactory())
         let def = provider.definition
         #expect(def.id == Shared.Constants.SourcePrefix.swiftBook)
         #expect(def.displayName == "The Swift Programming Language")
@@ -27,7 +27,7 @@ struct Issue1021SwiftBookSourceShapeTests {
         // `cupertino fetch --source swift-book` seeds at
         // docs.swift.org/swift-book/ and crawls only the book — no
         // longer dragged through swift-org's combined pass.
-        let provider = SwiftBookSource()
+        let provider = SwiftBookSource(webCrawlStrategyFactory: StubWebCrawlStrategyFactory())
         let info = try #require(provider.fetchInfo)
         #expect(info.sourceID == Shared.Constants.SourcePrefix.swiftBook)
         #expect(info.defaultOutputDirKey == .swiftBook)
@@ -40,7 +40,7 @@ struct Issue1021SwiftBookSourceShapeTests {
         // corpus via this property. #1093 splits them: swift-book
         // has its own corpus dir, own fetch leg. The alias override
         // is dropped — defaults to nil from the protocol extension.
-        let provider = SwiftBookSource()
+        let provider = SwiftBookSource(webCrawlStrategyFactory: StubWebCrawlStrategyFactory())
         #expect(provider.corpusDirectoryAlias == nil)
     }
 
@@ -53,7 +53,7 @@ struct Issue1021SwiftBookSourceShapeTests {
         // that filters per-page emission via the shared
         // `Search.StrategyHelpers.crawlSwiftDocumentation` helper
         // with `.swiftBookOnly`.
-        let provider = SwiftBookSource()
+        let provider = SwiftBookSource(webCrawlStrategyFactory: StubWebCrawlStrategyFactory())
         #expect(provider.destinationDB == .swiftBook)
         #expect(provider.destinationDB.id == "swift-book")
         #expect(provider.destinationDB.filename == "swift-book.db")
@@ -61,7 +61,7 @@ struct Issue1021SwiftBookSourceShapeTests {
 
     @Test("SwiftBookSource.makeIndexer produces a Search.SwiftBookIndexer carrying the expected sourceID")
     func makeIndexerShape() {
-        let provider = SwiftBookSource()
+        let provider = SwiftBookSource(webCrawlStrategyFactory: StubWebCrawlStrategyFactory())
         let indexer = provider.makeIndexer()
         #expect(indexer.sourceID == Shared.Constants.SourcePrefix.swiftBook)
         #expect(indexer.displayName == "The Swift Programming Language")
@@ -76,7 +76,7 @@ struct Issue1021SwiftBookSourceShapeTests {
         // swift-book-tagged pages into swift-book.db via the shared
         // `crawlSwiftDocumentation` helper with `.swiftBookOnly`
         // scope. The source-id pin remains; the comment changes.
-        let provider = SwiftBookSource()
+        let provider = SwiftBookSource(webCrawlStrategyFactory: StubWebCrawlStrategyFactory())
         let env = Search.IndexEnvironment(
             sourceDirectory: URL(fileURLWithPath: "/tmp"),
             logger: LoggingModels.Logging.NoopRecording(),
@@ -96,4 +96,21 @@ private struct NoopMarkdownStrategy: Search.MarkdownToStructuredPageStrategy {
     func convert(markdown _: String, url _: URL?) -> Shared.Models.StructuredDocumentationPage? {
         nil
     }
+}
+
+/// Stub `Search.WebCrawlStrategyFactory` for the shape tests (#536 lift
+/// 4). These tests exercise only SwiftBookSource's metadata + indexing
+/// surface, not the fetch path, so the produced strategy is a no-op.
+private struct StubWebCrawlStrategyFactory: Search.WebCrawlStrategyFactory {
+    func makeStrategy(
+        defaultCrawlBaseURL _: String,
+        defaultAllowedPrefixes _: [String]?,
+        candidateSessionDirectories _: [URL]
+    ) -> any Search.SourceFetchStrategy {
+        StubFetchStrategy()
+    }
+}
+
+private struct StubFetchStrategy: Search.SourceFetchStrategy {
+    func run(env _: Search.FetchEnvironment) async throws {}
 }

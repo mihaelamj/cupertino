@@ -1,4 +1,3 @@
-import AppleDocsSource
 import Foundation
 import SearchModels
 import SharedConstants
@@ -16,7 +15,9 @@ import SharedConstants
 /// + SearchModels + SharedConstants + SearchStrategyHelpers (the
 /// neutral shared-helper target), per
 /// `mihaela-agents/Rules/swift/per-package-import-contract.md`. No
-/// cross-source-target imports.
+/// cross-source-target imports. The shared web-crawl strategy reaches
+/// it through the `Search.WebCrawlStrategyFactory` seam, injected by the
+/// composition root (#536 lift 4).
 ///
 /// Conformance facets:
 /// - `definition`: lifted from `CLI/CLIImpl.SourceLookup.swift`
@@ -32,7 +33,11 @@ import SharedConstants
 ///   `SwiftOrgSource`'s `.swiftOrgOnly` invocation).
 /// - `makeIndexer()`: returns `Search.SwiftBookIndexer()`.
 public struct SwiftBookSource: Search.SourceProvider {
-    public init() {}
+    private let webCrawlStrategyFactory: any Search.WebCrawlStrategyFactory
+
+    public init(webCrawlStrategyFactory: any Search.WebCrawlStrategyFactory) {
+        self.webCrawlStrategyFactory = webCrawlStrategyFactory
+    }
 
     public var definition: Search.SourceDefinition {
         Self.definition
@@ -88,7 +93,7 @@ public struct SwiftBookSource: Search.SourceProvider {
     /// dir). Allowed prefixes restrict the crawler to docs.swift.org
     /// only — no traversal into www.swift.org.
     public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? {
-        WebCrawlFetchStrategy(
+        webCrawlStrategyFactory.makeStrategy(
             defaultCrawlBaseURL: Shared.Constants.BaseURL.swiftBook,
             defaultAllowedPrefixes: [Shared.Constants.BaseURL.swiftBook],
             candidateSessionDirectories: []

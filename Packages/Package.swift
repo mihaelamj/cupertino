@@ -60,6 +60,8 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("SearchSchema"),
     .singleTargetLibrary("SearchSQLite"),
     .singleTargetLibrary("SearchStrategyHelpers"),
+    // #536 lift 4: shared web-crawl engine (macOS-only producer).
+    .singleTargetLibrary("Crawler"),
     // .singleTargetLibrary("<X>Source") rows live in allSourceProducts (#1042 Cluster 14).
     .singleTargetLibrary("SampleIndex"),
     .singleTargetLibrary("SampleIndexSQLite"),
@@ -439,6 +441,25 @@ let targets: [Target] = {
             "SharedConstants",
         ]
     )
+    // #536 lift 4: the shared web-crawl engine (`WebCrawlFetchStrategy` +
+    // `Crawler.AppleDocs` + `Ingest`) extracted out of `AppleDocsSource`
+    // into this neutral producer so apple-docs / swift-org / swift-book
+    // all consume it through the `Search.WebCrawlStrategyFactory` seam
+    // (the macOS crawl concrete is injected at the composition root; the
+    // source providers stay Linux-buildable). Foundation-only producer:
+    // imports only CoreProtocols + CrawlerModels + SearchModels +
+    // SharedConstants + LoggingModels (+ Foundation / os). Also carries
+    // `LiveWebCrawlStrategyFactory` (the seam concrete).
+    let crawlerTarget = Target.target(
+        name: "Crawler",
+        dependencies: [
+            "CoreProtocols",
+            "CrawlerModels",
+            "SearchModels",
+            "SharedConstants",
+            "LoggingModels",
+        ]
+    )
     // 2026-05-26 audit Finding 9.7+11.1: CrawlerTests now depends on
     // the per-source targets where the `Crawler.<X>` concretes live
     // (HIGSource / SwiftEvolutionSource / AppleArchiveSource /
@@ -450,6 +471,10 @@ let targets: [Target] = {
         dependencies: [
             "CrawlerModels",
             "CrawlerWebKit",
+            // #536 lift 4: the Crawler.AppleDocs / Ingest engine moved
+            // here from AppleDocsSource; the integration + retry-queue
+            // tests now import `Crawler`.
+            "Crawler",
             "Core",
             "CoreJSONParser",
             "CorePackageIndexing",
@@ -680,10 +705,11 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
-            // 2026-05-26 audit Finding 9.7 + 11.1: WebCrawlFetchStrategy
-            // wraps `Crawler.AppleDocs` + delegates to `Ingest.Session`
-            // for resume / requeue / baseline / urls-file plumbing.
-            "CrawlerModels",
+            // #536 lift 4: the web-crawl engine (WebCrawlFetchStrategy +
+            // Crawler.AppleDocs + Ingest) moved into the `Crawler`
+            // producer. This target now consumes it via the
+            // `Search.WebCrawlStrategyFactory` seam (in SearchModels),
+            // so it no longer depends on `CrawlerModels` directly.
         ]
     )
 
@@ -766,13 +792,11 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
-            // 2026-05-26 audit Finding 9.7 + 11.1: SwiftOrgSource +
-            // SwiftBookSource share AppleDocsSource's
-            // `WebCrawlFetchStrategy` concrete (different config per
-            // source). Inter-source-target dep accepted because the
-            // 3 web-crawl-tier sources have always shared the
-            // `runStandardCrawl` codepath pre-fix.
-            "AppleDocsSource",
+            // #536 lift 4: the shared `WebCrawlFetchStrategy` moved into
+            // the `Crawler` producer; SwiftOrgSource no longer imports
+            // AppleDocsSource. It consumes the engine via the
+            // `Search.WebCrawlStrategyFactory` seam, injected at the
+            // composition root.
         ]
     )
 
@@ -793,11 +817,13 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
-            // #1093: swift-book gains its own independent fetch leg
-            // (no longer a view-source over swift-org). Reuses
-            // `AppleDocsSource.WebCrawlFetchStrategy` — the same
-            // crawler concrete other web-crawlable sources use.
-            "AppleDocsSource",
+            // #1093: swift-book gains its own independent fetch leg (no
+            // longer a view-source over swift-org). #536 lift 4: the
+            // shared web-crawl strategy moved into the `Crawler`
+            // producer; SwiftBookSource no longer imports AppleDocsSource
+            // and consumes the engine via the
+            // `Search.WebCrawlStrategyFactory` seam, injected at the
+            // composition root.
         ]
     )
 
@@ -865,6 +891,10 @@ let targets: [Target] = {
             // SharedConstants carries the `Sample.Core` namespace anchor.
             "CoreSampleCode",
             "SharedConstants",
+            // #536 lift 4: composition root wires the macOS-only Crawler
+            // engine's `LiveWebCrawlStrategyFactory` into apple-docs /
+            // swift-org / swift-book.
+            "Crawler",
         ] + allSourceTargetDeps
     )
 
@@ -1317,6 +1347,8 @@ let targets: [Target] = {
         dependencies: [
             "CLI",
             "CrawlerWebKit",
+            // #536 lift 4: Crawler.AppleDocs engine moved to the Crawler target.
+            "Crawler",
             "MCPCore",
             "MCPSupport",
             "SearchAPI",
@@ -1352,6 +1384,9 @@ let targets: [Target] = {
             "CLI",
             "CoreProtocols", "CorePackageIndexing", "CoreJSONParser", "Core",
             "CrawlerModels", "CrawlerWebKit",
+            // #536 lift 4: Crawler.AppleDocs / Ingest.Session engine moved
+            // from the per-source targets into the Crawler producer.
+            "Crawler",
             "TestSupport",
         ] + allSourceTargetDeps,
         path: "Tests/CLICommandTests/FetchTests"
@@ -1368,6 +1403,8 @@ let targets: [Target] = {
             "CorePackageIndexing",
             "CrawlerModels",
             "CrawlerWebKit",
+            // #536 lift 4: Crawler.AppleDocs engine moved to the Crawler target.
+            "Crawler",
             "Indexer",
             "SearchAPI",
             "SearchModels",
@@ -1482,6 +1519,7 @@ let targets: [Target] = {
         crawlerModelsTarget,
         crawlerModelsTestsTarget,
         crawlerWebKitTarget,
+        crawlerTarget,
         crawlerTestsTarget,
         cleanupModelsTarget,
         cleanupModelsTestsTarget,
