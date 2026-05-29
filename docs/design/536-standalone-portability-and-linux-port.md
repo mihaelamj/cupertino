@@ -122,7 +122,7 @@ and is simply excluded from the Linux build.
 | Darwin | 4 runtime CLI files (`Serve`, `ServeReaper`, `SaveSiblingGate`, `Cupertino.swift`) use `kill`/SIGTERM/SIGKILL | runtime (`serve`) | `#if canImport(Glibc)` gating (Glibc/Musl provide signals) |
 
 Also: `Distribution.Artifact.Extractor.swift` shells `/usr/bin/unzip` for the
-~833 MB bundle (setup runtime path) — `Foundation.Process` works on Linux but the
+~833 MB bundle (setup runtime path): `Foundation.Process` works on Linux but the
 host/CI container must have `unzip` (or swap to a Swift-native unzip).
 
 **Minimum runtime change set:** (1) `SharedConstants` CryptoKit -> swift-crypto;
@@ -140,7 +140,7 @@ runtime product/target subset (the read/serve closure: `SearchSQLite`,
 `CLI` executable) and the three external deps (`swift-crypto`, `swift-log`,
 `async-http-client`) via `.product(..., condition: .when(platforms: [.linux]))`
 so macOS builds are untouched. Source still needs `#if canImport(...)` to pick
-the right import — both layers are required.
+the right import; both layers are required.
 
 **CI.** `.github/workflows/ci.yml` has no Linux build job (build/portability/
 query-smoke are `macos-15`; the ubuntu jobs run bash audits only). Add a
@@ -161,7 +161,7 @@ floors. A Linux `cupertino save` builds only the cross-platform sources.
 
 ## 7. Rollout / phasing
 
-**Phase 1 — #536 lifts (macOS-side, pure refactor).** Each is gated by the
+**Phase 1: #536 lifts (macOS-side, pure refactor).** Each is gated by the
 re-enabled `check-target-foundation-only.sh`.
 - PR 1.1: `HIGPlatformRules.swift` -> seam (fixes 1, 2a, 2b). Trivial.
 - PR 1.2: HIG pass construction -> composition root / `EnrichmentPass` (2c).
@@ -171,7 +171,7 @@ re-enabled `check-target-foundation-only.sh`.
 - PR 1.6: re-enable the audit (the parked `Crawler`/`Ingest` removal) + add it as
   a pre-commit hook so drift can't recur.
 
-**Phase 2 — Linux read/serve runtime (#1152).** Independent of the producer
+**Phase 2: Linux read/serve runtime (#1152).** Independent of the producer
 lifts; the CryptoKit/Logging/Distribution work can proceed in parallel.
 - PR 2.1: `SharedConstants` CryptoKit -> swift-crypto (do first; everything links it).
 - PR 2.2: `Logging` swift-log Linux concrete + gate the 2 OSLog leaks.
@@ -179,7 +179,7 @@ lifts; the CryptoKit/Logging/Distribution work can proceed in parallel.
 - PR 2.4: `Darwin` -> `Glibc` signal gating (4 CLI files).
 - PR 2.5: manifest Linux subset + conditional deps + `build-linux` CI job + smoke.
 
-**Phase 3 — Linux indexing (#1151).** Depends on PR 1.4 (`WebCrawlSource`). The
+**Phase 3: Linux indexing (#1151).** Depends on PR 1.4 (`WebCrawlSource`). The
 `linux` availability dimension + the cross-platform-source save scope + the
 search filter. JS-render crawl stays macOS-only (or a headless-browser
 alternative, P2).
