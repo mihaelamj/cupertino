@@ -1,5 +1,6 @@
 import AppleArchiveSource
 import AppleDocsSource
+import CorePackageIndexing
 import CoreSampleCode
 import Crawler
 import HIGSource
@@ -56,7 +57,7 @@ public enum CupertinoComposition {
         registry.register(SwiftEvolutionSource())
         registry.register(SwiftOrgSource(webCrawlStrategyFactory: webCrawlStrategyFactory))
         registry.register(SwiftBookSource(webCrawlStrategyFactory: webCrawlStrategyFactory))
-        registry.register(PackagesSource())
+        registry.register(PackagesSource(packageFetchStrategyFactory: LivePackageFetchStrategyFactory()))
         return registry
     }
 

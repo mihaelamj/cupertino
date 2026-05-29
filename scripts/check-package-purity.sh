@@ -105,19 +105,18 @@ EXEMPT_TARGETS=(
     # only the composition root binaries link them.
     CoreJSONParserWebKit
     CoreSampleCodeWebKit
-    # 2026-05-26 audit Finding 9.7 + 11.1: per-source target that still
-    # owns a cross-cutting producer import for ITS OWN concern. The
-    # Phase B rule (#503) forbids cross-concern producer imports; a
-    # per-source target importing the producer for its own concern is
-    # not cross-concern. `PackagesSource` importing `CorePackageIndexing`
-    # is the same concern (Swift Packages). The Crawler.<X> concretes for
-    # HIG / Evolution / AppleArchive / AppleDocs were physically lifted
-    # INTO their respective source targets, so those four don't need an
-    # exemption. `SampleCodeSource` graduated out of this list in #536
-    # lift 3: its GitHub-fetch concrete is now reached through the
+    # `SampleCodeSource` graduated out of this list in #536 lift 3: its
+    # GitHub-fetch concrete is now reached through the
     # `Sample.Core.GitHubFetcherFactory` seam, wired at
-    # CupertinoComposition. PackagesSource follows in #536 lift 5.
-    PackagesSource
+    # CupertinoComposition. `PackagesSource` graduated out in #536 lift 5:
+    # its `PackagesFetchStrategy` (the 3-stage Swift Package Index
+    # pipeline) moved INTO the `CorePackageIndexing` producer and is now
+    # reached through the `Search.PackageFetchStrategyFactory` seam,
+    # injected at CupertinoComposition. The Crawler.<X> concretes for
+    # HIG / Evolution / AppleArchive / AppleDocs were physically lifted
+    # INTO their respective source targets, so those four never needed an
+    # exemption. No per-source target imports a concrete producer anymore;
+    # every `<X>Source` is now audited.
 )
 
 # Grandfathered targets — pre-existing leaks acknowledged here so

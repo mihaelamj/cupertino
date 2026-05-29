@@ -11,7 +11,7 @@ import Testing
 struct Issue1023PackagesSourceShapeTests {
     @Test("PackagesSource.definition carries the packages id + packageDiscovery intent")
     func definitionShape() {
-        let provider = PackagesSource()
+        let provider = PackagesSource(packageFetchStrategyFactory: StubPackageFetchStrategyFactory())
         let def = provider.definition
         #expect(def.id == Shared.Constants.SourcePrefix.packages)
         #expect(def.displayName == "Swift Packages")
@@ -23,7 +23,7 @@ struct Issue1023PackagesSourceShapeTests {
 
     @Test("PackagesSource.fetchInfo carries the swift-package-index source + .packages output dir + isWebCrawlable false")
     func fetchInfoShape() throws {
-        let provider = PackagesSource()
+        let provider = PackagesSource(packageFetchStrategyFactory: StubPackageFetchStrategyFactory())
         let fi = try #require(provider.fetchInfo)
         #expect(fi.sourceID == Shared.Constants.SourcePrefix.packages)
         #expect(fi.displayName == Shared.Constants.DisplayName.swiftPackages)
@@ -34,7 +34,7 @@ struct Issue1023PackagesSourceShapeTests {
 
     @Test("PackagesSource.destinationDB == .packages (the load-bearing protocol-contract pin)")
     func destinationDBIsPackages() {
-        let provider = PackagesSource()
+        let provider = PackagesSource(packageFetchStrategyFactory: StubPackageFetchStrategyFactory())
         #expect(provider.destinationDB == .packages)
         #expect(provider.destinationDB.id == "packages")
         // PackagesSource targets the non-search-style .packages descriptor.
@@ -44,7 +44,7 @@ struct Issue1023PackagesSourceShapeTests {
 
     @Test("PackagesSource.makeIndexer returns a no-op indexer advertising source-id packages")
     func makeIndexerNoop() {
-        let provider = PackagesSource()
+        let provider = PackagesSource(packageFetchStrategyFactory: StubPackageFetchStrategyFactory())
         let indexer = provider.makeIndexer()
         #expect(indexer.sourceID == Shared.Constants.SourcePrefix.packages)
         #expect(indexer.displayName == "Swift Packages")
@@ -52,7 +52,7 @@ struct Issue1023PackagesSourceShapeTests {
 
     @Test("PackagesSource.makeStrategy returns a view-source strategy advertising source-id packages")
     func makeStrategyNoop() {
-        let provider = PackagesSource()
+        let provider = PackagesSource(packageFetchStrategyFactory: StubPackageFetchStrategyFactory())
         let env = Search.IndexEnvironment(
             sourceDirectory: URL(fileURLWithPath: "/tmp"),
             logger: LoggingModels.Logging.NoopRecording(),
@@ -70,4 +70,17 @@ private struct NoopMarkdownStrategy: Search.MarkdownToStructuredPageStrategy {
     func convert(markdown _: String, url _: URL?) -> Shared.Models.StructuredDocumentationPage? {
         nil
     }
+}
+
+/// Stub `Search.PackageFetchStrategyFactory` for the shape tests (#536
+/// lift 5). These tests exercise only PackagesSource's metadata surface,
+/// not the fetch path, so the produced strategy is a no-op and never run.
+private struct StubPackageFetchStrategyFactory: Search.PackageFetchStrategyFactory {
+    func makeStrategy() -> any Search.SourceFetchStrategy {
+        StubFetchStrategy()
+    }
+}
+
+private struct StubFetchStrategy: Search.SourceFetchStrategy {
+    func run(env _: Search.FetchEnvironment) async throws {}
 }

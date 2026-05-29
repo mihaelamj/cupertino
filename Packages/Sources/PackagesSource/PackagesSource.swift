@@ -35,13 +35,25 @@ import SharedConstants
 ///   indexer exists; the bespoke packages.db indexer is invoked by
 ///   the dedicated `Indexer.PackagesService`).
 public struct PackagesSource: Search.SourceProvider {
-    public init() {}
+    /// #536 lift 5: the 3-stage SPI fetch pipeline (`PackagesFetchStrategy`) moved into the
+    /// `CorePackageIndexing` producer; this provider reaches it only through the seam.
+    private let packageFetchStrategyFactory: any Search.PackageFetchStrategyFactory
 
-    public var definition: Search.SourceDefinition { Self.definition }
+    public init(packageFetchStrategyFactory: any Search.PackageFetchStrategyFactory) {
+        self.packageFetchStrategyFactory = packageFetchStrategyFactory
+    }
 
-    public var fetchInfo: Search.FetchInfo? { Self.fetchInfo }
+    public var definition: Search.SourceDefinition {
+        Self.definition
+    }
 
-    public var destinationDB: Shared.Models.DatabaseDescriptor { .packages }
+    public var fetchInfo: Search.FetchInfo? {
+        Self.fetchInfo
+    }
+
+    public var destinationDB: Shared.Models.DatabaseDescriptor {
+        .packages
+    }
 
     public var capabilities: Search.Capabilities {
         .init(
@@ -65,13 +77,15 @@ public struct PackagesSource: Search.SourceProvider {
     /// #1042 Cluster 8: packages live in their own DB (packages.db),
     /// not search.db; the dispatcher uses `runPackageSearch` /
     /// `handleSearchPackages`.
-    public var searchRoute: Search.SearchRoute { .packages }
+    public var searchRoute: Search.SearchRoute {
+        .packages
+    }
 
     /// 2026-05-26 audit Finding 9.7 + 11.1: per-source fetch strategy.
     /// 3-stage pipeline (metadata refresh + archive download +
     /// availability annotation) lifted from `CLIImpl.Command.Fetch.runPackageFetch`.
     public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? {
-        PackagesFetchStrategy()
+        packageFetchStrategyFactory.makeStrategy()
     }
 
     /// 2026-05-26 audit #1055: per-source read strategy. Reads
@@ -86,7 +100,9 @@ public struct PackagesSource: Search.SourceProvider {
     /// NOT in the search.db FTS family. `SmartReport.docsSources()`
     /// filters non-search-tier providers out of the unified docs
     /// fan-out.
-    public var isSearchTier: Bool { false }
+    public var isSearchTier: Bool {
+        false
+    }
 }
 
 // MARK: - View-source no-op concretes

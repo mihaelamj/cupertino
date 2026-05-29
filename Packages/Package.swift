@@ -337,7 +337,7 @@ let targets: [Target] = {
     // ---------- CorePackageIndexing (v1.2 refactor 2.4: Resolver + Fetcher + Archive Extractor + Annotator + ManifestCache + Store + DocDownloader) ----------
     let corePackageIndexingTarget = Target.target(
         name: "CorePackageIndexing",
-        dependencies: ["CorePackageIndexingModels", "CoreProtocols", "SharedConstants", "LoggingModels", "ASTIndexer", "Resources"],
+        dependencies: ["CorePackageIndexingModels", "CoreProtocols", "SharedConstants", "LoggingModels", "ASTIndexer", "Resources", "SearchModels"],
         path: "Sources/Core/PackageIndexing",
         exclude: ["Model"]
     )
@@ -842,12 +842,13 @@ let targets: [Target] = {
         dependencies: [
             "SearchModels",
             "SharedConstants",
-            // 2026-05-26 audit Finding 9.7 + 11.1: PackagesFetchStrategy
-            // wraps the 3-stage Core.PackageIndexing pipeline.
+            // #536 lift 5: PackagesFetchStrategy moved into the
+            // CorePackageIndexing producer; PackagesSource reaches it
+            // through the Search.PackageFetchStrategyFactory seam injected
+            // at the composition root, so it no longer depends on the
+            // CorePackageIndexing concrete or its Models companion.
             "Core",
-            "CorePackageIndexing",
-            "CorePackageIndexingModels",
-            "CoreProtocols", // declares the `Core` namespace anchor that CorePackageIndexingModels extends with `PackageIndexing`.
+            "CoreProtocols",
             "CrawlerModels",
             "LoggingModels",
         ]
@@ -895,6 +896,11 @@ let targets: [Target] = {
             // engine's `LiveWebCrawlStrategyFactory` into apple-docs /
             // swift-org / swift-book.
             "Crawler",
+            // #536 lift 5: composition root wires the
+            // `LivePackageFetchStrategyFactory` (resident in the
+            // CorePackageIndexing producer next to its machinery) into
+            // PackagesSource.
+            "CorePackageIndexing",
         ] + allSourceTargetDeps
     )
 
