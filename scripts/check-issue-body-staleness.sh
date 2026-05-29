@@ -370,6 +370,13 @@ check_xref() {
     fi
 }
 
+# #1137: an issue body may legitimately cite a `<table>.<col>` that does not
+# exist yet (a proposed new column) or that used to exist and was relocated.
+# The schema check skips a missing-column flag when EVERY line mentioning the
+# ref carries one of these intentional-absence signals; a genuine stale claim
+# (the ref appears on at least one unsignaled line) still flags.
+SCHEMA_ABSENCE_SIGNALS='proposed|new column|does not exist|doesn.t exist|not an existing|relocated|moved to|lives? on|shadow table|originally-stale'
+
 check_schema() {
     local n="$1" body="$2"
     local hits=""
@@ -387,6 +394,9 @@ check_schema() {
             [ -z "$ref" ] && continue
             local col="${ref#${table}.}"
             if ! echo "$cols" | grep -qx "$col"; then
+                local unsignaled
+                unsignaled=$(echo "$body" | grep -F "$ref" | grep -ivE "$SCHEMA_ABSENCE_SIGNALS" || true)
+                [ -z "$unsignaled" ] && continue
                 hits+="    - \`${ref}\` → column \`${col}\` not found in \`${table}\` (searched \`${schema_dir}\`)"$'\n'
             fi
         done <<<"$refs"
