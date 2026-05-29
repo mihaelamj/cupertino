@@ -44,17 +44,21 @@ struct Enrichment11FrameworkAliasingTests {
         let total = probe.count("SELECT count(*) FROM docs_metadata")
         #expect(
             docsFramework <= total / 2,
-            "framework='docs' dominates (\(docsFramework)/\(total)); "
-                + "the misbuild regressed, rebuild with --docs-dir .../docs"
+            """
+            framework='docs' dominates (\(docsFramework)/\(total)); \
+            the misbuild regressed, rebuild with --docs-dir .../docs
+            """
         )
     }
 
     @Test(
         "The 22 framework synonyms are attached",
         .disabled(
-            "framework_aliases.synonyms is empty on this snapshot: SynonymsPass attaches "
-                + "nothing even though the framework column is now correct. Separate enrichment "
-                + "bug, tracked outside this battery."
+            """
+            framework_aliases.synonyms is empty on this snapshot: SynonymsPass attaches \
+            nothing even though the framework column is now correct. Separate enrichment \
+            bug, tracked outside this battery.
+            """
         )
     )
     func synonymsAttached() {
