@@ -149,7 +149,7 @@ extension Search {
     /// fetch capability declares a concrete (`<X>FetchStrategy`) and
     /// returns an instance from `Search.SourceProvider.makeFetchStrategy()`.
     /// `CLIImpl.Command.Fetch` invokes the strategy returned by the
-    /// registered provider — there is no source-id switch anywhere
+    /// registered provider; there is no source-id switch anywhere
     /// in the dispatch.
     ///
     /// Sources without a fetch capability (today: `swift-book`, a

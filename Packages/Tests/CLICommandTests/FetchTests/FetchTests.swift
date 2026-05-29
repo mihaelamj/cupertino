@@ -46,7 +46,7 @@ struct FetchCommandTests {
 /// refresh) is opt-in via `--refresh-metadata`. These tests exercise
 /// argument parsing and the empty-pipeline early-exit guard without
 /// touching the network.
-@Suite("Fetch Command — packages flags (#217 + #1108)")
+@Suite("Fetch Command: packages flags (#217 + #1108)")
 struct FetchPackagesMergeTests {
     @Test("--refresh-metadata parses to true; archives flag defaults to false")
     func refreshMetadataParses() throws {
