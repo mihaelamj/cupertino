@@ -56,8 +56,8 @@ struct Enrichment11FrameworkAliasingTests {
         .disabled(
             """
             framework_aliases.synonyms is empty on this snapshot: SynonymsPass attaches \
-            nothing even though the framework column is now correct. Separate enrichment \
-            bug, tracked outside this battery.
+            nothing even though the framework column is now correct (UPDATE-only write over \
+            a near-empty alias table). Tracked in #1132.
             """
         )
     )
