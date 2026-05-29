@@ -66,6 +66,20 @@ extension Search {
         /// classifier output. Foundation can't see SearchSQLite.
         public let defaultDocKindRawValue: String?
 
+        /// Enrichment input files this source needs present before it can be
+        /// indexed at full coverage (e.g. apple-docs / samples / packages each
+        /// need `apple-constraints.json`; packages also needs per-package
+        /// `availability.json`). A single generic preflight
+        /// (`Search.EnrichmentInputPreflight`) iterates the selected sources'
+        /// declarations and refuses to index (unless
+        /// `--allow-degraded-enrichment`) when any is missing.
+        ///
+        /// Declarative DATA carried on the value descriptor (not a protocol
+        /// method) so it cannot hit the static-dispatch trap and so adding a
+        /// source's requirement is one literal here, never an edit to a
+        /// central guard. Default `[]`: most sources need no enrichment input.
+        public let requiredEnrichmentInputs: [Search.EnrichmentInput]
+
         // MARK: Initializer
 
         public init(
@@ -78,7 +92,8 @@ extension Search {
             baseURL: URL? = nil,
             localDirectory: String? = nil,
             isEnabled: Bool = true,
-            defaultDocKindRawValue: String? = nil
+            defaultDocKindRawValue: String? = nil,
+            requiredEnrichmentInputs: [Search.EnrichmentInput] = []
         ) {
             self.id = id
             self.displayName = displayName
@@ -90,6 +105,7 @@ extension Search {
             self.localDirectory = localDirectory
             self.isEnabled = isEnabled
             self.defaultDocKindRawValue = defaultDocKindRawValue
+            self.requiredEnrichmentInputs = requiredEnrichmentInputs
         }
 
         /// Get priority for a specific intent (default: 50)

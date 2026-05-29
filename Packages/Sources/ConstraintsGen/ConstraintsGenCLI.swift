@@ -13,6 +13,7 @@ struct ConstraintsGenCLI: AsyncParsableCommand {
         abstract: "Generate the authoritative Apple-type generic-constraints table from `swift symbolgraph-extract` output (#759 iteration 3).",
         subcommands: [
             ConstraintsGen.Command.Generate.self,
+            ConstraintsGen.Command.Conformances.self,
         ]
     )
 }

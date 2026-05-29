@@ -147,18 +147,30 @@ extension CLIImpl.Command {
             var healthChecks: [any Distribution.DatabaseHealthCheck] = [
                 PackagesHealthCheck(packagesDBURL: paths.packagesDatabase),
                 SamplesHealthCheck(samplesDBURL: Sample.Index.databasePath(baseDirectory: paths.baseDirectory)),
-                SearchHealthCheck(
-                    descriptor: .search,
-                    searchDBURL: URL(fileURLWithPath: searchDB).expandingTildeInPath,
-                    isRequired: true
-                ),
             ]
+            // #1061/#1071: only run the legacy monolithic-search.db
+            // health check when the file actually exists (a pre-#1036
+            // bundle the user hasn't re-fetched). Post-#1036 each
+            // source has its own `<base>/<source>.db` and search.db is
+            // intentionally never built; surfacing a hard `✗ search.db
+            // (not found)` for a DB that's gone-by-design is noise +
+            // a spurious doctor failure. The per-source FTS checks
+            // below (isRequired: false) carry the real readiness
+            // signal now.
+            let legacySearchURL = URL(fileURLWithPath: searchDB).expandingTildeInPath
+            if FileManager.default.fileExists(atPath: legacySearchURL.path) {
+                healthChecks.append(SearchHealthCheck(
+                    descriptor: .search,
+                    searchDBURL: legacySearchURL,
+                    isRequired: true
+                ))
+            }
             // One conformer per FTS-tier per-source destinationDB.
-            // Excluded: .search (already added above as legacy required),
-            // .packages (its own non-FTS conformer), .appleSampleCode
-            // (its own dual-schema conformer). Uniquify by descriptor.id
-            // because view-source pairs (swift-org + swift-book) share
-            // `.swiftDocumentation`.
+            // Excluded: .search (added above only when it exists on
+            // disk), .packages (its own non-FTS conformer),
+            // .appleSampleCode (its own dual-schema conformer).
+            // Uniquify by descriptor.id because view-source pairs
+            // (swift-org + swift-book) share `.swiftDocumentation`.
             var seen: Set<String> = [
                 Shared.Models.DatabaseDescriptor.search.id,
                 Shared.Models.DatabaseDescriptor.packages.id,
@@ -304,9 +316,18 @@ extension CLIImpl.Command {
             // Every other descriptor's path is `baseDirectory + filename`.
             let docsBase = paths.baseDirectory
             let registry = CLIImpl.makeProductionSourceRegistry()
-            var entries: [(Shared.Models.DatabaseDescriptor, URL)] = [
-                (.search, URL(fileURLWithPath: searchDB).expandingTildeInPath),
-            ]
+            // #1061/#1071: the legacy monolithic search.db is dead
+            // post-#1036 per-source-DB-split — every source now writes
+            // its own `<base>/<source>.db`. Only surface the `.search`
+            // descriptor when a search.db actually exists on disk
+            // (pre-#1036 bundle a user hasn't re-fetched yet); a
+            // post-split install should never see a `⚠ search.db: not
+            // built` line for a DB that's intentionally gone.
+            let legacySearchURL = URL(fileURLWithPath: searchDB).expandingTildeInPath
+            var entries: [(Shared.Models.DatabaseDescriptor, URL)] = []
+            if FileManager.default.fileExists(atPath: legacySearchURL.path) {
+                entries.append((.search, legacySearchURL))
+            }
             // Each registered destination — uniquify via Set since
             // view-source pairs (swift-org + swift-book) share a
             // destinationDB.

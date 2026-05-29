@@ -70,6 +70,8 @@ extension CLIImpl.Command {
         )
         var searchDb: String?
 
+        @OptionGroup var platformFloors: CLIImpl.PlatformFloorOptions
+
         mutating func run() async throws {
             let recording = Cupertino.Context.composition.logging.recording
             guard limit > 0 else {
@@ -99,11 +101,12 @@ extension CLIImpl.Command {
             )
             defer { Task { await index.disconnect() } }
 
-            let results = try await index.searchPropertyWrappers(
+            let rawResults = try await index.searchPropertyWrappers(
                 wrapper: wrapper,
                 framework: framework,
                 limit: limit
             )
+            let results = try await index.applyingPlatformFloors(to: rawResults, floors: platformFloors.floors())
 
             let normalizedWrapper = wrapper.hasPrefix("@") ? wrapper : "@\(wrapper)"
 

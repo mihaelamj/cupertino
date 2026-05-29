@@ -26,6 +26,16 @@ extension Search {
             enrichmentVersion: Int
         ) async throws -> Int
 
+        /// Apply the authoritative Apple SDK conformance table to the
+        /// packages.db `package_symbols.conformances` column, matched by
+        /// symbol name. Idempotent; stamps `enrichment_version`. Used by
+        /// `Enrichment.PackagesAppleConformancesPass`. nil `lookup`
+        /// short-circuits to 0.
+        func applyAppleStaticConformances(
+            lookup: (any Search.StaticConformancesLookup)?,
+            enrichmentVersion: Int
+        ) async throws -> Int
+
         /// Apply the authoritative Apple-imports lookup to the
         /// packages.db `package_metadata.apple_imports_json` column.
         /// Idempotent; stamps `enrichment_version` on each updated
@@ -35,5 +45,17 @@ extension Search {
             lookup: (any Search.StaticConstraintsLookup)?,
             enrichmentVersion: Int
         ) async throws -> Int
+    }
+}
+
+extension Search.PackageWriter {
+    /// Default: no-op. Only the SQLite-backed package index overrides this;
+    /// test fakes and other conformers need not implement it.
+    public func applyAppleStaticConformances(
+        lookup: (any Search.StaticConformancesLookup)?,
+        enrichmentVersion _: Int
+    ) async throws -> Int {
+        _ = lookup
+        return 0
     }
 }

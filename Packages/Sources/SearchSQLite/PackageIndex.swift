@@ -847,6 +847,50 @@ extension Search {
             return affected
         }
 
+        /// Conformance sibling of `applyAppleStaticConstraints`: stamps
+        /// `package_symbols.conformances` with the authoritative Apple SDK
+        /// conformance set, matched by symbol name. Idempotent; nil `lookup`
+        /// short-circuits to 0.
+        public func applyAppleStaticConformances(
+            lookup: (any Search.StaticConformancesLookup)?,
+            enrichmentVersion: Int = 1
+        ) async throws -> Int {
+            guard let lookup, let database else { return 0 }
+            let entries = try await lookup.allConformanceEntries()
+            guard !entries.isEmpty else { return 0 }
+
+            var nameToConformances: [String: String] = [:]
+            for entry in entries {
+                guard let lastSegment = entry.docURI.split(separator: "/").last else { continue }
+                nameToConformances[String(lastSegment).lowercased()] = entry.conformsTo.joined(separator: ",")
+            }
+
+            _ = sqlite3_exec(database, "BEGIN TRANSACTION", nil, nil, nil)
+            let sql = """
+            UPDATE package_symbols
+            SET conformances = ?, enrichment_version = ?
+            WHERE LOWER(name) = ?;
+            """
+            var statement: OpaquePointer?
+            defer { sqlite3_finalize(statement) }
+            guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
+                _ = sqlite3_exec(database, "ROLLBACK", nil, nil, nil)
+                throw PackageIndexError.sqliteError("prepare applyAppleStaticConformances UPDATE failed")
+            }
+            var affected = 0
+            for (lower, joined) in nameToConformances {
+                sqlite3_reset(statement)
+                sqlite3_clear_bindings(statement)
+                sqlite3_bind_text(statement, 1, (joined as NSString).utf8String, -1, nil)
+                sqlite3_bind_int(statement, 2, Int32(enrichmentVersion))
+                sqlite3_bind_text(statement, 3, (lower as NSString).utf8String, -1, nil)
+                _ = sqlite3_step(statement)
+                affected += Int(sqlite3_changes(database))
+            }
+            _ = sqlite3_exec(database, "COMMIT", nil, nil, nil)
+            return affected
+        }
+
         /// #837 stage 1 — populate `package_metadata.apple_imports_json`
         /// per package: JSON array of Apple framework modules the
         /// package imports, derived by joining `package_files.module`

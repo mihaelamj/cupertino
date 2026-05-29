@@ -27,6 +27,7 @@ extension Search {
 
         public let maxPages: Int
         public let maxDepth: Int
+        public let requestDelay: TimeInterval
         public let force: Bool
         public let startClean: Bool
         public let retryErrors: Bool
@@ -93,6 +94,7 @@ extension Search {
             outputDirectory: URL,
             maxPages: Int = 100,
             maxDepth: Int = 15,
+            requestDelay: TimeInterval = 0.05,
             force: Bool = false,
             startClean: Bool = false,
             retryErrors: Bool = false,
@@ -118,6 +120,7 @@ extension Search {
             self.outputDirectory = outputDirectory
             self.maxPages = maxPages
             self.maxDepth = maxDepth
+            self.requestDelay = requestDelay
             self.force = force
             self.startClean = startClean
             self.retryErrors = retryErrors
@@ -146,7 +149,7 @@ extension Search {
     /// fetch capability declares a concrete (`<X>FetchStrategy`) and
     /// returns an instance from `Search.SourceProvider.makeFetchStrategy()`.
     /// `CLIImpl.Command.Fetch` invokes the strategy returned by the
-    /// registered provider — there is no source-id switch anywhere
+    /// registered provider; there is no source-id switch anywhere
     /// in the dispatch.
     ///
     /// Sources without a fetch capability (today: `swift-book`, a

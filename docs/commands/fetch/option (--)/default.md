@@ -17,6 +17,7 @@ cupertino fetch \
   --source apple-docs \
   --max-pages 1000000 \
   --max-depth 15 \
+  --request-delay 0.05 \
   --output-dir ~/.cupertino/docs
 ```
 
@@ -24,10 +25,11 @@ cupertino fetch \
 
 | Option | Default Value | Description |
 |--------|---------------|-------------|
-| `--source` | `docs` | Apple Developer Documentation |
-| `--start-url` | (auto-detected from type) | Starting URL for crawl |
+| `--source` | `apple-docs` | Apple Developer Documentation |
+| `--start-url` | (auto-detected from source) | Starting URL for crawl |
 | `--max-pages` | `1000000` | Maximum pages to crawl (effectively uncapped) |
 | `--max-depth` | `15` | Maximum depth from start URL |
+| `--request-delay` | `0.05` | Delay in seconds between crawler requests |
 | `--output-dir` | `~/.cupertino/docs` | Output directory |
 | `--allowed-prefixes` | (auto-detected) | Allowed URL prefixes |
 | `--force` | `false` | Don't re-fetch unchanged pages |
@@ -39,19 +41,19 @@ cupertino fetch \
 
 ### Start URL
 Automatically set based on `--source`:
-- `docs` → `https://developer.apple.com/documentation/`
-- `swift` → `https://docs.swift.org/swift-book/...`
-- `evolution` → (GitHub API)
+- `apple-docs` → `https://developer.apple.com/documentation/`
+- `swift-org` → `https://www.swift.org/...`
+- `swift-evolution` → (GitHub API)
 - `packages` → (Swift Package Index API)
-- `code` → (Apple Developer portal)
+- `apple-sample-code` → (Apple Developer portal)
 
 ### Output Directory
 Automatically set based on `--source`:
-- `docs` → `~/.cupertino/docs`
-- `swift` → `~/.cupertino/swift-book`
-- `evolution` → `~/.cupertino/swift-evolution`
+- `apple-docs` → `~/.cupertino/docs`
+- `swift-org` → `~/.cupertino/swift-org`
+- `swift-evolution` → `~/.cupertino/swift-evolution`
 - `packages` → `~/.cupertino/packages`
-- `code` → `~/.cupertino/sample-code`
+- `apple-sample-code` → `~/.cupertino/sample-code`
 
 ### Allowed Prefixes
 Auto-detected from start URL to prevent crawling external sites.

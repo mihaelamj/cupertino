@@ -65,5 +65,27 @@ extension Sample.Index {
             lookup: (any Search.StaticConstraintsLookup)?,
             enrichmentVersion: Int
         ) async throws -> Int
+
+        /// Apply the authoritative Apple SDK conformance table to samples.db's
+        /// `file_symbols.conformances`, matched by symbol name (the Apple type
+        /// a sample symbol references). Idempotent; stamps `enrichment_version`.
+        /// Used by `Enrichment.SamplesAppleConformancesPass`. nil `lookup`
+        /// short-circuits to 0.
+        func applyAppleStaticConformances(
+            lookup: (any Search.StaticConformancesLookup)?,
+            enrichmentVersion: Int
+        ) async throws -> Int
+    }
+}
+
+extension Sample.Index.Writer {
+    /// Default: no-op. Only the SQLite-backed `Sample.Index.Database` overrides
+    /// this; test fakes and other conformers need not implement it.
+    public func applyAppleStaticConformances(
+        lookup: (any Search.StaticConformancesLookup)?,
+        enrichmentVersion _: Int
+    ) async throws -> Int {
+        _ = lookup
+        return 0
     }
 }

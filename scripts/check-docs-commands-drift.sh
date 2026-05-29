@@ -43,7 +43,7 @@ COMMANDS=(
     setup fetch save serve search read
     list-frameworks list-samples
     read-sample read-sample-file
-    doctor cleanup resolve-refs
+    doctor cleanup resolve-refs inheritance
     package-search   # hidden
     search-symbols   # #948 phase 1 of CLI/MCP parity
     search-property-wrappers  # #948 phase 2 of CLI/MCP parity

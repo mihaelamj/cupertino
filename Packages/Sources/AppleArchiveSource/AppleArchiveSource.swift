@@ -23,11 +23,17 @@ import SharedConstants
 public struct AppleArchiveSource: Search.SourceProvider {
     public init() {}
 
-    public var definition: Search.SourceDefinition { Self.definition }
+    public var definition: Search.SourceDefinition {
+        Self.definition
+    }
 
-    public var fetchInfo: Search.FetchInfo? { Self.fetchInfo }
+    public var fetchInfo: Search.FetchInfo? {
+        Self.fetchInfo
+    }
 
-    public var destinationDB: Shared.Models.DatabaseDescriptor { .appleArchive }
+    public var destinationDB: Shared.Models.DatabaseDescriptor {
+        .appleArchive
+    }
 
     public var capabilities: Search.Capabilities {
         .init(
@@ -61,11 +67,5 @@ public struct AppleArchiveSource: Search.SourceProvider {
     /// DB via `env.docsDBURLs[sourceID]`.
     public func makeReadStrategy() -> (any Search.SourceReadStrategy)? {
         Search.DocsReadStrategy(sourceID: definition.id)
-    }
-
-    /// 2026-05-26 audit Cluster 12 follow-up: per-source MCP-resource
-    /// URI strategy for the `apple-archive://` scheme.
-    public func makeURIResourceStrategy() -> (any Search.URIResourceStrategy)? {
-        AppleArchiveURIResourceStrategy()
     }
 }

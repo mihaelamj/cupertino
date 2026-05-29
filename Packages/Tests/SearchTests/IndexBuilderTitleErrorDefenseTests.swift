@@ -348,4 +348,22 @@ struct StrategyHelpersPlaceholderErrorDefenceTests {
         let anyURL = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/view"))
         #expect(SUT.titleLooksLikePlaceholderError(title, url: anyURL) == false)
     }
+
+    @Test(
+        "`error` title at a WebKitJS `<id>-error` slug is a real member when it carries a declaration — must NOT trip the gate",
+        arguments: [
+            // Pre-fix these false-positived: leaf is `<id>-error`, not bare
+            // `error`, so the leaf check dropped real `.error` properties.
+            URL(string: "https://developer.apple.com/documentation/webkitjs/filereader/1629843-error")!,
+            URL(string: "https://developer.apple.com/documentation/webkitjs/idbrequest/1630895-error")!,
+            URL(string: "https://developer.apple.com/documentation/webkitjs/htmlmediaelement/1630743-error")!,
+        ]
+    )
+    func webKitJSErrorMemberWithContentIsLegitimate(url: URL) {
+        // A declaration-bearing page titled `error` is a real `.error` member.
+        #expect(SUT.titleLooksLikePlaceholderError("error", url: url, hasContent: true) == false)
+        // With no declaration, an empty `error`-titled shell at that slug is
+        // still the failed-fetch placeholder #588 targets.
+        #expect(SUT.titleLooksLikePlaceholderError("error", url: url, hasContent: false) == true)
+    }
 }

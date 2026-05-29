@@ -20,6 +20,7 @@ CLI commands for the Cupertino documentation server.
 | [resolve-refs](resolve-refs/) | Rewrite unresolved `doc://` markers in saved page rawMarkdown |
 | [doctor](doctor/) | Check server health and configuration |
 | [cleanup](cleanup/) | Clean up downloaded sample code archives |
+| [constraints-gen](constraints-gen/) | Maintainer tool (separate `cupertino-constraints-gen` binary): generate `apple-constraints.json` from Swift symbol graphs |
 
 ## Quick Reference
 

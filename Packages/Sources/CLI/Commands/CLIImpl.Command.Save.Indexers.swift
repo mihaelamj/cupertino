@@ -374,34 +374,19 @@ extension CLIImpl.Command.Save {
             // Load the authoritative Apple-type constraints once;
             // shared across every per-DB enrichment runner. (#759 iter 3)
             //
-            // 2026-05-27: mandatory unless caller passed
-            // `--allow-degraded-enrichment`. Pre-fix the missing-file
-            // case silently degraded to iter 1+2 (~16% constraint
-            // coverage on doc_symbols) instead of iter 3 (~38%). A
-            // 9.5-hour Claw mini reindex finished in that degraded
-            // state with no warning; we caught it only by manually
-            // inspecting the DB after the fact. Now: hard-fail at the
-            // start of save so the user notices BEFORE burning 12
-            // hours of wall time.
+            // Existence is enforced up-front by the composition-root
+            // enrichment-input preflight (`Search.EnrichmentInputPreflight`),
+            // which hard-fails before any indexing when a selected source's
+            // `apple-constraints.json` is absent (apple-docs / samples /
+            // packages declare it via `requiredEnrichmentInputs`). Reaching
+            // here with the file absent means the operator passed
+            // `--allow-degraded-enrichment`; proceed at iter 1+2 coverage.
+            // The only check left here is the parse of an existing file, which
+            // is about the shared table load, not a per-source requirement.
             let constraintsPath = baseDirectory.appendingPathComponent("apple-constraints.json")
             let staticConstraintsLookup: (any Search.StaticConstraintsLookup)? = try {
                 guard FileManager.default.fileExists(atPath: constraintsPath.path) else {
-                    if input.allowDegradedEnrichment {
-                        logger.warning(
-                            "apple-constraints.json absent from \(baseDirectory.path). " +
-                                "Save proceeding at iter 1+2 enrichment coverage (~16%) per " +
-                                "--allow-degraded-enrichment. Without the flag this is a hard error.",
-                            category: .search
-                        )
-                        return nil
-                    }
-                    throw Search.Error.invalidQuery(
-                        "apple-constraints.json missing from \(baseDirectory.path). " +
-                            "Without it the constraints enrichment pass silently runs at iter 1+2 " +
-                            "(~16% coverage) instead of iter 3 (~38%). Run `cupertino setup` to " +
-                            "fetch it, or `cupertino-constraints-gen` to produce it locally. To " +
-                            "save anyway with degraded coverage, pass --allow-degraded-enrichment."
-                    )
+                    return nil
                 }
                 do {
                     return try AppleConstraintsKit.Table.from(fileURL: constraintsPath)
@@ -420,6 +405,20 @@ extension CLIImpl.Command.Save {
                     )
                 }
             }()
+
+            // Apple SDK conformance graph (apple-conformances.json), the
+            // conformance sibling of apple-constraints.json (produced by
+            // `cupertino-constraints-gen conformances`). OPTIONAL: present →
+            // the AppleConformancesPass overwrites doc_symbols.conformances
+            // with the authoritative SDK set (~108k edges vs ~8.6k AST); absent
+            // → the pass no-ops and the AST conformances stand. Not a required
+            // enrichment input (the artifact is distributed separately via
+            // cupertino-docs), so absence is intentionally not a hard error.
+            let conformancesPath = baseDirectory.appendingPathComponent("apple-conformances.json")
+            let staticConformancesLookup: (any Search.StaticConformancesLookup)? =
+                FileManager.default.fileExists(atPath: conformancesPath.path)
+                    ? try? AppleConstraintsKit.ConformanceTable.from(fileURL: conformancesPath)
+                    : nil
 
             // Per-save enrichment audit JSONL writer. Captures
             // pass-start / per-entry / pass-end events across every
@@ -526,6 +525,12 @@ extension CLIImpl.Command.Save {
                     Enrichment.AppleConstraintsPass(
                         searchIndex: index,
                         lookup: staticConstraintsLookup,
+                        audit: enrichmentAudit,
+                        dbPath: dbPathString
+                    ),
+                    Enrichment.AppleConformancesPass(
+                        searchIndex: index,
+                        lookup: staticConformancesLookup,
                         audit: enrichmentAudit,
                         dbPath: dbPathString
                     ),
@@ -864,11 +869,15 @@ extension CLIImpl.Command.Save {
             ?? effectiveBase.appendingPathComponent(Shared.Constants.Directory.packages)
         guard FileManager.default.fileExists(atPath: packagesRoot.path) else {
             Cupertino.Context.composition.logging.recording.info(
-                "ℹ️  packages directory not found at \(packagesRoot.path) — skipping packages step. "
+                "ℹ️  packages directory not found at \(packagesRoot.path). Skipping packages step. "
                     + "Run `cupertino fetch --source packages` first."
             )
             return
         }
+        // Per-package `availability.json` completeness is enforced up-front by
+        // the composition-root enrichment-input preflight
+        // (`Search.EnrichmentInputPreflight`), via `PackagesSource`'s declared
+        // `.packageAvailability` input. No per-source guard here.
         try await runPackagesIndexer(packagesRoot: packagesRoot, effectiveBase: effectiveBase)
     }
 
@@ -934,8 +943,15 @@ extension CLIImpl.Command.Save {
                     return nil
                 }
             }()
+            let conformancesPath = packagesDB.deletingLastPathComponent()
+                .appendingPathComponent("apple-conformances.json")
+            let conformancesLookup: (any Search.StaticConformancesLookup)? =
+                FileManager.default.fileExists(atPath: conformancesPath.path)
+                    ? try? AppleConstraintsKit.ConformanceTable.from(fileURL: conformancesPath)
+                    : nil
             let runner = Enrichment.LiveRunner(passes: [
                 Enrichment.PackagesAppleConstraintsPass(packages: index, lookup: lookup),
+                Enrichment.PackagesAppleConformancesPass(packages: index, lookup: conformancesLookup),
                 Enrichment.PackagesAppleImportsPass(packages: index, lookup: lookup),
             ])
             let results = try await runner.run(target: .packages)
@@ -1138,8 +1154,15 @@ extension CLIImpl.Command.Save {
                     return nil
                 }
             }()
+            let samplesConformancesPath = input.samplesDB.deletingLastPathComponent()
+                .appendingPathComponent("apple-conformances.json")
+            let samplesConformancesLookup: (any Search.StaticConformancesLookup)? =
+                FileManager.default.fileExists(atPath: samplesConformancesPath.path)
+                    ? try? AppleConstraintsKit.ConformanceTable.from(fileURL: samplesConformancesPath)
+                    : nil
             let samplesRunner = Enrichment.LiveRunner(passes: [
                 Enrichment.SamplesAppleConstraintsPass(samples: database, lookup: samplesLookup),
+                Enrichment.SamplesAppleConformancesPass(samples: database, lookup: samplesConformancesLookup),
             ])
             let samplesResults = try await samplesRunner.run(target: .samples)
             for result in samplesResults {

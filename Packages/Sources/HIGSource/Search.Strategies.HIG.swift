@@ -94,11 +94,16 @@ extension Search {
                     continue
                 }
 
-                let category = Search.StrategyHelpers.extractFrameworkFromPath(
-                    file, relativeTo: higDirectory
-                ) ?? "general"
-
                 let metadata = Search.StrategyHelpers.extractHIGMetadata(from: content)
+                // Category is a property of the document, not the corpus
+                // folder: the crawler stamps it into the frontmatter
+                // (`category:`), so read it from there. The on-disk layout is
+                // a last-resort fallback only, for legacy corpora that predate
+                // the frontmatter key. (Principle 7: no stored value derived
+                // from filesystem layout.)
+                let category = metadata["category"]
+                    ?? Search.StrategyHelpers.extractFrameworkFromPath(file, relativeTo: higDirectory)
+                    ?? "general"
                 let title = metadata["title"]
                     ?? Search.StrategyHelpers.extractTitle(from: content)
                     ?? file.deletingPathExtension().lastPathComponent

@@ -1747,19 +1747,18 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         platform: PlatformArgs,
         searchIndex: any Search.Database
     ) async throws -> [Search.SymbolSearchResult] {
-        guard platform.isAnySet, !results.isEmpty else { return results }
-        let uris = results.map(\.docUri)
-        let minimaByURI = try await searchIndex.fetchPlatformMinima(uris: uris)
-        return results.filter { row in
-            Search.PlatformFilter.passes(
-                minima: minimaByURI[row.docUri],
-                minIOS: platform.minIOS,
-                minMacOS: platform.minMacOS,
-                minTvOS: platform.minTvOS,
-                minWatchOS: platform.minWatchOS,
-                minVisionOS: platform.minVisionOS
-            )
-        }
+        // #962: the fetch-minima + `PlatformFilter.passes` application now lives
+        // in the shared `Search.Database.applyingPlatformFloors` so the AST CLI
+        // subcommands filter identically. `PlatformArgs` is already validated by
+        // `extractPlatformArgs`, so this `PlatformFloors` build does not re-throw.
+        let floors = try Search.PlatformFloors(
+            minIOS: platform.minIOS,
+            minMacOS: platform.minMacOS,
+            minTvOS: platform.minTvOS,
+            minWatchOS: platform.minWatchOS,
+            minVisionOS: platform.minVisionOS
+        )
+        return try await searchIndex.applyingPlatformFloors(to: results, floors: floors)
     }
 
     /// #665 / #409 Layer 2 — surfaces `doc_symbols.generic_params`.

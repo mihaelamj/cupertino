@@ -182,29 +182,26 @@ extension Search {
             dbPath: String
         ) -> [any EnrichmentPass]
 
-        /// 2026-05-26 audit Cluster 12 follow-up: per-source MCP-resource
-        /// URI strategy. Pre-fix `MCP.Support.DocsResourceProvider`'s
-        /// `readResource` had a 3-arm `if uri.hasPrefix(...)` dispatch
-        /// (apple-docs / swift-evolution / apple-archive), each carrying
-        /// 30-50 LOC of bespoke URI parsing + filesystem probing +
-        /// (apple-docs only) JSON-vs-md decode logic. `listResources`
-        /// mirrored the shape with 3 source-specific blocks. Adding a
-        /// new docs-tier source whose pages reach the client via
-        /// `resources/{list,read}` required editing both dispatchers.
-        /// Post-fix the per-source target supplies a
-        /// `Search.URIResourceStrategy` concrete; the dispatchers
-        /// iterate the registry.
+        /// 2026-05-28 (Principle 7, per-source-DB resources): how this
+        /// source's per-source SQLite DB enumerates its slice of the
+        /// MCP `resources/list` page. Replaces the pre-2026-05-28
+        /// `makeURIResourceStrategy()` filesystem-probing seam, which
+        /// returned empty post-#1036 because the legacy monolithic
+        /// `search.db` is no longer built. The composition-root lookup
+        /// concrete reads the same per-source DBs the MCP search/read
+        /// tools use; no filesystem is consulted.
         ///
-        /// Returns nil for sources that don't expose MCP-resource URIs
-        /// (swift-org, swift-book, samples, packages, hig). The
-        /// dispatcher skips nil strategies.
+        /// `.none` for sources that don't expose MCP-resource URIs
+        /// (samples, packages); `.allDocuments` for small docs corpora
+        /// (hig, swift-org, swift-book, swift-evolution, apple-archive);
+        /// `.frameworkRoots` for apple-docs (too large to list per-page).
         ///
         /// Declared as a protocol requirement (not just a default
         /// extension) to defeat the Swift static-dispatch trap that
         /// bit `makeReadStrategy` during the #1055 layer-2 work — if
         /// it were extension-only, per-source overrides wouldn't win
         /// when called through `any Search.SourceProvider`.
-        func makeURIResourceStrategy() -> (any Search.URIResourceStrategy)?
+        var resourceListMode: Search.ResourceListMode { get }
 
         /// Does this source's indexing strategy require a real
         /// on-disk corpus directory? Post-#1082 only alternate-input

@@ -58,6 +58,14 @@ extension Search {
         /// All frameworks present in the index with their document counts.
         func listFrameworks() async throws -> [String: Int]
 
+        /// Enumerate this DB's slice of the MCP `resources/list` page,
+        /// purely from the DB (Principle 7: no filesystem). The `mode`
+        /// (supplied by the source's `SourceProvider.resourceListMode`)
+        /// decides framework-root vs full-document enumeration. Returns
+        /// `[]` for `.none`. Every entry's `uri` is readable via
+        /// `getDocumentContent(uri:format:)`.
+        func listResourceEntries(mode: Search.ResourceListMode) async throws -> [Search.URIResource]
+
         /// Total document count across every source in the index.
         func documentCount() async throws -> Int
 
