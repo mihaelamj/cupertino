@@ -134,6 +134,13 @@ extension Search {
         /// `sourceLookup:` per `gof-di-rules.md` Rule 2.
         public nonisolated let sourceLookup: Search.SourceLookup
 
+        /// Count of docs the incremental indexer skipped this run because the
+        /// doc was already in the DB with an unchanged `content_hash` (#1146).
+        /// `indexStructuredDocument` skips such docs BEFORE the expensive AST
+        /// extraction, so a non-`--clear` save resumes / updates incrementally.
+        /// A `--clear` run wipes the DB first, so this stays 0 there.
+        public internal(set) var incrementalSkips = 0
+
         public init(
             dbPath: URL,
             logger: any LoggingModels.Logging.Recording,

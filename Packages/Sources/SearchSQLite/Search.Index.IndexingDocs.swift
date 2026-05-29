@@ -386,6 +386,26 @@ extension Search.Index {
         return parts.joined(separator: "\n\n")
     }
 
+    /// #1146: the `content_hash` already stored for `uri`, or nil if the doc
+    /// is not in `docs_metadata`. Used by the resume guard to skip docs whose
+    /// content is unchanged since the last (interrupted) index.
+    func existingContentHash(uri: String) -> String? {
+        guard let database else {
+            return nil
+        }
+        let sql = "SELECT content_hash FROM docs_metadata WHERE uri = ? LIMIT 1;"
+        var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
+        guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
+            return nil
+        }
+        sqlite3_bind_text(statement, 1, (uri as NSString).utf8String, -1, nil)
+        guard sqlite3_step(statement) == SQLITE_ROW else {
+            return nil
+        }
+        return sqlite3_column_text(statement, 0).map { String(cString: $0) }
+    }
+
     /// Index a structured documentation page with full JSON data
     /// - Parameters:
     ///   - uri: Document URI
@@ -407,6 +427,17 @@ extension Search.Index {
         overrideAvailabilitySource: String? = nil,
         implementationSwiftVersion: String? = nil
     ) async throws {
+        // #1146 incremental guard: skip a doc that is already in the DB with
+        // the same content_hash BEFORE the expensive AST extraction below, so
+        // a non-`--clear` save resumes an interrupted index / updates only
+        // changed docs (the behavior `save --help` has long documented). A
+        // `--clear` run wipes the DB first, so nothing matches and the full
+        // index runs; a changed doc has a different hash and is re-indexed.
+        if let existing = existingContentHash(uri: uri), existing == page.contentHash {
+            incrementalSkips += 1
+            return
+        }
+
         // Register framework alias if module is available
         if let module = page.module, !module.isEmpty {
             try await registerFrameworkAlias(identifier: framework, displayName: module)
