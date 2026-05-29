@@ -11,7 +11,7 @@ cupertino search-concurrency --pattern <pattern>
                               [--framework <name>]
                               [--limit <n>]
                               [--format text|json|markdown|md]
-                              [--search-db <path>]
+                              [--base-dir <path>] [--source <id>]
 ```
 
 ## Options
@@ -22,7 +22,8 @@ cupertino search-concurrency --pattern <pattern>
 | `--framework` | string | none | Restrict to a single framework. |
 | `--limit` | int | 10 | Maximum results. |
 | `--format` | enum | `text` | Output format: `text`, `json`, `markdown`, `md`. |
-`~/.cupertino/apple-documentation.db` | Override the apple-docs database (post-#1037 per-source DB split). Default resolves through the production source registry. |
+| `--base-dir` | string | base directory | Directory holding the per-source DBs (the folder `save` / `setup` operate on; defaults to the configured base directory). |
+| `--source` | string | apple-docs | Restrict to one source id. Only `apple-docs` indexes this signal today. |
 
 ## Examples
 
