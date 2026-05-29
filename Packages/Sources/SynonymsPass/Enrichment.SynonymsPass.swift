@@ -25,11 +25,10 @@ extension Enrichment {
         public func run(database: OpaquePointer?) async throws -> EnrichmentModels.Result {
             var affected = 0
             for entry in Self.aliases {
-                try await searchIndex.updateFrameworkSynonyms(
+                affected += try await searchIndex.updateFrameworkSynonyms(
                     identifier: entry.identifier,
                     synonyms: entry.synonyms
                 )
-                affected += 1
             }
             return EnrichmentModels.Result(
                 passIdentifier: identifier,

@@ -123,13 +123,15 @@ extension Search {
             displayName: String
         ) async throws
 
-        /// Update the `synonyms` column on a `framework_aliases` row.
-        /// Called by the IndexBuilder during the post-index synonyms
-        /// pass, and by the `Enrichment.SynonymsPass` enrichment runner.
+        /// Attach synonyms to a `framework_aliases` row, creating it if absent.
+        /// Returns the number of rows written. Called by the IndexBuilder
+        /// during the post-index synonyms pass, and by the
+        /// `Enrichment.SynonymsPass` enrichment runner (#1132).
+        @discardableResult
         func updateFrameworkSynonyms(
             identifier: String,
             synonyms: String
-        ) async throws
+        ) async throws -> Int
 
         /// Run the Apple static-constraints enrichment pass. Iterates
         /// `Search.StaticConstraintsLookup` entries and applies the
