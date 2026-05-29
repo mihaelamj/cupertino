@@ -22,7 +22,7 @@
 
 ## Eligibility
 
-- [ ] It is a Swift package (has a `Package.swift`).
+- [ ] It is a Swift or Swift-ecosystem repository whose docs are useful to Apple-platform / Swift developers (most are SwiftPM packages; the catalog also carries first-party repos like `apple/swift` and `sourcekit-lsp`).
 - [ ] It is publicly hosted and the license permits redistribution of its docs.
 - [ ] It is actively maintained (a release or commit within the last ~12 months).
 - [ ] It is not already in the catalog (search `Resources.Embedded.PriorityPackages.swift` for the repo name).
@@ -33,11 +33,12 @@ Add the package to the embedded catalog, which is the build-time source of truth
 
 `Packages/Sources/Resources/Embedded/Resources.Embedded.PriorityPackages.swift`
 
-1. Add an entry to the right tier's `packages` array, keeping the array sorted by owner then repo:
-   - `apple_official`: `{ "repo": "swift-foo", "url": "https://github.com/apple/swift-foo" }`
-   - `ecosystem`: `{ "owner": "SomeOwner", "repo": "Foo", "url": "https://github.com/SomeOwner/Foo" }`
+1. Add an entry to the right tier's `packages` array:
+   - `apple_official` (owner is implied, so no `owner` field): `{ "repo": "swift-foo", "url": "https://github.com/apple/swift-foo" }`
+   - `ecosystem` (keep this array ordered by owner then repo): `{ "owner": "SomeOwner", "repo": "Foo", "url": "https://github.com/SomeOwner/Foo" }`
 2. Bump that tier's `"count"` by one.
-3. Bump the top-level `"lastUpdated"` date.
+3. Bump the matching field in the top-level `"stats"` block: `totalPriorityPackages` always, plus `totalCriticalApplePackages` (apple tier) or `totalEcosystemPackages` (ecosystem tier). Keep every counter consistent: each tier `count` equals its array length, and the `stats` totals match.
+4. Bump the top-level `"lastUpdated"` date.
 
 <!--
   Note for maintainers: the embedded catalog above is the single source of
@@ -57,12 +58,14 @@ cd Packages && swift build
 swift test --filter PriorityPackages
 ```
 
-<!-- Cite the result. Confirm the catalog still parses and the counts match. -->
+<!-- Cite the result. The PriorityPackages suite confirms the catalog still
+     parses and merges; the count / stats counters are not asserted by a test,
+     so eyeball them yourself per step 2-3 above. -->
 
 ## Checklist
 
 - [ ] Targets `develop`, not `main` (external PRs to `main` are rejected by CI).
-- [ ] One package added; tier `count` and `lastUpdated` bumped.
-- [ ] Entry kept in sorted order within its tier.
+- [ ] One package added; the tier `count`, `totalPriorityPackages`, the matching per-tier `stats` total, and `lastUpdated` all bumped and consistent.
+- [ ] Ecosystem entries kept ordered by owner then repo.
 - [ ] Catalog still parses and the build passes locally.
 - [ ] `CHANGELOG.md` noted under the correct section.
