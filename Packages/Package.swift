@@ -73,7 +73,6 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Enrichment"),
     .singleTargetLibrary("AppleConstraintsPass"),
     .singleTargetLibrary("HierarchyPass"),
-    .singleTargetLibrary("HIGPlatformInferencePass"),
     .singleTargetLibrary("PackagesAppleConstraintsPass"),
     .singleTargetLibrary("PackagesAppleImportsPass"),
     .singleTargetLibrary("SamplesAppleConstraintsPass"),
@@ -494,9 +493,9 @@ let targets: [Target] = {
         // `makeSourceSpecificEnrichmentPasses`. EnrichmentModels has
         // zero deps so the foundation tier stays clean; this lets
         // per-source targets declare their own enrichment passes
-        // (e.g. HIGSource → HIGPlatformInferencePass) without the
-        // CLI composition root needing to import every source's
-        // pass module.
+        // (e.g. HIGSource owns the HIG platform-inference pass)
+        // without the CLI composition root needing to import every
+        // source's pass module.
         dependencies: ["SharedConstants", "ASTIndexer", "LoggingModels", "CrawlerModels", "EnrichmentModels"]
     )
     let searchModelsTestsTarget = Target.testTarget(
@@ -560,10 +559,9 @@ let targets: [Target] = {
             // (`Search.Index.applyHIGPlatformInference`) iterates the
             // shared `HIGPlatformRules.rules` table so the rule set
             // doesn't drift between the indexer strategy (HIGSource)
-            // and the post-hoc SQL backfill. HIGPlatformInferencePass
-            // is foundation-only (Foundation only), so this dep stays
-            // within the per-package-import-contract envelope.
-            "HIGPlatformInferencePass",
+            // and the post-hoc SQL backfill. `HIGPlatformRules` now
+            // lives in foundation-only SearchModels (already a dep
+            // above), so no extra dependency is needed for the table.
             // #1114: the SampleAvailableAttributeAggregator lives in
             // SampleIndexModels (per #1111 first use site). The
             // aggregator is per-source-name-agnostic pure logic over
@@ -702,11 +700,12 @@ let targets: [Target] = {
             // strategy; `Crawler` stays as shared crawl infrastructure.
             "CrawlerModels",
             // 2026-05-27 (#1073): HIG owns its source-specific
-            // platform-inference enrichment pass. Pluggability rule:
-            // CLI composition root iterates providers' passes; it
-            // doesn't import per-source pass modules itself.
+            // platform-inference enrichment pass. #536 lift 2: the
+            // pass concrete now lives in this target (was a peer
+            // producer); EnrichmentModels supplies the `EnrichmentPass`
+            // protocol + `Enrichment` namespace anchor +
+            // `EnrichmentModels.Result` the pass returns.
             "EnrichmentModels",
-            "HIGPlatformInferencePass",
         ]
     )
 
@@ -1131,15 +1130,6 @@ let targets: [Target] = {
         ]
     )
 
-    // 2026-05-27: HIG-specific topic-aware platform-inference pass.
-    let higPlatformInferencePassTarget = Target.target(
-        name: "HIGPlatformInferencePass",
-        dependencies: [
-            "EnrichmentModels",
-            "SearchModels",
-        ]
-    )
-
     let packagesAppleConstraintsPassTarget = Target.target(
         name: "PackagesAppleConstraintsPass",
         dependencies: [
@@ -1211,9 +1201,10 @@ let targets: [Target] = {
             "CupertinoComposition",
             "AppleConstraintsPass",
             "HierarchyPass",
-            // 2026-05-27 (#1073): HIGPlatformInferencePass is owned by
-            // HIGSource (transits here via `allSourceTargetDeps`). CLI
-            // no longer depends on per-source enrichment modules.
+            // 2026-05-27 (#1073): the HIG platform-inference pass is
+            // owned by HIGSource (transits here via
+            // `allSourceTargetDeps`). CLI no longer depends on
+            // per-source enrichment modules.
             "PackagesAppleConstraintsPass",
             "PackagesAppleImportsPass",
             "SamplesAppleConstraintsPass",
@@ -1525,7 +1516,6 @@ let targets: [Target] = {
         enrichmentTarget,
         appleConstraintsPassTarget,
         hierarchyPassTarget,
-        higPlatformInferencePassTarget,
         packagesAppleConstraintsPassTarget,
         packagesAppleImportsPassTarget,
         samplesAppleConstraintsPassTarget,
