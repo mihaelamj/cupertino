@@ -1,5 +1,5 @@
 import Foundation
-import HIGPlatformInferencePass
+import SearchModels
 import Testing
 
 // MARK: - #1078 — HIGPlatformRules single source of truth
