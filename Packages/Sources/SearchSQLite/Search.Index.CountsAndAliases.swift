@@ -105,28 +105,47 @@ extension Search.Index {
         _ = sqlite3_step(statement)
     }
 
-    /// Update synonyms for an existing framework alias
+    /// Attach synonyms to a `framework_aliases` row, creating the row if it
+    /// does not exist. Returns the number of rows actually written.
+    ///
+    /// #1132: the prior UPDATE-only form silently no-opped whenever
+    /// `registerFrameworkAlias` had not already inserted the row, so the 22
+    /// hand-curated aliases (corenfc, corebluetooth, ...) never attached on a
+    /// corpus where the alias table held only a few source-level rows. The
+    /// upsert creates the row using `identifier` as the import/display-name
+    /// fallback (a later `registerFrameworkAlias` refines those) and only
+    /// overwrites `synonyms` on conflict, so existing names are preserved.
     /// - Parameters:
     ///   - identifier: The framework identifier (e.g., "corenfc")
     ///   - synonyms: Comma-separated alternate names (e.g., "nfc")
-    public func updateFrameworkSynonyms(identifier: String, synonyms: String) async throws {
+    @discardableResult
+    public func updateFrameworkSynonyms(identifier: String, synonyms: String) async throws -> Int {
         guard let database else {
             throw Search.Error.databaseNotInitialized
         }
 
-        let sql = "UPDATE framework_aliases SET synonyms = ? WHERE identifier = ?;"
+        let sql = """
+        INSERT INTO framework_aliases (identifier, import_name, display_name, synonyms)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(identifier) DO UPDATE SET synonyms = excluded.synonyms;
+        """
 
         var statement: OpaquePointer?
         defer { sqlite3_finalize(statement) }
 
         guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
-            return
+            return 0
         }
 
-        sqlite3_bind_text(statement, 1, (synonyms as NSString).utf8String, -1, nil)
+        sqlite3_bind_text(statement, 1, (identifier as NSString).utf8String, -1, nil)
         sqlite3_bind_text(statement, 2, (identifier as NSString).utf8String, -1, nil)
+        sqlite3_bind_text(statement, 3, (identifier as NSString).utf8String, -1, nil)
+        sqlite3_bind_text(statement, 4, (synonyms as NSString).utf8String, -1, nil)
 
-        _ = sqlite3_step(statement)
+        guard sqlite3_step(statement) == SQLITE_DONE else {
+            return 0
+        }
+        return Int(sqlite3_changes(database))
     }
 
     /// True if `identifier` appears as a `framework` value in `docs_metadata`

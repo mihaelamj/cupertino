@@ -212,7 +212,7 @@ private struct NoopIndexWriter: Search.IndexWriter {
         preconditionFailure("NoopIndexWriter.registerFrameworkAlias should not be invoked by the pluggability contract test")
     }
 
-    func updateFrameworkSynonyms(identifier _: String, synonyms _: String) async throws {
+    func updateFrameworkSynonyms(identifier _: String, synonyms _: String) async throws -> Int {
         preconditionFailure("NoopIndexWriter.updateFrameworkSynonyms should not be invoked by the pluggability contract test")
     }
 
