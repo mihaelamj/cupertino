@@ -90,7 +90,11 @@ struct Issue919AuditInvariantTests {
         // - #1023 (Phase 1H, final per-source migration of #1007):
         //   PackagesSource net-add (+1; first non-`.search` destinationDB
         //   declaration, validates the protocol contract).
-        #expect(entries.count == 49, "expected 49 strict producers, found \(entries.count): \(entries)")
+        // - #536 lift 4: the stale `Crawler` + `Ingest` entries (deleted
+        //   dirs that short-circuited the audit) were replaced by the
+        //   single real `Crawler` engine target (net -1: -2 stale, +1
+        //   real). 49 -> 48.
+        #expect(entries.count == 48, "expected 48 strict producers, found \(entries.count): \(entries)")
     }
 
     @Test("FORBIDDEN_MODULES list contains every concrete + the two *SQLite siblings")

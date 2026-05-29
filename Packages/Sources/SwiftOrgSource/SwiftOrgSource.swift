@@ -1,4 +1,3 @@
-import AppleDocsSource
 import Foundation
 import SearchModels
 import SharedConstants
@@ -7,8 +6,17 @@ import SharedConstants
 
 /// `Search.SourceProvider` conformer for the `swift-org` source.
 /// Sixth per-source target of the #1007 epic. Mirrors AppleArchiveSource.
+///
+/// #536 lift 4: the shared web-crawl engine moved into the `Crawler`
+/// producer; this provider no longer imports `AppleDocsSource`. It
+/// depends only on the `Search.WebCrawlStrategyFactory` seam, injected
+/// by the composition root.
 public struct SwiftOrgSource: Search.SourceProvider {
-    public init() {}
+    private let webCrawlStrategyFactory: any Search.WebCrawlStrategyFactory
+
+    public init(webCrawlStrategyFactory: any Search.WebCrawlStrategyFactory) {
+        self.webCrawlStrategyFactory = webCrawlStrategyFactory
+    }
 
     public var definition: Search.SourceDefinition {
         Self.definition
@@ -61,7 +69,7 @@ public struct SwiftOrgSource: Search.SourceProvider {
     /// directly at `docs.swift.org/swift-book/`; `--source swift-org`
     /// no longer traverses the book.
     public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? {
-        WebCrawlFetchStrategy(
+        webCrawlStrategyFactory.makeStrategy(
             defaultCrawlBaseURL: Self.fetchInfo.crawlBaseURLs.first ?? Shared.Constants.BaseURL.swiftOrg,
             defaultAllowedPrefixes: [Shared.Constants.BaseURL.swiftOrg],
             candidateSessionDirectories: []

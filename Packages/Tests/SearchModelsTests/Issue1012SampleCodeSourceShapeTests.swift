@@ -1,3 +1,4 @@
+import CoreSampleCodeModels
 import Foundation
 import LoggingModels
 import SampleCodeSource
@@ -19,7 +20,7 @@ import Testing
 struct Issue1012SampleCodeSourceShapeTests {
     @Test("SampleCodeSource.definition carries the expected id + intents + intentPriority")
     func definitionShape() {
-        let provider = SampleCodeSource()
+        let provider = SampleCodeSource(fetcherFactory: StubGitHubFetcherFactory())
         let def = provider.definition
         #expect(def.id == Shared.Constants.SourcePrefix.samples)
         #expect(def.displayName == "Sample Code")
@@ -32,7 +33,7 @@ struct Issue1012SampleCodeSourceShapeTests {
 
     @Test("SampleCodeSource.fetchInfo carries the GitHub-clone shape (no crawl base, isWebCrawlable false)")
     func fetchInfoShape() throws {
-        let provider = SampleCodeSource()
+        let provider = SampleCodeSource(fetcherFactory: StubGitHubFetcherFactory())
         let fi = try #require(provider.fetchInfo)
         #expect(fi.sourceID == Shared.Constants.SourcePrefix.samples)
         #expect(fi.displayName == "Sample Code (GitHub)")
@@ -43,7 +44,7 @@ struct Issue1012SampleCodeSourceShapeTests {
 
     @Test("SampleCodeSource.makeIndexer produces a Search.SampleCodeIndexer carrying the expected sourceID")
     func makeIndexerShape() {
-        let provider = SampleCodeSource()
+        let provider = SampleCodeSource(fetcherFactory: StubGitHubFetcherFactory())
         let indexer = provider.makeIndexer()
         #expect(indexer.sourceID == Shared.Constants.SourcePrefix.samples)
         #expect(indexer.displayName == "Sample Code")
@@ -61,7 +62,7 @@ struct Issue1012SampleCodeSourceShapeTests {
         // covers the migrator's alias-resolution path; this test pins
         // the production-side override so a future refactor that drops
         // or mis-spells it fails loud at CI, not on a user's machine.
-        let provider = SampleCodeSource()
+        let provider = SampleCodeSource(fetcherFactory: StubGitHubFetcherFactory())
         #expect(provider.legacySourceIDAliases == ["sample-code"])
     }
 
@@ -89,5 +90,26 @@ struct Issue1012SampleCodeSourceShapeTests {
 private struct NoopMarkdownStrategy: Search.MarkdownToStructuredPageStrategy {
     func convert(markdown _: String, url _: URL?) -> Shared.Models.StructuredDocumentationPage? {
         nil
+    }
+}
+
+/// Stub `Sample.Core.GitHubFetcherFactory` for the shape tests. These
+/// tests exercise only SampleCodeSource's metadata surface (definition,
+/// fetchInfo, indexer, aliases), never the fetch path, so the produced
+/// fetcher returns an empty `FetchStatistics` and is never run.
+private struct StubGitHubFetcherFactory: Sample.Core.GitHubFetcherFactory {
+    func makeFetcher(
+        outputDirectory _: URL,
+        logger _: any LoggingModels.Logging.Recording
+    ) -> any Sample.Core.GitHubFetching {
+        StubGitHubFetcher()
+    }
+}
+
+private struct StubGitHubFetcher: Sample.Core.GitHubFetching {
+    func fetch(
+        progress _: (any Sample.Core.GitHubFetcherProgressObserving)?
+    ) async throws -> Sample.Core.FetchStatistics {
+        Sample.Core.FetchStatistics()
     }
 }

@@ -1,7 +1,7 @@
 import AppKit
-@testable import AppleDocsSource
 @testable import Core
 import CoreProtocols
+@testable import Crawler
 import CrawlerModels
 import CrawlerWebKit
 import Foundation

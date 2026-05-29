@@ -10,7 +10,7 @@ import Testing
 struct Issue1019SwiftOrgSourceShapeTests {
     @Test("SwiftOrgSource.definition carries the expected id + intents + intentPriority")
     func definitionShape() {
-        let provider = SwiftOrgSource()
+        let provider = SwiftOrgSource(webCrawlStrategyFactory: StubWebCrawlStrategyFactory())
         let def = provider.definition
         #expect(def.id == Shared.Constants.SourcePrefix.swiftOrg)
         #expect(def.displayName == "Swift.org")
@@ -22,7 +22,7 @@ struct Issue1019SwiftOrgSourceShapeTests {
 
     @Test("SwiftOrgSource.fetchInfo carries the swift.org crawl base + .swiftOrg dir key + isWebCrawlable true")
     func fetchInfoShape() throws {
-        let provider = SwiftOrgSource()
+        let provider = SwiftOrgSource(webCrawlStrategyFactory: StubWebCrawlStrategyFactory())
         let fi = try #require(provider.fetchInfo)
         #expect(fi.sourceID == Shared.Constants.SourcePrefix.swiftOrg)
         #expect(fi.displayName == Shared.Constants.DisplayName.swiftOrgDocs)
@@ -33,7 +33,7 @@ struct Issue1019SwiftOrgSourceShapeTests {
 
     @Test("SwiftOrgSource.makeIndexer produces a Search.SwiftOrgIndexer carrying the expected sourceID")
     func makeIndexerShape() {
-        let provider = SwiftOrgSource()
+        let provider = SwiftOrgSource(webCrawlStrategyFactory: StubWebCrawlStrategyFactory())
         let indexer = provider.makeIndexer()
         #expect(indexer.sourceID == Shared.Constants.SourcePrefix.swiftOrg)
         #expect(indexer.displayName == "Swift.org")
@@ -47,9 +47,28 @@ struct Issue1019SwiftOrgSourceShapeTests {
         // its own DB; SwiftOrgSource writes to `swift-org.db` via its
         // strategy's `.swiftOrgOnly` scope filter on the shared
         // `Search.StrategyHelpers.crawlSwiftDocumentation` helper.
-        let provider = SwiftOrgSource()
+        let provider = SwiftOrgSource(webCrawlStrategyFactory: StubWebCrawlStrategyFactory())
         #expect(provider.destinationDB == .swiftOrg)
         #expect(provider.destinationDB.id == "swift-org")
         #expect(provider.destinationDB.filename == "swift-org.db")
     }
+}
+
+// MARK: - Test fixtures
+
+/// Stub `Search.WebCrawlStrategyFactory` for the shape tests (#536 lift
+/// 4). These tests exercise only SwiftOrgSource's metadata surface, not
+/// the fetch path, so the produced strategy is a no-op and never run.
+private struct StubWebCrawlStrategyFactory: Search.WebCrawlStrategyFactory {
+    func makeStrategy(
+        defaultCrawlBaseURL _: String,
+        defaultAllowedPrefixes _: [String]?,
+        candidateSessionDirectories _: [URL]
+    ) -> any Search.SourceFetchStrategy {
+        StubFetchStrategy()
+    }
+}
+
+private struct StubFetchStrategy: Search.SourceFetchStrategy {
+    func run(env _: Search.FetchEnvironment) async throws {}
 }

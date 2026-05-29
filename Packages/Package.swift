@@ -60,6 +60,8 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("SearchSchema"),
     .singleTargetLibrary("SearchSQLite"),
     .singleTargetLibrary("SearchStrategyHelpers"),
+    // #536 lift 4: shared web-crawl engine (macOS-only producer).
+    .singleTargetLibrary("Crawler"),
     // .singleTargetLibrary("<X>Source") rows live in allSourceProducts (#1042 Cluster 14).
     .singleTargetLibrary("SampleIndex"),
     .singleTargetLibrary("SampleIndexSQLite"),
@@ -73,7 +75,6 @@ let macOSOnlyProducts: [Product] = [
     .singleTargetLibrary("Enrichment"),
     .singleTargetLibrary("AppleConstraintsPass"),
     .singleTargetLibrary("HierarchyPass"),
-    .singleTargetLibrary("HIGPlatformInferencePass"),
     .singleTargetLibrary("PackagesAppleConstraintsPass"),
     .singleTargetLibrary("PackagesAppleImportsPass"),
     .singleTargetLibrary("SamplesAppleConstraintsPass"),
@@ -336,7 +337,7 @@ let targets: [Target] = {
     // ---------- CorePackageIndexing (v1.2 refactor 2.4: Resolver + Fetcher + Archive Extractor + Annotator + ManifestCache + Store + DocDownloader) ----------
     let corePackageIndexingTarget = Target.target(
         name: "CorePackageIndexing",
-        dependencies: ["CorePackageIndexingModels", "CoreProtocols", "SharedConstants", "LoggingModels", "ASTIndexer", "Resources"],
+        dependencies: ["CorePackageIndexingModels", "CoreProtocols", "SharedConstants", "LoggingModels", "ASTIndexer", "Resources", "SearchModels"],
         path: "Sources/Core/PackageIndexing",
         exclude: ["Model"]
     )
@@ -355,7 +356,7 @@ let targets: [Target] = {
     // ---------- CoreSampleCodeModels (foundation-only seam — Observer protocol for GitHubFetcher) ----------
     let coreSampleCodeModelsTarget = Target.target(
         name: "CoreSampleCodeModels",
-        dependencies: ["SharedConstants"]
+        dependencies: ["SharedConstants", "LoggingModels"]
     )
     let coreSampleCodeModelsTestsTarget = Target.testTarget(
         name: "CoreSampleCodeModelsTests",
@@ -440,6 +441,25 @@ let targets: [Target] = {
             "SharedConstants",
         ]
     )
+    // #536 lift 4: the shared web-crawl engine (`WebCrawlFetchStrategy` +
+    // `Crawler.AppleDocs` + `Ingest`) extracted out of `AppleDocsSource`
+    // into this neutral producer so apple-docs / swift-org / swift-book
+    // all consume it through the `Search.WebCrawlStrategyFactory` seam
+    // (the macOS crawl concrete is injected at the composition root; the
+    // source providers stay Linux-buildable). Foundation-only producer:
+    // imports only CoreProtocols + CrawlerModels + SearchModels +
+    // SharedConstants + LoggingModels (+ Foundation / os). Also carries
+    // `LiveWebCrawlStrategyFactory` (the seam concrete).
+    let crawlerTarget = Target.target(
+        name: "Crawler",
+        dependencies: [
+            "CoreProtocols",
+            "CrawlerModels",
+            "SearchModels",
+            "SharedConstants",
+            "LoggingModels",
+        ]
+    )
     // 2026-05-26 audit Finding 9.7+11.1: CrawlerTests now depends on
     // the per-source targets where the `Crawler.<X>` concretes live
     // (HIGSource / SwiftEvolutionSource / AppleArchiveSource /
@@ -451,6 +471,10 @@ let targets: [Target] = {
         dependencies: [
             "CrawlerModels",
             "CrawlerWebKit",
+            // #536 lift 4: the Crawler.AppleDocs / Ingest engine moved
+            // here from AppleDocsSource; the integration + retry-queue
+            // tests now import `Crawler`.
+            "Crawler",
             "Core",
             "CoreJSONParser",
             "CorePackageIndexing",
@@ -494,9 +518,9 @@ let targets: [Target] = {
         // `makeSourceSpecificEnrichmentPasses`. EnrichmentModels has
         // zero deps so the foundation tier stays clean; this lets
         // per-source targets declare their own enrichment passes
-        // (e.g. HIGSource → HIGPlatformInferencePass) without the
-        // CLI composition root needing to import every source's
-        // pass module.
+        // (e.g. HIGSource owns the HIG platform-inference pass)
+        // without the CLI composition root needing to import every
+        // source's pass module.
         dependencies: ["SharedConstants", "ASTIndexer", "LoggingModels", "CrawlerModels", "EnrichmentModels"]
     )
     let searchModelsTestsTarget = Target.testTarget(
@@ -506,6 +530,11 @@ let targets: [Target] = {
             "SharedConstants",
             "TestSupport",
             "LoggingModels",
+            // #536 (lift 3): Issue1012 shape tests construct
+            // SampleCodeSource, which now takes a
+            // `Sample.Core.GitHubFetcherFactory` seam; a local stub
+            // conformer needs the foundation-only models target.
+            "CoreSampleCodeModels",
         ] + allSourceTargetDeps
     )
 
@@ -560,10 +589,9 @@ let targets: [Target] = {
             // (`Search.Index.applyHIGPlatformInference`) iterates the
             // shared `HIGPlatformRules.rules` table so the rule set
             // doesn't drift between the indexer strategy (HIGSource)
-            // and the post-hoc SQL backfill. HIGPlatformInferencePass
-            // is foundation-only (Foundation only), so this dep stays
-            // within the per-package-import-contract envelope.
-            "HIGPlatformInferencePass",
+            // and the post-hoc SQL backfill. `HIGPlatformRules` now
+            // lives in foundation-only SearchModels (already a dep
+            // above), so no extra dependency is needed for the table.
             // #1114: the SampleAvailableAttributeAggregator lives in
             // SampleIndexModels (per #1111 first use site). The
             // aggregator is per-source-name-agnostic pure logic over
@@ -677,10 +705,11 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
-            // 2026-05-26 audit Finding 9.7 + 11.1: WebCrawlFetchStrategy
-            // wraps `Crawler.AppleDocs` + delegates to `Ingest.Session`
-            // for resume / requeue / baseline / urls-file plumbing.
-            "CrawlerModels",
+            // #536 lift 4: the web-crawl engine (WebCrawlFetchStrategy +
+            // Crawler.AppleDocs + Ingest) moved into the `Crawler`
+            // producer. This target now consumes it via the
+            // `Search.WebCrawlStrategyFactory` seam (in SearchModels),
+            // so it no longer depends on `CrawlerModels` directly.
         ]
     )
 
@@ -702,11 +731,12 @@ let targets: [Target] = {
             // strategy; `Crawler` stays as shared crawl infrastructure.
             "CrawlerModels",
             // 2026-05-27 (#1073): HIG owns its source-specific
-            // platform-inference enrichment pass. Pluggability rule:
-            // CLI composition root iterates providers' passes; it
-            // doesn't import per-source pass modules itself.
+            // platform-inference enrichment pass. #536 lift 2: the
+            // pass concrete now lives in this target (was a peer
+            // producer); EnrichmentModels supplies the `EnrichmentPass`
+            // protocol + `Enrichment` namespace anchor +
+            // `EnrichmentModels.Result` the pass returns.
             "EnrichmentModels",
-            "HIGPlatformInferencePass",
         ]
     )
 
@@ -722,9 +752,10 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
-            // 2026-05-26 audit Finding 9.7 + 11.1: SampleCodeFetchStrategy
-            // wraps `Sample.Core.GitHubFetcher`.
-            "CoreSampleCode",
+            // #536 (lift 3): SampleCodeFetchStrategy drives the GitHub
+            // fetch through the `Sample.Core.GitHubFetcherFactory` seam
+            // in CoreSampleCodeModels; the `CoreSampleCode` producer is
+            // wired in at the composition root, not imported here.
             "CoreSampleCodeModels",
             "CrawlerModels",
         ]
@@ -761,13 +792,11 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
-            // 2026-05-26 audit Finding 9.7 + 11.1: SwiftOrgSource +
-            // SwiftBookSource share AppleDocsSource's
-            // `WebCrawlFetchStrategy` concrete (different config per
-            // source). Inter-source-target dep accepted because the
-            // 3 web-crawl-tier sources have always shared the
-            // `runStandardCrawl` codepath pre-fix.
-            "AppleDocsSource",
+            // #536 lift 4: the shared `WebCrawlFetchStrategy` moved into
+            // the `Crawler` producer; SwiftOrgSource no longer imports
+            // AppleDocsSource. It consumes the engine via the
+            // `Search.WebCrawlStrategyFactory` seam, injected at the
+            // composition root.
         ]
     )
 
@@ -788,11 +817,13 @@ let targets: [Target] = {
             "LoggingModels",
             "CoreProtocols",
             "SearchStrategyHelpers",
-            // #1093: swift-book gains its own independent fetch leg
-            // (no longer a view-source over swift-org). Reuses
-            // `AppleDocsSource.WebCrawlFetchStrategy` — the same
-            // crawler concrete other web-crawlable sources use.
-            "AppleDocsSource",
+            // #1093: swift-book gains its own independent fetch leg (no
+            // longer a view-source over swift-org). #536 lift 4: the
+            // shared web-crawl strategy moved into the `Crawler`
+            // producer; SwiftBookSource no longer imports AppleDocsSource
+            // and consumes the engine via the
+            // `Search.WebCrawlStrategyFactory` seam, injected at the
+            // composition root.
         ]
     )
 
@@ -811,12 +842,13 @@ let targets: [Target] = {
         dependencies: [
             "SearchModels",
             "SharedConstants",
-            // 2026-05-26 audit Finding 9.7 + 11.1: PackagesFetchStrategy
-            // wraps the 3-stage Core.PackageIndexing pipeline.
+            // #536 lift 5: PackagesFetchStrategy moved into the
+            // CorePackageIndexing producer; PackagesSource reaches it
+            // through the Search.PackageFetchStrategyFactory seam injected
+            // at the composition root, so it no longer depends on the
+            // CorePackageIndexing concrete or its Models companion.
             "Core",
-            "CorePackageIndexing",
-            "CorePackageIndexingModels",
-            "CoreProtocols", // declares the `Core` namespace anchor that CorePackageIndexingModels extends with `PackageIndexing`.
+            "CoreProtocols",
             "CrawlerModels",
             "LoggingModels",
         ]
@@ -853,6 +885,22 @@ let targets: [Target] = {
         name: "CupertinoComposition",
         dependencies: [
             "SearchModels",
+            // #536 (lift 3): composition root wires the `CoreSampleCode`
+            // producer's `Sample.Core.LiveGitHubFetcherFactory` into
+            // `SampleCodeSource`. SampleCodeSource itself stays
+            // foundation-only (depends on the seam, not this concrete).
+            // SharedConstants carries the `Sample.Core` namespace anchor.
+            "CoreSampleCode",
+            "SharedConstants",
+            // #536 lift 4: composition root wires the macOS-only Crawler
+            // engine's `LiveWebCrawlStrategyFactory` into apple-docs /
+            // swift-org / swift-book.
+            "Crawler",
+            // #536 lift 5: composition root wires the
+            // `LivePackageFetchStrategyFactory` (resident in the
+            // CorePackageIndexing producer next to its machinery) into
+            // PackagesSource.
+            "CorePackageIndexing",
         ] + allSourceTargetDeps
     )
 
@@ -1131,15 +1179,6 @@ let targets: [Target] = {
         ]
     )
 
-    // 2026-05-27: HIG-specific topic-aware platform-inference pass.
-    let higPlatformInferencePassTarget = Target.target(
-        name: "HIGPlatformInferencePass",
-        dependencies: [
-            "EnrichmentModels",
-            "SearchModels",
-        ]
-    )
-
     let packagesAppleConstraintsPassTarget = Target.target(
         name: "PackagesAppleConstraintsPass",
         dependencies: [
@@ -1211,9 +1250,10 @@ let targets: [Target] = {
             "CupertinoComposition",
             "AppleConstraintsPass",
             "HierarchyPass",
-            // 2026-05-27 (#1073): HIGPlatformInferencePass is owned by
-            // HIGSource (transits here via `allSourceTargetDeps`). CLI
-            // no longer depends on per-source enrichment modules.
+            // 2026-05-27 (#1073): the HIG platform-inference pass is
+            // owned by HIGSource (transits here via
+            // `allSourceTargetDeps`). CLI no longer depends on
+            // per-source enrichment modules.
             "PackagesAppleConstraintsPass",
             "PackagesAppleImportsPass",
             "SamplesAppleConstraintsPass",
@@ -1313,6 +1353,8 @@ let targets: [Target] = {
         dependencies: [
             "CLI",
             "CrawlerWebKit",
+            // #536 lift 4: Crawler.AppleDocs engine moved to the Crawler target.
+            "Crawler",
             "MCPCore",
             "MCPSupport",
             "SearchAPI",
@@ -1348,6 +1390,9 @@ let targets: [Target] = {
             "CLI",
             "CoreProtocols", "CorePackageIndexing", "CoreJSONParser", "Core",
             "CrawlerModels", "CrawlerWebKit",
+            // #536 lift 4: Crawler.AppleDocs / Ingest.Session engine moved
+            // from the per-source targets into the Crawler producer.
+            "Crawler",
             "TestSupport",
         ] + allSourceTargetDeps,
         path: "Tests/CLICommandTests/FetchTests"
@@ -1364,6 +1409,8 @@ let targets: [Target] = {
             "CorePackageIndexing",
             "CrawlerModels",
             "CrawlerWebKit",
+            // #536 lift 4: Crawler.AppleDocs engine moved to the Crawler target.
+            "Crawler",
             "Indexer",
             "SearchAPI",
             "SearchModels",
@@ -1478,6 +1525,7 @@ let targets: [Target] = {
         crawlerModelsTarget,
         crawlerModelsTestsTarget,
         crawlerWebKitTarget,
+        crawlerTarget,
         crawlerTestsTarget,
         cleanupModelsTarget,
         cleanupModelsTestsTarget,
@@ -1525,7 +1573,6 @@ let targets: [Target] = {
         enrichmentTarget,
         appleConstraintsPassTarget,
         hierarchyPassTarget,
-        higPlatformInferencePassTarget,
         packagesAppleConstraintsPassTarget,
         packagesAppleImportsPassTarget,
         samplesAppleConstraintsPassTarget,

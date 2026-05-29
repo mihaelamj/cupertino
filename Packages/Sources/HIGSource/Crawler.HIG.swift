@@ -1,8 +1,8 @@
 import CoreProtocols
 import CrawlerModels
 import Foundation
-import HIGPlatformInferencePass
 import LoggingModels
+import SearchModels
 import SharedConstants
 
 // MARK: - HIG Crawler

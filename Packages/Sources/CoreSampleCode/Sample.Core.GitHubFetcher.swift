@@ -8,7 +8,7 @@ import SharedConstants
 /// Fetches Apple sample code from the public GitHub repository
 /// This is faster and more reliable than scraping Apple's website
 extension Sample.Core {
-    public final class GitHubFetcher {
+    public final class GitHubFetcher: Sample.Core.GitHubFetching {
         private let outputDirectory: URL
         private let repoOwner = "mihaelamj"
         private let repoName = "cupertino-sample-code"
@@ -268,47 +268,11 @@ extension Sample.Core {
     }
 }
 
-extension Sample.Core {
-    public struct FetchStatistics: Sendable {
-        public var action: FetchAction = .cloned
-        public var projectCount: Int = 0
-        public var startTime: Date?
-        public var endTime: Date?
-
-        public init(
-            action: FetchAction = .cloned,
-            projectCount: Int = 0,
-            startTime: Date? = nil,
-            endTime: Date? = nil
-        ) {
-            self.action = action
-            self.projectCount = projectCount
-            self.startTime = startTime
-            self.endTime = endTime
-        }
-
-        public var duration: TimeInterval? {
-            guard let start = startTime, let end = endTime else {
-                return nil
-            }
-            return end.timeIntervalSince(start)
-        }
-    }
-}
-
-extension Sample.Core {
-    public enum FetchAction: Sendable {
-        case cloned
-        case pulled
-
-        public var description: String {
-            switch self {
-            case .cloned: return "Cloned repository"
-            case .pulled: return "Pulled latest changes"
-            }
-        }
-    }
-}
+// `Sample.Core.FetchStatistics` + `Sample.Core.FetchAction` were moved
+// to the foundation-only `CoreSampleCodeModels` seam target during #536
+// (lift 3) so the `Sample.Core.GitHubFetching` seam can declare `fetch`
+// returning them. See
+// `Packages/Sources/CoreSampleCodeModels/Sample.Core.GitHubFetcher.Statistics.swift`.
 
 // `Sample.Core.FetchProgress` was moved to the foundation-only
 // `CoreSampleCodeModels` seam target and renamed
@@ -337,6 +301,27 @@ extension Sample.Core {
             case .gitNotInstalled:
                 return "Git is not installed. Please install git and try again."
             }
+        }
+    }
+}
+
+// MARK: - Live factory
+
+extension Sample.Core {
+    /// Production `Sample.Core.GitHubFetcherFactory`. Lives in the
+    /// producer (foundation-only, imports `LoggingModels` for the
+    /// logger seam) next to the concrete it builds. The composition root
+    /// instantiates it and injects it into `SampleCodeSource`; the
+    /// SampleCodeSource fetch strategy depends only on the
+    /// `GitHubFetcherFactory` seam in `CoreSampleCodeModels`.
+    public struct LiveGitHubFetcherFactory: Sample.Core.GitHubFetcherFactory {
+        public init() {}
+
+        public func makeFetcher(
+            outputDirectory: URL,
+            logger: any LoggingModels.Logging.Recording
+        ) -> any Sample.Core.GitHubFetching {
+            Sample.Core.GitHubFetcher(outputDirectory: outputDirectory, logger: logger)
         }
     }
 }

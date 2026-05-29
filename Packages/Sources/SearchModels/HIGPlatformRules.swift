@@ -20,10 +20,12 @@ import Foundation
 //      pass) — backfills the same NULL state on rows that were
 //      indexed pre-#1078. Idempotent on freshly-indexed data.
 //
-// Living together in this foundation-only module is what makes the
-// "honest platform availability per HIG topic" promise work
+// Living in the foundation-only `SearchModels` seam (post-#536 PR 1.1,
+// moved here from the `HIGPlatformInferencePass` producer) is what
+// makes the "honest platform availability per HIG topic" promise work
 // end-to-end (frontmatter + body + Availability schema all derived
-// from one table; no place can drift independently).
+// from one table; no place can drift independently) without a
+// producer importing a peer producer just to read the rules.
 
 public enum HIGPlatformRules {
     /// Canonical platform identifiers (lowercased — matching the

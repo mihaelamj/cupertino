@@ -1,10 +1,10 @@
-// 2026-05-26 audit Finding 9.7+11.1: `Ingest.Session.*` lifted into
-// `AppleDocsSource` (only consumer post-lift). Import here so the
-// existing test fixtures resolve.
-@testable import AppleDocsSource
+// #536 lift 4: `Ingest.Session.*` + `Crawler.AppleDocs.State` moved
+// into the shared `Crawler` producer. Import here so the existing
+// session/resume test fixtures resolve.
 @testable import CLI
 @testable import Core
 import CoreProtocols
+@testable import Crawler
 import CrawlerModels
 import Foundation
 import LoggingModels
