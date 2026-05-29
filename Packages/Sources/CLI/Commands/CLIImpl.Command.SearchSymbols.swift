@@ -74,9 +74,15 @@ extension CLIImpl.Command {
 
         @Option(
             name: .long,
-            help: CLIImpl.appleDocsDBOverrideHelp
+            help: "Directory holding the per-source DBs. Defaults to the configured base directory."
         )
-        var searchDb: String?
+        var baseDir: String?
+
+        @Option(
+            name: .long,
+            help: "Restrict to one source id (e.g. apple-docs, swift-org, swift-book). Default: every source whose DB carries indexed symbols."
+        )
+        var source: String?
 
         @OptionGroup var platformFloors: CLIImpl.PlatformFloorOptions
 
@@ -87,32 +93,25 @@ extension CLIImpl.Command {
                 throw ExitCode.failure
             }
 
-            let searchDBURL = CLIImpl.resolveAppleDocsDBURL(override: searchDb)
-
-            guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
+            let dbURLs = try CLIImpl.resolveSymbolSearchDBURLs(searcher: .symbols, source: source, baseDir: baseDir)
+            guard !dbURLs.isEmpty else {
                 CLIImpl.printUserFacingDiagnostic(
-                    CLIImpl.perSourceDBMissingMessage(url: searchDBURL),
+                    "❌ No symbol-bearing database found. Run `cupertino setup` or `cupertino save` first.",
                     recording: recording
                 )
                 throw ExitCode.failure
             }
 
-            let index = try await SearchModule.Index(
-                dbPath: searchDBURL,
-                logger: recording,
-                indexers: [:],
-                sourceLookup: .empty
-            )
-            defer { Task { await index.disconnect() } }
-
-            let rawResults = try await index.searchSymbols(
-                query: query,
-                kind: kind,
-                isAsync: isAsync ? true : nil,
-                framework: framework,
-                limit: limit
-            )
-            let results = try await index.applyingPlatformFloors(to: rawResults, floors: platformFloors.floors())
+            let results = try await CLIImpl.fanOutSymbolSearch(dbURLs: dbURLs, logger: recording, limit: limit) { index in
+                let raw = try await index.searchSymbols(
+                    query: query,
+                    kind: kind,
+                    isAsync: isAsync ? true : nil,
+                    framework: framework,
+                    limit: limit
+                )
+                return try await index.applyingPlatformFloors(to: raw, floors: platformFloors.floors())
+            }
 
             switch format {
             case .text:
