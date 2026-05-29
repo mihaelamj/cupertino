@@ -4,7 +4,7 @@
 
 [#183](https://github.com/mihaelamj/cupertino/issues/183), bugs → recrawl → vector → tutor (canonical roadmap, update on every release/epic/scope change per its built-in protocol).
 
-Latest release: **v1.2.0 "ironclad" (2026-05-20)**. Live search-quality dashboard: https://cupertino.aleahim.com/. Live bug list: https://github.com/mihaelamj/cupertino/issues?q=is%3Aopen+is%3Aissue+label%3Abug.
+Latest release: **v1.2.1 (2026-05-23)**, a maintenance release (architectural cleanup + Source Independence Day; zero schema delta, reuses the v1.2.0 bundle). Prior bundle release: **v1.2.0 "ironclad" (2026-05-20)**. Live search-quality dashboard: https://cupertino.aleahim.com/. Live bug list: https://github.com/mihaelamj/cupertino/issues?q=is%3Aopen+is%3Aissue+label%3Abug.
 
 Release archive (per-version notes, audits, McNemar diffs, bundle-rebuild details) lives in `CHANGELOG.md` and `docs/audits/`. Do not reproduce it here.
 
