@@ -46,7 +46,7 @@ struct FetchCommandTests {
 /// refresh) is opt-in via `--refresh-metadata`. These tests exercise
 /// argument parsing and the empty-pipeline early-exit guard without
 /// touching the network.
-@Suite("Fetch Command — packages flags (#217 + #1108)")
+@Suite("Fetch Command: packages flags (#217 + #1108)")
 struct FetchPackagesMergeTests {
     @Test("--refresh-metadata parses to true; archives flag defaults to false")
     func refreshMetadataParses() throws {
@@ -77,6 +77,33 @@ struct FetchPackagesMergeTests {
         } catch {
             // ArgumentParser raises an "unknown option" error. Any
             // thrown error here is the success path for this test.
+        }
+    }
+
+    @Test("--request-delay parses and defaults to crawler default")
+    func requestDelayParses() throws {
+        let defaultCommand = try CLIImpl.Command.Fetch.parse(["--source", "apple-docs"])
+        #expect(defaultCommand.requestDelay == 0.05)
+
+        let delayedCommand = try CLIImpl.Command.Fetch.parse([
+            "--source", "apple-docs",
+            "--request-delay", "0.25",
+        ])
+        #expect(delayedCommand.requestDelay == 0.25)
+    }
+
+    @Test("--request-delay rejects negative values before fetching")
+    func requestDelayRejectsNegativeValues() async throws {
+        // Negative values must use the `--flag=value` form: ArgumentParser reads a
+        // leading-dash token after a space as an option, not a value, so the space
+        // form fails at parse before the guard can run.
+        var cmd = try CLIImpl.Command.Fetch.parse([
+            "--source", "apple-docs",
+            "--request-delay=-0.1",
+        ])
+
+        await #expect(throws: (any Error).self) {
+            try await cmd.run()
         }
     }
 

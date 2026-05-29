@@ -78,6 +78,7 @@ public struct WebCrawlFetchStrategy: Search.SourceFetchStrategy {
                 maxPages: env.maxPages,
                 maxDepth: env.maxDepth,
                 outputDirectory: outputDirectory,
+                requestDelay: env.requestDelay,
                 discoveryMode: discoveryMode
             ),
             changeDetection: Shared.Configuration.ChangeDetection(

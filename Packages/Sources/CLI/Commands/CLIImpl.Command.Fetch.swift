@@ -27,7 +27,7 @@ extension Shared.Configuration.DiscoveryMode: ExpressibleByArgument {}
 // MARK: - Fetch Command
 
 // #673 Phase D iter-5: file_length stays as the only remaining
-// file-level blanket — the rule has no per-declaration form, and
+// file-level blanket: the rule has no per-declaration form, and
 // the fetch command's option surface (10+ types, 30+ flags) puts
 // this file past 1000 lines on its own. Per-type and per-function
 // disables for the rest are scoped below.
@@ -104,6 +104,9 @@ extension CLIImpl.Command {
         @Option(name: .long, help: "Maximum depth to crawl")
         var maxDepth: Int = 15
 
+        @Option(name: .long, help: "Delay in seconds between crawler requests")
+        var requestDelay: TimeInterval = 0.05
+
         @Option(name: .long, help: "Output directory for documentation")
         var outputDir: String?
 
@@ -152,8 +155,8 @@ extension CLIImpl.Command {
             enqueued at depth 0; the crawler follows links from each up to \
             --max-depth, so set --max-depth 0 to fetch only the listed URLs \
             with no descent, --max-depth 3 to follow 3 levels of children, etc. \
-            Useful for fetching a fixed list — e.g. URLs another corpus has \
-            but this one is missing — without re-spidering everything. Lines \
+            Useful for fetching a fixed list (e.g. URLs another corpus has \
+            but this one is missing) without re-spidering everything. Lines \
             starting with '#' and blank lines are ignored.
             """
         )
@@ -163,9 +166,9 @@ extension CLIImpl.Command {
             name: .long,
             help: """
             Discovery mode: \
-            auto (default — JSON API primary, WKWebView fallback when JSON 404s), \
-            json-only (JSON only, no WKWebView fallback — fastest, narrowest), \
-            webview-only (WKWebView for everything — slowest, broadest discovery, \
+            auto (default: JSON API primary, WKWebView fallback when JSON 404s), \
+            json-only (JSON only, no WKWebView fallback, fastest, narrowest), \
+            webview-only (WKWebView for everything, slowest, broadest discovery, \
             matches pre-2025-11-30 behavior).
             """
         )
@@ -222,7 +225,7 @@ extension CLIImpl.Command {
             After `--source packages` stage 2, walk the on-disk corpus and \
             write a per-package `availability.json` recording \
             `Package.swift` deployment targets and every `@available(...)` \
-            attribute in `Sources/` and `Tests/`. Pure on-disk pass — no network. Idempotent.
+            attribute in `Sources/` and `Tests/`. Pure on-disk pass, no network. Idempotent.
             """
         )
         var annotateAvailability: Bool = false
@@ -231,6 +234,8 @@ extension CLIImpl.Command {
             // #781: invocation banner before any other work.
             Cupertino.Context.composition.logging.logInvocation()
 
+            try validateRequestDelay()
+
             logStartMessage()
 
             // Post-#1031 (Phase 1I.c.2 of epic #1007): dispatch on
@@ -238,7 +243,7 @@ extension CLIImpl.Command {
             // registered provider's `makeFetchStrategy()` for every
             // source that has a strategy. Special tokens (`"all"` /
             // `"availability"`) stay above the registry lookup
-            // because they aren't registered providers — `"all"` is
+            // because they aren't registered providers; `"all"` is
             // a fan-out alias and `"availability"` is a maintenance
             // operation that refreshes the bundled SDK availability
             // data file (not a corpus source).
@@ -248,7 +253,7 @@ extension CLIImpl.Command {
             // handlers; they're queued for the same lift treatment
             // in a follow-up (per issue #1051). For NEW sources,
             // adding a `Search.SourceFetchStrategy` to the
-            // `<X>Source` target is enough — zero edits here.
+            // `<X>Source` target is enough. Zero edits here.
             switch source {
             case "all":
                 try await runAllFetches()
@@ -303,7 +308,7 @@ extension CLIImpl.Command {
             }
             guard let strategy = entry.provider.makeFetchStrategy() else {
                 throw ValidationError(
-                    "Source '\(source)' has no fetch capability — its corpus arrives via "
+                    "Source '\(source)' has no fetch capability; its corpus arrives via "
                         + "`cupertino setup` or is co-crawled by another source. "
                         + "Try `cupertino fetch --source <X>` where X is one of the fetchable sources."
                 )
@@ -354,7 +359,7 @@ extension CLIImpl.Command {
             let paths = Shared.Paths.live()
             guard let key = provider.fetchInfo?.defaultOutputDirKey else {
                 // Provider has a fetch strategy but no fetchInfo dir
-                // key — unusual but valid (the strategy could fetch
+                // key, unusual but valid (the strategy could fetch
                 // to a baseDirectory-relative location). Default to
                 // baseDirectory.
                 return paths.baseDirectory
@@ -374,6 +379,7 @@ extension CLIImpl.Command {
                 outputDirectory: outputDirectory,
                 maxPages: maxPages,
                 maxDepth: maxDepth,
+                requestDelay: requestDelay,
                 force: force,
                 startClean: startClean,
                 retryErrors: retryErrors,
@@ -407,7 +413,7 @@ extension CLIImpl.Command {
 
         private func logStartMessage() {
             // The Crawler auto-resumes whenever metadata.json's crawlState is active
-            // and matches the start URL — no flag needed. We log "Fetching" here
+            // and matches the start URL; no flag needed. We log "Fetching" here
             // unconditionally; the Crawler itself prints "🔄 Found resumable session"
             // when it actually loads saved state.
             Cupertino.Context.composition.logging.recording.info("🚀 Cupertino - Fetching \(Self.displayName(forSource: source))")
@@ -429,7 +435,7 @@ extension CLIImpl.Command {
         /// `apple-sample-code` legacy alias on top. `swift-book`
         /// view-source remains opted-out (its pages are co-crawled by
         /// SwiftOrgStrategy via URL-prefix tagging; a separate
-        /// `swift-book` leg would double-fetch) — encoded by checking
+        /// `swift-book` leg would double-fetch), encoded by checking
         /// each provider's `fetchInfo != nil`, since SwiftBookSource
         /// declares `fetchInfo == nil`.
         ///
@@ -509,7 +515,7 @@ extension CLIImpl.Command {
         /// `CLIImpl.Command.Search` inside `extension CLIImpl.Command`.
         private static func resolveDirectory(forKey key: SearchModels.Search.FetchInfo.DefaultOutputDirKey, paths: Shared.Paths) -> URL {
             // #1042 Cluster 9+13: the key's rawValue IS the dirname.
-            // `.baseDirectory` is the only edge case — it points at the
+            // `.baseDirectory` is the only edge case: it points at the
             // base itself, not a sub-directory under it.
             if key == .baseDirectory {
                 return paths.baseDirectory
@@ -609,7 +615,14 @@ extension CLIImpl.Command {
         // enqueueURLsFromFile + collectBaselineURLs + lowercaseDocPath all lifted
         // to Ingest.Session in #247.
         // checkForSession lifted to Ingest.Session.checkForSession (#247)
-        // #673 Phase D iter-5: 174-line body — Stage 2 of the
+
+        private func validateRequestDelay() throws {
+            guard requestDelay.isFinite, requestDelay >= 0 else {
+                throw ValidationError("--request-delay must be a finite value >= 0")
+            }
+        }
+
+        // #673 Phase D iter-5: 174-line body, Stage 2 of the
         // packages fetch: priority-catalog load → resolve → per-archive
         // download → magic-bytes validation → on-disk catalog write →
         // skip-statistics accounting. Linear pipeline; helpers would
