@@ -60,10 +60,10 @@ public struct SwiftBookSource: Search.SourceProvider {
     }
 
     /// Swift Book read-side capabilities. The Book is universal text +
-    /// tutorial-grade code samples; the searcher + metadata matrix is
-    /// a subset of SwiftOrgSource's (no generics-search because the
-    /// Book's code fences aren't type-graph-extractable like Swift.org's
-    /// API references).
+    /// tutorial-grade code samples. #1154 added `.symbols` + `.generics`:
+    /// `SwiftBookIndexer` runs the AST extractor over the Book's code
+    /// fences, so swift-book.db carries `doc_symbols`, and the matrix now
+    /// matches SwiftOrgSource's docs-tier Swift-code searcher set.
     public var capabilities: Search.Capabilities {
         // #1154: swift-book.db carries `doc_symbols` (SwiftBookIndexer runs
         // ASTIndexer.Extractor over the book's code blocks), so it joins the

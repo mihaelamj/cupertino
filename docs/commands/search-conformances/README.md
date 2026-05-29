@@ -23,7 +23,7 @@ cupertino search-conformances --protocol <name>
 | `--limit` | int | 10 | Maximum results. |
 | `--format` | enum | `text` | Output format: `text`, `json`, `markdown`, `md`. |
 | `--base-dir` | string | base directory | Directory holding the per-source DBs (the folder `save` / `setup` operate on; defaults to the configured base directory). |
-| `--source` | string | all symbol-bearing sources | Restrict to one source id (`apple-docs`, `swift-org`, `swift-book`). |
+| `--source` | string | apple-docs | Restrict to one source id. Only `apple-docs` indexes this signal today. |
 
 ## Examples
 
