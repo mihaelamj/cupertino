@@ -57,6 +57,13 @@ jobs:
       - name: Show Swift Version
         run: swift --version
 
+      # #1135: fail fast if any .swift under Sources/ or Tests/ is compiled by
+      # no target (SwiftPM silently ignores such files, so their tests never
+      # run). Runs before Build so an orphaned test trips CI in seconds.
+      - name: Guard against orphaned sources (#1135)
+        timeout-minutes: 3
+        run: ./scripts/check-orphaned-sources.sh
+
       - name: Build
         working-directory: Packages
         run: swift build
