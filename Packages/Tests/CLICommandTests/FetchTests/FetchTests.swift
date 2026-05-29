@@ -94,9 +94,12 @@ struct FetchPackagesMergeTests {
 
     @Test("--request-delay rejects negative values before fetching")
     func requestDelayRejectsNegativeValues() async throws {
+        // Negative values must use the `--flag=value` form: ArgumentParser reads a
+        // leading-dash token after a space as an option, not a value, so the space
+        // form fails at parse before the guard can run.
         var cmd = try CLIImpl.Command.Fetch.parse([
             "--source", "apple-docs",
-            "--request-delay", "-0.1",
+            "--request-delay=-0.1",
         ])
 
         await #expect(throws: (any Error).self) {
@@ -106,7 +109,6 @@ struct FetchPackagesMergeTests {
 
     @Test("--skip-archives without --refresh-metadata or --annotate-availability exits with nothing-to-do")
     func skipArchivesWithoutPeersErrors() async throws {
-
         // Sandbox output dir so the guard's createDirectory doesn't write
         // into the user's real ~/.cupertino/packages/.
         let tempDir = FileManager.default.temporaryDirectory

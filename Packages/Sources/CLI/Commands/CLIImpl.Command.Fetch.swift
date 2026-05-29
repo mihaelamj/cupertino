@@ -622,7 +622,6 @@ extension CLIImpl.Command {
             }
         }
 
-
         // #673 Phase D iter-5: 174-line body — Stage 2 of the
         // packages fetch: priority-catalog load → resolve → per-archive
         // download → magic-bytes validation → on-disk catalog write →
