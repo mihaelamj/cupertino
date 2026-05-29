@@ -446,7 +446,7 @@ extension Search {
                     progress?.report(processed: idx + 1, total: docFiles.count)
                     logger.info(
                         "   Progress: \(idx + 1)/\(docFiles.count) " +
-                            "(\(indexed) indexed, \(skipped) skipped)",
+                            "(\(indexed) indexed, \(skipped) skipped\(Logging.enrichmentBadge().map { ", \($0)" } ?? ""))",
                         category: .search
                     )
                 }
@@ -649,7 +649,7 @@ extension Search {
                     progress?.report(processed: processed, total: total)
                     logger.info(
                         "   Progress: \(processed)/\(total) " +
-                            "(\(indexed) indexed, \(skipped) skipped)",
+                            "(\(indexed) indexed, \(skipped) skipped\(Logging.enrichmentBadge().map { ", \($0)" } ?? ""))",
                         category: .search
                     )
                 }

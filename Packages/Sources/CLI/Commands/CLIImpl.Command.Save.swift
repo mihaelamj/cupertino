@@ -381,10 +381,12 @@ extension CLIImpl.Command {
                 ?? Shared.Paths.live().baseDirectory
 
             // Enrichment-input preflight (#919 Source Independence Axiom): one
-            // generic check enforces every selected source's declared
-            // `requiredEnrichmentInputs`, replacing the former hardcoded
-            // apple-constraints (#1072) and per-package availability guards.
-            try runEnrichmentInputPreflight(
+            // generic check over every selected source's declared
+            // `requiredEnrichmentInputs`. #1144: best-effort, not a gate. A
+            // missing input never blocks the index; it warns and the run
+            // proceeds un-enriched (inputs are read at the enrichment phase,
+            // so producing one mid-save still gets it applied).
+            runEnrichmentInputPreflight(
                 selectedSourceIDs: selectedSourceIDs,
                 effectiveBase: effectiveBase
             )
@@ -622,7 +624,7 @@ extension CLIImpl.Command.Save {
     /// apple-constraints (#1072) and per-package availability guards, each a
     /// per-source edit-point in central save logic. Adding a source's
     /// requirement is one literal on its definition; this method never changes.
-    func runEnrichmentInputPreflight(selectedSourceIDs: Set<String>, effectiveBase: URL) throws {
+    func runEnrichmentInputPreflight(selectedSourceIDs: Set<String>, effectiveBase: URL) {
         let registry = CLIImpl.makeProductionSourceRegistry()
         let selectedDefinitions = registry.allEnabled
             .map(\.definition)
@@ -635,15 +637,26 @@ extension CLIImpl.Command.Save {
             corpusDirectoryByID: [Shared.Constants.SourcePrefix.packages: packagesCorpusRoot]
         )
         guard !missingInputs.isEmpty else { return }
-        guard allowDegradedEnrichment else {
-            throw SearchModels.Search.Error.invalidQuery(
-                SearchModels.Search.EnrichmentInputPreflight.failureMessage(missingInputs)
-            )
-        }
+        // #1144: enrichment is best-effort. A missing input never blocks the
+        // (12h) index. Warn loudly and make clear the DB will NOT be enriched
+        // unless the operator produces the file themselves (the per-line
+        // `howToObtain` names `cupertino-constraints-gen`). The inputs are read
+        // at the enrichment phase, AFTER indexing, so producing one WHILE this
+        // save runs still gets it applied with no re-index. The progress lines
+        // show 🚫 until it lands, then flip to 🧬.
         let recording = Cupertino.Context.composition.logging.recording
+        recording.warning(
+            "⚠️  Enrichment input(s) missing. The affected DB(s) will be built WITHOUT enrichment unless you produce the file(s) yourself:",
+            category: .cli
+        )
         for line in SearchModels.Search.EnrichmentInputPreflight.lines(missingInputs) {
-            recording.info("⚠️  \(line) Proceeding per --allow-degraded-enrichment.", category: .cli)
+            recording.warning("   - \(line)", category: .cli)
         }
+        recording.warning(
+            "   You can produce them now, even while this save indexes: they are read at the "
+                + "enrichment phase, so they are applied as long as they land before it (no re-index needed).",
+            category: .cli
+        )
     }
 
     /// GoF Strategy seam (`RemoteSync.DocumentIndexing`) that forwards each

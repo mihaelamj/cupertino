@@ -102,7 +102,10 @@ extension ConstraintsGen.Command {
             let jsonData = try table.jsonData()
 
             let outputURL = URL(fileURLWithPath: output)
-            try jsonData.write(to: outputURL)
+            // Atomic write (temp + rename) so a `cupertino save` reading this
+            // file at its enrichment phase WHILE this generator runs sees the
+            // complete old or complete new table, never a half-written one.
+            try jsonData.write(to: outputURL, options: .atomic)
 
             print("Wrote \(merged.count) entries to \(outputURL.path) (\(jsonData.count) bytes).")
         }
