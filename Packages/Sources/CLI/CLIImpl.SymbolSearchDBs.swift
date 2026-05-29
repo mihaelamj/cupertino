@@ -47,29 +47,63 @@ extension CLIImpl {
             .filter { FileManager.default.fileExists(atPath: $0.path) }
     }
 
-    /// Open each resolved per-source DB, run `query` against it, and merge
-    /// the results capped to `limit`. Each DB is opened read-only and
-    /// disconnected before the next. Per-DB results arrive already ranked +
-    /// capped by the underlying query; the merged list keeps registry order
-    /// then per-DB rank and takes the first `limit`.
+    /// Open each resolved per-source DB, run `query` against it, and merge the
+    /// per-DB result lists capped to `limit`.
+    ///
+    /// `SymbolSearchResult` carries no cross-DB score, so a naive
+    /// concat-then-`prefix(limit)` would let the first (largest) DB fill the
+    /// cap and bury every later DB's matches. Instead the per-DB lists are
+    /// **round-robin interleaved** (each DB's rank-0 row, then each DB's rank-1
+    /// row, ...) so every DB contributes to the top `limit` and a swift-book /
+    /// swift-org match still surfaces alongside apple-docs.
+    ///
+    /// Resilience: each DB is opened read-only and always disconnected, even
+    /// when its query throws; a DB that fails to open or query is logged and
+    /// skipped (matching the partial-install tolerance of
+    /// `resolveSymbolSearchDBURLs`) so one bad DB cannot nuke results from the
+    /// healthy ones.
     static func fanOutSymbolSearch(
         dbURLs: [URL],
         logger: any LoggingModels.Logging.Recording,
         limit: Int,
         query: (SearchModule.Index) async throws -> [Search.SymbolSearchResult]
-    ) async throws -> [Search.SymbolSearchResult] {
-        var merged: [Search.SymbolSearchResult] = []
+    ) async -> [Search.SymbolSearchResult] {
+        var perDB: [[Search.SymbolSearchResult]] = []
         for url in dbURLs {
-            let index = try await SearchModule.Index(
-                dbPath: url,
-                logger: logger,
-                indexers: [:],
-                sourceLookup: .empty
-            )
-            merged += try await query(index)
+            let index: SearchModule.Index
+            do {
+                index = try await SearchModule.Index(
+                    dbPath: url,
+                    logger: logger,
+                    indexers: [:],
+                    sourceLookup: .empty
+                )
+            } catch {
+                logger.info("⚠️  Skipping \(url.lastPathComponent) (could not open): \(error)")
+                continue
+            }
+            do {
+                try await perDB.append(query(index))
+            } catch {
+                logger.info("⚠️  Skipping \(url.lastPathComponent) (query failed): \(error)")
+            }
             await index.disconnect()
         }
-        return Array(merged.prefix(limit))
+
+        // Round-robin interleave so every DB contributes to the top `limit`.
+        var merged: [Search.SymbolSearchResult] = []
+        var rank = 0
+        outer: while merged.count < limit {
+            var advanced = false
+            for results in perDB where rank < results.count {
+                merged.append(results[rank])
+                advanced = true
+                if merged.count == limit { break outer }
+            }
+            if !advanced { break }
+            rank += 1
+        }
+        return merged
     }
 
     enum SymbolSearchDBError: Error, CustomStringConvertible {

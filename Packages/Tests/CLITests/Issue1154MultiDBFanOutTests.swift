@@ -28,7 +28,7 @@ import Testing
 /// fixtures. Surface coverage proves the new `--base-dir` / `--source`
 /// flags parse on every command and the retired `--search-db` flag is
 /// gone.
-@Suite("#1154/#1155 — multi-DB symbol-search fan-out", .serialized)
+@Suite("#1154/#1155: multi-DB symbol-search fan-out", .serialized)
 struct Issue1154MultiDBFanOutTests {
     // MARK: - Fixtures
 
@@ -208,7 +208,7 @@ struct Issue1154MultiDBFanOutTests {
         try await Self.seedSymbolDB(at: db1, uri: "apple-docs://swiftui/alpha", symbolName: "AlphaFanoutSymbol")
         try await Self.seedSymbolDB(at: db2, uri: "apple-docs://swiftui/beta", symbolName: "BetaFanoutSymbol")
 
-        let merged = try await CLIImpl.fanOutSymbolSearch(
+        let merged = await CLIImpl.fanOutSymbolSearch(
             dbURLs: [db1, db2],
             logger: Logging.NoopRecording(),
             limit: 50
@@ -231,7 +231,7 @@ struct Issue1154MultiDBFanOutTests {
         try await Self.seedSymbolDB(at: db1, uri: "apple-docs://swiftui/alpha", symbolName: "AlphaFanoutSymbol")
         try await Self.seedSymbolDB(at: db2, uri: "apple-docs://swiftui/beta", symbolName: "BetaFanoutSymbol")
 
-        let merged = try await CLIImpl.fanOutSymbolSearch(
+        let merged = await CLIImpl.fanOutSymbolSearch(
             dbURLs: [db1, db2],
             logger: Logging.NoopRecording(),
             limit: 1
@@ -240,6 +240,69 @@ struct Issue1154MultiDBFanOutTests {
         }
 
         #expect(merged.count == 1, "limit:1 must cap the merged fan-out at one result; got \(merged.count)")
+    }
+
+    @Test("fanOutSymbolSearch interleaves DBs so a later DB is not buried when the first DB alone fills the limit")
+    func fanOutInterleavesAcrossDBs() async throws {
+        let dir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        // db1 alone has 3 symbols (>= the limit), db2 has 1 distinct symbol.
+        // A naive concat-then-prefix(limit) would return only db1's 3 rows and
+        // drop db2 entirely; round-robin interleave must surface db2's symbol.
+        let db1 = dir.appendingPathComponent("alpha.db")
+        let db2 = dir.appendingPathComponent("beta.db")
+        try await Self.seedSymbolDB(at: db1, uri: "apple-docs://swiftui/a1", symbolName: "Db1SymbolOne")
+        try await Self.seedSymbolDB(at: db1, uri: "apple-docs://swiftui/a2", symbolName: "Db1SymbolTwo")
+        try await Self.seedSymbolDB(at: db1, uri: "apple-docs://swiftui/a3", symbolName: "Db1SymbolThree")
+        try await Self.seedSymbolDB(at: db2, uri: "apple-docs://swiftui/b1", symbolName: "Db2OnlySymbol")
+
+        let merged = await CLIImpl.fanOutSymbolSearch(
+            dbURLs: [db1, db2],
+            logger: Logging.NoopRecording(),
+            limit: 3
+        ) { index in
+            try await index.searchSymbols(query: nil, kind: nil, isAsync: nil, framework: nil, limit: 50)
+        }
+
+        #expect(merged.count == 3, "limit:3 must cap at 3; got \(merged.count)")
+        #expect(
+            merged.map(\.symbolName).contains("Db2OnlySymbol"),
+            "interleave must surface the second DB's symbol even though db1 alone could fill the limit; got \(merged.map(\.symbolName))"
+        )
+    }
+
+    @Test("fanOutSymbolSearch skips an unreadable DB instead of aborting the whole fan-out")
+    func fanOutToleratesACorruptDB() async throws {
+        let dir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let good = dir.appendingPathComponent("good.db")
+        let corrupt = dir.appendingPathComponent("corrupt.db")
+        try await Self.seedSymbolDB(at: good, uri: "apple-docs://swiftui/good", symbolName: "GoodFanoutSymbol")
+        try "this is not a sqlite database".write(to: corrupt, atomically: true, encoding: .utf8)
+
+        let merged = await CLIImpl.fanOutSymbolSearch(
+            dbURLs: [good, corrupt],
+            logger: Logging.NoopRecording(),
+            limit: 50
+        ) { index in
+            try await index.searchSymbols(query: nil, kind: nil, isAsync: nil, framework: nil, limit: 50)
+        }
+
+        #expect(
+            merged.map(\.symbolName).contains("GoodFanoutSymbol"),
+            "a corrupt DB must be skipped, not abort the fan-out; got \(merged.map(\.symbolName))"
+        )
+    }
+
+    @Test("resolveSymbolSearchDBURLs returns [] when no per-source DB files are present (cold-start)")
+    func resolveReturnsEmptyWhenNoDBs() throws {
+        let dir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        // Empty base dir: no DB files at all (the pre-`cupertino setup` state).
+        let resolved = try CLIImpl.resolveSymbolSearchDBURLs(searcher: .symbols, source: nil, baseDir: dir.path)
+        #expect(resolved.isEmpty, "no DB files present must resolve to an empty fan-out set; got \(resolved.map(\.lastPathComponent))")
     }
 
     // MARK: - Surface 5: new flags parse, old --search-db is gone

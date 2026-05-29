@@ -88,7 +88,7 @@ extension CLIImpl.Command {
                 throw ExitCode.failure
             }
 
-            let results = try await CLIImpl.fanOutSymbolSearch(dbURLs: dbURLs, logger: recording, limit: limit) { index in
+            let results = await CLIImpl.fanOutSymbolSearch(dbURLs: dbURLs, logger: recording, limit: limit) { index in
                 let raw = try await index.searchConformances(
                     protocolName: protocolName,
                     framework: framework,
