@@ -33,6 +33,6 @@ extension AppleDocsSource {
             .troubleshooting: 50,
         ],
         baseURL: URL(string: Shared.Constants.BaseURL.appleDeveloper + "/documentation"),
-        requiredEnrichmentInputs: [.appleConstraints]
+        requiredEnrichmentInputs: [.appleConstraints, .appleConformances]
     )
 }

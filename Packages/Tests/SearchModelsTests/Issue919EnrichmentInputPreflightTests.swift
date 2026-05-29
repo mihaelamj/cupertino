@@ -178,13 +178,47 @@ struct Issue919EnrichmentInputPreflightTests {
 
     // MARK: Real per-source declarations
 
-    @Test("apple-docs and samples declare apple-constraints; packages declares both inputs")
+    @Test("apple-docs and samples declare constraints + conformances; packages declares those plus availability")
     func realDeclarations() {
-        #expect(AppleDocsSource.definition.requiredEnrichmentInputs == [.appleConstraints])
-        #expect(SampleCodeSource.definition.requiredEnrichmentInputs == [.appleConstraints])
+        #expect(AppleDocsSource.definition.requiredEnrichmentInputs == [.appleConstraints, .appleConformances])
+        #expect(SampleCodeSource.definition.requiredEnrichmentInputs == [.appleConstraints, .appleConformances])
         #expect(
-            PackagesSource.definition.requiredEnrichmentInputs == [.appleConstraints, .packageAvailability]
+            PackagesSource.definition.requiredEnrichmentInputs
+                == [.appleConstraints, .appleConformances, .packageAvailability]
         )
+    }
+
+    @Test("apple-conformances.json absence is reported for every source that runs a conformance pass (#1144)")
+    func conformancesMissingReportedPerSource() {
+        let base = makeTempDir()
+        defer { try? FileManager.default.removeItem(at: base) }
+        // Neither constraints nor conformances present in the base dir.
+        for source in [AppleDocsSource.definition, SampleCodeSource.definition, PackagesSource.definition] {
+            let missing = Search.EnrichmentInputPreflight.missing(
+                definitions: [source],
+                baseDirectory: base,
+                corpusDirectoryByID: [:]
+            )
+            #expect(
+                missing.contains { $0.input == .appleConformances },
+                "\(source.id) must flag a missing apple-conformances.json"
+            )
+        }
+    }
+
+    @Test("present apple-conformances.json clears the conformance requirement")
+    func conformancesPresentNotReported() {
+        let base = makeTempDir()
+        defer { try? FileManager.default.removeItem(at: base) }
+        touch(base.appendingPathComponent("apple-constraints.json"))
+        touch(base.appendingPathComponent("apple-conformances.json"))
+
+        let missing = Search.EnrichmentInputPreflight.missing(
+            definitions: [AppleDocsSource.definition],
+            baseDirectory: base,
+            corpusDirectoryByID: [:]
+        )
+        #expect(missing.isEmpty)
     }
 
     @Test("a source with no enrichment input requirement declares none")

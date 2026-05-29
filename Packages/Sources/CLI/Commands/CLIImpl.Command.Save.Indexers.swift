@@ -408,12 +408,14 @@ extension CLIImpl.Command.Save {
 
             // Apple SDK conformance graph (apple-conformances.json), the
             // conformance sibling of apple-constraints.json (produced by
-            // `cupertino-constraints-gen conformances`). OPTIONAL: present →
-            // the AppleConformancesPass overwrites doc_symbols.conformances
-            // with the authoritative SDK set (~108k edges vs ~8.6k AST); absent
-            // → the pass no-ops and the AST conformances stand. Not a required
-            // enrichment input (the artifact is distributed separately via
-            // cupertino-docs), so absence is intentionally not a hard error.
+            // `cupertino-constraints-gen conformances`). Required enrichment
+            // input (#1144), declared on every source that runs a conformance
+            // pass; the #919 preflight hard-fails when it is absent unless
+            // --allow-degraded-enrichment is passed. Present: the
+            // AppleConformancesPass overwrites doc_symbols.conformances with
+            // the authoritative SDK set (~108k edges vs ~8.6k AST). The
+            // tolerant load below only matters on the --allow-degraded-enrichment
+            // path, where absence is permitted and the pass no-ops.
             let conformancesPath = baseDirectory.appendingPathComponent("apple-conformances.json")
             let staticConformancesLookup: (any Search.StaticConformancesLookup)? =
                 FileManager.default.fileExists(atPath: conformancesPath.path)

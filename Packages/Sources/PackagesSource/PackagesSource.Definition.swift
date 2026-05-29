@@ -27,6 +27,6 @@ extension PackagesSource {
         intents: [.packageDiscovery],
         intentPriority: [.packageDiscovery: 100],
         baseURL: URL(string: Shared.Constants.BaseURL.swiftPackageIndex),
-        requiredEnrichmentInputs: [.appleConstraints, .packageAvailability]
+        requiredEnrichmentInputs: [.appleConstraints, .appleConformances, .packageAvailability]
     )
 }
