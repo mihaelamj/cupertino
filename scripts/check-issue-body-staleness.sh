@@ -135,7 +135,6 @@ Packages/Sources/Resources/Embedded/SwiftPackagesCatalogEmbedded\.swift	deleted 
 Packages/Sources/Core/Protocols/	package renamed: CoreProtocols/ (no slash inside)
 Sources/TUI/	missing Packages/ prefix: use Packages/Sources/TUI/
 Sources/Resources/Embedded/	missing Packages/ prefix: use Packages/Sources/Resources/Embedded/
-docs/tools/	docs tree uses docs/commands/<cmd>/option (--)/<flag>.md shape; no docs/tools/ tree exists
 Scripts/generate-embedded-catalogs\.sh	lowercase: scripts/generate-embedded-catalogs.sh
 \.github/ISSUE_TEMPLATE/feature\.md	converted to feature.yml GitHub form template in PR #745
 \.github/ISSUE_TEMPLATE/bug\.md	converted to bug.yml GitHub form template in PR #745
@@ -179,7 +178,14 @@ SCHEMA_TABLES=(
 # rather than a sibling / sees-also mention. Tightened deliberately to
 # avoid false positives on every "see #N" / "related: #N" line.
 
-BLOCKER_PHRASES='(blocked[ -]?on|blocks?|depends on|after #?[0-9]+ lands|gated on|hard block on|pending in|awaits?|waiting on)'
+BLOCKER_PHRASES='(blocked[ -]?on|blocked by|blocks +#?[0-9]+|depends on|after #?[0-9]+ lands|gated on|hard[ -]?block on|pending in|awaits?|waiting on)'
+
+# #1139: an issue body legitimately references a now-closed issue as historical
+# context ("#161 CLOSED, a valid historical anchor", "post-#673", "#250
+# superseded", "gated on #88 ... both shipped"). check_xref skips a closed-ref
+# flag when every blocker-phrase line mentioning the ref also carries a
+# resolution signal; a genuine stale blocker (no such signal) still flags.
+XREF_RESOLUTION_SIGNALS='closed|shipped|landed|resolved|merged|satisfied|superseded|folded|unblocked|historical|post-#|since #|already'
 
 # --- Shipped release tags (CHECK 5: label drift) ----------------------
 #
@@ -360,9 +366,16 @@ check_xref() {
         [ "$num" = "$n" ] && continue
         local state
         state=$(issue_state "$num")
-        if [ "$state" = "CLOSED" ]; then
-            hits+="    - blocker context references ${ref} which is CLOSED; body may be claiming a closed dep is still pending"$'\n'
-        fi
+        [ "$state" = "CLOSED" ] || continue
+        # #1139: skip when every blocker-phrase line mentioning this ref also
+        # carries a resolution signal (the body annotates the dep as done /
+        # shipped / superseded). A genuine stale blocker, where the ref is
+        # cited as pending with no such signal, still flags.
+        local blocker_lines unresolved
+        blocker_lines=$(echo "$body" | grep -iE "$BLOCKER_PHRASES" | grep -E "#${num}([^0-9]|$)")
+        unresolved=$(echo "$blocker_lines" | grep -ivE "$XREF_RESOLUTION_SIGNALS" || true)
+        [ -z "$unresolved" ] && continue
+        hits+="    - blocker context references ${ref} which is CLOSED; body may be claiming a closed dep is still pending"$'\n'
     done <<<"$lines"
     if [ -n "$hits" ]; then
         echo "  - **#$n** (stale cross-refs):"
