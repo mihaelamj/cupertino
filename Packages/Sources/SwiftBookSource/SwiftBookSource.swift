@@ -65,8 +65,12 @@ public struct SwiftBookSource: Search.SourceProvider {
     /// Book's code fences aren't type-graph-extractable like Swift.org's
     /// API references).
     public var capabilities: Search.Capabilities {
+        // #1154: swift-book.db carries `doc_symbols` (SwiftBookIndexer runs
+        // ASTIndexer.Extractor over the book's code blocks), so it joins the
+        // AST symbol + generic-constraint fan-out alongside apple-docs and
+        // swift-org. Mirrors swift-org's docs-tier Swift-code searcher set.
         .init(
-            searchers: [.text],
+            searchers: [.text, .symbols, .generics],
             operations: [.readByURI],
             metadata: [
                 .hasAvailabilityAttrs: true,

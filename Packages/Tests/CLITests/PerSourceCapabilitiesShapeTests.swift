@@ -83,15 +83,18 @@ struct PerSourceCapabilitiesShapeTests {
         #expect(capabilities.metadata[.hasAvailabilityAttrs] == true)
     }
 
-    @Test("swift-book: text searcher + readByURI + hasAvailabilityAttrs (post #1038; swift-book owns its own DB with active capabilities)")
+    @Test("swift-book: text + symbols + generics searchers + readByURI + hasAvailabilityAttrs (post #1038; swift-book owns its own DB with active capabilities)")
     func swiftBookCapabilities() {
         // Pre-#1038 swift-book was a view-source with empty
         // capabilities (matrix lived on SwiftOrgSource). Post-#1038
         // swift-book owns its own DB (swift-book.db) and its own
-        // active strategy; its capability matrix is the Book's
-        // universal-text + readByURI subset of swift-org's.
+        // active strategy. #1154: swift-book.db carries doc_symbols
+        // (SwiftBookIndexer runs ASTIndexer.Extractor over the book's
+        // code blocks), so it advertises the same docs-tier Swift-code
+        // searcher set as swift-org (.symbols + .generics) and joins the
+        // AST symbol / generic-constraint fan-out.
         let capabilities = provider(forSourceId: Shared.Constants.SourcePrefix.swiftBook).capabilities
-        #expect(capabilities.searchers == [.text])
+        #expect(capabilities.searchers == [.text, .symbols, .generics])
         #expect(capabilities.operations == [.readByURI])
         #expect(capabilities.metadata[.hasAvailabilityAttrs] == true)
     }
