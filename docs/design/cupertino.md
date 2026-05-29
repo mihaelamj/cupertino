@@ -704,11 +704,13 @@ The serve binary makes **zero outbound network calls**. `cupertino setup` does (
 
 ### 13.1 Logging
 
-`os.log` with subsystem `com.cupertino` and categories `crawler`, `mcp`, `search`, `cli`, `transport`, `pdf`, `evolution`, `samples`. Categories let consumers filter:
+`os.log` with subsystem `com.cupertino.cli` and categories `crawler`, `mcp`, `search`, `cli`, `samples`, `package-downloader`, `evolution`, `archive`, `hig`. Categories let consumers filter:
 
 ```
-log show --predicate 'subsystem == "com.cupertino" AND category == "search"' --last 1h
+log show --predicate 'subsystem == "com.cupertino.cli" AND category == "search"' --last 1h
 ```
+
+Note that the MCP server's JSON-RPC request and response traffic and its lifecycle messages are written to stderr, not os.log. To trace MCP requests, capture the server's stderr rather than `log show`.
 
 The `Logging` concrete writer is composition-root-only: producer packages depend on `LoggingModels` (a protocol seam) and receive a `Recording` instance via init injection. This keeps producers testable without an os.log backend.
 

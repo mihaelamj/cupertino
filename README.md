@@ -697,16 +697,18 @@ Cupertino uses **os.log** for structured logging:
 
 ```bash
 # View all logs
-log show --predicate 'subsystem == "com.cupertino"' --last 1h
+log show --predicate 'subsystem == "com.cupertino.cli"' --last 1h
 
 # View specific category
-log show --predicate 'subsystem == "com.cupertino" AND category == "crawler"' --last 1h
+log show --predicate 'subsystem == "com.cupertino.cli" AND category == "crawler"' --last 1h
 
 # Stream live logs
-log stream --predicate 'subsystem == "com.cupertino"'
+log stream --predicate 'subsystem == "com.cupertino.cli"'
 ```
 
-**Categories**: crawler, mcp, search, cli, transport, pdf, evolution, samples
+**Categories**: crawler, mcp, search, cli, samples, package-downloader, evolution, archive, hig
+
+> **MCP requests are not in os.log.** The MCP server writes its JSON-RPC request and response traffic and its lifecycle messages to **stderr**, not os.log. To watch MCP traffic, capture the server's stderr (`cupertino serve 2>/tmp/cupertino-mcp.log`) or open your MCP client's server-output panel. The os.log channel above carries CLI and setup or diagnostic output.
 
 ## Performance
 
