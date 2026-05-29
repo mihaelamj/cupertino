@@ -65,13 +65,18 @@ SINGLE_ISSUE=""
 DRY_RUN=false
 
 # Per-table schema source routing. Each cited `<table>.<col>` reference
-# in an issue body is validated against the file that defines that
-# table's `CREATE TABLE` block. Pre-#886 the script read only
-# search.db's schema, so any packages.db or samples.db column citation
-# false-flagged as "column not found." Origin: #886.
-SCHEMA_SEARCH="Packages/Sources/SearchSQLite/Search.Index.Schema.swift"
-SCHEMA_PACKAGES="Packages/Sources/SearchSQLite/PackageIndex.swift"
-SCHEMA_SAMPLES="Packages/Sources/SampleIndex/Sample.Index.Database.swift"
+# in an issue body is validated against the DIRECTORY that defines that
+# table's columns. Pre-#886 the script read only search.db's schema, so
+# any packages.db or samples.db column citation false-flagged as "column
+# not found" (Origin: #886). #1137 widened this from a single file to a
+# directory: columns are added across many files (CREATE TABLE in the
+# schema file, plus later ALTER TABLE ... ADD COLUMN in migrations), so
+# `schema_columns_for` now scans every .swift under the routed dir for
+# both CREATE and ALTER columns. Validation stays table-name scoped, so
+# co-locating search + packages schemas under one dir is safe.
+SCHEMA_SEARCH="Packages/Sources/SearchSQLite"
+SCHEMA_PACKAGES="Packages/Sources/SearchSQLite"
+SCHEMA_SAMPLES="Packages/Sources/SampleIndexSQLite"
 
 # Resolve the schema source file for a given table name. Echoes the
 # file path (relative to repo root) or empty if the table isn't routed.
@@ -216,30 +221,48 @@ issue_state() {
     fi
 }
 
-# Returns the column list for a given table by reading the schema source
-# file passed in. Crude: extracts the lines between `CREATE TABLE <table> (`
-# and the matching `);`, pulls the first whitespace-separated token on
-# each row, drops constraints. Good enough for `docs_metadata` /
-# `package_files` / `file_imports` and friends.
+# Returns the column list for a given table by scanning every .swift file
+# under the schema source DIRECTORY passed in. Columns come from two
+# places, unioned: the `CREATE TABLE <table> (...)` block (first token per
+# row, constraints dropped) and later `ALTER TABLE <table> ADD COLUMN
+# <col>` statements (migrations). #1137: a single file misses columns
+# added by migrations or defined in sibling files, which false-flagged
+# correct issue bodies (e.g. docs_metadata.min_ios / .kind). Matching
+# stays table-name scoped, so search + packages schemas can share a dir.
 schema_columns_for() {
-    local table="$1" schema_file="$2"
-    [ -n "$schema_file" ] || return
-    [ -f "$schema_file" ] || return
-    awk -v t="$table" '
-        BEGIN { inside = 0 }
-        $0 ~ "CREATE (VIRTUAL )?TABLE (IF NOT EXISTS )?" t " *\\(|CREATE (VIRTUAL )?TABLE (IF NOT EXISTS )?" t "\\(" { inside = 1; next }
-        inside && $0 ~ /^[[:space:]]*\);/ { inside = 0 }
-        inside {
-            gsub(/^[[:space:]]+|[[:space:]]+$/, "")
-            if ($0 == "" || $0 ~ /^--/) next
-            split($0, parts, /[[:space:]]+|,/)
-            col = parts[1]
-            # skip constraints
-            if (col ~ /^(PRIMARY|FOREIGN|UNIQUE|CHECK|CONSTRAINT|CREATE)/) next
-            gsub(/[",;()]/, "", col)
-            if (col != "") print col
-        }
-    ' "$schema_file" | sort -u
+    local table="$1" schema_dir="$2"
+    [ -n "$schema_dir" ] || return
+    [ -d "$schema_dir" ] || return
+    {
+        # CREATE TABLE columns, across every .swift in the dir.
+        find "$schema_dir" -name '*.swift' -type f -exec awk -v t="$table" '
+            FNR == 1 { inside = 0 }
+            $0 ~ "CREATE (VIRTUAL )?TABLE (IF NOT EXISTS )?" t " *\\(|CREATE (VIRTUAL )?TABLE (IF NOT EXISTS )?" t "\\(" { inside = 1; next }
+            inside && $0 ~ /^[[:space:]]*\);/ { inside = 0 }
+            inside {
+                gsub(/^[[:space:]]+|[[:space:]]+$/, "")
+                if ($0 == "" || $0 ~ /^--/) next
+                split($0, parts, /[[:space:]]+|,/)
+                col = parts[1]
+                if (col ~ /^(PRIMARY|FOREIGN|UNIQUE|CHECK|CONSTRAINT|CREATE)/) next
+                gsub(/[",;()]/, "", col)
+                if (col != "") print col
+            }
+        ' {} +
+        # ALTER TABLE <table> ADD COLUMN <col>, across every .swift in the dir.
+        grep -rhoE "ALTER TABLE ${table} ADD COLUMN [A-Za-z_][A-Za-z0-9_]*" "$schema_dir" 2>/dev/null \
+            | awk '{ print $NF }'
+        # INSERT [OR REPLACE] INTO <table> (col, col, ...) explicit column lists.
+        # Robust to CREATE-TABLE formatting and FTS5 virtual tables: if code
+        # inserts into a column, the column exists (#1137). Newlines are
+        # flattened first so multi-line INSERT column lists (e.g. doc_symbols)
+        # are captured.
+        find "$schema_dir" -name '*.swift' -type f -exec cat {} + 2>/dev/null | tr '\n' ' ' \
+            | grep -oE "INSERT (OR REPLACE |OR IGNORE )?INTO ${table} *\([^)]*\)" \
+            | grep -oE '\([^)]*\)' | tr -d '()' | tr ',' '\n' \
+            | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' \
+            | grep -E '^[A-Za-z_][A-Za-z0-9_]*$' || true
+    } | sort -u
 }
 
 # --- Per-issue checks ------------------------------------------------
@@ -347,6 +370,13 @@ check_xref() {
     fi
 }
 
+# #1137: an issue body may legitimately cite a `<table>.<col>` that does not
+# exist yet (a proposed new column) or that used to exist and was relocated.
+# The schema check skips a missing-column flag when EVERY line mentioning the
+# ref carries one of these intentional-absence signals; a genuine stale claim
+# (the ref appears on at least one unsignaled line) still flags.
+SCHEMA_ABSENCE_SIGNALS='proposed|new column|does not exist|doesn.t exist|not an existing|relocated|moved to|lives? on|shadow table|originally-stale'
+
 check_schema() {
     local n="$1" body="$2"
     local hits=""
@@ -354,17 +384,20 @@ check_schema() {
         local refs
         refs=$(echo "$body" | grep -oE "${table}\.[a-z_]+" | sort -u)
         [ -z "$refs" ] && continue
-        local schema_file
-        schema_file=$(schema_source_for "$table")
-        [ -z "$schema_file" ] && continue
-        [ -f "$schema_file" ] || continue
+        local schema_dir
+        schema_dir=$(schema_source_for "$table")
+        [ -z "$schema_dir" ] && continue
+        [ -d "$schema_dir" ] || continue
         local cols
-        cols=$(schema_columns_for "$table" "$schema_file")
+        cols=$(schema_columns_for "$table" "$schema_dir")
         while IFS= read -r ref; do
             [ -z "$ref" ] && continue
             local col="${ref#${table}.}"
             if ! echo "$cols" | grep -qx "$col"; then
-                hits+="    - \`${ref}\` → column \`${col}\` not found in \`${table}\` (\`${schema_file}\`)"$'\n'
+                local unsignaled
+                unsignaled=$(echo "$body" | grep -F "$ref" | grep -ivE "$SCHEMA_ABSENCE_SIGNALS" || true)
+                [ -z "$unsignaled" ] && continue
+                hits+="    - \`${ref}\` → column \`${col}\` not found in \`${table}\` (searched \`${schema_dir}\`)"$'\n'
             fi
         done <<<"$refs"
     done
