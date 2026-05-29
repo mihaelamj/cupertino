@@ -32,7 +32,7 @@ cupertino search "your query" \
 | `--source` | (omitted → fan-out) | Source filter; omitted means fan-out across every available DB |
 | `--limit` | `20` | Maximum results returned |
 | `--per-source` | `10` | Per-source candidate cap before RRF (fan-out only) |
-| `--format` | `text` | Output format (text / json / markdown) |
+| `--format` | `text` | Output format (text / json / markdown / md) |
 | `--search-db` | `~/.cupertino/search.db` | apple-docs / hig / archive / evolution / swift-org / swift-book |
 | `--packages-db` | `~/.cupertino/packages.db` | packages source |
 | `--sample-db` | `~/.cupertino/apple-sample-code.db` | samples source |

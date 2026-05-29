@@ -18,7 +18,7 @@ Controls how the source-file content is rendered.
 |--------|-------------|
 | `text` | Raw content, plain text with a header (`// File:`, `// Project:`, `// Size:`) followed by the body (default) |
 | `json` | Structured JSON object: `{ projectId, path, filename, content }` |
-| `markdown` | Markdown rendering with a fenced code block typed by file extension |
+| `markdown`, `md` | Markdown rendering with a fenced code block typed by file extension |
 
 ## Default
 

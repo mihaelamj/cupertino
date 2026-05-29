@@ -18,7 +18,7 @@ Controls how the framework list is rendered. Different formats suit different co
 |--------|-------------|
 | `text` | Human-readable list, `Available Frameworks (N total, M documents):` header followed by `  framework: count documents` rows (default) |
 | `json` | Bare array `[ { "name": "...", "documentCount": N }, ... ]`, sorted by `documentCount` descending |
-| `markdown` | Markdown table with `Framework | Documents` columns |
+| `markdown`, `md` | Markdown table with `Framework | Documents` columns |
 
 ## Default
 

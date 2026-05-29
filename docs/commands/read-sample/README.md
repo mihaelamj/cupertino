@@ -22,7 +22,7 @@ The project identifier (folder name). Use [`list-samples`](../list-samples/) or 
 
 ### --format
 
-Output format: `text` (default), `json`, or `markdown`.
+Output format: `text` (default), `json`, or `markdown` / `md`.
 
 ### --sample-db
 

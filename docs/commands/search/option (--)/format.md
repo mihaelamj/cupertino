@@ -18,7 +18,7 @@ Controls how search results are formatted in the output. Different formats are s
 |--------|-------------|
 | `text` | Human-readable text output (default) |
 | `json` | Machine-readable JSON array |
-| `markdown` | Formatted markdown |
+| `markdown`, `md` | Formatted markdown |
 
 ## Default
 

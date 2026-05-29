@@ -18,7 +18,7 @@ Controls how the project README and metadata block are rendered.
 |--------|-------------|
 | `text` | Human-readable plain text, title underline, project facts, README body, file listing (default) |
 | `json` | Structured JSON object: `{ id, title, description, frameworks, readme, webURL, fileCount, totalSize, files }` |
-| `markdown` | Markdown rendering with H1 title, `## Description`, `## Metadata` bullet block, `## README`, `## Files` |
+| `markdown`, `md` | Markdown rendering with H1 title, `## Description`, `## Metadata` bullet block, `## README`, `## Files` |
 
 ## Default
 

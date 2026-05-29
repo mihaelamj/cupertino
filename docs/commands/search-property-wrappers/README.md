@@ -10,7 +10,7 @@ Added in: v1.2.x (#948 phase 2).
 cupertino search-property-wrappers --wrapper <name>
                                     [--framework <name>]
                                     [--limit <n>]
-                                    [--format text|json|markdown]
+                                    [--format text|json|markdown|md]
                                     [--search-db <path>]
 ```
 
@@ -21,7 +21,7 @@ cupertino search-property-wrappers --wrapper <name>
 | `--wrapper` | string | required | Property wrapper name, with or without `@` (e.g. `State`, `@MainActor`). |
 | `--framework` | string | none | Restrict to a single framework (e.g. `swiftui`, `uikit`, `combine`). |
 | `--limit` | int | 10 | Maximum results. |
-| `--format` | enum | `text` | Output format: `text`, `json`, `markdown`. |
+| `--format` | enum | `text` | Output format: `text`, `json`, `markdown`, `md`. |
 `~/.cupertino/apple-documentation.db` | Override the apple-docs database (post-#1037 per-source DB split). Default resolves through the production source registry. |
 
 ## Examples

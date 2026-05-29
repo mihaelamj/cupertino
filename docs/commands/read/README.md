@@ -63,7 +63,7 @@ cupertino read "apple-docs://swiftui/documentation_swiftui_view" --source apple-
 Output format. Honoured by docs reads only; samples + packages return their stored content as-is.
 
 **Type:** String  
-**Values:** `json` (default), `markdown`
+**Values:** `json` (default), `markdown`, `md`
 
 ### --search-db
 

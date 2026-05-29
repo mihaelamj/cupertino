@@ -10,7 +10,7 @@ Added in: v1.2.x (#948 phase 3).
 cupertino search-concurrency --pattern <pattern>
                               [--framework <name>]
                               [--limit <n>]
-                              [--format text|json|markdown]
+                              [--format text|json|markdown|md]
                               [--search-db <path>]
 ```
 
@@ -21,7 +21,7 @@ cupertino search-concurrency --pattern <pattern>
 | `--pattern` | string | required | Concurrency pattern: `async`, `actor`, `sendable`, `mainactor`, `task`, `asyncsequence`. |
 | `--framework` | string | none | Restrict to a single framework. |
 | `--limit` | int | 10 | Maximum results. |
-| `--format` | enum | `text` | Output format: `text`, `json`, `markdown`. |
+| `--format` | enum | `text` | Output format: `text`, `json`, `markdown`, `md`. |
 `~/.cupertino/apple-documentation.db` | Override the apple-docs database (post-#1037 per-source DB split). Default resolves through the production source registry. |
 
 ## Examples

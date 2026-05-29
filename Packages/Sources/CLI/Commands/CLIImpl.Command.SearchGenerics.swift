@@ -51,7 +51,7 @@ extension CLIImpl.Command {
 
         @Option(
             name: .long,
-            help: "Output format: text (default), json, markdown"
+            help: CLIImpl.Command.OutputFormatArgument.textDefaultHelp
         )
         var format: OutputFormat = .text
 
@@ -177,6 +177,10 @@ extension CLIImpl.Command.SearchGenerics {
         case text
         case json
         case markdown
+
+        init?(argument: String) {
+            self.init(rawValue: CLIImpl.Command.OutputFormatArgument.normalize(argument))
+        }
     }
 
     private struct JSONFilters: Codable {

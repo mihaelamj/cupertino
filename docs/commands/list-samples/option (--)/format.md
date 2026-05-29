@@ -18,7 +18,7 @@ Controls how the indexed-samples list is rendered.
 |--------|-------------|
 | `text` | Human-readable list (default) |
 | `json` | Top-level object: `{ totalProjects, totalFiles, framework, projects: [...] }` |
-| `markdown` | Markdown table with `Project | Frameworks | Files` columns |
+| `markdown`, `md` | Markdown table with `Project | Frameworks | Files` columns |
 
 ## Default
 

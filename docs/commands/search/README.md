@@ -21,7 +21,7 @@ This command provides the same search functionality as the MCP `search` tool, al
 
 A failing fetcher (e.g. missing DB) collapses to empty rather than failing the whole query, so partial coverage still returns useful results.
 
-Results can be output in text, JSON, or markdown format, making it easy to integrate with scripts and AI workflows.
+Results can be output in text, JSON, or markdown (`md` alias) format, making it easy to integrate with scripts and AI workflows.
 
 ## Arguments
 
@@ -289,7 +289,7 @@ Minimum version for `--platform`, e.g. `16.0` / `13.0` / `10.15`. Required when 
 Output format for results.
 
 **Type:** String
-**Values:** `text` (default), `json`, `markdown`
+**Values:** `text` (default), `json`, `markdown`, `md`
 
 **Example:**
 ```bash
