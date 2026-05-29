@@ -31,6 +31,6 @@ extension SampleCodeSource {
             .conceptual: 40,
         ],
         baseURL: URL(string: Shared.Constants.BaseURL.appleDeveloper + "/sample-code"),
-        requiredEnrichmentInputs: [.appleConstraints]
+        requiredEnrichmentInputs: [.appleConstraints, .appleConformances]
     )
 }

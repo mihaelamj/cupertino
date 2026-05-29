@@ -1,5 +1,4 @@
 import AppleArchiveSource
-import AppleConstraintsKit
 import AppleConstraintsPass
 import AppleDocsSource
 import CoreJSONParser
@@ -371,54 +370,28 @@ extension CLIImpl.Command.Save {
             let logger = Cupertino.Context.composition.logging.recording
             let baseDirectory = input.searchDBPath.deletingLastPathComponent()
 
-            // Load the authoritative Apple-type constraints once;
-            // shared across every per-DB enrichment runner. (#759 iter 3)
-            //
-            // Existence is enforced up-front by the composition-root
-            // enrichment-input preflight (`Search.EnrichmentInputPreflight`),
-            // which hard-fails before any indexing when a selected source's
-            // `apple-constraints.json` is absent (apple-docs / samples /
-            // packages declare it via `requiredEnrichmentInputs`). Reaching
-            // here with the file absent means the operator passed
-            // `--allow-degraded-enrichment`; proceed at iter 1+2 coverage.
-            // The only check left here is the parse of an existing file, which
-            // is about the shared table load, not a per-source requirement.
+            // Authoritative Apple-type constraints, read LAZILY at the
+            // enrichment phase rather than here at setup (#1144). The
+            // enrichment passes run only after all indexing finishes, so this
+            // input is not needed until then. Deferring the read lets an
+            // operator produce the file with `cupertino-constraints-gen` while
+            // a long index runs; the freshly written table is picked up at the
+            // enrichment phase. A missing or unparseable file yields an empty
+            // table: the save proceeds best-effort and the DB is built
+            // un-enriched (the progress-line badge shows 🚫). Read once,
+            // shared across this DB's passes.
             let constraintsPath = baseDirectory.appendingPathComponent("apple-constraints.json")
-            let staticConstraintsLookup: (any Search.StaticConstraintsLookup)? = try {
-                guard FileManager.default.fileExists(atPath: constraintsPath.path) else {
-                    return nil
-                }
-                do {
-                    return try AppleConstraintsKit.Table.from(fileURL: constraintsPath)
-                } catch {
-                    if input.allowDegradedEnrichment {
-                        logger.warning(
-                            "Failed to load \(constraintsPath.lastPathComponent): \(error). " +
-                                "Falling back to iter 1 + iter 2 per --allow-degraded-enrichment.",
-                            category: .search
-                        )
-                        return nil
-                    }
-                    throw Search.Error.invalidQuery(
-                        "Failed to parse \(constraintsPath.lastPathComponent): \(error). " +
-                            "Pass --allow-degraded-enrichment to proceed anyway."
-                    )
-                }
-            }()
+            let staticConstraintsLookup: (any Search.StaticConstraintsLookup)? =
+                LazyConstraintsLookup(path: constraintsPath)
 
             // Apple SDK conformance graph (apple-conformances.json), the
             // conformance sibling of apple-constraints.json (produced by
-            // `cupertino-constraints-gen conformances`). OPTIONAL: present →
-            // the AppleConformancesPass overwrites doc_symbols.conformances
-            // with the authoritative SDK set (~108k edges vs ~8.6k AST); absent
-            // → the pass no-ops and the AST conformances stand. Not a required
-            // enrichment input (the artifact is distributed separately via
-            // cupertino-docs), so absence is intentionally not a hard error.
+            // `cupertino-constraints-gen conformances`). Same deferred,
+            // best-effort, read-once load as the constraints table above:
+            // read at the enrichment phase, empty on absence, badge 🚫.
             let conformancesPath = baseDirectory.appendingPathComponent("apple-conformances.json")
             let staticConformancesLookup: (any Search.StaticConformancesLookup)? =
-                FileManager.default.fileExists(atPath: conformancesPath.path)
-                    ? try? AppleConstraintsKit.ConformanceTable.from(fileURL: conformancesPath)
-                    : nil
+                LazyConformancesLookup(path: conformancesPath)
 
             // Per-save enrichment audit JSONL writer. Captures
             // pass-start / per-entry / pass-end events across every
@@ -573,10 +546,24 @@ extension CLIImpl.Command.Save {
                     staticConstraintsLookup: staticConstraintsLookup,
                     enrichmentRunner: enrichmentRunner
                 )
-                try await builder.buildIndex(
-                    clearExisting: input.clearExisting,
-                    onProgress: progress
-                )
+                // Enrichment-status badge for this DB's progress lines: bind
+                // the paths of its declared base-directory enrichment inputs
+                // so each progress tick re-checks their presence live (🧬 all
+                // present, 🚫 one missing, nil when the DB declares none). The
+                // inputs are read lazily at the enrichment phase, so a file
+                // produced mid-save flips the badge and is still applied.
+                let groupInputPaths = providers
+                    .flatMap(\.definition.requiredEnrichmentInputs)
+                    .compactMap { enrichmentInput -> String? in
+                        guard case .baseDirectoryFile = enrichmentInput.scope else { return nil }
+                        return baseDirectory.appendingPathComponent(enrichmentInput.filename).path
+                    }
+                try await Logging.$enrichmentInputPaths.withValue(groupInputPaths.isEmpty ? nil : groupInputPaths) {
+                    try await builder.buildIndex(
+                        clearExisting: input.clearExisting,
+                        onProgress: progress
+                    )
+                }
 
                 let docCount = try await index.documentCount()
                 let frameworks = try await index.listFrameworks()
@@ -929,26 +916,15 @@ extension CLIImpl.Command.Save {
             // and runs the two packages-target passes against the
             // freshly indexed DB. If the file is absent the passes
             // become no-ops; the unenriched bundle is still valid.
+            // Lazy, read-at-enrichment-phase loads (#1144), same as the docs
+            // flow: produced-during-save inputs are picked up, absence is a
+            // best-effort no-op.
             let constraintsPath = packagesDB.deletingLastPathComponent()
                 .appendingPathComponent("apple-constraints.json")
-            let lookup: (any Search.StaticConstraintsLookup)? = {
-                guard FileManager.default.fileExists(atPath: constraintsPath.path) else { return nil }
-                do {
-                    return try AppleConstraintsKit.Table.from(fileURL: constraintsPath)
-                } catch {
-                    Cupertino.Context.composition.logging.recording.warning(
-                        "Packages enrichment skipped, failed to load \(constraintsPath.lastPathComponent): \(error)",
-                        category: .search
-                    )
-                    return nil
-                }
-            }()
+            let lookup: (any Search.StaticConstraintsLookup)? = LazyConstraintsLookup(path: constraintsPath)
             let conformancesPath = packagesDB.deletingLastPathComponent()
                 .appendingPathComponent("apple-conformances.json")
-            let conformancesLookup: (any Search.StaticConformancesLookup)? =
-                FileManager.default.fileExists(atPath: conformancesPath.path)
-                    ? try? AppleConstraintsKit.ConformanceTable.from(fileURL: conformancesPath)
-                    : nil
+            let conformancesLookup: (any Search.StaticConformancesLookup)? = LazyConformancesLookup(path: conformancesPath)
             let runner = Enrichment.LiveRunner(passes: [
                 Enrichment.PackagesAppleConstraintsPass(packages: index, lookup: lookup),
                 Enrichment.PackagesAppleConformancesPass(packages: index, lookup: conformancesLookup),
@@ -1140,26 +1116,14 @@ extension CLIImpl.Command.Save {
 
             // #837 — postprocessor pipeline for samples.db. Same
             // AppleConstraintsKit table the docs + packages flows use.
+            // Lazy, read-at-enrichment-phase loads (#1144); same best-effort
+            // semantics as the docs + packages flows.
             let samplesConstraintsPath = input.samplesDB.deletingLastPathComponent()
                 .appendingPathComponent("apple-constraints.json")
-            let samplesLookup: (any Search.StaticConstraintsLookup)? = {
-                guard FileManager.default.fileExists(atPath: samplesConstraintsPath.path) else { return nil }
-                do {
-                    return try AppleConstraintsKit.Table.from(fileURL: samplesConstraintsPath)
-                } catch {
-                    Cupertino.Context.composition.logging.recording.warning(
-                        "Samples enrichment skipped, failed to load \(samplesConstraintsPath.lastPathComponent): \(error)",
-                        category: .search
-                    )
-                    return nil
-                }
-            }()
+            let samplesLookup: (any Search.StaticConstraintsLookup)? = LazyConstraintsLookup(path: samplesConstraintsPath)
             let samplesConformancesPath = input.samplesDB.deletingLastPathComponent()
                 .appendingPathComponent("apple-conformances.json")
-            let samplesConformancesLookup: (any Search.StaticConformancesLookup)? =
-                FileManager.default.fileExists(atPath: samplesConformancesPath.path)
-                    ? try? AppleConstraintsKit.ConformanceTable.from(fileURL: samplesConformancesPath)
-                    : nil
+            let samplesConformancesLookup: (any Search.StaticConformancesLookup)? = LazyConformancesLookup(path: samplesConformancesPath)
             let samplesRunner = Enrichment.LiveRunner(passes: [
                 Enrichment.SamplesAppleConstraintsPass(samples: database, lookup: samplesLookup),
                 Enrichment.SamplesAppleConformancesPass(samples: database, lookup: samplesConformancesLookup),

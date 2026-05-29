@@ -1411,6 +1411,9 @@ let targets: [Target] = {
         // CLIImpl.Command.Save.Indexers.swift iterates providers.
         dependencies: [
             "AppleArchiveSource",
+            // AppleConstraintsKit added in #1144 so the lazy-lookup test can
+            // mint a valid apple-constraints.json and prove the deferred read.
+            "AppleConstraintsKit",
             "AppleDocsSource",
             "CLI", "CupertinoComposition", "Diagnostics", "Distribution", "DistributionModels",
             "EnrichmentModels",

@@ -68,6 +68,19 @@ extension Search.EnrichmentInput {
         scope: .baseDirectoryFile
     )
 
+    /// Apple SDK conformance table consumed by the conformance enrichment
+    /// passes on apple-docs / samples / packages, the conformance sibling of
+    /// `appleConstraints`. Without it the authoritative SDK conformance graph
+    /// (~108k edges) is dropped and only the AST-derived conformances (~8.6k)
+    /// stand, visible only by inspecting the DB. Required symmetrically with
+    /// `appleConstraints` on every source that runs a conformance pass.
+    public static let appleConformances = Search.EnrichmentInput(
+        filename: "apple-conformances.json",
+        purpose: "Apple SDK conformance enrichment (~108k SDK edges vs ~8.6k AST-derived)",
+        howToObtain: "Run `cupertino setup` to fetch it, or `cupertino-constraints-gen conformances` to produce it locally.",
+        scope: .baseDirectoryFile
+    )
+
     /// Per-package availability sidecar produced by the availability
     /// annotator. Without it `swift_tools_version` degrades and the
     /// `@available` platform floors are lost. One sidecar per package
