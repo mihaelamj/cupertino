@@ -38,12 +38,37 @@ extension Search {
         public init(dbPath: URL) async throws {
             self.dbPath = dbPath
             var dbPointer: OpaquePointer?
-            guard sqlite3_open_v2(dbPath.path, &dbPointer, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+            // Open read-only via the `immutable=1` URI rather than a bare
+            // `SQLITE_OPEN_READONLY` path. A freshly-extracted bundle DB is
+            // in WAL journal mode with no `-shm`/`-wal` sidecar, and SQLite
+            // cannot open a WAL database read-only without creating/attaching
+            // the `-shm` shared-memory index, so a plain read-only open fails
+            // with SQLITE_CANTOPEN until some writer creates the sidecar.
+            // The docs DBs dodge this because `Search.Index` opens them
+            // read-write first; `packages.db` is only ever read, so its
+            // `-shm` is never created (#1190). `immutable=1` is SQLite's
+            // access mode for a static read-only database: it skips the
+            // `-shm`/`-wal` machinery entirely, needs no write permission,
+            // and creates no sidecar. Bundle DBs are static artifacts and
+            // the release tool checkpoint-truncates each one before zipping,
+            // so the main file is complete. `PackageQuery` is a pure SELECT
+            // path, so read-only-immutable is semantically correct.
+            let uri = Self.immutableURI(for: dbPath)
+            guard sqlite3_open_v2(uri, &dbPointer, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, nil) == SQLITE_OK else {
                 let message = String(cString: sqlite3_errmsg(dbPointer))
                 sqlite3_close(dbPointer)
                 throw PackageQueryError.openFailed(message)
             }
             database = dbPointer
+        }
+
+        /// Build the `file:…?immutable=1` URI for a read-only open. The
+        /// filesystem path is percent-encoded (spaces, `?`, `#`, etc.) so
+        /// an arbitrary base directory cannot corrupt the URI; `/` is
+        /// preserved so SQLite still sees an absolute path.
+        static func immutableURI(for dbPath: URL) -> String {
+            let encoded = dbPath.path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? dbPath.path
+            return "file:\(encoded)?immutable=1"
         }
 
         public func disconnect() {
