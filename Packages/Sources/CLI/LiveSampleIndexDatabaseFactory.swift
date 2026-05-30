@@ -31,6 +31,9 @@ import SharedConstants
 
 struct LiveSampleIndexDatabaseFactory: Sample.Index.DatabaseFactory {
     func openDatabase(at url: URL) async throws -> any Sample.Index.Reader {
-        try await Sample.Index.Database(dbPath: url, logger: Cupertino.Context.composition.logging.recording)
+        // #1194: every consumer of this factory is a read path (read-sample,
+        // list-samples, smart-search, serve). Open read-only so a query
+        // connection cannot write or delete rows.
+        try await Sample.Index.Database(dbPath: url, logger: Cupertino.Context.composition.logging.recording, readOnly: true)
     }
 }

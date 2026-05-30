@@ -383,7 +383,8 @@ extension CLIImpl.Command {
             }
 
             do {
-                return try await Sample.Index.Database(dbPath: sampleDBURL, logger: Cupertino.Context.composition.logging.recording)
+                // #1194: MCP serve is a read path; open read-only.
+                return try await Sample.Index.Database(dbPath: sampleDBURL, logger: Cupertino.Context.composition.logging.recording, readOnly: true)
             } catch {
                 let errorMsg = "⚠️  Failed to load sample index: \(error)"
                 let cmd = "\(Shared.Constants.App.commandName) save --samples"
@@ -423,11 +424,14 @@ extension CLIImpl.Command {
                 // happens via `cupertino save` (a separate process); the
                 // server never calls `indexItem`. Pass an empty indexer
                 // dict explicitly to reflect that.
+                // #1194: MCP serve is a read path; open read-only so a query
+                // connection cannot write or delete rows.
                 let index = try await SearchModule.Index(
                     dbPath: searchDBURL,
                     logger: Cupertino.Context.composition.logging.recording,
                     indexers: [:],
-                    sourceLookup: .empty
+                    sourceLookup: .empty,
+                    readOnly: true
                 )
                 return SearchIndexLoadResult(index: index, disabledReason: nil)
             } catch {

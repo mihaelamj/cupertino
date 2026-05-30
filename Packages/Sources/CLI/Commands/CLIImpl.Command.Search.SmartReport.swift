@@ -415,7 +415,8 @@ extension CLIImpl.Command.Search {
             return nil
         }
         do {
-            let database = try await Sample.Index.Database(dbPath: url, logger: Cupertino.Context.composition.logging.recording)
+            // #1194: smart-search samples fetcher is a read path; open read-only.
+            let database = try await Sample.Index.Database(dbPath: url, logger: Cupertino.Context.composition.logging.recording, readOnly: true)
             let service = Sample.Search.Service(database: database)
             fetchers.append(Sample.Services.CandidateFetcher(
                 service: service,

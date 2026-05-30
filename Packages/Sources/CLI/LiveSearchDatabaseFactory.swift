@@ -41,6 +41,8 @@ struct LiveSearchDatabaseFactory: Search.DatabaseFactory {
         // its own production-dict composition site; this factory's
         // consumers never call `indexItem`. Empty dict is the honest
         // dependency declaration for read paths.
-        try await SearchModule.Index(dbPath: url, logger: Cupertino.Context.composition.logging.recording, indexers: [:], sourceLookup: .empty)
+        // #1194: open read-only so a query connection cannot write or delete
+        // rows. Every consumer of this factory is a read path.
+        try await SearchModule.Index(dbPath: url, logger: Cupertino.Context.composition.logging.recording, indexers: [:], sourceLookup: .empty, readOnly: true)
     }
 }
