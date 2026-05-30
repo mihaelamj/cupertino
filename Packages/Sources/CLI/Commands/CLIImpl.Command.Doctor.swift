@@ -358,26 +358,15 @@ extension CLIImpl.Command {
                     Diagnostics.Probes.userVersion(at: url) ?? 0
                 }
                 let formatted = Diagnostics.SchemaVersion.format(version)
-                // #236: surface the journal mode alongside the schema
-                // version so a DB stuck in default rollback mode jumps
-                // out. WAL is the expected value — anything else means
-                // the init code never switched, and concurrent readers
-                // will block on writers.
+                // #236 / #1192: surface the journal mode alongside the
+                // schema version. Two modes are healthy: `wal` (the mode
+                // the indexer sets for concurrent read/write) and `delete`
+                // (rollback, the read-only distribution mode bundle DBs
+                // ship in so they open read-only without an `-shm`; see
+                // `Release.Publishing.convertToRollbackJournal`). Any other
+                // value is the flag worth surfacing.
                 let journal = Diagnostics.Probes.journalMode(at: url) ?? "?"
-                // #236: anything other than `wal` is a flag, but the
-                // root cause varies. The volume check below catches
-                // the network-FS case (silent-WAL-fail per the docs)
-                // separately, so this note stays minimal — the
-                // remaining causes are: (1) DB predates the WAL
-                // enablement and hasn't been re-opened by the
-                // writing actor since, or (2) the writer's PRAGMA
-                // failed for some unrelated reason and got logged
-                // at warning level.
-                let journalNote = if journal == "wal" {
-                    "wal"
-                } else {
-                    "\(journal) ⚠ (expected wal — run `cupertino save` for this DB, or check logs for a WAL PRAGMA failure)"
-                }
+                let journalNote = Self.journalModeNote(for: journal)
 
                 // #236 follow-up: surface the WAL sidecar size +
                 // warn when it suggests checkpoint starvation. The
@@ -446,6 +435,24 @@ extension CLIImpl.Command {
             volumeNote: String
         ) -> String {
             "   ✓ \(descriptor.filename): \(formatted), journal=\(journalNote)\(walNote)\(volumeNote)"
+        }
+
+        /// Map a DB's journal mode to its doctor note. Both `wal` (the
+        /// indexer's concurrent read/write mode) and `delete` (the
+        /// read-only rollback mode bundle DBs ship in, per #1192) are
+        /// healthy and carry no warning; `delete` is annotated so a user
+        /// knows it is the expected distribution state, not a fault. Any
+        /// other mode means the writer's `PRAGMA journal_mode = WAL` never
+        /// took, so concurrent readers would block on writers, so flag it.
+        static func journalModeNote(for journal: String) -> String {
+            switch journal {
+            case "wal":
+                "wal"
+            case "delete":
+                "delete (read-only distribution mode)"
+            default:
+                "\(journal) ⚠ (expected wal or delete: run `cupertino save` for this DB, or check logs for a WAL PRAGMA failure)"
+            }
         }
 
         /// Returns a warning suffix if the DB at `url` lives on a

@@ -69,6 +69,7 @@ extension Release.Publishing {
         case openFailed(path: String, message: String)
         case checkpointFailed(path: String, message: String)
         case walNotTruncated(path: String, sizeBytes: Int64)
+        case journalModeConversionFailed(path: String, message: String)
 
         var description: String {
             switch self {
@@ -78,6 +79,8 @@ extension Release.Publishing {
                 "PRAGMA wal_checkpoint(TRUNCATE) failed on \(path): \(message)"
             case .walNotTruncated(let path, let size):
                 "WAL sidecar at \(path) remained \(size) bytes after checkpoint — refusing to zip a partial bundle."
+            case .journalModeConversionFailed(let path, let message):
+                "Could not convert \(path) to rollback journal mode: \(message)"
             }
         }
     }
@@ -142,6 +145,68 @@ extension Release.Publishing {
             walFileExisted: walExists,
             walSizeAfter: walSize
         )
+    }
+
+    /// Convert the SQLite file at `dbURL` to rollback (DELETE) journal
+    /// mode in place, returning the resulting mode string.
+    ///
+    /// A shipped bundle DB is a read-only artifact, but the indexer
+    /// builds it in WAL mode (`Search.Index` / `PackageIndex` /
+    /// `Sample.Index` each set `PRAGMA journal_mode = WAL` for #236
+    /// concurrent-reader support), and WAL is a persistent header mode.
+    /// SQLite cannot open a WAL database read-only without creating the
+    /// `-shm` shared-memory index, so a freshly-extracted WAL DB (no
+    /// `-shm` sidecar) fails every plain `SQLITE_OPEN_READONLY` open
+    /// until some writer creates the sidecar, which never happens for
+    /// a read-only-only reader like `Search.PackageQuery`, and which
+    /// breaks `Diagnostics.Probes` on a pristine extract (#1192).
+    ///
+    /// Converting to rollback mode here (after the checkpoint folds the
+    /// WAL into the main file) rewrites the header to a mode that needs
+    /// no `-shm`, so every read-only open of the shipped artifact works
+    /// uniformly. `PRAGMA journal_mode=DELETE` also removes the now-empty
+    /// `-wal`/`-shm` sidecars. Run on every DB before zipping.
+    @discardableResult
+    static func convertToRollbackJournal(at dbURL: URL) throws -> String {
+        var db: OpaquePointer?
+        guard sqlite3_open(dbURL.path, &db) == SQLITE_OK else {
+            let message = db.flatMap { String(cString: sqlite3_errmsg($0)) } ?? "unknown sqlite3 error"
+            sqlite3_close(db)
+            throw CheckpointError.journalModeConversionFailed(path: dbURL.path, message: message)
+        }
+
+        var stmt: OpaquePointer?
+        let prepared = sqlite3_prepare_v2(db, "PRAGMA journal_mode=DELETE;", -1, &stmt, nil) == SQLITE_OK
+        let stepped = prepared && sqlite3_step(stmt) == SQLITE_ROW
+        let mode = stepped ? sqlite3_column_text(stmt, 0).map { String(cString: $0).lowercased() } : nil
+        sqlite3_finalize(stmt)
+
+        guard let mode else {
+            let message = String(cString: sqlite3_errmsg(db))
+            sqlite3_close(db)
+            throw CheckpointError.journalModeConversionFailed(path: dbURL.path, message: message)
+        }
+        // Close before touching the sidecar files on disk.
+        sqlite3_close(db)
+
+        // The PRAGMA returns the active mode; on a read-only filesystem
+        // or a held lock SQLite can refuse the switch and report the old
+        // mode, so confirm the conversion actually took.
+        guard mode == "delete" else {
+            throw CheckpointError.journalModeConversionFailed(
+                path: dbURL.path,
+                message: "journal_mode is '\(mode)' after PRAGMA journal_mode=DELETE (expected 'delete')"
+            )
+        }
+
+        // Switching out of WAL deletes the `-wal`, but SQLite can leave a
+        // stale `-shm` behind. Remove both so the bundle directory holds a
+        // clean rollback-mode `.db` with no sidecars (only the `.db` files
+        // are zipped, but a clean tree avoids confusion).
+        for sidecar in ["-wal", "-shm"] {
+            try? FileManager.default.removeItem(atPath: dbURL.path + sidecar)
+        }
+        return mode
     }
 
     static func createZip(containing files: [URL], at destination: URL) throws {

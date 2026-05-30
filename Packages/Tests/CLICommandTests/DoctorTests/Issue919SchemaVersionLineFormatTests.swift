@@ -93,4 +93,25 @@ struct Issue919SchemaVersionLineFormatTests {
         #expect(line.contains("journal=delete"))
         #expect(line.contains("expected wal"))
     }
+
+    // MARK: - #1192: journalModeNote accepts rollback (delete) mode
+
+    @Test("wal journal mode carries no warning")
+    func journalNoteWAL() {
+        #expect(CLIImpl.Command.Doctor.journalModeNote(for: "wal") == "wal")
+    }
+
+    @Test("delete journal mode is the read-only distribution mode, no warning")
+    func journalNoteDeleteIsHealthy() {
+        let note = CLIImpl.Command.Doctor.journalModeNote(for: "delete")
+        #expect(note == "delete (read-only distribution mode)")
+        #expect(!note.contains("⚠"))
+    }
+
+    @Test("an unexpected journal mode is still flagged")
+    func journalNoteUnexpectedFlagged() {
+        let note = CLIImpl.Command.Doctor.journalModeNote(for: "truncate")
+        #expect(note.contains("truncate"))
+        #expect(note.contains("⚠"))
+    }
 }
