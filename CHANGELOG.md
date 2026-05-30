@@ -1204,6 +1204,8 @@ _The matching corpus snapshot is `cupertino-docs@v1.2.0` (post-Claw-merge: 414,8
 
 ### Internal
 
+- **ci: temporarily disable the Query batteries smoke job (`if: false`).** It runs `cupertino setup`, which downloads a compiled DB bundle and expects `apple-documentation.db`; after the per-source DB split (#1036) no bundle with the per-source DBs is published yet, so the job fails on every branch (develop included): infrastructure-not-ready, not a regression. Re-enable once the new per-source bundle ships (#1071 chain). The job body is left intact for a one-line re-enable.
+
 - **Test suite at 1,456 tests across 163 suites** (+31 since the v1.1.0 baseline of 1,425). WAL coverage adds 12 unit tests across all three DB actors (#512).
 - **PR #515** squash-merges the GoF DI arc + Phase B + WAL from `develop` into main as the staging step for v1.2.0. `xcrun swift build` clean, `xcrun swift test` green (1,456/1,456), `scripts/check-package-purity.sh` clean, `swiftformat .` no changes, `swiftlint` only pre-existing warnings.
 

@@ -266,6 +266,15 @@ jobs:
 
   query-batteries-smoke:
     name: Query batteries smoke
+    # TEMPORARILY DISABLED (2026-05-30): this job runs `cupertino setup`,
+    # which downloads a compiled DB bundle and expects `apple-documentation.db`
+    # in it. After the per-source DB split (#1036) no bundle with the
+    # per-source DBs has been published yet, so `setup` fails with
+    # "Expected file not found after extraction: apple-documentation.db" on
+    # every branch (develop included) — it is infrastructure-not-ready, not a
+    # code regression. Re-enable (delete the `if: false`) once the new
+    # per-source DB bundle ships to cupertino-docs Releases (#1071 chain).
+    if: false
     runs-on: macos-15
     # Per `docs/audits/eval-harness-standard-v1.0.md` § 5.1. Runs every
     # phase harness (`scripts/eval/search-quality-phase*.py`) with the
