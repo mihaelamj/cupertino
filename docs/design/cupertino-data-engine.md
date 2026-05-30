@@ -306,7 +306,7 @@ No runtime behaviour change for existing cupertino users: the CLI / serve paths 
 
 | ID | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|---|
-| R1 | Read/write entanglement in `Search.Index` makes a clean split hard | high | high | per-file classify, compile iteratively, move the seam where the compiler points |
+| R1 | Read/write entanglement: `Search.Index` conforms BOTH `Search.Database` and `Search.IndexWriter` on one actor sharing a SQLite handle | high | high | RESOLVED structurally by GoF Bridge (§6.6): extract `Search.Connection` implementor, split into read (`Search.Index`) + write (`Search.Indexer`) abstractions over it; each migration step compiler-verified |
 | R2 | `URLSession`/fetcher refs ride into the engine target | high | med | exclude fetch/index files; audit product for crawl symbols |
 | R3 | Foundation-tier rewire blast radius across the monorepo | med | med | `@_exported` re-export (zero-edit in #1183) + full build/test + CI guards |
 | R4 | "No iOS-hostile imports" does not equal "iOS-builds" | med | high | real iOS `xcrun swift build` is the acceptance bar |
