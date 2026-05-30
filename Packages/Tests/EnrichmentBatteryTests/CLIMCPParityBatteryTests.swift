@@ -202,15 +202,15 @@ struct ConcurrencyParityBattery {
     @Test("search-concurrency vs search_concurrency", arguments: Queries.concurrency)
     func parity(_ qcase: (pattern: String, framework: String)) {
         let cliData = CupertinoCLI.jsonData(
-            ["search-concurrency", "--pattern", q.pattern, "--framework", q.framework, "--limit", "5"])
+            ["search-concurrency", "--pattern", qcase.pattern, "--framework", qcase.framework, "--limit", "5"])
         let cliHit = cliResultsNonEmpty(cliData)
         let mcp = CupertinoMCP.callTool(
-            "search_concurrency", ["pattern": q.pattern, "framework": q.framework, "limit": 5]
+            "search_concurrency", ["pattern": qcase.pattern, "framework": qcase.framework, "limit": 5]
         )
         let mcpHit = Parity.mcpHit(mcp)
         #expect(
             Parity.agree(cliHit: cliHit, mcpHit: mcpHit),
-            "search-concurrency '\(q.pattern)' framework=\(q.framework): CLI hit=\(cliHit), MCP hit=\(mcpHit)"
+            "search-concurrency '\(qcase.pattern)' framework=\(qcase.framework): CLI hit=\(cliHit), MCP hit=\(mcpHit)"
         )
     }
 }
