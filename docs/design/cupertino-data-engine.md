@@ -124,7 +124,7 @@ This is unresolved and material: option (A) means desktop's current `DocumentRea
   - (i) **The whole `Search.Index` actor ships in the engine, write methods included**, and the monorepo simply does not call them on iOS. The engine then is not literally read-only code, only read-only in use. Smallest refactor; violates G5/N2 (crawl/write symbols in the product).
   - (ii) **Split the type:** the engine owns a read-only `Search.Index` (conforming `Search.Database` only); the write surface moves to a distinct type (e.g. `Search.Indexer` actor in the monorepo) that owns its own DB handle. True separation; largest refactor; the honest path to G5.
   - (iii) **Promote the shared stored state** (DB handle + lifecycle) to a small `public` base the engine owns, with write methods as a monorepo extension over the public surface. Middle cost; risks leaking the DB handle as public API.
-  This choice is the real decision of this epic and is currently unresolved (see Q5). The maintainer's "full engine" intent (§15.1) leans toward (i) for v0.1.0, accepting that G5 becomes future work, with (ii) as the clean end state.
+  **DECIDED (maintainer 2026-05-30): decoupling is mandatory, so option (ii), the type split, via the GoF Bridge pattern.** Options (i) "ship the whole actor" and (iii) "promote shared state to public" are rejected: (i) ships dormant crawl+parse code and SwiftSyntax onto iOS (§6.2) and leaves read and write fused; (iii) leaks the DB handle as public API. Both fail the decoupling requirement. See §6.6 for the Bridge design. Q5 is resolved.
 
   New evidence bearing on Q5 (see §6.2): option (i) "ship the whole actor" drags SwiftSyntax/ASTIndexer onto iOS even though the read path never parses Swift, bloating the iOS binary with crawl+parse code that is dormant at runtime. Option (ii) "split the type" lets the read engine drop SwiftSyntax entirely. So the dependency-weight argument now favours (ii), partially against the earlier convenience lean toward (i): (i) is a smaller refactor but a heavier iOS binary; (ii) is a bigger refactor but a genuinely lean read-only iOS engine.
 
@@ -160,6 +160,23 @@ Either way the `@_exported` re-export pattern from #1183 keeps every existing co
 ### 6.5 Ownership / distribution
 
 Public repo `mihaelamj/CupertinoDataEngine`, cupertino-owned; owner publishes + tags v0.1.0; consumers pin the tag. During development the monorepo uses a local `path:` dep, swapped to the URL after the first tag (the #1183 playbook). The owner publishes; this session never pushes to GitHub.
+
+### 6.6 Decoupling via the GoF Bridge pattern (decided)
+
+The problem, stated precisely (verified §6.1 + handle scan): two abstractions, read (`Search.Database`) and write (`Search.IndexWriter`), are conformed by one `Search.Index` actor, and BOTH access the same low-level resource directly: the `database: OpaquePointer?` handle plus its lifecycle (`openDatabase`, `disconnect`, `isInitialized`). Read files reference `database` 11 to 23 times each. Decoupling them while they share a connection is exactly the problem GoF Bridge addresses: "decouple an abstraction from its implementation so the two can vary independently" (GoF 1994, p.151).
+
+Mapping to Bridge roles:
+
+- **Implementor** = `Search.Connection` (new): owns `database: OpaquePointer?`, `openDatabase` / read-only-open (§7.1) / `disconnect` / `isInitialized`, and the low-level `prepare` / `exec` / `step` helpers. This is the single home for SQLite-handle management. An actor (the isolation that today lives on `Search.Index` moves here).
+- **Refined Abstraction A (read)** = the engine's read type conforming `Search.Database` (+ `Search.SymbolReading`), holding a `Search.Connection`. Ships in CupertinoDataEngine. No SwiftSyntax (§6.2).
+- **Refined Abstraction B (write)** = `Search.Indexer` conforming `Search.IndexWriter`, holding its own `Search.Connection`, plus the index/migration/crawl-adjacent methods and the `ASTIndexer` dependency. Stays in the monorepo.
+
+Why Bridge specifically (vs the rejected options):
+- It removes the cross-module `internal`-access blocker (Finding A/B): the write type is its OWN type with its OWN `Connection` reference, never an extension reaching into a foreign module's private actor state. The shared surface is `Search.Connection`'s PUBLIC helpers, deliberately designed as the implementor API, not a leaked handle (which is why option iii was rejected: iii leaks the raw `OpaquePointer`; Bridge exposes typed prepare/exec, not the pointer).
+- Read and write now vary independently: a new read method touches only Abstraction A; a new index pass touches only Abstraction B; neither forces a change on the other or on the implementor unless the SQLite primitive surface itself changes.
+- The implementor can have two creation modes (read-only open per §7.1, read-write open for the writer) without the abstractions knowing which: the Bridge implementor encapsulates that.
+
+Migration shape (each step compiler-verified, §13): (1) extract `Search.Connection` from `Search.Index`'s stored state + open/close + prepare/exec helpers; (2) rewrite the read methods to call through `Search.Connection` instead of the bare `database`; (3) move write methods to a new `Search.Indexer` over its own `Search.Connection`; (4) `Search.Index` (read) ships in the engine, `Search.Indexer` (write) in the monorepo. This is the bulk of the work and the reason the epic is non-trivial; Bridge is the structure that makes each step local and compilable rather than a big-bang rewrite.
 
 ---
 
@@ -282,7 +299,7 @@ No runtime behaviour change for existing cupertino users: the CLI / serve paths 
 | Q2 | Does the full SymbolReading/inheritance read path stay iOS-clean, or reach index-time helpers? | open, determines full-engine vs fallback to 15.1 |
 | Q3 | Read-only open against a bundled DB | RESOLVED by directive (§7.1): add a read-only open mode (`SQLITE_OPEN_READONLY`, no dir-create, no write-pragmas), configurable path, assert-exists |
 | Q4 | Name: CupertinoDataEngine (confirmed by maintainer 2026-05-30) | resolved |
-| Q5 | Type-split decision: ship whole actor (i) / split read+write types (ii) / promote shared base (iii) (§6.1)? Determines whether G5 is met in v0.1.0 or deferred | open, the central decision of this epic |
+| Q5 | Type-split: whole actor (i) / split (ii) / promote base (iii)? | RESOLVED: option (ii), the type split via GoF Bridge (§6.6); decoupling is mandatory, so the read abstraction, the write abstraction, and the shared `Search.Connection` implementor vary independently |
 | Q6 | Fan-out scope (§5.1): engine ships per-DB only (A, consumer fuses) vs engine ships `UnifiedSearcher` cross-source fusion (B)? Determines whether iOS gets real unified search or single-source | open, scope-critical |
 
 ### Risks
