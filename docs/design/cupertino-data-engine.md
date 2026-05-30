@@ -104,6 +104,16 @@ CupertinoDataEngine holds the `Search.Index` actor and the read-required helpers
 
 `SearchSQLite` is 33 files (MEASURED). `Search.Index` is one actor whose extensions span query (read) and indexing (write). The extraction stands or falls on splitting these cleanly.
 
+**The split is type-level, not just file-level (verified against source).** This is the crux the rest of this section depends on:
+
+- `Search.Index` conforms BOTH `Search.Database` (read; `Search.Index.Database.swift:14`) AND `Search.IndexWriter` (write; `Search.Index.IndexWriter.swift:17`). It is one actor with two conformances. Moving the type into a read-only package cannot simply "leave the write files behind": the `IndexWriter` conformance lives on the same type.
+- The write methods mutate the actor's **`internal`** stored state: `var database: OpaquePointer?`, `var isInitialized`, `let dbPath`, `public internal(set) var incrementalSkips` (verified, `Search.Index.swift`). Swift extensions in a *different module* can access `public`/`open` members only, NOT `internal`/`private`. So the write methods cannot stay in the monorepo as an extension on an engine-module `Search.Index` while touching that internal state. The compiler will reject it.
+- Consequence: the per-file READ/WRITE table below is necessary but NOT sufficient. One of these must hold for the engine to be read-only:
+  - (i) **The whole `Search.Index` actor ships in the engine, write methods included**, and the monorepo simply does not call them on iOS. The engine then is not literally read-only code, only read-only in use. Smallest refactor; violates G5/N2 (crawl/write symbols in the product).
+  - (ii) **Split the type:** the engine owns a read-only `Search.Index` (conforming `Search.Database` only); the write surface moves to a distinct type (e.g. `Search.Indexer` actor in the monorepo) that owns its own DB handle. True separation; largest refactor; the honest path to G5.
+  - (iii) **Promote the shared stored state** (DB handle + lifecycle) to a small `public` base the engine owns, with write methods as a monorepo extension over the public surface. Middle cost; risks leaking the DB handle as public API.
+  This choice is the real decision of this epic and is currently unresolved (see Q5). The maintainer's "full engine" intent (§15.1) leans toward (i) for v0.1.0, accepting that G5 becomes future work, with (ii) as the clean end state.
+
 Draft classification (to be confirmed by the compiler in §13):
 
 - **READ (ship in engine):** `Search.Index.swift`, `.Search`, `.QueryParsing`, `.SemanticSearch`, `.SearchByAttribute`, `.Inheritance`, `.InheritanceFromMarkdown`, `.CountsAndAliases`, `.CamelCaseSplitter`, `.Database`, `.Schema` (version read), `.ResourceListing`, `.PlatformAvailability`, `.Helpers`, `.DocLinkRewriter`, `Search.PackageQuery`, `Search.SearchResult`, `DocKind`, `CandidateFetcher` (read half).
@@ -114,6 +124,8 @@ Note: `Search.Index.Search.swift` itself matched the crawl/write grep; that is e
 ### 6.2 Dependency closure
 
 SearchSQLite deps today (MEASURED): `SearchModels`, `SearchSchema`, `SharedConstants`, `LoggingModels`, `CoreProtocols`, `CorePackageIndexingModels`, `ASTIndexer`, `SampleIndexModels`. Target state: CupertinoDataEngine depends on CupertinoDataKit + only the seams the read path needs. Each dep is admitted only when the compiler proves the read closure requires it. `CorePackageIndexingModels` is a strong candidate to drop (it is index-side); `SampleIndexModels` enters only if read results reference sample types.
+
+**Constructor pulls index-side types (verified).** `Search.Index.init` takes `indexers: [String: any Search.SourceIndexer]` and `sourceLookup: Search.SourceLookup` (both `public nonisolated let`, `Search.Index.swift`). `Search.SourceIndexer` is the indexer (write-side) protocol. So even the read engine's constructor signature references index-side types unless the type is split per §6.1 option (ii). For option (i)/(iii), the iOS app must construct `Search.Index` supplying an empty `indexers: [:]` and an `.empty` `sourceLookup` (the same values the existing read-only tests pass, e.g. `Issue1073` fixtures use `indexers: [:], sourceLookup: .empty`). The engine's public API should offer a read-only convenience init that defaults these, so an iOS caller never names a write-side type. This is part of F3.
 
 ### 6.3 Conformance
 
@@ -219,7 +231,8 @@ No runtime behaviour change for existing cupertino users: the CLI / serve paths 
 | Q1 | Final monorepo shape: thin re-export shell vs read/write target split (§6.4) | open, settle after §6.1 compiles |
 | Q2 | Does the full SymbolReading/inheritance read path stay iOS-clean, or reach index-time helpers? | open, determines full-engine vs fallback to 15.1 |
 | Q3 | Does `Search.Index(dbPath:...)` work against a read-only bundled DB with no writable base dir? | open (F3) |
-| Q4 | Name: CupertinoDataEngine vs CupertinoDataSQLite (tech-specific) | open, maintainer preference |
+| Q4 | Name: CupertinoDataEngine (confirmed by maintainer 2026-05-30) | resolved |
+| Q5 | Type-split decision: ship whole actor (i) / split read+write types (ii) / promote shared base (iii) (§6.1)? Determines whether G5 is met in v0.1.0 or deferred | open, the central decision of this epic |
 
 ### Risks
 
