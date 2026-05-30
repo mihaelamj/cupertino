@@ -176,6 +176,23 @@ Maintainer directive sets the contract, removing this from "open question" to "f
 
 Design consequence: the engine gains a **read-only open mode** for the embedded case: `sqlite3_open_v2(..., SQLITE_OPEN_READONLY)`, skipping `createDirectory`, skipping the WAL/synchronous/journal write-pragmas (a read-only connection needs none of them; readers can read a WAL or non-WAL DB without setting journal mode). The existing read-write open path stays for the CLI/serve writer. This is a behaviour-preserving addition (a new init/open mode), not a change to the existing writer path. Satisfies F3.
 
+### 7.2 Schema-version binding (first-principles: "DBs are where they need to be" is necessary but not sufficient)
+
+"Assume the DBs are present and configurable" (§7.1) is about *location*. It does not cover *compatibility*, which is a separate hard coupling (verified against source):
+
+- The binary carries a compile-time `Search.Schema.currentVersion` (= 18 today, `SearchSchema/Search.Schema.CurrentVersion.swift:24`).
+- On open, `checkAndMigrateSchema` (`Search.Index.Migrations.swift`) reads the DB's `PRAGMA user_version` and, on mismatch with no migrator, THROWS: "this binary is being run against a database produced by a different build. Run `cupertino setup`."
+- The recovery path (migrate, or stamp `user_version`) WRITES the DB. On a read-only bundled DB that write cannot happen.
+
+First-principles consequence the engine design must own:
+- A tagged **CupertinoDataEngine v0.1.0 is hard-bound to a schema version** (v18). The iOS app ships {engine tag, DB bundle, app} and the engine tag's schema version MUST equal the bundle's `user_version`, or the engine cannot open the DB and cannot migrate it (read-only).
+- The read-only open mode (§7.1) must therefore **assert schema match and skip migration entirely**: if `user_version == currentVersion`, open and serve; otherwise fail fast with a clear "engine vX expects schema N, bundle is schema M; ship a matching pair" error. It must NOT attempt the write-path migration.
+- This makes the engine's schema version part of its PUBLIC contract: a schema bump is a breaking engine release, and the bundle + engine tag move together. Document the engine tag to schema-version mapping at publish time so consumers pin a compatible pair. (Relates to the #1071 per-source-bundle chain, which produces the bundles the engine will read.)
+
+### 7.3 The fan-out is a second contract, not just a movable type (first-principles on Q6)
+
+`Services.UnifiedSearcher` is a PROTOCOL (`ServicesModels/Services.UnifiedSearcher.swift:17`) with `func searchAll(...)`, a DIFFERENT shape than `Search.Database.search`. So "ship the fan-out" (Q6 option B) is not "move a type": it requires (a) the `UnifiedSearcher` protocol as part of the read contract (it arguably belongs in CupertinoDataKit next to `Search.Database`), and (b) a concrete conformer that holds N `Search.Database` instances (one per opened DB) and fuses with RRF. The monorepo builds such a conformer today in its composition root; the engine package would need to ship one so an iOS caller gets unified search without reimplementing fusion. This is the substance behind Q6 and R6: the choice is whether CupertinoDataEngine owns the `UnifiedSearcher` conformer (real unified search for consumers) or leaves it out (each consumer wires N engines + its own fusion).
+
 ---
 
 ## 9. Scalability Analysis
@@ -273,7 +290,8 @@ No runtime behaviour change for existing cupertino users: the CLI / serve paths 
 | R3 | Foundation-tier rewire blast radius across the monorepo | med | med | `@_exported` re-export (zero-edit in #1183) + full build/test + CI guards |
 | R4 | "No iOS-hostile imports" does not equal "iOS-builds" | med | high | real iOS `xcrun swift build` is the acceptance bar |
 | R5 | Tag immutability / ownership | low | med | sole-control rule established + acked by desktop |
-| R6 | iOS ships single-source search (one `Search.Index`) thinking it is complete, because the cross-source fan-out (`UnifiedSearcher`) was left in the monorepo | med | high | resolve Q6; if option (A), document loudly that the consumer must run fusion; prefer (B) so the engine owns fusion |
+| R6 | iOS ships single-source search (one `Search.Index`) thinking it is complete, because the cross-source fan-out (`UnifiedSearcher`) was left in the monorepo | med | high | resolve Q6; if option (A), document loudly that the consumer must run fusion; prefer (B) so the engine owns fusion (§7.3) |
+| R7 | Engine tag and DB bundle drift on schema version; engine refuses to open the bundle (and cannot migrate, read-only) | med | high | §7.2: read-only mode asserts schema match + skips migration; publish the engine-tag to schema-version mapping; move bundle + engine tag together |
 
 ---
 
