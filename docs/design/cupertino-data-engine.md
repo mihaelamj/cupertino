@@ -62,8 +62,8 @@ CupertinoDataKit (#1183, shipped) gave us the read contract (`Search.Database` =
 
 | ID | Requirement | Verified by |
 |---|---|---|
-| F1 | Engine conforms `Search.DocumentReading` (search / getDocumentContent / listFrameworks / documentCount / disconnect) | existing SearchSQLite read tests, run against the engine package |
-| F2 | Engine conforms `Search.SymbolReading` (symbol / inheritance / availability / resource methods) | existing AST + inheritance tests |
+| F1 | Engine conforms `Search.DocumentReading` (search / getDocumentContent / listFrameworks / documentCount / disconnect) | read tests in the engine package's own test target (see test-migration note below) |
+| F2 | Engine conforms `Search.SymbolReading` (symbol / inheritance / availability / resource methods) | AST + inheritance tests in the engine test target |
 | F3 | Engine opens a read-only / bundled DB at a CONFIGURABLE path, asserting the file exists, with no directory-create and no write-pragmas (§7.1) | new test: open a read-only DB file from a read-only dir, assert success; assert clear failure when a configured DB is absent |
 
 ### 4.2 Non-functional
@@ -129,6 +129,8 @@ This is unresolved and material: option (A) means desktop's current `DocumentRea
 Draft classification (to be confirmed by the compiler in §13):
 
 - **READ (ship in engine):** `Search.Index.swift`, `.Search`, `.QueryParsing`, `.SemanticSearch`, `.SearchByAttribute`, `.Inheritance`, `.InheritanceFromMarkdown`, `.CountsAndAliases`, `.CamelCaseSplitter`, `.Database`, `.Schema` (version read), `.ResourceListing`, `.PlatformAvailability`, `.Helpers`, `.DocLinkRewriter`, `Search.PackageQuery`, `Search.SearchResult`, `DocKind`, `CandidateFetcher` (read half).
+
+  Note (verified): `Search.PackageQuery` (`Search.PackageQuery.swift:27`) is a SEPARATE actor from `Search.Index`, conforming `Search.PackagesSearcher` (`:1010`) for the packages.db reader. The engine must carry this second reader type + its protocol. Confirm `PackagesSearcher` lives in (or moves to) the contract so the engine conforms it the same way it conforms `Search.Database`.
 - **WRITE / INDEX (exclude or seam to monorepo):** `Search.Index.IndexWriter`, `.Indexing`, `.IndexingDocs`, `.ContentAndPackages` (write half), `.Migrations`, `.CodeExamples`, `.AppleStaticConstraints`, `.AppleStaticConformances`, `.HierarchyConstraints`, `.HIGPlatformInference`, `PackageIndex`, `PackageIndexer`, `Search.PackageIndex.Writer`, `Search.SourceIndexer`.
 
 Note: `Search.Index.Search.swift` itself matched the crawl/write grep; that is expected (it references shared helpers), so per-file compilation, not grep, is the authority on which side a file lands.
@@ -214,6 +216,8 @@ Phased, each phase compiler-verified, one step at a time:
 7. Hand off to owner to publish + tag v0.1.0; swap monorepo path to URL dep; ping desktop to wire `MobileBackend.live(dataSource:)`.
 
 CI gates: the existing foundation-only + portability guards must learn the CupertinoDataEngine recipe (they already learned CupertinoDataKit's in #1183).
+
+**Test-migration cost (verified, do not understate).** 86 test files `@testable import SearchSQLite` today (70 in `SearchTests`, 12 in `SearchToolProviderTests`, 2 in `SearchSQLiteTests`, plus `CLICommandTests`/`MCP`). `@testable` reaches `internal` symbols, which does NOT cross a module boundary once the engine is a separate package, the same `internal`-access constraint as §6.1. So the read tests for engine code must either move into the engine package's own test target (where `@testable import CupertinoDataEngine` works) or convert to public-API tests. This is a substantial sub-task, sequenced in phase 6; F1/F2 are verified there, not by leaving the tests in the monorepo pointed at a now-external module. Tests for code that STAYS in the monorepo (write/index) keep their `@testable import` of the monorepo target.
 
 ---
 
