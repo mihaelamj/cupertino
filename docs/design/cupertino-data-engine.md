@@ -70,7 +70,7 @@ CupertinoDataKit (#1183, shipped) gave us the read contract (`Search.Database` =
 
 | ID | Requirement | Target | Current state |
 |---|---|---|---|
-| N1 | iOS-buildable | engine + closure compile for an iOS destination | imports verified iOS-clean (no WebKit/AppKit/FoundationNetworking/Cocoa); iOS build NOT yet run |
+| N1 | iOS-buildable | engine + closure compile for an iOS destination | imports verified iOS-clean (no WebKit/AppKit/FoundationNetworking/Cocoa); concurrency/platform axis verified clean (no `@MainActor`, no `#if os`, no `canImport`, no `os_log`/`ProcessInfo`/`NSHomeDirectory`, no `@unchecked Sendable`; logging via the injected `Logging.Recording` seam); iOS build NOT yet run |
 | N2 | No crawl symbols in product | 0 fetch/index-write symbols in the engine target | not yet measured (write files still in SearchSQLite) |
 | N3 | Monorepo stays green | 0 build errors, full test suite passing | green at develop f74202a9 before this work |
 
