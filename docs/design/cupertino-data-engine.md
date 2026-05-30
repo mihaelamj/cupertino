@@ -214,6 +214,13 @@ First-principles consequence the engine design must own:
 
 `Services.UnifiedSearcher` is a PROTOCOL (`ServicesModels/Services.UnifiedSearcher.swift:17`) with `func searchAll(...)`, a DIFFERENT shape than `Search.Database.search`. So "ship the fan-out" (Q6 option B) is not "move a type": it requires (a) the `UnifiedSearcher` protocol as part of the read contract (it arguably belongs in CupertinoDataKit next to `Search.Database`), and (b) a concrete conformer that holds N `Search.Database` instances (one per opened DB) and fuses with RRF. The monorepo builds such a conformer today in its composition root; the engine package would need to ship one so an iOS caller gets unified search without reimplementing fusion. This is the substance behind Q6 and R6: the choice is whether CupertinoDataEngine owns the `UnifiedSearcher` conformer (real unified search for consumers) or leaves it out (each consumer wires N engines + its own fusion).
 
+**DECIDED (Q6): the engine ships a cross-source reader, structured as GoF Composite, defined on CONTRACT types, NOT the existing `Services.UnifiedSearcher`.** First-principles reading of the source settles both the shape and a trap:
+
+- Shape = GoF Composite (1994, p.163): "compose objects into tree structures and let clients treat individual objects and compositions uniformly." The cross-source reader is the composite; each per-DB `Search.Database` is a leaf; a client calls one search surface and the composite fans out to its leaves. This is exactly the leaf/composite uniformity Composite exists for, and it composes cleanly with the §6.6 Bridge (each leaf is a Bridge read abstraction over its own `Search.Connection`).
+- Trap (verified, do NOT reuse the existing type): the in-repo `Services.UnifiedSearcher.searchAll(...)` returns `Services.Formatter.Unified.Input` (a PRESENTATION type) and does not itself rank-fuse; it gathers per-source arrays for the formatter, and carries an 11-arg signature coupled to cupertino's source registry (`availableSources: [String]`, `appleImports`, etc.). Shipping that as the engine's cross-source API would (a) drag `Services.Formatter` presentation types into the contract, violating CupertinoDataKit's data-only purity, and (b) export cupertino's registry coupling to every consumer.
+- Therefore the engine defines a NEW, minimal composite read protocol in CupertinoDataKit, returning contract types only (e.g. `[Search.Result]` keyed/grouped by source, or a small `Search.UnifiedResults` value type), with a constructor that takes the set of `Search.Database` leaves the caller opened. cupertino's existing `Services.UnifiedSearcher` stays in the monorepo as the presentation-coupled wrapper over this composite (it maps the composite's contract output into `Services.Formatter.Unified.Input`). No presentation type crosses into the contract.
+- Scope note: cross-source RRF fusion, where it is desired, is a `Search.Result`-level ranking step the composite can apply on the merged leaf results; it depends only on rank/score already on `Search.Result` (contract type), so it is iOS-portable. Whether v0.1.0 ships fusion or just grouped per-source results is a sub-decision (Q6a), but either way the surface is contract-typed and Composite-shaped.
+
 ---
 
 ## 9. Scalability Analysis
@@ -300,7 +307,8 @@ No runtime behaviour change for existing cupertino users: the CLI / serve paths 
 | Q3 | Read-only open against a bundled DB | RESOLVED by directive (§7.1): add a read-only open mode (`SQLITE_OPEN_READONLY`, no dir-create, no write-pragmas), configurable path, assert-exists |
 | Q4 | Name: CupertinoDataEngine (confirmed by maintainer 2026-05-30) | resolved |
 | Q5 | Type-split: whole actor (i) / split (ii) / promote base (iii)? | RESOLVED: option (ii), the type split via GoF Bridge (§6.6); decoupling is mandatory, so the read abstraction, the write abstraction, and the shared `Search.Connection` implementor vary independently |
-| Q6 | Fan-out scope (§5.1): engine ships per-DB only (A, consumer fuses) vs engine ships `UnifiedSearcher` cross-source fusion (B)? Determines whether iOS gets real unified search or single-source | open, scope-critical |
+| Q6 | Fan-out scope (§5.1): per-DB only vs engine ships cross-source reader? | RESOLVED: engine ships a cross-source reader as GoF Composite over `Search.Database` leaves (§5.1, §7.3), defined on CONTRACT types in CupertinoDataKit, NOT the presentation-coupled `Services.UnifiedSearcher`. cupertino's `Services.UnifiedSearcher` becomes a monorepo wrapper mapping composite output to `Services.Formatter.Unified.Input` |
+| Q6a | Does v0.1.0's composite apply cross-source RRF fusion, or return grouped per-source results? | open, sub-decision; fusion is `Search.Result`-level (contract-typed, iOS-portable) either way |
 
 ### Risks
 
@@ -311,7 +319,8 @@ No runtime behaviour change for existing cupertino users: the CLI / serve paths 
 | R3 | Foundation-tier rewire blast radius across the monorepo | med | med | `@_exported` re-export (zero-edit in #1183) + full build/test + CI guards |
 | R4 | "No iOS-hostile imports" does not equal "iOS-builds" | med | high | real iOS `xcrun swift build` is the acceptance bar |
 | R5 | Tag immutability / ownership | low | med | sole-control rule established + acked by desktop |
-| R6 | iOS ships single-source search (one `Search.Index`) thinking it is complete, because the cross-source fan-out (`UnifiedSearcher`) was left in the monorepo | med | high | resolve Q6; if option (A), document loudly that the consumer must run fusion; prefer (B) so the engine owns fusion (§7.3) |
+| R6 | iOS ships single-source search (one `Search.Index`) thinking it is complete, because the cross-source fan-out was left in the monorepo | med | high | RESOLVED by Q6: engine ships the Composite cross-source reader, so a consumer gets unified search without reimplementing fusion |
+| R8 | Engine's cross-source API leaks presentation types (`Services.Formatter.*`) or registry coupling into the contract by reusing `Services.UnifiedSearcher` as-is | med | med | Q6 forbids reuse: define a new contract-typed composite protocol returning `Search.Result`/`Search.UnifiedResults`; keep `Services.UnifiedSearcher` as a monorepo presentation wrapper |
 | R7 | Engine tag and DB bundle drift on schema version; engine refuses to open the bundle (and cannot migrate, read-only) | med | high | §7.2: read-only mode asserts schema match + skips migration; publish the engine-tag to schema-version mapping; move bundle + engine tag together |
 
 ---
