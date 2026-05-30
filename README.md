@@ -638,7 +638,7 @@ Auxiliary:         MockAIAgent, ReleaseTool, RemoteSync, TestSupport
 
 2. Save:   cupertino save --all
    ↓
-   JSON files → parse + AST extract → SQLite FTS5 index (~/.cupertino/search.db)
+   JSON files → parse + AST extract → per-source SQLite FTS5 indexes (~/.cupertino/apple-documentation.db, hig.db, …)
 
 3. Serve:  cupertino serve
    ↓
@@ -768,8 +768,8 @@ cupertino serve
 # Multiple sources with custom paths
 cupertino fetch --source apple-docs --output-dir ~/docs/apple
 cupertino fetch --source swift-evolution --output-dir ~/docs/evolution
-cupertino save --base-dir ~/docs --search-db ~/docs/search.db
-cupertino serve --docs-dir ~/docs/apple --search-db ~/docs/search.db
+cupertino save --base-dir ~/docs
+cupertino serve --base-dir ~/docs
 ```
 
 `cupertino save --all` emits diagnostic lines at startup so long-running re-index jobs surface their state upfront in any captured log:

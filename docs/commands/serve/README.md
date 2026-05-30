@@ -6,7 +6,8 @@ Start the MCP server
 
 ```bash
 cupertino serve
-cupertino  # equivalent - serve is the default command
+cupertino                                    # equivalent - serve is the default command
+cupertino serve --base-dir /path/to/bundle   # serve indexes from a specific bundle
 ```
 
 ## Description
@@ -55,10 +56,12 @@ Without documentation, the server will display a getting started guide and exit.
 cupertino
 ```
 
-The server will use default database paths:
-- Search DB: `~/.cupertino/search.db`
+The server resolves its databases under the base directory (`~/.cupertino` by default, or `--base-dir <path>`). Post per-source-DB-split (#1036) the apple-docs primary search index is the per-source `apple-documentation.db`, resolved through the source registry — **not** the legacy monolithic `search.db`:
+- Apple-docs search index: `~/.cupertino/apple-documentation.db`
 - Samples DB: `~/.cupertino/apple-sample-code.db`
 - Packages DB: `~/.cupertino/packages.db`
+
+Pass `--base-dir <path>` to serve a bundle from anywhere (a dev snapshot, an alternate corpus) without a `cupertino.config.json` beside the binary. See [`option (--)/base-dir.md`](<option (--)/base-dir.md>).
 
 ## MCP Client Configuration
 
@@ -192,7 +195,7 @@ When the server starts successfully:
 
 ```
 🚀 Cupertino MCP Server starting...
-   Search DB: /Users/username/.cupertino/search.db
+   Search DB: /Users/username/.cupertino/apple-documentation.db
    Samples DB: /Users/username/.cupertino/apple-sample-code.db
    Waiting for client connection...
 ```
@@ -208,7 +211,7 @@ Note: Only existing databases are shown. At least one database (search or sample
 ### Without Search Index
 
 ```
-ℹ️  Search index not found at: /Users/username/.cupertino/search.db
+ℹ️  Search index not found at: /Users/username/.cupertino/apple-documentation.db
    Tools will not be available. Run 'cupertino save' to enable search.
 ```
 
@@ -320,7 +323,7 @@ cupertino fetch --source swift-evolution
 
 **Check if index exists:**
 ```bash
-ls -la ~/.cupertino/search.db
+ls -la ~/.cupertino/apple-documentation.db
 ```
 
 **Solution:** Build the search index:

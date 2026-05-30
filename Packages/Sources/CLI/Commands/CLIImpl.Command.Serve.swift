@@ -20,6 +20,7 @@ import SharedConstants
 // MARK: - Serve Command
 
 extension CLIImpl.Command {
+    // swiftlint:disable:next type_body_length
     struct Serve: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "serve",
@@ -67,6 +68,18 @@ extension CLIImpl.Command {
         )
         var noReap: Bool = false
 
+        @Option(
+            name: .customLong("base-dir"),
+            help: """
+            Serve the indexes from this base directory instead of the configured \
+            default (`baseDirectory` in cupertino.config.json, else ~/.cupertino). \
+            The per-source DBs (apple-documentation.db, packages.db, sample-code, …) \
+            are resolved as siblings under this directory. Lets a host point the MCP \
+            server at a specific bundle without a config file.
+            """
+        )
+        var baseDir: String?
+
         mutating func run() async throws {
             // #280: reap is opt-out via `--no-reap` or the
             // `CUPERTINO_DISABLE_REAPER=1` env var. Codex CLI and any
@@ -95,8 +108,12 @@ extension CLIImpl.Command {
                 await Cupertino.Context.composition.logging.disableConsole()
             }
 
-            // Path-DI composition sub-root (#535).
-            let paths = Shared.Paths.live()
+            // Path-DI composition sub-root (#535). `--base-dir` overrides the
+            // configured/default base directory so a host can aim the MCP
+            // server at a specific bundle without a config file.
+            let paths = baseDir
+                .map { Shared.Paths(baseDirectory: URL(fileURLWithPath: $0).expandingTildeInPath) }
+                ?? Shared.Paths.live()
             let config = Shared.Configuration(
                 crawler: Shared.Configuration.Crawler(
                     outputDirectory: paths.docsDirectory
@@ -107,7 +124,19 @@ extension CLIImpl.Command {
             )
 
             let evolutionURL = paths.swiftEvolutionDirectory
-            let searchDBURL = paths.searchDatabase
+            // Post-#1036 the monolithic `search.db` is no longer built; the
+            // apple-docs primary search index is the per-source DB the apple-docs
+            // provider declares. Resolve it through the production source registry
+            // (NOT a hardcoded filename) so the DB name lives in one place — the
+            // source's `destinationDB` descriptor. Resolving to the legacy
+            // `search.db` (paths.searchDatabase) opened an empty stub on a
+            // per-source bundle, so search / list_frameworks returned zero
+            // results (#1071 family). Falls back to the legacy path if the
+            // apple-docs provider is somehow absent.
+            let searchDBURL = CLIImpl.makeProductionSourceRegistry().allEnabled
+                .first { $0.definition.id == Shared.Constants.SourcePrefix.appleDocs }
+                .map { paths.baseDirectory.appendingPathComponent($0.destinationDB.filename) }
+                ?? paths.searchDatabase
             let sampleDBURL = Sample.Index.databasePath(baseDirectory: paths.baseDirectory)
             let packagesDBURL = paths.packagesDatabase
 
