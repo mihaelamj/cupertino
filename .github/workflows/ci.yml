@@ -151,118 +151,14 @@ jobs:
         timeout-minutes: 2
         run: ./scripts/check-source-manifests.sh
 
-  portability:
-    name: Standalone-portability proof
-    runs-on: macos-15
-    # Empirical companion to `package-audits`. Lifts each strategic
-    # producer out of the monorepo into a tmp directory, generates a
-    # minimal `Package.swift` that lists only its declared deps + their
-    # transitive closure, and runs `swift build` against that subset.
-    # A green run proves the producer is genuinely standalone-portable:
-    # a downstream consumer could copy the same files into a fresh repo
-    # with the printed manifest and it would compile against the
-    # declared deps alone.
-    #
-    # The audit pair under `package-audits` answers "do you import what
-    # you declare?" via source-level inspection; THIS job answers "do
-    # you declare what you actually need?" by physically building the
-    # lifted-out subset. Together they pin the full standalone-package
-    # contract from `mihaela-agents/Rules/swift/gof-di-rules.md` rule 5.
-    #
-    # Producers checked: the SQLite-backed concretes + the orchestration
-    # targets the pluggability arc cared about (epic #893 + #919). New
-    # producers added under those epics should be appended here.
-    #
-    # Runs on macos-15 because the script uses `xcrun swift build`. The
-    # job is gated by `pull_request` + `push to develop/main`; same
-    # cadence as build-and-test.
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: latest-stable
-
-      - name: Show Swift Version
-        run: swift --version
-
-      - name: "Portability: SearchAPI"
-        timeout-minutes: 5
-        run: ./scripts/check-target-portability.sh SearchAPI
-
-      - name: "Portability: SearchSQLite"
-        timeout-minutes: 5
-        run: ./scripts/check-target-portability.sh SearchSQLite
-
-      - name: "Portability: SampleIndex"
-        timeout-minutes: 5
-        run: ./scripts/check-target-portability.sh SampleIndex
-
-      - name: "Portability: SampleIndexSQLite"
-        timeout-minutes: 5
-        run: ./scripts/check-target-portability.sh SampleIndexSQLite
-
-      - name: "Portability: Enrichment"
-        timeout-minutes: 5
-        run: ./scripts/check-target-portability.sh Enrichment
-
-      # #899 sub-PR G deleted SearchStrategies as a target (the 6
-      # strategies moved to their own SPM siblings: AppleDocsSource
-      # (renamed from AppleDocsStrategy in #1008), HIGSource (renamed
-      # from HIGStrategy in #1010), SampleCodeSource (renamed from
-      # SampleCodeStrategy in #1012), AppleArchiveSource (renamed
-      # from AppleArchiveStrategy in #1014), SwiftEvolutionSource
-      # (renamed from SwiftEvolutionStrategy in #1017), SwiftOrgSource
-      # (renamed from SwiftOrgStrategy in #1019), with
-      # SearchStrategyHelpers as the shared seam). #1021 (Phase 1G of
-      # epic #1007) added SwiftBookSource as a new per-source target
-      # (first net-add; view-source pattern, no prior SwiftBookStrategy
-      # to rename). #1023 (Phase 1H of #1007; final per-source
-      # migration) added PackagesSource as the first source whose
-      # destinationDB is .packages (not .search); validates the
-      # destinationDB protocol contract. Portability proofs for all
-      # per-source targets + helpers follow as separate steps.
-      - name: "Portability: AppleDocsSource"
-        timeout-minutes: 5
-        run: ./scripts/check-target-portability.sh AppleDocsSource
-
-      - name: "Portability: AppleArchiveSource"
-        timeout-minutes: 5
-        run: ./scripts/check-target-portability.sh AppleArchiveSource
-
-      - name: "Portability: HIGSource"
-        timeout-minutes: 5
-        run: ./scripts/check-target-portability.sh HIGSource
-
-      - name: "Portability: SampleCodeSource"
-        timeout-minutes: 5
-        run: ./scripts/check-target-portability.sh SampleCodeSource
-
-      - name: "Portability: SwiftEvolutionSource"
-        timeout-minutes: 5
-        run: ./scripts/check-target-portability.sh SwiftEvolutionSource
-
-      - name: "Portability: SwiftOrgSource"
-        timeout-minutes: 5
-        run: ./scripts/check-target-portability.sh SwiftOrgSource
-
-      - name: "Portability: SwiftBookSource"
-        timeout-minutes: 5
-        run: ./scripts/check-target-portability.sh SwiftBookSource
-
-      - name: "Portability: PackagesSource"
-        timeout-minutes: 5
-        run: ./scripts/check-target-portability.sh PackagesSource
-
-      - name: "Portability: SearchStrategyHelpers"
-        timeout-minutes: 5
-        run: ./scripts/check-target-portability.sh SearchStrategyHelpers
-
-      - name: "Portability: AppleConstraintsPass"
-        timeout-minutes: 5
-        run: ./scripts/check-target-portability.sh AppleConstraintsPass
+  # The `Standalone-portability proof` job was moved to its own manual-only
+  # workflow (`.github/workflows/portability.yml`, `workflow_dispatch`). It
+  # builds ~15 lifted targets on macos-15 (10x billing) and gave no signal
+  # on the typical PR that does not touch a package boundary, so it is no
+  # longer part of the per-PR gate. Trigger it from the Actions tab when a
+  # change touches package boundaries, or run `scripts/check-target-portability.sh`
+  # locally. The `package-audits` job below still runs the cheap source-level
+  # import audits on every PR.
 
   query-batteries-smoke:
     name: Query batteries smoke
