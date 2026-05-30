@@ -128,20 +128,26 @@ extension Release.Command {
                 Release.Console.warning("\(filename): missing (continuing because --allow-missing was passed)")
             }
 
-            // #236: checkpoint-truncate each DB before bundling so
-            // any pages still in a `.db-wal` sidecar are folded into
-            // the main file. Without this step a release zip would
-            // ship a `.db` that's missing the most recent index
-            // pages, and `cupertino setup` users would silently
-            // search a stale corpus.
-            Release.Console.info("\n💾 Checkpoint-truncating WAL sidecars before bundle...")
+            // #236 + #1192: prepare each DB for read-only distribution.
+            // First checkpoint-truncate so any pages still in a `.db-wal`
+            // sidecar are folded into the main file (without this a release
+            // zip could ship a `.db` missing the most recent index pages).
+            // Then convert the DB to rollback (DELETE) journal mode: the
+            // indexer builds DBs in WAL mode, but a WAL DB cannot be opened
+            // read-only without an accompanying `-shm`, so a freshly-extracted
+            // WAL DB (no sidecar) fails every plain `SQLITE_OPEN_READONLY` open
+            // (#1192). Rollback mode needs no `-shm`, so the shipped artifact
+            // opens read-only uniformly. This is a header/mode flip only, the
+            // content (rows, FTS, enrichments) is untouched.
+            Release.Console.info("\n💾 Preparing DBs for read-only distribution (checkpoint + rollback journal)...")
             for entry in present {
                 let outcome = try Release.Publishing.checkpointTruncate(at: entry.url)
+                try Release.Publishing.convertToRollbackJournal(at: entry.url)
                 let detail = outcome.walFileExisted
                     ? "folded \(outcome.framesWritten)/\(outcome.framesTotal) frames"
                     : "no WAL sidecar"
                 let busyNote = outcome.busy ? " ⚠ SQLITE_BUSY (was another process touching the DB?)" : ""
-                Release.Console.substep("✓ \(entry.filename): \(detail)\(busyNote)")
+                Release.Console.substep("✓ \(entry.filename): \(detail)\(busyNote); journal=delete")
             }
 
             // Bundle. The zip name still uses the historical "cupertino-databases-"
