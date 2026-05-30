@@ -123,6 +123,10 @@ let deps: [Package.Dependency] = [
     // External (#1167): the extracted, neutral MCP wire core (the SwiftMCPCore module).
     // URL dep pinned to the SwiftMCPCore v0.1.0 tag (repo renamed from swift-mcp-core; old URL redirects).
     .package(url: "https://github.com/mihaelamj/SwiftMCPCore.git", from: "0.1.0"),
+    // External (#1172): the neutral, transport-injectable MCP client. MockAIAgent
+    // consumes its `Client.MCP` seam over a subprocess channel. Depends on
+    // SwiftMCPCore (resolves the same 0.1.0 pin, one node in the graph).
+    .package(url: "https://github.com/mihaelamj/SwiftMCPClient.git", from: "0.1.0"),
 ]
 
 // -------------------------------------------------------------
@@ -1300,7 +1304,13 @@ let targets: [Target] = {
     let mockAIAgentTarget = Target.executableTarget(
         name: "MockAIAgent",
         dependencies: [
-            "MCPCore",
+            // #1172: drives the neutral, transport-injectable SwiftMCPClient
+            // over a subprocess channel instead of a hand-rolled stdio client.
+            // SwiftMCPClient brings SwiftMCPCore (the wire types) transitively.
+            .product(name: "SwiftMCPClient", package: "SwiftMCPClient"),
+            .product(name: "SwiftMCPClientAPI", package: "SwiftMCPClient"),
+            .product(name: "SwiftMCPSubprocessTransport", package: "SwiftMCPClient"),
+            .product(name: "SwiftMCPTransport", package: "SwiftMCPClient"),
             "SharedConstants",
             "Logging",
         ]

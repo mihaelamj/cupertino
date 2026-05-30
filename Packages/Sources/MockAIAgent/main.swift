@@ -1,11 +1,26 @@
 import Foundation
-import MCPCore
 import SharedConstants
+import SwiftMCPClient
+import SwiftMCPClientAPI
+import SwiftMCPSubprocessTransport
+import SwiftMCPTransport
 
 // MARK: - Mock AI Agent
 
-// A mock AI agent that demonstrates how to send MCP requests to an MCP server
-// This helps visualize the complete MCP request/response cycle with full JSON logging
+// A mock AI agent that demonstrates a full MCP request/response cycle against
+// `cupertino serve` (or any external MCP server).
+//
+// #1172: this used to hand-roll its own stdio `MCPClient` actor (process
+// management + JSON-RPC framing + request/response correlation). It now drives
+// the neutral, transport-injectable `SwiftMCPClient` over a
+// `Transport.Subprocess` channel: the client owns the `initialize` handshake
+// (including the `notifications/initialized` lifecycle notification a
+// spec-compliant `cupertino serve` requires before it answers anything), the
+// subprocess lifecycle, framing, and request correlation. The agent is reduced
+// to the demo script + presentation. Adopting the `Client.MCP` seam means the
+// demo prints the server's extracted payloads (tool list, server info, search
+// + resource text) rather than raw wire JSON; the wire detail lives inside the
+// shared client now.
 
 @main
 struct MockAIAgent {
@@ -14,27 +29,24 @@ struct MockAIAgent {
         setbuf(stdout, nil)
         setbuf(stderr, nil)
 
-        // Handle --version flag
         let rawArgs = CommandLine.arguments
+
+        // Handle --version flag
         if rawArgs.contains("--version") || rawArgs.contains("-v") {
             print(Shared.Constants.App.version)
             return
         }
 
-        // Parse --quiet (presentation/demo mode): suppress raw JSON dumps,
-        // server stderr echoes, and the base64 icon blob. Pretty-printed
-        // SERVER → CLIENT response sections are kept so the demo still
-        // tells a story without burying the audience in protocol noise.
+        // Parse --quiet (presentation/demo mode): suppress the verbose
+        // per-payload dumps, keeping the high-level "SERVER → CLIENT" summary
+        // lines so the demo still tells a story.
         let quiet = rawArgs.contains("--quiet") || rawArgs.contains("-q")
 
         // Parse --response-timeout <seconds>. Default 30s preserved for
-        // back-compat; CI smoke runs that hit a cold-start MCP server
-        // (search.db open ~10-15s + Composition bootstrap on slower
-        // machines) pass `--response-timeout 60` to absorb the worst
-        // observed cold start without flaking. Matches the 60s default
-        // adopted in the Phase 2 search-quality harness for the same
-        // reason. See memory: cupertino-mcp-cold-start-ci-timeout.md.
-        var responseTimeoutSeconds = MCPClient.defaultResponseTimeoutSeconds
+        // back-compat; CI smoke runs that hit a cold-start MCP server pass
+        // `--response-timeout 60` to absorb the worst observed cold start.
+        // See memory: cupertino-mcp-cold-start-ci-timeout.md.
+        var responseTimeoutSeconds = 30
         if let flagIdx = rawArgs.firstIndex(of: "--response-timeout"),
            flagIdx + 1 < rawArgs.count,
            let parsed = Int(rawArgs[flagIdx + 1]),
@@ -54,799 +66,180 @@ struct MockAIAgent {
         print("=".repeating(80))
         print()
 
-        // Parse command line arguments
-        var serverCommand: [String]?
-
+        // Resolve the server command. External-server mode:
+        //   mock-ai-agent npx -y @modelcontextprotocol/server-memory
+        let command: String
+        let arguments: [String]
         if args.count > 1 {
-            // External server mode: mock-ai-agent npx -y @modelcontextprotocol/server-memory
             let cmd = Array(args.dropFirst())
-            serverCommand = cmd
+            command = cmd[0]
+            arguments = Array(cmd.dropFirst())
             print("📡 Using external MCP server:")
             print("   Command: \(cmd.joined(separator: " "))")
             print()
+        } else {
+            command = findCupertinoExecutable()
+            arguments = ["serve"]
+            print("📡 Using cupertino server: \(command) \(arguments.joined(separator: " "))")
+            print()
         }
 
+        let demo = Demo(quiet: quiet)
         do {
-            let agent = MCPClient(
-                externalServerCommand: serverCommand,
-                quiet: quiet,
-                responseTimeoutSeconds: responseTimeoutSeconds
+            let transport = Transport.Subprocess(command: command, arguments: arguments)
+            let client = MCPClient(
+                transport: transport,
+                clientName: "Mock AI Agent",
+                clientVersion: "1.0.0",
+                requestTimeout: .seconds(responseTimeoutSeconds)
             )
-            try await agent.run()
+            try await demo.run(client: client)
         } catch {
             print("❌ Error: \(error)")
             throw error
         }
     }
-}
 
-// MARK: - MCP Client
-
-// #673 Phase D iter-5: 476-line actor — process management +
-// JSON-RPC framing + request/response correlation + demo flows in one
-// owner; splitting fragments the test-session state machine.
-// swiftlint:disable:next type_body_length
-private actor MCPClient {
-    private var process: Process?
-    private var stdin: FileHandle?
-    private var stdout: FileHandle?
-    private var messageID = 0
-    private let externalServerCommand: [String]?
-    private let quiet: Bool
-    private var pendingResponses: [CheckedContinuation<String, Error>] = []
-    /// Lines that arrived from the server before any `readLine` caller
-    /// could register a continuation. The race fired on warm requests
-    /// (e.g. `tools/list` after `initialize`'s cold-start) where the
-    /// server's response was already in the pipe by the time
-    /// `sendRequest` got past `stdin.write` and into the continuation
-    /// closure. Pre-fix, those lines were dropped with "Received
-    /// unexpected line"; post-fix, `readLine` consumes them first.
-    private var bufferedLines: [String] = []
-    private let responseTimeoutSeconds: Int
-
-    init(
-        externalServerCommand: [String]? = nil,
-        quiet: Bool = false,
-        responseTimeoutSeconds: Int = MCPClient.defaultResponseTimeoutSeconds
-    ) {
-        self.externalServerCommand = externalServerCommand
-        self.quiet = quiet
-        self.responseTimeoutSeconds = responseTimeoutSeconds
-    }
-
-    func run() async throws {
-        // Start the MCP server
-        try startMCPServer()
-
-        // Give server time to start. #632 — bumped from 1s to 3s so the
-        // cold-start path (SPM-relinked binary + DB open + Composition
-        // bootstrap) finishes before we start sending requests. A faster
-        // start still wins because every subsequent request races against
-        // its own per-request timeout (`readLine.timeoutSeconds`); this
-        // pre-roll only avoids the noisy "received unexpected line"
-        // diagnostic that fires when the server warms up mid-initialize.
-        try await Task.sleep(for: .seconds(3))
-
-        print("📡 Starting MCP Communication...")
-        print("=".repeating(80))
-        print()
-
-        // Initialize the connection
-        try await initialize()
-
-        // Per MCP spec lifecycle (2025-11-25), the client MUST send a
-        // `notifications/initialized` notification after a successful
-        // `initialize` response before issuing any other requests.
-        // A spec-compliant server (cupertino's `serve`) blocks further
-        // request dispatch until this notification arrives, which is
-        // why `tools/list` previously hung forever post-initialize.
-        try await sendInitializedNotification()
-
-        // List available tools
-        try await listTools()
-
-        // Call unified search tool
-        try await callSearchTool(query: "SwiftUI")
-
-        // List available resources, then pick one at random and read it.
-        // Pre-#582 + #583, this used a hardcoded URI
-        // (`apple-docs://swiftui/documentation_swiftui_view`) that never
-        // matched the shipped bundle (DB has pre-#293 `.lastPathComponent`
-        // URIs while `resources/list` produced post-#293 full-path-
-        // encoded URIs — see #582 for the symmetry fix). Now we discover
-        // a real URI by listing first and picking one at random, so the
-        // demo flow exercises whichever URIs the server actually returns
-        // for the running bundle.
-        let listed = try await listResources()
-        let testURI = try pickRandomURI(from: listed)
-        try await readResource(uri: testURI)
-
-        // Shutdown
-        try await shutdown()
-
-        print()
-        print("=".repeating(80))
-        print("✅ Mock AI Agent Complete")
-
-        // Keep process alive briefly to see final output
-        try await Task.sleep(for: .seconds(1))
-
-        // Cleanup
-        cleanup()
-    }
-
-    // MARK: - Server Management
-
-    private func startMCPServer() throws {
-        print("🚀 Starting MCP Server Process...")
-        print()
-
-        process = Process()
-
-        if let externalCommand = externalServerCommand {
-            // Use external server command
-            let executable = externalCommand[0]
-            let arguments = Array(externalCommand.dropFirst())
-
-            process?.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            process?.arguments = [executable] + arguments
-
-            print("   Using external server: \(executable) \(arguments.joined(separator: " "))")
-        } else {
-            // Get the path to cupertino executable
-            let serverPath = findCupertinoExecutable()
-            process?.executableURL = URL(fileURLWithPath: serverPath)
-            process?.arguments = ["serve"]
-            print("   Using cupertino server: \(serverPath)")
-        }
-        print()
-
-        // Set up pipes for stdio
-        let stdinPipe = Pipe()
-        let stdoutPipe = Pipe()
-        let stderrPipe = Pipe()
-
-        process?.standardInput = stdinPipe
-        process?.standardOutput = stdoutPipe
-        process?.standardError = stderrPipe
-
-        stdin = stdinPipe.fileHandleForWriting
-        stdout = stdoutPipe.fileHandleForReading
-
-        // Stream stdout as ordered, complete lines via bytes.lines. The
-        // previous readabilityHandler approach spawned a fresh Task per
-        // chunk, so chunks could be processed on the actor out of order
-        // when the response straddled the pipe buffer (~32 KB). bytes.lines
-        // delivers lines in arrival order with internal buffering that
-        // handles UTF-8 boundaries correctly.
-        Task { [weak self] in
-            do {
-                for try await line in stdoutPipe.fileHandleForReading.bytes.lines {
-                    await self?.handleLine(line)
-                }
-            } catch {
-                // pipe closed or read failed — server has exited.
-            }
-        }
-
-        // Log stderr from server (suppressed in --quiet demo mode)
-        let echoStderr = !quiet
-        Task {
-            for try await line in stderrPipe.fileHandleForReading.bytes.lines {
-                if echoStderr {
-                    print("  [SERVER STDERR] \(line)")
-                }
-            }
-        }
-
-        try process?.run()
-
-        print("✅ MCP Server Started (PID: \(process?.processIdentifier ?? 0))")
-        print()
-    }
-
-    private func findCupertinoExecutable() -> String {
-        // ONLY use local build - never fall back to installed version
-        // This ensures we're testing the current code, not an installed version
+    /// Resolve the local cupertino binary as an ABSOLUTE path. Only the local
+    /// build is used (never an installed version), so the agent always exercises
+    /// the current code. `Transport.Subprocess` runs a non-`/` command through
+    /// `/usr/bin/env` (a PATH lookup), which would not find a relative build
+    /// path, hence the absolutisation.
+    private static func findCupertinoExecutable() -> String {
+        let cwd = FileManager.default.currentDirectoryPath
         let buildLocations = [
-            ".build/debug/cupertino",
-            ".build/release/cupertino",
+            "\(cwd)/.build/debug/cupertino",
+            "\(cwd)/.build/release/cupertino",
         ]
-
         for location in buildLocations where FileManager.default.fileExists(atPath: location) {
             return location
         }
-
-        // Fail with clear error if not built
         print("❌ ERROR: No local build found!")
         print("   MockAIAgent requires a local build to test current code.")
         print("   Run: swift build")
         print("   Then: swift run mock-ai-agent")
         print()
-        print("   (Not using /usr/local/bin/cupertino to avoid testing installed version)")
+        print("   (Not using an installed cupertino to avoid testing the wrong binary)")
         fatalError("Build cupertino first: swift build")
     }
+}
 
-    private func cleanup() {
+// MARK: - Demo
+
+/// The presentation script. Owns no protocol machinery: it drives the injected
+/// `Client.MCP` seam and renders what the server returns.
+private struct Demo {
+    let quiet: Bool
+
+    func run(client: some Client.MCP) async throws {
+        print("📡 Starting MCP Communication...")
+        print("=".repeating(80))
         print()
-        print("🧹 Cleaning up...")
-        stdin?.closeFile()
-        stdout?.closeFile()
-        process?.terminate()
-        process?.waitUntilExit()
-        print("✅ Cleanup complete")
-    }
 
-    // MARK: - MCP Protocol Methods
-
-    private func initialize() async throws {
-        print("📨 CLIENT → SERVER: initialize")
+        // `connect()` starts the transport (spawns the process + wires pipes for
+        // the subprocess channel), performs the `initialize` handshake, AND sends
+        // the `notifications/initialized` lifecycle notification a spec-compliant
+        // `cupertino serve` requires before it dispatches any further request.
+        print("📨 CLIENT → SERVER: connect (initialize + notifications/initialized)")
         print("-".repeating(80))
+        try await client.connect()
+        print("✅ Connected")
 
-        // Try each supported version, starting with newest
-        var lastError: Error?
-        for version in MCPProtocolVersionsSupported {
-            let request = MCP.Core.Protocols.Request(
-                jsonrpc: "2.0",
-                id: .int(nextMessageID()),
-                method: "initialize",
-                params: MCP.Core.Protocols.InitializeParams(
-                    protocolVersion: version,
-                    capabilities: MCP.Core.Protocols.ClientCapabilities(
-                        experimental: nil,
-                        sampling: nil,
-                        roots: MCP.Core.Protocols.RootsCapability(listChanged: true)
-                    ),
-                    clientInfo: MCP.Core.Protocols.Implementation(name: "Mock AI Agent", version: "1.0.0")
-                )
-            )
-
-            do {
-                let response: MCP.Core.Protocols.InitializeResult = try await sendRequest(request) as MCP.Core.Protocols.InitializeResult
-
-                print()
-                print("📬 SERVER → CLIENT: initialize response")
-                print("-".repeating(80))
-                logJSON(response)
-                print()
-
-                print("✅ Initialized with server: \(response.serverInfo.name) v\(response.serverInfo.version)")
-                print("   Protocol Version: \(response.protocolVersion)")
-                print("   Capabilities:")
-                if let tools = response.capabilities.tools {
-                    print("     - Tools: \(tools.listChanged ?? false ? "✓" : "✗")")
-                }
-                if let resources = response.capabilities.resources {
-                    let listChanged = resources.listChanged ?? false ? "✓" : "✗"
-                    let subscribe = resources.subscribe ?? false ? "✓" : "✗"
-                    print("     - Resources: \(listChanged) (subscribe: \(subscribe))")
-                }
-                print()
-                return
-            } catch let error as MCPClientError {
-                lastError = error
-                // Retry with older version if protocol/version error
-                if case let .serverError(message) = error,
-                   message.lowercased().contains("protocol") || message.lowercased().contains("version") {
-                    print("⚠️  Version \(version) not supported, trying fallback...")
-                    continue
-                }
-                throw error
+        if let info = await client.serverInfo() {
+            print("   Server: \(info.name) v\(info.version)")
+            print("   Protocol Version: \(info.protocolVersion)")
+            if let instructions = info.instructions, !instructions.isEmpty {
+                print("   Instructions: \(instructions)")
+            }
+            if !quiet {
+                print("   Capabilities: \(info.capabilitiesJSON)")
             }
         }
+        print()
 
-        throw lastError ?? MCPClientError.serverError("No supported protocol version")
+        try await listTools(client: client)
+        try await callSearch(client: client, query: "SwiftUI")
+        let resources = try await listResources(client: client)
+        try await readRandomResource(client: client, from: resources)
+
+        print("📨 CLIENT → SERVER: disconnect")
+        print("-".repeating(80))
+        await client.disconnect()
+        print("✅ Disconnected")
+
+        print()
+        print("=".repeating(80))
+        print("✅ Mock AI Agent Complete")
     }
 
-    private func listTools() async throws {
+    private func listTools(client: some Client.MCP) async throws {
         print("📨 CLIENT → SERVER: tools/list")
         print("-".repeating(80))
-
-        let request = MCP.Core.Protocols.Request(
-            jsonrpc: "2.0",
-            id: .int(nextMessageID()),
-            method: "tools/list",
-            params: MCP.Core.Protocols.EmptyParams()
-        )
-
-        let response: MCP.Core.Protocols.ListToolsResult = try await sendRequest(request)
-
-        print()
-        print("📬 SERVER → CLIENT: tools/list response")
-        print("-".repeating(80))
-        logJSON(response)
-        print()
-
-        print("✅ Found \(response.tools.count) tools:")
-        for tool in response.tools {
+        let tools = try await client.listTools()
+        print("✅ Found \(tools.count) tools:")
+        for tool in tools {
             print("   - \(tool.name): \(tool.description ?? "(no description)")")
-            let schema = tool.inputSchema
-            print("     Input schema: \(schema.type)")
-            if let properties = schema.properties {
-                print("     Properties: \(properties.keys.joined(separator: ", "))")
+            if !quiet {
+                print("     Input schema: \(tool.inputSchemaJSON)")
             }
         }
         print()
     }
 
-    private func callSearchNodesTool(query: String) async throws {
-        print("📨 CLIENT → SERVER: tools/call (search_nodes)")
+    private func callSearch(client: some Client.MCP, query: String) async throws {
+        let toolName = Shared.Constants.Search.toolSearch
+        print("📨 CLIENT → SERVER: tools/call (\(toolName))")
         print("-".repeating(80))
         print("   Query: \"\(query)\"")
         print()
-
-        let arguments: [String: MCP.Core.Protocols.AnyCodable] = [
-            "query": MCP.Core.Protocols.AnyCodable(query),
-        ]
-
-        let request = MCP.Core.Protocols.Request(
-            jsonrpc: "2.0",
-            id: .int(nextMessageID()),
-            method: "tools/call",
-            params: MCP.Core.Protocols.CallToolParams(name: "search_nodes", arguments: arguments)
+        let result = try await client.callTool(
+            toolName,
+            arguments: [
+                "query": .string(query),
+                "limit": .int(5),
+            ]
         )
-
-        logRequestJSON(request)
-
-        let response: MCP.Core.Protocols.CallToolResult = try await sendRequest(request)
-
-        print()
-        print("📬 SERVER → CLIENT: tools/call response")
+        print("📬 SERVER → CLIENT: tools/call result")
         print("-".repeating(80))
-        logJSON(response)
-        print()
-
-        print("✅ Tool execution complete")
-        if response.isError ?? false {
-            print("   ⚠️  Tool reported an error")
-        }
-        print("   Content items: \(response.content.count)")
-        for (index, content) in response.content.enumerated() {
-            switch content {
-            case .text(let textContent):
-                print("   [\(index + 1)] Type: text")
-                let preview = String(textContent.text.prefix(100))
-                print("       Preview: \(preview)\(textContent.text.count > 100 ? "..." : "")")
-            case .image(let imageContent):
-                print("   [\(index + 1)] Type: image")
-                print("       MIME: \(imageContent.mimeType)")
-            case .resource(let resourceContent):
-                print("   [\(index + 1)] Type: resource")
-                print("       Resource: \(resourceContent.resource)")
-            }
-        }
+        let preview = String(result.prefix(quiet ? 200 : 1000))
+        print(preview + (result.count > preview.count ? "..." : ""))
         print()
     }
 
-    private func callSearchTool(query: String) async throws {
-        // Local alias kept narrow — the prior `typealias MCP = Shared.Constants.Search`
-        // shadowed the MCP module inside this function and broke `MCP.Core.Protocols.*`
-        // references.
-        typealias SearchConst = Shared.Constants.Search
-        print("📨 CLIENT → SERVER: tools/call (\(SearchConst.toolSearch))")
-        print("-".repeating(80))
-        print("   Query: \"\(query)\"")
-        print()
-
-        let arguments: [String: MCP.Core.Protocols.AnyCodable] = [
-            "query": MCP.Core.Protocols.AnyCodable(query),
-            "limit": MCP.Core.Protocols.AnyCodable(5),
-        ]
-
-        let request = MCP.Core.Protocols.Request(
-            jsonrpc: "2.0",
-            id: .int(nextMessageID()),
-            method: "tools/call",
-            params: MCP.Core.Protocols.CallToolParams(name: SearchConst.toolSearch, arguments: arguments)
-        )
-
-        logRequestJSON(request)
-
-        let response: MCP.Core.Protocols.CallToolResult = try await sendRequest(request)
-
-        print()
-        print("📬 SERVER → CLIENT: tools/call response")
-        print("-".repeating(80))
-        logJSON(response)
-        print()
-
-        print("✅ Tool execution complete")
-        if response.isError ?? false {
-            print("   ⚠️  Tool reported an error")
-        }
-        print("   Content items: \(response.content.count)")
-        for (index, content) in response.content.enumerated() {
-            switch content {
-            case .text(let textContent):
-                print("   [\(index + 1)] Type: text")
-                let preview = String(textContent.text.prefix(100))
-                print("       Preview: \(preview)\(textContent.text.count > 100 ? "..." : "")")
-            case .image(let imageContent):
-                print("   [\(index + 1)] Type: image")
-                print("       MIME: \(imageContent.mimeType)")
-            case .resource(let resourceContent):
-                print("   [\(index + 1)] Type: resource")
-                print("       Resource: \(resourceContent.resource)")
-            }
-        }
-        print()
-    }
-
-    private func listResources() async throws -> MCP.Core.Protocols.ListResourcesResult {
+    private func listResources(client: some Client.MCP) async throws -> [Client.ResourceInfo] {
         print("📨 CLIENT → SERVER: resources/list")
         print("-".repeating(80))
-
-        let request = MCP.Core.Protocols.Request(
-            jsonrpc: "2.0",
-            id: .int(nextMessageID()),
-            method: "resources/list",
-            params: MCP.Core.Protocols.EmptyParams()
-        )
-
-        let response: MCP.Core.Protocols.ListResourcesResult = try await sendRequest(request)
-
-        print()
-        print("📬 SERVER → CLIENT: resources/list response")
-        print("-".repeating(80))
-        logJSON(response)
-        print()
-
-        print("✅ Found \(response.resources.count) resources:")
-        for resource in response.resources {
+        let resources = try await client.listResources()
+        print("✅ Found \(resources.count) resources:")
+        for resource in resources.prefix(quiet ? 5 : resources.count) {
             print("   - \(resource.uri): \(resource.name)")
-            if let description = resource.description {
-                print("     \(description)")
-            }
-            if let mimeType = resource.mimeType {
+            if !quiet, let mimeType = resource.mimeType {
                 print("     MIME: \(mimeType)")
             }
         }
         print()
-        return response
+        return resources
     }
 
-    /// Pick a URI at random from a `resources/list` response. Used by the
-    /// demo flow's `resources/read` step so the read exercises a real
-    /// URI in whichever bundle the server is running against, rather
-    /// than a hardcoded constant that drifts every time the URI scheme
-    /// or bundle re-publishes (#583 retrospective). Throws if the list
-    /// was empty — that's the legitimate failure mode the agent surfaces
-    /// when no docs are indexed.
-    private func pickRandomURI(from listing: MCP.Core.Protocols.ListResourcesResult) throws -> String {
-        guard let chosen = listing.resources.randomElement() else {
-            print("⚠️  resources/list returned zero entries — nothing to read.")
-            throw RuntimeError.noResourcesAvailable
-        }
-        print("🎲 Randomly chose for resources/read: \(chosen.uri)")
-        return chosen.uri
-    }
-
-    enum RuntimeError: Error, CustomStringConvertible {
-        case noResourcesAvailable
-        var description: String {
-            switch self {
-            case .noResourcesAvailable:
-                return "resources/list returned no entries — cannot run resources/read step."
-            }
-        }
-    }
-
-    private func readResource(uri: String) async throws {
-        print("📨 CLIENT → SERVER: resources/read")
-        print("-".repeating(80))
-        print("   URI: \(uri)")
-        print()
-
-        let request = MCP.Core.Protocols.Request(
-            jsonrpc: "2.0",
-            id: .int(nextMessageID()),
-            method: "resources/read",
-            params: MCP.Core.Protocols.ReadResourceParams(uri: uri)
-        )
-
-        logRequestJSON(request)
-
-        let response: MCP.Core.Protocols.ReadResourceResult = try await sendRequest(request)
-
-        print()
-        print("📬 SERVER → CLIENT: resources/read response")
-        print("-".repeating(80))
-        logJSON(response)
-        print()
-
-        print("✅ Resource read complete")
-        print("   Content items: \(response.contents.count)")
-        for (index, content) in response.contents.enumerated() {
-            switch content {
-            case .text(let textContents):
-                print("   [\(index + 1)] Text Resource")
-                print("       URI: \(textContents.uri)")
-                print("       MIME: \(textContents.mimeType ?? "unknown")")
-                let preview = String(textContents.text.prefix(100))
-                print("       Preview: \(preview)\(textContents.text.count > 100 ? "..." : "")")
-            case .blob(let blobContents):
-                print("   [\(index + 1)] Blob Resource")
-                print("       URI: \(blobContents.uri)")
-                print("       MIME: \(blobContents.mimeType ?? "unknown")")
-                print("       Size: \(blobContents.blob.count) bytes (base64)")
-            }
-        }
-        print()
-    }
-
-    private func sendInitializedNotification() async throws {
-        print("📨 CLIENT → SERVER: notifications/initialized")
-        print("-".repeating(80))
-        let notification = MCP.Core.Protocols.JSONRPCNotification(
-            method: "notifications/initialized",
-            params: nil
-        )
-        try sendNotification(notification)
-        print("✅ Initialized notification sent")
-        print()
-    }
-
-    private func shutdown() async throws {
-        print("📨 CLIENT → SERVER: shutdown (notification)")
-        print("-".repeating(80))
-
-        let notification = MCP.Core.Protocols.JSONRPCNotification(
-            method: "notifications/cancelled",
-            params: nil
-        )
-
-        try sendNotification(notification)
-        print("✅ Shutdown notification sent")
-        print()
-    }
-
-    // MARK: - Low-level Communication
-
-    private func sendRequest<R: Decodable>(_ request: MCP.Core.Protocols.Request<some Codable & Sendable>) async throws -> R {
-        guard let stdin, let stdout else {
-            throw MCPClientError.notConnected
-        }
-
-        // 1) Encode *compact* JSON for the wire (no prettyPrinted!)
-        let wireEncoder = JSONEncoder()
-        wireEncoder.outputFormatting = [.sortedKeys] // deterministic order, but NOT .prettyPrinted
-        let wireData = try wireEncoder.encode(request)
-
-        guard var wireString = String(data: wireData, encoding: .utf8) else {
-            throw MCPClientError.encodingFailed
-        }
-
-        // MCP stdio: messages are newline-delimited, MUST NOT contain embedded newlines
-        if wireString.contains("\n") {
-            wireString = wireString.replacingOccurrences(of: "\n", with: "")
-        }
-
-        let message = wireString + "\n"
-        let messageData = Data(message.utf8)
-
-        // 2) Log a *pretty* version separately, so logs stay nice.
-        //    In --quiet demo mode we skip the request dump; the dedicated
-        //    "📨 CLIENT → SERVER: <method>" line above already names the call.
-        if !quiet {
+    private func readRandomResource(client: some Client.MCP, from resources: [Client.ResourceInfo]) async throws {
+        // Pick a real URI from whatever the server returned, rather than a
+        // hardcoded constant that drifts when the bundle re-publishes (#583).
+        guard let chosen = resources.randomElement() else {
+            print("⚠️  resources/list returned zero entries — skipping resources/read.")
             print()
-            print("📤 Sending JSON:")
-            logJSON(request)
-            print()
-        }
-
-        // 3) Write the complete message. `write(contentsOf:)` is the
-        // throwing variant; it surfaces EPIPE-class errors instead of
-        // silently dropping them like the legacy `write(_:)` overload.
-        try stdin.write(contentsOf: messageData)
-        // 3a) Yield so the runtime can interleave the stdout reader Task
-        // and the server's stdin reader actor. Without this, consecutive
-        // sendRequest calls write back-to-back on the actor's serial
-        // executor and the kernel pipe doesn't drain between them; the
-        // server only sees the first message of a back-to-back pair.
-        // Observed empirically against `cupertino serve` (issue #1004).
-        await Task.yield()
-
-        // 4) Wait for one newline-delimited response
-        let responseLine = try await readLine(from: stdout, timeoutSeconds: responseTimeoutSeconds)
-
-        // Log the raw JSON response (skipped in demo mode — the dedicated
-        // pretty "📬 SERVER → CLIENT: <method> response" block follows).
-        if !quiet {
-            print()
-            print("📥 Received JSON:")
-            print(responseLine)
-            print()
-        }
-
-        // Decode response
-        guard let responseData = responseLine.data(using: String.Encoding.utf8) else {
-            throw MCPClientError.decodingFailed
-        }
-
-        // Try to decode as error first
-        if let errorResponse = try? JSONDecoder().decode(MCP.Core.Protocols.JSONRPCError.self, from: responseData) {
-            throw MCPClientError.serverError(errorResponse.error.message)
-        }
-
-        // Decode as success response
-        let decoder = JSONDecoder()
-        let response = try decoder.decode(MCP.Core.Protocols.JSONRPCResponse.self, from: responseData)
-
-        // Convert result dictionary to our specific type
-        let resultData = try JSONEncoder().encode(response.result)
-        return try JSONDecoder().decode(R.self, from: resultData)
-    }
-
-    private func sendNotification(_ notification: MCP.Core.Protocols.JSONRPCNotification) throws {
-        guard let stdin else {
-            throw MCPClientError.notConnected
-        }
-
-        // 1) Encode compact JSON for the wire (no prettyPrinted!)
-        let wireEncoder = JSONEncoder()
-        wireEncoder.outputFormatting = [.sortedKeys] // no .prettyPrinted
-        let wireData = try wireEncoder.encode(notification)
-
-        guard var wireString = String(data: wireData, encoding: .utf8) else {
-            throw MCPClientError.encodingFailed
-        }
-
-        // MCP stdio: messages are newline-delimited, MUST NOT contain embedded newlines
-        if wireString.contains("\n") {
-            wireString = wireString.replacingOccurrences(of: "\n", with: "")
-        }
-
-        let message = wireString + "\n"
-        let messageData = Data(message.utf8)
-
-        // 2) Log pretty version for display (skipped in --quiet demo mode)
-        if !quiet {
-            print()
-            print("📤 Sending Notification JSON:")
-            logJSON(notification)
-            print()
-        }
-
-        // 3) Write the wire message
-        try stdin.write(contentsOf: messageData)
-    }
-
-    private func handleLine(_ line: String) {
-        if line.trimmingCharacters(in: .whitespaces).isEmpty {
             return
         }
-
-        if !pendingResponses.isEmpty {
-            let continuation = pendingResponses.removeFirst()
-            continuation.resume(returning: line)
-        } else {
-            // Race: response arrived before sendRequest could register a
-            // continuation. Buffer it so the next readLine call consumes it
-            // instead of waiting forever.
-            bufferedLines.append(line)
-        }
-    }
-
-    /// #632 — per-request deadline so a stuck cold-start doesn't hang the
-    /// agent forever. 30s covers the worst observed clean-rebuild cold-start
-    /// (~10-15s for SPM-relinked binary + DB open + Composition bootstrap),
-    /// with margin for slower machines. Tuneable via the parameter for tests.
-    static let defaultResponseTimeoutSeconds = 30
-
-    private func readLine(
-        from fileHandle: FileHandle,
-        timeoutSeconds: Int = MCPClient.defaultResponseTimeoutSeconds
-    ) async throws -> String {
-        // First-cut: if a line already arrived while sendRequest was still
-        // mid-write, consume it before waiting. Closes the race that
-        // dropped `tools/list` responses pre-fix.
-        if !bufferedLines.isEmpty {
-            return bufferedLines.removeFirst()
-        }
-
-        // Spawn a sibling task that fires `timeoutSeconds` later and dequeues
-        // the parked continuation with a timeout error if it's still there.
-        // Both tasks run on this actor, so the array mutation is serialised
-        // between handleLine (response arrived) and dequeueOldestAsTimeout
-        // (timeout fired); exactly one of them will resume the continuation.
-        let timeoutTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(timeoutSeconds))
-            await self?.dequeueOldestAsTimeout(seconds: timeoutSeconds)
-        }
-        defer { timeoutTask.cancel() }
-
-        return try await withCheckedThrowingContinuation { continuation in
-            pendingResponses.append(continuation)
-        }
-    }
-
-    /// #632 — called from the per-request timeout sibling task when the
-    /// deadline fires before `handleLine` consumes the parked continuation.
-    /// Removes the oldest pending continuation and resumes it with
-    /// `responseTimeout`. Idempotent against late responses: if
-    /// `handleLine` already fired (array is empty), this is a no-op.
-    private func dequeueOldestAsTimeout(seconds: Int) {
-        guard !pendingResponses.isEmpty else { return }
-        let continuation = pendingResponses.removeFirst()
-        continuation.resume(throwing: MCPClientError.responseTimeout(seconds: seconds))
-    }
-
-    private func nextMessageID() -> Int {
-        messageID += 1
-        return messageID
-    }
-
-    // MARK: - Logging Helpers
-
-    private func logJSON(_ value: some Encodable) {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        if let jsonData = try? encoder.encode(value),
-           let jsonString = String(data: jsonData, encoding: String.Encoding.utf8) {
-            print(quiet ? Self.truncateBase64Blobs(jsonString) : jsonString)
-        }
-    }
-
-    /// Replace any string longer than 200 chars that looks like a `data:` base64
-    /// blob (or just a long base64 run) with a short placeholder, so the icon
-    /// PNG embedded in `serverInfo.icons[].src` doesn't dump a multi-line
-    /// base64 wall into the demo output.
-    private static func truncateBase64Blobs(_ json: String) -> String {
-        let pattern = #""(data:[^"]{60,}|[A-Za-z0-9+/=]{200,})""#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return json }
-        let range = NSRange(json.startIndex..., in: json)
-        return regex.stringByReplacingMatches(
-            in: json,
-            range: range,
-            withTemplate: #""<…base64 truncated for demo…>""#
-        )
-    }
-
-    private func logRequestJSON(_ request: MCP.Core.Protocols.Request<some Codable & Sendable>) {
+        print("🎲 Randomly chose for resources/read: \(chosen.uri)")
+        print("📨 CLIENT → SERVER: resources/read")
+        print("-".repeating(80))
+        print("   URI: \(chosen.uri)")
         print()
-        print("📤 Request JSON:")
-        logJSON(request)
-    }
-}
-
-// MARK: - Helper Types
-
-// EmptyParams moved to MCP.Core.Protocols.EmptyParams in MCPCore (#319).
-
-// MARK: - Errors
-
-private enum MCPClientError: Error, CustomStringConvertible {
-    case notConnected
-    case encodingFailed
-    case decodingFailed
-    case noResponse
-    case noResult
-    case serverError(String)
-    /// #632 — no MCP response received within the configured deadline.
-    /// Carries the timeout that fired so logs surface "30s deadline"
-    /// instead of a silent forever-wait.
-    case responseTimeout(seconds: Int)
-
-    var description: String {
-        switch self {
-        case .notConnected:
-            return "Not connected to MCP server"
-        case .encodingFailed:
-            return "Failed to encode request"
-        case .decodingFailed:
-            return "Failed to decode response"
-        case .noResponse:
-            return "No response from server"
-        case .noResult:
-            return "Response contains no result"
-        case .serverError(let message):
-            return "Server error: \(message)"
-        case .responseTimeout(let seconds):
-            return "MCP server did not respond within \(seconds)s. " +
-                "Cold-start (DB open / Composition bootstrap) may have stalled, " +
-                "or the server crashed before answering. Check the [SERVER STDERR] " +
-                "lines above for clues."
-        }
+        let text = try await client.readResource(chosen.uri)
+        print("📬 SERVER → CLIENT: resources/read result")
+        print("-".repeating(80))
+        let preview = String(text.prefix(quiet ? 200 : 1000))
+        print(preview + (text.count > preview.count ? "..." : ""))
+        print()
     }
 }
 

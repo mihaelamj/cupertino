@@ -1,5 +1,5 @@
 {
-  "originHash" : "288827a911c4c8dbb660aac2845d40149190b3f993edf4453735d9642bfab9a6",
+  "originHash" : "34c7791db1880930da5d6876f1f77b74b5ee6ab72e23939630bb31e7891c4b6f",
   "pins" : [
     {
       "identity" : "swift-argument-parser",
@@ -17,6 +17,15 @@
       "state" : {
         "revision" : "0687f71944021d616d34d922343dcef086855920",
         "version" : "600.0.1"
+      }
+    },
+    {
+      "identity" : "swiftmcpclient",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mihaelamj/SwiftMCPClient.git",
+      "state" : {
+        "revision" : "d049156ded908b5c30abd771c7e92cbd6f461a11",
+        "version" : "0.1.0"
       }
     },
     {
