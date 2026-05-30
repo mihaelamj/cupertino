@@ -3,14 +3,23 @@ import Foundation
 // MARK: - URL Extension for Tilde Expansion
 
 extension URL {
-    /// Expand tilde (~) in file paths
+    /// Expand tilde (~) in file paths.
+    ///
+    /// Detects the `~` anywhere in `path`, not just at the start. This matters
+    /// because constructing a `URL(fileURLWithPath: "~/foo.db")` resolves the
+    /// relative path against the current working directory at construction
+    /// time, so by the time we read `.path` the value is already
+    /// `<cwd>/~/foo.db` and a `hasPrefix("~")` check would miss it (which is
+    /// exactly why this expansion silently no-opped under `swift test` / CI,
+    /// where cwd differs from where the URL literal was written). We rebuild
+    /// from `homeDirectoryForCurrentUser` (a password-database lookup) using
+    /// whatever follows the tilde.
     public var expandingTildeInPath: URL {
-        if path.hasPrefix("~") {
-            let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
-            let relativePath = String(path.dropFirst(2)) // Remove "~/"
-            return homeDirectory.appendingPathComponent(relativePath)
-        }
-        return self
+        guard let tildeRange = path.range(of: "~") else { return self }
+        let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
+        let afterTilde = path[tildeRange.upperBound...].drop(while: { $0 == "/" })
+        guard !afterTilde.isEmpty else { return homeDirectory }
+        return homeDirectory.appendingPathComponent(String(afterTilde))
     }
 
     /// Build a `URL` from a string the caller asserts is well-formed.
