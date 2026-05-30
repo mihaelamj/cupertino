@@ -1,3 +1,4 @@
+import SwiftMCPCore
 import Foundation
 
 // MARK: - MCP.Core.Protocols.Resource Provider
