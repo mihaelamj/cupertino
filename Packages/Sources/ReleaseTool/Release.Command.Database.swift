@@ -1,27 +1,46 @@
 import ArgumentParser
+import CupertinoComposition
 import Foundation
+import SearchModels
 import SharedConstants
 
-// MARK: - Database Release Command (search.db + samples.db + packages.db → cupertino-docs)
+// MARK: - Database Release Command (per-source DBs → cupertino-docs)
 
 //
 // Generic publishing primitives live in `ReleasePublishingHelpers.swift`.
 // This file owns only what's specific to a database release: which files to
 // bundle, which repo to push to, and the release-notes template.
 //
-// All three databases ship in a single zip and a single GitHub release on
+// The bundled database set is NOT hardcoded. It is derived from the
+// production source registry, exactly the manifest `cupertino setup`
+// reconstructs via `CLIImpl.bundleRequiredDescriptors()`:
+//
+//     CupertinoComposition.makeProductionSourceRegistry()
+//         .allEnabled.map(\.destinationDB)
+//
+// Each enabled source declares its own `destinationDB`
+// (`Shared.Models.DatabaseDescriptor`); the bundle ships one
+// zip-extractable SQLite file per declared destination, deduped by
+// filename (today 1:1 source→DB, but co-location is permitted). Adding a
+// new source (one `<X>Source.swift` + one `.register(<X>Source())` line in
+// the composition root) automatically extends this bundle, no edit to
+// this file. A legacy DB sitting in the base directory with no enabled
+// source backing it (e.g. a stray pre-split `search.db`) is therefore
+// never bundled.
+//
+// All databases ship in a single zip and a single GitHub release on
 // `mihaelamj/cupertino-docs`, so `cupertino setup` is one download.
 
 extension Release.Command {
     struct Database: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "databases",
-            abstract: "Package and upload search.db + samples.db + packages.db to GitHub Releases (cupertino-docs)"
+            abstract: "Package and upload the per-source databases to GitHub Releases (cupertino-docs)"
         )
 
         @Option(
             name: .long,
-            help: "Directory containing search.db, samples.db, and packages.db. Defaults to ~/.cupertino/."
+            help: "Directory containing the per-source databases. Defaults to ~/.cupertino/."
         )
         var baseDir: String?
 
@@ -37,23 +56,33 @@ extension Release.Command {
         @Flag(
             name: .long,
             help: """
-            Allow publishing without packages.db. By default the command refuses if any of the three
-            databases is missing — a partial release would silently ship a stale packages corpus.
+            Allow publishing even when some derived databases are missing from the base directory. By
+            default the command refuses if any registry-declared database is absent, because a partial release
+            would silently ship an incomplete corpus.
             """
         )
-        var allowMissingPackages: Bool = false
+        var allowMissing: Bool = false
 
-        private static let searchDBFilename = Shared.Constants.FileName.searchDatabase
-        // #1037 part 4: the operator's local sample-code DB is now
-        // `apple-sample-code.db` (Sample.Index.databasePath +
-        // SampleCodeSource.destinationDB.filename both resolve there).
-        // The release bundle MUST ship the file under this name so
-        // `cupertino setup` extractors land it where readers look.
-        // Pre-#1037 ReleaseTool builds packaged `samples.db`; consumers
-        // of those legacy bundles get the filename renamed at setup
-        // time by `CLIImpl.Command.Setup.migrateLegacySamplesDatabaseIfNeeded`.
-        private static let samplesDBFilename = Shared.Constants.FileName.appleSampleCodeDatabase
-        private static let packagesDBFilename = Shared.Constants.FileName.packagesIndexDatabase
+        /// The ordered, deduped list of database descriptors the bundle
+        /// must ship, derived from the production source registry, not a
+        /// hardcoded filename list. Each enabled source declares its own
+        /// `destinationDB`; co-located sources sharing a filename collapse
+        /// to one entry (stable first-seen order preserved).
+        ///
+        /// This is the identical mechanism `cupertino setup` uses to know
+        /// which extracted files to expect (`CLIImpl.bundleRequiredDescriptors()`),
+        /// so the release bundle and the setup verifier can never drift.
+        static func bundledDescriptors() -> [Shared.Models.DatabaseDescriptor] {
+            let derived = CupertinoComposition.makeProductionSourceRegistry()
+                .allEnabled
+                .map(\.destinationDB)
+            var seen = Set<String>()
+            var deduped: [Shared.Models.DatabaseDescriptor] = []
+            for descriptor in derived where seen.insert(descriptor.filename).inserted {
+                deduped.append(descriptor)
+            }
+            return deduped
+        }
 
         mutating func run() async throws {
             let root = try Release.Publishing.findRepoRoot(override: repoRoot)
@@ -70,35 +99,33 @@ extension Release.Command {
             let baseURL = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
                 ?? Shared.Paths.live().baseDirectory
 
-            // Resolve the three database paths. search.db and samples.db are
-            // always required; packages.db is required by default but the
-            // operator can opt in to a partial release with --allow-missing-packages.
-            let searchDBURL = baseURL.appendingPathComponent(Self.searchDBFilename)
-            let samplesDBURL = baseURL.appendingPathComponent(Self.samplesDBFilename)
-            let packagesDBURL = baseURL.appendingPathComponent(Self.packagesDBFilename)
+            // Resolve each registry-derived database path. By default every
+            // declared database is required; `--allow-missing` downgrades an
+            // absent file to a warning and drops it from the bundle.
+            let descriptors = Self.bundledDescriptors()
+            var present: [(filename: String, url: URL)] = []
+            var missing: [String] = []
+            for descriptor in descriptors {
+                let url = baseURL.appendingPathComponent(descriptor.filename)
+                if FileManager.default.fileExists(atPath: url.path) {
+                    present.append((descriptor.filename, url))
+                } else {
+                    missing.append(descriptor.filename)
+                }
+            }
 
-            guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
-                throw Release.Publishing.Error.missingDatabase(Self.searchDBFilename, baseURL.path)
-            }
-            guard FileManager.default.fileExists(atPath: samplesDBURL.path) else {
-                throw Release.Publishing.Error.missingDatabase(Self.samplesDBFilename, baseURL.path)
-            }
-            let packagesDBPresent = FileManager.default.fileExists(atPath: packagesDBURL.path)
-            if !packagesDBPresent, !allowMissingPackages {
-                throw Release.Publishing.Error.missingDatabase(Self.packagesDBFilename, baseURL.path)
+            if !missing.isEmpty, !allowMissing {
+                throw Release.Publishing.Error.missingDatabase(missing.joined(separator: ", "), baseURL.path)
             }
 
             // Sizes (informational)
-            let searchSize = try Release.Publishing.fileSize(at: searchDBURL)
-            let samplesSize = try Release.Publishing.fileSize(at: samplesDBURL)
-            let packagesSize = try packagesDBPresent ? (Release.Publishing.fileSize(at: packagesDBURL)) : 0
             Release.Console.info("📊 Database sizes:")
-            Release.Console.substep("search.db:   \(Shared.Utils.Formatting.formatBytes(searchSize))")
-            Release.Console.substep("\(Self.samplesDBFilename):  \(Shared.Utils.Formatting.formatBytes(samplesSize))")
-            if packagesDBPresent {
-                Release.Console.substep("packages.db: \(Shared.Utils.Formatting.formatBytes(packagesSize))")
-            } else {
-                Release.Console.warning("packages.db: missing (continuing because --allow-missing-packages was passed)")
+            for entry in present {
+                let size = try Release.Publishing.fileSize(at: entry.url)
+                Release.Console.substep("\(entry.filename): \(Shared.Utils.Formatting.formatBytes(size))")
+            }
+            for filename in missing {
+                Release.Console.warning("\(filename): missing (continuing because --allow-missing was passed)")
             }
 
             // #236: checkpoint-truncate each DB before bundling so
@@ -108,24 +135,18 @@ extension Release.Command {
             // pages, and `cupertino setup` users would silently
             // search a stale corpus.
             Release.Console.info("\n💾 Checkpoint-truncating WAL sidecars before bundle...")
-            for (label, url) in [
-                ("search.db", searchDBURL),
-                (Self.samplesDBFilename, samplesDBURL),
-            ] + (packagesDBPresent ? [("packages.db", packagesDBURL)] : []) {
-                let outcome = try Release.Publishing.checkpointTruncate(at: url)
+            for entry in present {
+                let outcome = try Release.Publishing.checkpointTruncate(at: entry.url)
                 let detail = outcome.walFileExisted
                     ? "folded \(outcome.framesWritten)/\(outcome.framesTotal) frames"
                     : "no WAL sidecar"
                 let busyNote = outcome.busy ? " ⚠ SQLITE_BUSY (was another process touching the DB?)" : ""
-                Release.Console.substep("✓ \(label): \(detail)\(busyNote)")
+                Release.Console.substep("✓ \(entry.filename): \(detail)\(busyNote)")
             }
 
             // Bundle. The zip name still uses the historical "cupertino-databases-"
             // prefix so existing `cupertino setup` clients keep working.
-            var bundled: [URL] = [searchDBURL, samplesDBURL]
-            if packagesDBPresent {
-                bundled.append(packagesDBURL)
-            }
+            let bundled = present.map(\.url)
             let zipFilename = "cupertino-databases-\(version.tag).zip"
             let zipURL = baseURL.appendingPathComponent(zipFilename)
             Release.Console.info("\n📁 Creating \(zipFilename)...")
@@ -176,7 +197,7 @@ extension Release.Command {
                 repo: repo,
                 tag: version.tag,
                 token: token,
-                name: "Pre-built Databases \(version.tag) (\(bundledNames))",
+                name: "Pre-built Databases \(version.tag)",
                 body: body
             )
             Release.Console.substep("✓ Release created")
