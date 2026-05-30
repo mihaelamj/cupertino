@@ -11,7 +11,7 @@ Last refresh: 2026-05-24 (#904 closed: Core / CoreJSONParser / CoreSampleCode We
 **Allowed imports for a producer target:**
 
 1. **External primitives** — `Foundation`, `OSLog`, `os`, `Combine`, `SQLite3`, `SwiftSyntax`, `SwiftParser`, `ArgumentParser`, `Testing`, `XCTest`, `WebKit`, `AppKit`, `UIKit`, `SwiftUI`, `CryptoKit`, `FoundationNetworking`, system frameworks (`Darwin`, `Glibc`). Ambient — always allowed.
-2. **Foundation tier (Cupertino-side, foundation-only by construction)** — `SharedConstants`, `LoggingModels`, `Resources`, `Diagnostics`, `ASTIndexer`, `MCPCore`, `MCPSharedTools`. Any producer may import any of these.
+2. **Foundation tier (Cupertino-side, foundation-only by construction)**: `SharedConstants`, `LoggingModels`, `Resources`, `Diagnostics`, `ASTIndexer`, `MCPCore`, `MCPSharedTools`, `SQLiteSupport`. Any producer may import any of these.
 3. **`*Models` protocol seams + foundation-only constants targets**: `CoreProtocols`, `CrawlerModels`, `CorePackageIndexingModels`, `SearchModels`, `SampleIndexModels`, `ServicesModels`, `IndexerModels`, `DistributionModels`, `CleanupModels`, `CoreSampleCodeModels`, `RemoteSyncModels`, `EnrichmentModels`, `SearchSchema`. Any producer may import its own + any other producer's seam (the seams are foundation-only by contract; importing a seam carries no behavioural coupling).
 
 **Forbidden for a producer:**
@@ -73,6 +73,7 @@ Validated against five independent references (see `mihaela-agents/Rules/swift/p
 |---|---|---|
 | `ASTIndexer` | Foundation, SwiftSyntax, SwiftParser | ✅ Foundation, SwiftParser, SwiftSyntax |
 | `Diagnostics` | Foundation, SQLite3 | ✅ Foundation, SQLite3 |
+| `SQLiteSupport` | Foundation, SQLite3 | ✅ Foundation, SQLite3 (#1194: the one shared read-only SQLite open used by every reader) |
 | `Logging` (writer concrete) | Foundation, OSLog, LoggingModels, SharedConstants | ✅ Foundation, LoggingModels, OSLog, SharedConstants — binary-only (CLI / TUI / MockAIAgent / ReleaseTool only; features import only `LoggingModels`) |
 
 ### Producers (behaviour; consume protocols from Models, no other producers)
