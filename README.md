@@ -655,6 +655,16 @@ Auxiliary:         MockAIAgent, ReleaseTool, RemoteSync, TestSupport
 - **Explicit Dependencies**: No singletons, clear dependency injection
 - **Separation of Concerns**: Crawling → Indexing → Serving as distinct phases
 
+### Published Packages
+
+Cupertino factors three reusable, independently-versioned Swift packages out of the monorepo. Each is its own public repository, depended on by tag (`from: "0.1.0"`), Foundation-only, and built so an external consumer can adopt it without pulling in cupertino's engine:
+
+| Package | Repo | What it is |
+|---|---|---|
+| **SwiftMCPCore** | [mihaelamj/SwiftMCPCore](https://github.com/mihaelamj/SwiftMCPCore) | Neutral MCP wire types (the JSON-RPC + protocol value types). Not cupertino-specific; a general MCP building block. |
+| **SwiftMCPClient** | [mihaelamj/SwiftMCPClient](https://github.com/mihaelamj/SwiftMCPClient) | Neutral, transport-injectable MCP client (`Client.MCP` seam, `MCPClient` actor, subprocess transport). Depends on SwiftMCPCore. |
+| **CupertinoDataKit** | [mihaelamj/CupertinoDataKit](https://github.com/mihaelamj/CupertinoDataKit) | Cupertino's public **read contract**: the documentation + sample-code read protocols (`Search.DocumentReading` core, `Search.SymbolReading` refinement, `Search.Database` composition, `Sample.Index.Reader`) plus every value type they return (`Search.Result`, `MatchedSymbol`, `PlatformAvailability`, `DocumentFormat`, `SymbolSearchResult`, inheritance types, `URIResource`, `FrameworkAvailability`, `PlatformMinima`/`PlatformFilter`, `Sample.Index.Project`/`File`/`FileSearchResult`, `Sample.Search.Query`/`Result`). Protocols + value types only, zero implementation. Cupertino's engine conforms to it server-side; an embedded/in-process reader (e.g. an iOS app) conforms a different implementation. It is the single source of truth for these types: cupertino's foundation tier re-exports it (`@_exported import CupertinoDataKit`), so in-repo code uses the `Search.*` / `Sample.*` namespaces unchanged. |
+
 ## Development
 
 ### Build System
