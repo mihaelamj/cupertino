@@ -2,10 +2,11 @@
 
 | Field | Value |
 |---|---|
-| **Status** | draft |
+| **Status** | accepted, deferred to a future release |
 | **Created** | 2026-05-30 |
 | **Last revised** | 2026-05-30 |
-| **Tracking issue** | none (follow-on to CupertinoDataKit #1183) |
+| **Tracking issue** | none yet (follow-on to CupertinoDataKit #1183) |
+| **Deferral** | Design accepted (Q3/Q4/Q5/Q6 resolved; GoF Bridge + Composite). Implementation (the §13 phased extraction of `Search.Connection` + the read/write type split) is NOT scheduled for the current release; it lands in a later release. The contract is already consumed today: cupertino types against `any Search.Database` from CupertinoDataKit v0.1.0 (`Search.Index` conforms it at `Search.Index.Database.swift:14`), so no consumer changes when the iOS engine ships, only a second implementation of the same protocol is added. |
 | **Companion docs** | [`per-source-db-split.md`](per-source-db-split.md), [`536-standalone-portability-and-linux-port.md`](536-standalone-portability-and-linux-port.md) |
 
 ---
