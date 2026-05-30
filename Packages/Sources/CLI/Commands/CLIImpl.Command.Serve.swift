@@ -20,6 +20,7 @@ import SharedConstants
 // MARK: - Serve Command
 
 extension CLIImpl.Command {
+    // swiftlint:disable:next type_body_length
     struct Serve: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "serve",
