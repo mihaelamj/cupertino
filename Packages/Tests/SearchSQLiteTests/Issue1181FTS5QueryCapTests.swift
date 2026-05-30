@@ -30,7 +30,7 @@ struct Issue1181FTS5QueryCapTests {
     func capsLongQuery() async throws {
         let index = try await Self.makeIndex()
         let longQuery = Array(repeating: "view", count: 200).joined(separator: " ")
-        let result = index.sanitizeFTS5Query(longQuery)
+        let result = await index.sanitizeFTS5Query(longQuery)
         #expect(result.split(separator: " ").count == Search.Index.maxFTS5QueryTerms)
     }
 
@@ -38,7 +38,7 @@ struct Issue1181FTS5QueryCapTests {
     @MainActor
     func shortQueryUnaffected() async throws {
         let index = try await Self.makeIndex()
-        let result = index.sanitizeFTS5Query("URLSession NavigationStack")
+        let result = await index.sanitizeFTS5Query("URLSession NavigationStack")
         #expect(result == "\"URLSession\" \"NavigationStack\"")
     }
 }
