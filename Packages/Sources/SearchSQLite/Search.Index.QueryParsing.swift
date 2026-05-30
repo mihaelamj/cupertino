@@ -90,12 +90,22 @@ extension Search.Index {
     /// - Splits on whitespace and hyphens (except for known framework prefixes)
     /// - Quotes each term to avoid FTS5 operator interpretation
     /// - Example: "concurrency actors" -> "\"concurrency\" \"actors\""
+    /// Upper bound on the number of terms forwarded to the FTS5 `MATCH`.
+    /// cupertino's search is a plain SQLite FTS5 keyword index, not a semantic
+    /// retriever: a real query is a handful of keywords (symbol / framework
+    /// names), so terms past this many are noise. The cap also guards FTS5's
+    /// expression-tree limits, which a pathological multi-KB query (e.g. an agent
+    /// pasting prose) can otherwise blow. Excess terms are dropped, not errored,
+    /// so the call still returns useful results. (#1181)
+    static let maxFTS5QueryTerms = 32
+
     func sanitizeFTS5Query(_ query: String) -> String {
         let separators = CharacterSet.whitespaces.union(CharacterSet(charactersIn: "-"))
         let terms = query
             .components(separatedBy: separators)
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
+            .prefix(Self.maxFTS5QueryTerms) // #1181: keyword index, not prose search
             .map { "\"\($0)\"" }
         return terms.joined(separator: " ")
     }
