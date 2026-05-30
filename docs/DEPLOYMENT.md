@@ -263,7 +263,7 @@ cupertino setup
 | Repository | Purpose |
 |------------|---------|
 | [mihaelamj/cupertino](https://github.com/mihaelamj/cupertino) | Main CLI source code |
-| [mihaelamj/cupertino-docs](https://github.com/mihaelamj/cupertino-docs) | Pre-built databases (search.db, samples.db) |
+| [mihaelamj/cupertino-docs](https://github.com/mihaelamj/cupertino-docs) | Pre-built per-source databases bundle |
 | [mihaelamj/homebrew-tap](https://github.com/mihaelamj/homebrew-tap) | Homebrew formula |
 
 ---

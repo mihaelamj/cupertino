@@ -1334,12 +1334,25 @@ let targets: [Target] = {
         dependencies: [
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
             "SharedConstants",
+            // The database-bundle manifest is derived from the production
+            // source registry (no hardcoded filename list): the bundled DB
+            // set == `makeProductionSourceRegistry().allEnabled.map(\.destinationDB)`,
+            // the same mechanism `cupertino setup` uses via
+            // `CLIImpl.bundleRequiredDescriptors()`. `CupertinoComposition`
+            // owns the canonical factory; `SearchModels` carries the
+            // `Search.SourceRegistry` / `Search.SourceProvider` types.
+            "CupertinoComposition",
+            "SearchModels",
         ],
         exclude: ["README.md"]
     )
     let releaseToolTestsTarget = Target.testTarget(
         name: "ReleaseToolTests",
-        dependencies: ["ReleaseTool"]
+        // `CupertinoComposition` + `SearchModels` let the bundle-manifest
+        // drift guard independently re-derive the expected per-source DB set
+        // from the production source registry and compare it to ReleaseTool's
+        // `Database.bundledDescriptors()`.
+        dependencies: ["ReleaseTool", "CupertinoComposition", "SearchModels"]
     )
 
     // ---------- AppleConstraintsKit (#759 iteration 3) ----------
