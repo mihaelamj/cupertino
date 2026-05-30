@@ -96,6 +96,18 @@ cupertino-desktop iOS app (MobileBackend.live(dataSource:))
 
 CupertinoDataEngine holds the `Search.Index` actor and the read-required helpers, depends on CupertinoDataKit (the contract) plus the minimal foundation-tier seams the read path needs, and links `SQLite3`. The monorepo depends on the engine and re-exports it, retaining only the write/index concretes. The iOS app embeds the engine and opens a prebuilt DB.
 
+### 5.1 Single-DB vs multi-source fan-out (verified, scope-critical)
+
+One `Search.Index` wraps exactly ONE SQLite file: the CLI/serve composition root builds one `Search.Index` per source descriptor (`CLIImpl.Command.Save.Indexers.swift` loops `orderedGroups`, one `Search.Index(dbPath:...)` per DB). Post per-source-DB-split (#1036) the corpus is 8 DBs (apple-documentation, hig, swift-org, swift-book, swift-evolution, apple-archive, apple-sample-code, packages).
+
+The cross-source UNIFIED search (RRF fusion across those 8 DBs) does NOT live in `Search.Index`; it lives ABOVE it, in `ServicesModels.UnifiedSearcher` + `SearchAPI.SmartQuery` + `SearchToolProvider.CompositeToolProvider` (verified). So embedding a single `Search.Database` on iOS yields ONE source's results, not the unified search a user expects.
+
+Therefore "embed the engine" is under-specified. Two sub-options (Q6):
+- **(A) Engine ships per-DB only.** iOS opens N `Search.Index` instances (one per shipped DB) and the app does its own fusion. Smallest engine, but pushes the fusion algorithm onto the consumer, which re-introduces the drift the extraction exists to kill (desktop would reimplement RRF).
+- **(B) Engine ships the fan-out too.** Pull `UnifiedSearcher` (Foundation-only, in `ServicesModels`) into / alongside the engine so the iOS app gets one call that fuses across the opened DBs. Larger, but the consumer gets real unified search with no reimplementation. Portability is favorable: `SearchToolProvider` imports only `MCPCore`/`MCPSharedTools`/`SearchModels`/`SampleIndexModels`/`ServicesModels`/`SharedConstants` (verified iOS-clean), and `UnifiedSearcher` is in Foundation-only `ServicesModels`.
+
+This is unresolved and material: option (A) means desktop's current `DocumentReading` adapter (wired to a single `Search.Database`) silently returns single-source results; the doc must not let that ship as if it were complete (see Q6, R6).
+
 ---
 
 ## 6. Detailed Design
@@ -233,6 +245,7 @@ No runtime behaviour change for existing cupertino users: the CLI / serve paths 
 | Q3 | Does `Search.Index(dbPath:...)` work against a read-only bundled DB with no writable base dir? | open (F3) |
 | Q4 | Name: CupertinoDataEngine (confirmed by maintainer 2026-05-30) | resolved |
 | Q5 | Type-split decision: ship whole actor (i) / split read+write types (ii) / promote shared base (iii) (§6.1)? Determines whether G5 is met in v0.1.0 or deferred | open, the central decision of this epic |
+| Q6 | Fan-out scope (§5.1): engine ships per-DB only (A, consumer fuses) vs engine ships `UnifiedSearcher` cross-source fusion (B)? Determines whether iOS gets real unified search or single-source | open, scope-critical |
 
 ### Risks
 
@@ -243,6 +256,7 @@ No runtime behaviour change for existing cupertino users: the CLI / serve paths 
 | R3 | Foundation-tier rewire blast radius across the monorepo | med | med | `@_exported` re-export (zero-edit in #1183) + full build/test + CI guards |
 | R4 | "No iOS-hostile imports" does not equal "iOS-builds" | med | high | real iOS `xcrun swift build` is the acceptance bar |
 | R5 | Tag immutability / ownership | low | med | sole-control rule established + acked by desktop |
+| R6 | iOS ships single-source search (one `Search.Index`) thinking it is complete, because the cross-source fan-out (`UnifiedSearcher`) was left in the monorepo | med | high | resolve Q6; if option (A), document loudly that the consumer must run fusion; prefer (B) so the engine owns fusion |
 
 ---
 
