@@ -1,3 +1,5 @@
+import SwiftMCPCore
+
 // MARK: - MCPServer Package
 
 //
