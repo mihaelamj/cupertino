@@ -140,16 +140,37 @@ final class BatteryReport: @unchecked Sendable {
     }
 
     private static let header = """
-    <!doctype html><html><head><meta charset="utf-8"><title>cupertino read battery</title>
-    <style>body{font:14px -apple-system,Helvetica,Arial,sans-serif;max-width:1000px;margin:2rem auto;padding:0 1rem;color:#222}
-    h1{border-bottom:2px solid #0a84ff}h2{margin-top:2rem;color:#0a84ff;border-bottom:1px solid #ddd}h3{color:#555}
-    details{border:1px solid #e0e0e0;border-radius:6px;margin:.35rem 0;padding:.3rem .6rem;background:#fafafa}
-    summary{cursor:pointer;font-weight:600}summary:hover{color:#0a84ff}
-    pre{white-space:pre-wrap;word-break:break-word;background:#fff;border:1px solid #eee;padding:.6rem;\
-    border-radius:4px;max-height:460px;overflow:auto;font:12px ui-monospace,Menlo,monospace}
-    .ok{color:#1a7f37;font-weight:700;margin-right:.4rem}.fail{color:#cf222e;font-weight:700;margin-right:.4rem}.meta{color:#888}</style></head><body>
+    <!doctype html><html lang="en"><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>cupertino read battery</title>
+    <style>
+    :root{--text:#1d1d1f;--secondary:#6e6e73;--accent:#0071e3;--surface:#f5f5f7;--border:#d2d2d7;--ok:#1d8a34;--fail:#d70015}
+    *{box-sizing:border-box}
+    body{font-family:-apple-system,"SF Pro Text",system-ui,Helvetica,Arial,sans-serif;font-size:17px;line-height:1.47;
+    max-width:980px;margin:0 auto;padding:3rem 1.5rem;color:var(--text);background:#fff;-webkit-font-smoothing:antialiased}
+    h1{font-size:40px;font-weight:600;letter-spacing:-.02em;margin:0 0 .25rem}
+    h2{font-size:26px;font-weight:600;letter-spacing:-.01em;margin:2.75rem 0 1rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+    h3{font-size:19px;font-weight:600;color:var(--secondary);margin:1.5rem 0 .5rem}
+    p{color:var(--secondary);font-size:15px;max-width:42rem}
+    code{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:.88em;background:var(--surface);padding:.12em .4em;border-radius:5px}
+    details{border:1px solid var(--border);border-radius:12px;margin:.5rem 0;padding:.65rem 1.1rem;background:#fff}
+    details[open]{border-color:var(--accent)}
+    summary{cursor:pointer;font-weight:500;color:var(--text);list-style:none}
+    summary::-webkit-details-marker{display:none}
+    summary::before{content:"\\203A";color:var(--secondary);margin-right:.6rem;display:inline-block;transition:transform .2s}
+    details[open] summary::before{transform:rotate(90deg)}
+    summary:hover{color:var(--accent)}
+    pre{white-space:pre-wrap;word-break:break-word;background:var(--surface);border:none;padding:1rem;border-radius:10px;
+    max-height:460px;overflow:auto;font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:13px;line-height:1.5;margin:.7rem 0 .2rem}
+    table{border-collapse:collapse;width:100%;font-size:14px;margin:.5rem 0}
+    th,td{border-bottom:1px solid var(--border);padding:.5rem .75rem;text-align:left;vertical-align:top}
+    th{color:var(--secondary);font-weight:600}
+    .ok{color:var(--ok);font-weight:600;margin-right:.5rem}
+    .fail{color:var(--fail);font-weight:600;margin-right:.5rem}
+    .meta{color:var(--secondary)}
+    </style></head><body>
     <h1>cupertino read battery</h1>
-    <p>Every query and document below was produced by the real <code>cupertino</code> CLI against the local \
+    <p>Every query and document below was produced by the real <code>cupertino</code> CLI against the local
     snapshot, through the read-only path (#1194). Expand any row to see the returned text.</p>
     """
 
