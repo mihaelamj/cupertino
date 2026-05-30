@@ -5,6 +5,7 @@ import SearchModels
 import SearchSchema
 import SharedConstants
 import SQLite3
+import SQLiteSupport
 
 // MARK: - Search Index
 
@@ -134,6 +135,13 @@ extension Search {
         /// `sourceLookup:` per `gof-di-rules.md` Rule 2.
         public nonisolated let sourceLookup: Search.SourceLookup
 
+        /// When true, the connection is opened `SQLITE_OPEN_READONLY` and no
+        /// open-time writes run (no WAL/synchronous PRAGMA, no migration, no
+        /// `CREATE TABLE`, no schema-version stamp). Set by the query / read /
+        /// serve / list / doctor paths so an end user cannot write or delete
+        /// rows (#1194). The indexer (`save` / `fetch`) leaves it false.
+        public nonisolated let readOnly: Bool
+
         /// Count of docs the incremental indexer skipped this run because the
         /// doc was already in the DB with an unchanged `content_hash` (#1146).
         /// `indexStructuredDocument` skips such docs BEFORE the expensive AST
@@ -145,12 +153,25 @@ extension Search {
             dbPath: URL,
             logger: any LoggingModels.Logging.Recording,
             indexers: [String: any Search.SourceIndexer],
-            sourceLookup: Search.SourceLookup
+            sourceLookup: Search.SourceLookup,
+            readOnly: Bool = false
         ) async throws {
             self.dbPath = dbPath
             self.logger = logger
             self.indexers = indexers
             self.sourceLookup = sourceLookup
+            self.readOnly = readOnly
+
+            if readOnly {
+                // Query / read / serve / list / doctor paths: open read-only
+                // and stop. No directory creation, no migration, no schema
+                // writes. The DB is expected to already be at the current
+                // schema (a shipped bundle, or a DB the writer migrated during
+                // `save`). A read connection must never mutate rows (#1194).
+                try await openDatabase()
+                isInitialized = true
+                return
+            }
 
             // Ensure directory exists
             let directory = dbPath.deletingLastPathComponent()
@@ -220,6 +241,14 @@ extension Search {
 
         private func openDatabase() async throws {
             var dbPointer: OpaquePointer?
+
+            if readOnly {
+                // #1194: the one shared read-only open every reader uses
+                // (`SQLiteSupport.openReadOnly`). The handle cannot write, so
+                // no migration / PRAGMA / table-create runs. Return after open.
+                database = try SQLiteSupport.openReadOnly(at: dbPath)
+                return
+            }
 
             guard sqlite3_open(dbPath.path, &dbPointer) == SQLITE_OK else {
                 let errorMessage = String(cString: sqlite3_errmsg(dbPointer))

@@ -5,6 +5,7 @@ import SampleIndexModels
 import SearchModels
 import SharedConstants
 import SQLite3
+import SQLiteSupport
 
 // MARK: - Sample Index Database
 
@@ -38,13 +39,30 @@ extension Sample.Index {
         private var isInitialized = false
         /// GoF Strategy seam for log emission (1994 p. 315).
         private let logger: any LoggingModels.Logging.Recording
+        /// When true, open `SQLITE_OPEN_READONLY` and run no open-time writes
+        /// (no wipe, no `CREATE TABLE`, no schema-version stamp, no PRAGMA).
+        /// Set by the read / serve / list paths so an end user cannot write or
+        /// delete rows (#1194); the indexer (`save`) leaves it false.
+        private let readOnly: Bool
 
         public init(
             dbPath: URL,
-            logger: any LoggingModels.Logging.Recording
+            logger: any LoggingModels.Logging.Recording,
+            readOnly: Bool = false
         ) async throws {
             self.dbPath = dbPath
             self.logger = logger
+            self.readOnly = readOnly
+
+            if readOnly {
+                // Read path: open read-only and stop. No directory creation, no
+                // wipe-if-stale, no table creation, no schema stamp. A read
+                // connection must never mutate the DB (#1194); the DB is
+                // expected to already be at the current schema.
+                try await openDatabase()
+                isInitialized = true
+                return
+            }
 
             // Ensure directory exists
             let directory = dbPath.deletingLastPathComponent()
@@ -343,6 +361,14 @@ extension Sample.Index {
 
         private func openDatabase() async throws {
             var dbPointer: OpaquePointer?
+
+            if readOnly {
+                // #1194: the one shared read-only open every reader uses
+                // (`SQLiteSupport.openReadOnly`). The handle cannot write, so
+                // no wipe / table-create / schema-stamp runs.
+                database = try SQLiteSupport.openReadOnly(at: dbPath)
+                return
+            }
 
             guard sqlite3_open(dbPath.path, &dbPointer) == SQLITE_OK else {
                 let errorMessage = String(cString: sqlite3_errmsg(dbPointer))

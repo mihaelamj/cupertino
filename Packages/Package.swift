@@ -622,11 +622,25 @@ let targets: [Target] = {
             // SearchModels, SharedConstants only — no actors, no
             // I/O, no SQLite).
             "SampleIndexModels",
+            // #1194: the single low-level read-only SQLite open used by
+            // every reader (Search.Index + PackageQuery here, Sample.Index
+            // in SampleIndexSQLite).
+            "SQLiteSupport",
         ]
     )
     let searchSQLiteTestsTarget = Target.testTarget(
         name: "SearchSQLiteTests",
-        dependencies: ["SearchSQLite", "SearchModels", "SearchSchema"]
+        dependencies: ["SearchSQLite", "SearchModels", "SearchSchema", "SQLiteSupport"]
+    )
+
+    // ---------- SQLiteSupport (#1194) ----------
+    // Low-level, schema-agnostic SQLite connection helpers shared by every
+    // reader so all databases are opened the same way (one read-only open
+    // path; no per-DB special-casing). Concrete producer (imports the
+    // `SQLite3` system library), so it deliberately sits outside the
+    // foundation-only model/seam tier.
+    let sqliteSupportTarget = Target.target(
+        name: "SQLiteSupport"
     )
 
     let searchTarget = Target.target(
@@ -957,6 +971,8 @@ let targets: [Target] = {
             "SharedConstants",
             "LoggingModels",
             "ASTIndexer",
+            // #1194: shared low-level read-only SQLite open.
+            "SQLiteSupport",
         ]
     )
     let sampleIndexSQLiteTestsTarget = Target.testTarget(
@@ -1578,6 +1594,7 @@ let targets: [Target] = {
         searchSchemaTestsTarget,
         searchSQLiteTarget,
         searchSQLiteTestsTarget,
+        sqliteSupportTarget,
         searchTarget,
         searchTestsTarget,
         searchStrategyHelpersTarget,

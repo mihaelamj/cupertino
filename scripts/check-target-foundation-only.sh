@@ -105,6 +105,10 @@ FOUNDATION_TIER=(
     ASTIndexer
     MCPCore
     MCPSharedTools
+    # #1194: low-level, schema-agnostic SQLite connection helper (one shared
+    # read-only open used by every reader). Foundation + the SQLite3 system
+    # library only, no in-repo deps; allowed for any producer like Diagnostics.
+    SQLiteSupport
     # External public package: cupertino's read contract (protocols + value
     # types only, Foundation-only, zero deps). It is the foundation-most layer
     # — SharedConstants itself depends on it and re-exports it. Allowed for any
