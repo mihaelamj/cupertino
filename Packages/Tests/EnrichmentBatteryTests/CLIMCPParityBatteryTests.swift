@@ -51,9 +51,26 @@ private enum Parity {
     /// MCP text is a "hit" only when it is a non-error frame that does NOT carry
     /// an empty-result sentinel. Length is a secondary guard for unrecognized
     /// shapes (a real single result is well over 60 chars).
+    /// Positive-result markers cupertino emits when a tool actually finds something.
+    /// We detect a hit by a POSITIVE signal rather than by ruling out empty
+    /// sentinels: a multi-source tool (e.g. search_generics) prints per-source
+    /// subsections, so a real hit in Apple Docs still contains "No symbols found
+    /// in samples." for an empty samples subsection. Matching on the empty phrase
+    /// therefore false-negatived a genuine hit (#1179 root cause). A real result
+    /// always carries a "Found <n>" count or a result bullet/heading.
+    static let hitMarkers = [
+        "found **", // "Found **5** symbols" / "Found **5** matching symbols"
+        "found 1 ", "found 2 ", "found 3 ", "found 4 ", "found 5 ",
+        "found 6 ", "found 7 ", "found 8 ", "found 9 ",
+    ]
+
     static func mcpHit(_ result: CupertinoMCP.ToolResult?) -> Bool {
         guard let result, !result.isError else { return false }
         let lowered = result.text.lowercased()
+        // A positive count anywhere in the (possibly multi-source) body is a hit.
+        if hitMarkers.contains(where: lowered.contains) { return true }
+        // Otherwise fall back to: non-trivial body that is not purely an empty
+        // sentinel. (Covers single-source tools whose hit shape lacks a "Found n".)
         if emptySentinels.contains(where: lowered.contains) { return false }
         return result.text.count >= 60
     }
