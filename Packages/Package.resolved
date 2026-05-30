@@ -1,5 +1,5 @@
 {
-  "originHash" : "05752861e218ab1c037b5c84f48c65c1a42f3aca621057fe685522646db544f2",
+  "originHash" : "288827a911c4c8dbb660aac2845d40149190b3f993edf4453735d9642bfab9a6",
   "pins" : [
     {
       "identity" : "swift-argument-parser",
@@ -11,21 +11,21 @@
       }
     },
     {
-      "identity" : "swiftmcpcore",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/mihaelamj/SwiftMCPCore.git",
-      "state" : {
-        "revision" : "2fe1d78ca47cbc60698e724eeaafe85c341b6fc7",
-        "version" : "0.1.0"
-      }
-    },
-    {
       "identity" : "swift-syntax",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/swiftlang/swift-syntax",
       "state" : {
         "revision" : "0687f71944021d616d34d922343dcef086855920",
         "version" : "600.0.1"
+      }
+    },
+    {
+      "identity" : "swiftmcpcore",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mihaelamj/SwiftMCPCore.git",
+      "state" : {
+        "revision" : "12e02eb7fd3c484f366c7389e5530c8185bf2b77",
+        "version" : "0.1.0"
       }
     }
   ],

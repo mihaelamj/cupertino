@@ -47,6 +47,7 @@ Stage/
 Tasks/.build/
 .claude/*
 !.claude/skills/
+!.claude/settings.json
 
 # Build artefacts (global)
 Build/

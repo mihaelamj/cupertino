@@ -55,7 +55,15 @@ EXCLUDE=(
 # Extract every `Target.target(name: "X")` and `Target.executableTarget(name: "X")`
 # declaration from the manifest. Excludes test targets (they don't
 # show up in this regex since they use Target.testTarget).
+# The `-A2` window also catches each target's `dependencies:` line, whose
+# `.product(name: "X", package: "Y")` entries would otherwise be misread as
+# target declarations (e.g. the external `SwiftMCPCore` product, or a
+# `.product(name: "CupertinoComposition")` peer reference). Drop any line
+# carrying `.product(` before extracting names so only real target names
+# survive. Safe because no target declares its `name:` on the same line as a
+# `.product(` (every target puts `name:` on its own line).
 declared=$(grep -E "Target\.(target|executableTarget)\(" "$PACKAGE_MANIFEST" -A2 \
+    | grep -v '\.product(' \
     | grep -oE 'name: "[A-Z][^"]+"' \
     | sed 's/name: "//;s/"//' \
     | sort -u)

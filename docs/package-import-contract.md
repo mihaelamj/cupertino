@@ -125,7 +125,7 @@ Validated against five independent references (see `mihaela-agents/Rules/swift/p
 
 ### Apps (composition roots; can import anything)
 
-Build-system convention: every entry in this section is declared `.executableTarget(...)` in `Package.swift` (not a library). They are inherently impls — they wire feature targets together to produce a binary, so the "every target must lift out of the monorepo cleanly" rule does not apply. The Swift namespace anchors inside (`enum CLIImpl`, files named `CLIImpl.*.swift`, the renamed `ReleaseToolImpl.swift`) carry the `*Impl` suffix so the impl/library distinction is visible at a glance without checking `Package.swift`.
+Build-system convention: every entry in this section is a composition root that wires feature targets together, so the "every target must lift out of the monorepo cleanly" rule does not apply. Most are declared `.executableTarget(...)` (a binary); the one exception is `CupertinoComposition`, a `Target.target` **library** composition root that holds the single canonical production source set (consumed by both `CLI` and the MCP route-map test fixture so the two cannot drift). Whether binary or library, a composition root imports concretes by design and carries no foundation-only / producer import contract. The Swift namespace anchors inside (`enum CLIImpl`, files named `CLIImpl.*.swift`, the renamed `ReleaseToolImpl.swift`) carry the `*Impl` suffix so the impl/library distinction is visible at a glance without checking `Package.swift`.
 
 | Target | Allowed imports | Current state |
 |---|---|---|
@@ -134,6 +134,7 @@ Build-system convention: every entry in this section is declared `.executableTar
 | `MockAIAgent` | everything | ✅ `executableTarget` → `mock-ai-agent` |
 | `ReleaseTool` (`ReleaseToolImpl.swift`) | everything | ✅ `executableTarget` → `cupertino-rel`, binary, not a producer |
 | `ConstraintsGen` (`ConstraintsGen.swift`) | Foundation, ArgumentParser, AppleConstraintsKit, SearchModels | ✅ `executableTarget` → `cupertino-constraints-gen`, binary, parses `swift symbolgraph-extract` output into the `apple-constraints.json` table consumed by `Search.IndexBuilder` (#759 iter 3) |
+| `CupertinoComposition` | SearchModels, CoreSampleCode, SharedConstants, Crawler, CorePackageIndexing, + all 8 `<X>Source` targets (AppleDocsSource, HIGSource, SampleCodeSource, SwiftEvolutionSource, SwiftOrgSource, SwiftBookSource, PackagesSource, AppleArchiveSource) | ✅ library composition root (`Target.target`, not a binary). Holds the single canonical production source set (`makeProductionSourceRegistry`) shared by `CLI` and the MCP route-map test fixture so they cannot drift; wires the #536 lift-3/4/5 concrete factories (`Sample.Core.LiveGitHubFetcherFactory`, `Crawler.LiveWebCrawlStrategyFactory`, `LivePackageFetchStrategyFactory`) into their seams. Imports concretes by design; not a producer. |
 
 ## CI enforcement
 

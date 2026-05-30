@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=/tmp/claude-bash-batch-guard; now=$(date +%s%N); if [ -f \"$f\" ]; then last=$(cat \"$f\" 2>/dev/null || echo 0); delta=$(( (now - last) / 1000000 )); if [ \"$delta\" -lt 1500 ]; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Parallel Bash batch blocked: another Bash call fired <1.5s ago. Run ONE Bash command at a time and wait for its result before the next.\"}}'; exit 0; fi; fi; echo \"$now\" > \"$f\""
+          }
+        ]
+      }
+    ]
+  }
+}
