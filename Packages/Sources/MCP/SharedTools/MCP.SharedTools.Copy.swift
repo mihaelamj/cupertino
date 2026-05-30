@@ -53,10 +53,14 @@ extension MCP.SharedTools {
         Search Apple documentation and Swift Evolution proposals by keywords. \
         Returns a ranked list of relevant documents with URIs that can be read using resources/read.
 
+        **This is a SQLite FTS5 keyword index, NOT a semantic / natural-language search.** \
+        Send a few keywords (symbol names, framework names, concept words), not full sentences. \
+        Prefer 1-5 terms; only the first ~32 terms are used, the rest are ignored.
+
         **By default, searches ALL sources** (docs, samples, HIG, etc.) for comprehensive results. \
         Use `source` parameter to narrow to a specific source.
 
-        **Semantic search:** Includes AST-extracted symbols from Swift source code. \
+        **Symbol-aware:** Includes AST-extracted symbols from Swift source code. \
         Find @Observable classes, async functions, View conformances, protocol conformances, etc. \
         Works across both documentation and sample code.
 
