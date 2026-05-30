@@ -279,7 +279,19 @@ extension Shared.Constants {
         /// keeps enrichment passes running if a single strategy throws). First release
         /// to ship documented search-quality baselines (Phase 1 + Phase 1.1-1.7) at
         /// `docs/audits/search-quality-*-v1.2.0.md`.
-        public static let databaseVersion = "1.2.0"
+        ///
+        /// v1.3.0 (#1071): first per-source-DB bundle. The download is
+        /// `cupertino-databases-v1.3.0.zip`, shipping the 8 per-source DBs
+        /// (apple-documentation / hig / swift-org / swift-book /
+        /// swift-evolution / apple-archive / apple-sample-code / packages)
+        /// instead of the pre-#1036 unified `search.db`. This version string
+        /// IS the bundle-isolation guarantee: a binary only ever fetches the
+        /// zip matching its own `databaseVersion`, so a v1.2.x binary keeps
+        /// pulling the old `v1.2.0` unified bundle while a v1.3.0 binary
+        /// pulls the per-source bundle; neither can download the other's
+        /// incompatible DBs. Never republish per-source DBs under an older
+        /// version number.
+        public static let databaseVersion = "1.3.0"
 
         /// Base URL for cupertino-docs release downloads. As of v1.0.0 the
         /// single `cupertino-databases-vX.zip` artifact bundles search.db,
