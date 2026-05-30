@@ -105,6 +105,12 @@ FOUNDATION_TIER=(
     ASTIndexer
     MCPCore
     MCPSharedTools
+    # External public package: cupertino's read contract (protocols + value
+    # types only, Foundation-only, zero deps). It is the foundation-most layer
+    # — SharedConstants itself depends on it and re-exports it. Allowed for any
+    # producer for the same reason the in-repo foundation tier is: it carries
+    # no behaviour, no I/O, no concrete producer.
+    CupertinoDataKit
 )
 
 # Producer protocol-seam companions (the *Models targets). Each
