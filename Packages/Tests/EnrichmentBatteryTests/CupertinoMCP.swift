@@ -33,7 +33,13 @@ enum CupertinoMCP {
 
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: CupertinoCLI.binary)
-        proc.arguments = ["serve"]
+        // `--no-reap` (#280) is mandatory here: without it, each spawned serve
+        // reaps its sibling `cupertino serve` processes (#242), so our own
+        // back-to-back parity calls AND the neighbouring MCPIntegrationTests
+        // get their servers killed mid-handshake (Transport stream closes,
+        // initialize returns nil). Disabling the reaper keeps every server
+        // independent.
+        proc.arguments = ["serve", "--no-reap"]
         let inPipe = Pipe()
         let outPipe = Pipe()
         proc.standardInput = inPipe
