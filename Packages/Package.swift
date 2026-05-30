@@ -127,6 +127,11 @@ let deps: [Package.Dependency] = [
     // consumes its `Client.MCP` seam over a subprocess channel. Depends on
     // SwiftMCPCore (resolves the same 0.1.0 pin, one node in the graph).
     .package(url: "https://github.com/mihaelamj/SwiftMCPClient.git", from: "0.1.0"),
+    // CupertinoDataKit — cupertino's public read contract (protocols + value
+    // types, Foundation-only, zero-dep). Owned + published by cupertino;
+    // SharedConstants re-exports it so every target sees the Search + Sample
+    // namespaces with no per-target import edit.
+    .package(url: "https://github.com/mihaelamj/CupertinoDataKit.git", from: "0.1.0"),
 ]
 
 // -------------------------------------------------------------
@@ -194,7 +199,15 @@ let targets: [Target] = {
     // has been absorbed.
     let sharedConstantsTarget = Target.target(
         name: "SharedConstants",
-        dependencies: [],
+        // CupertinoDataKit is the foundation-most layer: a pure-contract,
+        // Foundation-only, zero-dep package owning the Search + Sample
+        // namespaces, the read value types, and the read protocols.
+        // SharedConstants re-exports it (`@_exported import CupertinoDataKit`
+        // in Sources/Shared/Sample.swift + Search.swift) so every target that
+        // imports SharedConstants sees those types with no per-target edit.
+        dependencies: [
+            .product(name: "CupertinoDataKit", package: "CupertinoDataKit"),
+        ],
         path: "Sources/Shared"
         // Phase 1a of #536: SharedCore (`Shared.Core.ToolError`, the
         // `Shared.Core` namespace anchor, `CupertinoShared.swift` marker)

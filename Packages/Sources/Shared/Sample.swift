@@ -1,5 +1,10 @@
 import Foundation
 
+// The `Sample` namespace root and its read sub-namespaces (`Sample.Index`,
+// `Sample.Search`) are owned by CupertinoDataKit (single source of truth).
+// Re-exported here so every SharedConstants importer sees them unchanged.
+@_exported import CupertinoDataKit
+
 // MARK: - Sample Namespace
 
 /// Cross-cutting namespace for every type whose responsibility is Apple sample
@@ -31,7 +36,7 @@ import Foundation
 /// imports SharedConstants can extend them with concrete types via
 /// `extension Sample.<sub> { ... }`. Concrete types follow in the per-area
 /// PRs (this file just opens the surface).
-public enum Sample {
+extension Sample {
     /// Sample-archive post-fetch cleanup. The actor that prunes orphaned
     /// archives + manifests after a fetch run lives here as
     /// `Sample.Cleanup.Cleaner`.
@@ -46,13 +51,11 @@ public enum Sample {
     /// implementation that returns sample-code hits).
     public enum Services {}
 
-    /// Sample search-service surface: the `Service` actor that wraps a
-    /// SampleIndex database, plus the `Query` and `Result` value types.
-    public enum Search {}
-
-    /// The SampleIndex SPM target's contents — index database + builder +
-    /// availability sidecar.
-    public enum Index {}
+    // `Sample.Search` (Query / Result) and `Sample.Index` (Project / File /
+    // FileSearchResult / Reader) are owned by CupertinoDataKit (the read
+    // contract) and re-exported via `@_exported import CupertinoDataKit`
+    // above. cupertino code keeps writing `Sample.Search.*` / `Sample.Index.*`
+    // unchanged; producer-side types extend those same namespaces elsewhere.
 
     /// Sample-flavoured `Result`s. Sub-namespaces split by output
     /// medium: `Sample.Format.Markdown.*`, `Sample.Format.JSON.*`,

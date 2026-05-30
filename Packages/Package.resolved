@@ -1,6 +1,15 @@
 {
-  "originHash" : "34c7791db1880930da5d6876f1f77b74b5ee6ab72e23939630bb31e7891c4b6f",
+  "originHash" : "d975aa849592b022eedee86a4c1185989e5b2f1f5628f927dca9018c187db4ee",
   "pins" : [
+    {
+      "identity" : "cupertinodatakit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mihaelamj/CupertinoDataKit.git",
+      "state" : {
+        "revision" : "df4446a435d6daf547d644e52743cd9c1ee97fd6",
+        "version" : "0.1.0"
+      }
+    },
     {
       "identity" : "swift-argument-parser",
       "kind" : "remoteSourceControl",

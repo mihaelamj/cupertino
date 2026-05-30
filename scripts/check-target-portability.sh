@@ -247,6 +247,8 @@ if external_packages:
     for pkg in sorted(external_packages):
         if pkg == "swift-syntax":
             lines.append('        .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "601.0.0"),')
+        elif pkg == "CupertinoDataKit":
+            lines.append('        .package(url: "https://github.com/mihaelamj/CupertinoDataKit.git", from: "0.1.0"),')
         else:
             print(f"warning: no URL recipe for external package '{pkg}' — edit the script", file=sys.stderr)
     lines.append("    ],")
