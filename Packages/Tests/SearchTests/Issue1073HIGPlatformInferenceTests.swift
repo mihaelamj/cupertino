@@ -33,48 +33,54 @@ import Testing
 struct Issue1073HIGPlatformInferenceTests {
     // MARK: - Fixtures
 
-    private actor RecordingAudit: Search.EnrichmentAuditObserver {
-        var startEvents: [(pass: String, dbPath: String)] = []
-        var entries: [(pass: String, docURI: String, value: String, matchType: String, rowsAffected: Int)] = []
-        var endEvents: [(pass: String, total: Int, skipped: Int, durationMs: Int)] = []
+    // #1073 flake fix: the original actor recorded events via fire-and-forget
+    // `Task { await append(...) }` inside nonisolated protocol methods. A
+    // snapshot taken right after the pass returned could miss appends whose
+    // Tasks had not been scheduled yet, leaving the snapshot empty under
+    // parallel CI load (the docURIs-is-empty flake). This lock-guarded class
+    // records SYNCHRONOUSLY: every record* call completes before the
+    // producer's call returns, so the snapshot is deterministic regardless of
+    // executor pressure. `@unchecked Sendable` is sound because every access
+    // to mutable state is serialized by `lock`.
+    private final class RecordingAudit: Search.EnrichmentAuditObserver, @unchecked Sendable {
+        private let lock = NSLock()
+        private var startEvents: [(pass: String, dbPath: String)] = []
+        private var entries: [(pass: String, docURI: String, value: String, matchType: String, rowsAffected: Int)] = []
+        private var endEvents: [(pass: String, total: Int, skipped: Int, durationMs: Int)] = []
 
-        nonisolated func recordPassStart(passIdentifier: String, dbPath: String) {
-            Task { await append(start: (passIdentifier, dbPath)) }
+        func recordPassStart(passIdentifier: String, dbPath: String) {
+            lock.lock()
+            defer { lock.unlock() }
+            startEvents.append((passIdentifier, dbPath))
         }
 
-        nonisolated func recordEntry(
+        func recordEntry(
             passIdentifier: String,
             docURI: String,
             value: String,
             matchType: String,
             rowsAffected: Int
         ) {
-            Task { await append(entry: (passIdentifier, docURI, value, matchType, rowsAffected)) }
+            lock.lock()
+            defer { lock.unlock() }
+            entries.append((passIdentifier, docURI, value, matchType, rowsAffected))
         }
 
-        nonisolated func recordPassEnd(
+        func recordPassEnd(
             passIdentifier: String,
             totalRowsAffected: Int,
             totalRowsSkipped: Int,
             durationMs: Int
         ) {
-            Task { await append(end: (passIdentifier, totalRowsAffected, totalRowsSkipped, durationMs)) }
-        }
-
-        private func append(start: (String, String)) {
-            startEvents.append(start)
-        }
-
-        private func append(entry: (String, String, String, String, Int)) {
-            entries.append(entry)
-        }
-
-        private func append(end: (String, Int, Int, Int)) {
-            endEvents.append(end)
+            lock.lock()
+            defer { lock.unlock() }
+            endEvents.append((passIdentifier, totalRowsAffected, totalRowsSkipped, durationMs))
         }
 
         func snapshotEntries() -> [(pass: String, docURI: String, value: String, matchType: String, rowsAffected: Int)] {
-            entries
+            lock.lock()
+            defer { lock.unlock() }
+            return entries
         }
     }
 
@@ -348,7 +354,7 @@ struct Issue1073HIGPlatformInferenceTests {
         try Self.seedHIGRow(dbPath: dbPath, uri: "hig://platforms/designing-for-tvos")
         let recorder = RecordingAudit()
         _ = try await index.applyHIGPlatformInference(audit: recorder, dbPath: "hig.db")
-        let entries = await recorder.snapshotEntries()
+        let entries = recorder.snapshotEntries()
         let docURIs = Set(entries.map(\.docURI))
         #expect(docURIs.contains("hig://platforms/designing-for-watchos"))
         #expect(docURIs.contains("hig://platforms/designing-for-tvos"))
