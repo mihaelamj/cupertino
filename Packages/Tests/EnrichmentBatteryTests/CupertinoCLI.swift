@@ -157,11 +157,22 @@ enum CupertinoCLI {
     /// (no binary) still run in parallel.
     private static let cliLock = NSLock()
 
+    /// `{count,query,results:[...]}` list-view shape (hig emits this; the
+    /// other docs sources emit a bare array).
+    private struct DocsListView: Decodable {
+        let results: [DocResult]
+    }
+
     /// Docs sources (apple-docs, hig, apple-archive, swift-evolution,
     /// swift-org, swift-book). Always pass `--source` so only one DB opens.
     static func searchDocs(_ query: String, _ args: [String] = []) -> [DocResult] {
         guard let data = jsonData(["search", query] + args) else { return [] }
-        return (try? decoder.decode([DocResult].self, from: data)) ?? []
+        // Most docs sources emit a bare `[DocResult]`; hig emits a
+        // `{results:[...]}` list-view object. Accept either.
+        if let arr = try? decoder.decode([DocResult].self, from: data) {
+            return arr
+        }
+        return (try? decoder.decode(DocsListView.self, from: data))?.results ?? []
     }
 
     static func searchSamples(_ query: String, _ args: [String] = []) -> SamplesResponse? {
