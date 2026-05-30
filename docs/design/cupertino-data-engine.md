@@ -64,7 +64,7 @@ CupertinoDataKit (#1183, shipped) gave us the read contract (`Search.Database` =
 |---|---|---|
 | F1 | Engine conforms `Search.DocumentReading` (search / getDocumentContent / listFrameworks / documentCount / disconnect) | existing SearchSQLite read tests, run against the engine package |
 | F2 | Engine conforms `Search.SymbolReading` (symbol / inheritance / availability / resource methods) | existing AST + inheritance tests |
-| F3 | Engine opens a read-only / bundled DB without assuming a writable base dir | new test against a read-only DB file |
+| F3 | Engine opens a read-only / bundled DB at a CONFIGURABLE path, asserting the file exists, with no directory-create and no write-pragmas (§7.1) | new test: open a read-only DB file from a read-only dir, assert success; assert clear failure when a configured DB is absent |
 
 ### 4.2 Non-functional
 
@@ -159,7 +159,20 @@ Public repo `mihaelamj/CupertinoDataEngine`, cupertino-owned; owner publishes + 
 
 ## 7. Data Model
 
-No new schema. The engine reads the existing per-source DBs defined in [`per-source-db-split.md`](per-source-db-split.md) and [`per-db-schema-spec.md`](per-db-schema-spec.md). The one new requirement (F3) is that the engine opens a read-only / bundled DB without assuming a writable base dir.
+No new schema. The engine reads the existing per-source DBs defined in [`per-source-db-split.md`](per-source-db-split.md) and [`per-db-schema-spec.md`](per-db-schema-spec.md).
+
+### 7.1 Read-only open + configurable path (maintainer directive 2026-05-30)
+
+The current `Search.Index` open path is incompatible with a bundled read-only DB on iOS (verified against `Search.Index.swift`):
+- `init` calls `FileManager.default.createDirectory(...)` (line 157), assuming a writable parent dir. iOS app-bundle resources are read-only.
+- `openDatabase` does a read-write `sqlite3_open` (line 224) and executes `PRAGMA journal_mode = WAL`, `PRAGMA synchronous = NORMAL`, `PRAGMA journal_size_limit` (lines 246/272/289). WAL + those pragmas are writes to the DB and its `-wal`/`-shm` sidecars; they fail against a read-only file in a read-only directory.
+
+Maintainer directive sets the contract, removing this from "open question" to "fixed design":
+1. **Assume the DBs are where they need to be.** The engine does NOT create directories, does NOT assume `~/.cupertino`, and does NOT crawl/build. It is handed a location.
+2. **Assert presence.** On open, the engine asserts each configured DB file exists and is a valid DB; if not, it fails fast with a clear error (no silent fallback, no implicit build).
+3. **The path is configurable.** The caller (iOS app, CLI, serve) injects where the DBs live; the engine has no hardcoded base dir.
+
+Design consequence: the engine gains a **read-only open mode** for the embedded case: `sqlite3_open_v2(..., SQLITE_OPEN_READONLY)`, skipping `createDirectory`, skipping the WAL/synchronous/journal write-pragmas (a read-only connection needs none of them; readers can read a WAL or non-WAL DB without setting journal mode). The existing read-write open path stays for the CLI/serve writer. This is a behaviour-preserving addition (a new init/open mode), not a change to the existing writer path. Satisfies F3.
 
 ---
 
@@ -242,7 +255,7 @@ No runtime behaviour change for existing cupertino users: the CLI / serve paths 
 |---|---|---|
 | Q1 | Final monorepo shape: thin re-export shell vs read/write target split (§6.4) | open, settle after §6.1 compiles |
 | Q2 | Does the full SymbolReading/inheritance read path stay iOS-clean, or reach index-time helpers? | open, determines full-engine vs fallback to 15.1 |
-| Q3 | Does `Search.Index(dbPath:...)` work against a read-only bundled DB with no writable base dir? | open (F3) |
+| Q3 | Read-only open against a bundled DB | RESOLVED by directive (§7.1): add a read-only open mode (`SQLITE_OPEN_READONLY`, no dir-create, no write-pragmas), configurable path, assert-exists |
 | Q4 | Name: CupertinoDataEngine (confirmed by maintainer 2026-05-30) | resolved |
 | Q5 | Type-split decision: ship whole actor (i) / split read+write types (ii) / promote shared base (iii) (§6.1)? Determines whether G5 is met in v0.1.0 or deferred | open, the central decision of this epic |
 | Q6 | Fan-out scope (§5.1): engine ships per-DB only (A, consumer fuses) vs engine ships `UnifiedSearcher` cross-source fusion (B)? Determines whether iOS gets real unified search or single-source | open, scope-critical |
