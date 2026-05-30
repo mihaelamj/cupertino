@@ -120,9 +120,9 @@ let deps: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
     // SwiftSyntax for AST parsing (#81)
     .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0"),
-    // SPIKE (#1167, spike branch only — never merge): the extracted MCP wire core.
-    // URL dep pinned to the swift-mcp-core v0.1.0 TAG — the canonical v1.4.0 mechanism (was SHA, now tag).
-    .package(url: "https://github.com/mihaelamj/swift-mcp-core.git", from: "0.1.0"),
+    // External (#1167): the extracted, neutral MCP wire core (the SwiftMCPCore module).
+    // URL dep pinned to the SwiftMCPCore v0.1.0 tag (repo renamed from swift-mcp-core; old URL redirects).
+    .package(url: "https://github.com/mihaelamj/SwiftMCPCore.git", from: "0.1.0"),
 ]
 
 // -------------------------------------------------------------
@@ -140,7 +140,7 @@ let targets: [Target] = {
     // are excluded because they are their own SPM targets.
     let mcpCoreTarget = Target.target(
         name: "MCPCore",
-        dependencies: [.product(name: "SwiftMCPCore", package: "swift-mcp-core")],
+        dependencies: [.product(name: "SwiftMCPCore", package: "SwiftMCPCore")],
         path: "Sources/MCP",
         exclude: ["Client", "SharedTools", "Support"]
     )

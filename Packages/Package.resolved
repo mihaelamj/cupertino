@@ -11,9 +11,9 @@
       }
     },
     {
-      "identity" : "swift-mcp-core",
+      "identity" : "swiftmcpcore",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/mihaelamj/swift-mcp-core.git",
+      "location" : "https://github.com/mihaelamj/SwiftMCPCore.git",
       "state" : {
         "revision" : "2fe1d78ca47cbc60698e724eeaafe85c341b6fc7",
         "version" : "0.1.0"
