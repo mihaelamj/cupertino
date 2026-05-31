@@ -1,7 +1,7 @@
 # Cupertino Architecture
 
-**Last tagged release:** v1.1.0 on 2026-05-14.
-**`develop` HEAD as of:** 2026-05-18 — v1.2.0 work in progress (closure-purge epic, #767 foundOptionalSource lifecycle events). No `v1.2.0` tag cut yet.
+**Last tagged release:** v1.2.1 on 2026-05-23.
+**`develop` HEAD as of:** 2026-05-31 — `main` carries the v1.3.0 per-source DB bundle (the unified `search.db` split into 8 per-source databases shipped read-only, #1036 / #1194); no `v1.3.0` tag cut yet.
 **Swift Version:** 6.3 (Xcode 26 SDK; use `xcrun swift build` not bare `swift`)
 **Language Mode:** Swift 6 with Strict Concurrency Checking
 
