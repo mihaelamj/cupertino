@@ -5,20 +5,14 @@ import Testing
 
 // Proves every enrichment from docs/enrichment-inventory.md, plus the
 // inheritance / conformance / min-version command surfaces, through the real
-// `cupertino` CLI -- >= 20 queries per applicable database and per option,
-// each with an assertion that the specific enrichment / command surfaces, and
-// each recorded into the shared `BatteryReport` HTML (#1194) as its own
-// collapsible section showing the actual returned text.
+// `cupertino` CLI. Every query records an expandable section into the shared
+// `BatteryReport` HTML (#1194) whose body is the FULL returned result set
+// (every field of every result, or the raw command output) -- not a count.
 //
-// Gated on `CupertinoCLI.available` (debug binary + local snapshot), serialized
-// (every assertion spawns the binary). Full run is long; it is local-only and
-// skipped on CI, like the rest of EnrichmentBatteryTests.
-//
-// Report ordering: the read battery uses orders 0-8; this battery uses 100+ so
-// its sections render after the read sections in the same HTML file.
+// Gated on `CupertinoCLI.available` (debug binary + local snapshot), serialized.
+// Local-only; skipped on CI. Report orders 100+ (after the read battery's 0-8).
 
 enum EnrichmentBattery {
-    // >= 20 broad queries per source, chosen to reliably hit each corpus.
     static let appleDocs = [
         "view", "data", "string", "async", "protocol", "url", "image", "animation", "error", "color",
         "array", "dictionary", "task", "actor", "codable", "result", "sequence", "stream", "publisher", "gesture",
@@ -60,7 +54,6 @@ enum EnrichmentBattery {
         "tracing", "atomic", "regex", "numerics", "argument",
     ]
 
-    /// (sourceId, dbFile, queries) for the 6 docs sources.
     static let docs: [(id: String, db: String, queries: [String])] = [
         ("apple-docs", LocalDBs.appleDocumentation, appleDocs),
         ("hig", LocalDBs.hig, hig),
@@ -74,7 +67,10 @@ enum EnrichmentBattery {
         docs.filter { LocalDBs.available($0.db) }
     }
 
-    /// >= 20 symbol-ish args for the AST commands.
+    static func order(of source: String) -> Int {
+        docs.firstIndex { $0.id == source } ?? 0
+    }
+
     static let symbols = [
         "View", "Data", "String", "Color", "Image", "URLSession", "Task", "Array", "Codable", "Error",
         "Button", "Text", "Stack", "Path", "Gesture", "Publisher", "Sequence", "Result", "Date", "Notification",
@@ -87,27 +83,69 @@ enum EnrichmentBattery {
         "RandomAccessCollection", "BidirectionalCollection", "IteratorProtocol", "AsyncSequence", "Observable",
     ]
 
-    /// HTML helpers reuse the read battery's BatteryReport escaping.
-    static func recordTable(order: Int, title: String, header: [String], rows: [[String]]) {
-        var html = "<h2>\(BatteryReport.esc(title))</h2><table><tr>"
-        html += header.map { "<th>\(BatteryReport.esc($0))</th>" }.joined()
-        html += "</tr>"
-        for row in rows {
-            html += "<tr>" + row.map { "<td>\(BatteryReport.esc($0))</td>" }.joined() + "</tr>"
+    static func titleToken(_ title: String) -> String? {
+        title.lowercased()
+            .split(whereSeparator: { !$0.isLetter && !$0.isNumber })
+            .map(String.init).filter { $0.count >= 4 }.max(by: { $0.count < $1.count })
+    }
+
+    // MARK: - Report recording
+
+    /// One expandable `<details>` per item, body = the FULL returned text.
+    static func recordDetails(order: Int, title: String, items: [(summary: String, body: String)]) {
+        var html = "<h2>\(BatteryReport.esc(title))</h2>"
+        for item in items {
+            html += BatteryReport.details(item.summary, item.body.isEmpty ? "(no output)" : item.body)
         }
-        html += "</table>"
         BatteryReport.shared.record(order: order, html: html)
+    }
+
+    /// Render every field of every docs search result.
+    static func renderDocs(_ results: [CupertinoCLI.DocResult]) -> String {
+        guard !results.isEmpty else { return "(no results)" }
+        var out = ""
+        for (index, result) in results.enumerated() {
+            out += "[\(index + 1)] \(result.title)\n"
+            out += "    uri:     \(result.uri)\n"
+            if let framework = result.framework { out += "    fwk:     \(framework)\n" }
+            if let source = result.source { out += "    source:  \(source)\n" }
+            if let rank = result.rank { out += "    score:   \(String(format: "%.4f", rank))\n" }
+            if let words = result.wordCount { out += "    words:   \(words)\n" }
+            if let matched = result.matchedSymbols, !matched.isEmpty {
+                out += "    symbols: " + matched.map { "\($0.name)(\($0.kind))" }.joined(separator: ", ") + "\n"
+            }
+            if let summary = result.summary { out += "    \(summary)\n" }
+            out += "\n"
+        }
+        return out
+    }
+
+    /// Render every field of every AST symbol-query result.
+    static func renderAST(_ results: [CupertinoCLI.ASTQueryResponse.ASTSymbol]) -> String {
+        guard !results.isEmpty else { return "(no results)" }
+        var out = ""
+        for (index, symbol) in results.enumerated() {
+            out += "[\(index + 1)] \(symbol.symbolName)"
+            if let kind = symbol.symbolKind { out += "  (\(kind))" }
+            out += "\n"
+            if let params = symbol.genericParams, !params.isEmpty { out += "    generics: \(params)\n" }
+            if let uri = symbol.docUri { out += "    uri:      \(uri)\n" }
+            if let title = symbol.docTitle { out += "    doc:      \(title)\n" }
+            if let framework = symbol.framework { out += "    fwk:      \(framework)\n" }
+            out += "\n"
+        }
+        return out
     }
 }
 
-// MARK: - #1 Lexical Index (FTS5) -- all 8 databases, >= 20 queries each
+// MARK: - #1 Lexical Index (FTS5) -- all 8 databases
 
 @Suite("Enrichment #1 Lexical Index (exhaustive, all DBs)", .serialized, .enabled(if: CupertinoCLI.available))
 struct ExhaustiveLexicalIndexTests {
     @Test("each docs source returns FTS results for >= 20 queries", arguments: EnrichmentBattery.availableDocs.map(\.id))
     func docsLexical(_ sourceId: String) {
         guard let source = EnrichmentBattery.docs.first(where: { $0.id == sourceId }) else { return }
-        var rows: [[String]] = []
+        var items: [(String, String)] = []
         var hits = 0
         for query in source.queries {
             let results = CupertinoCLI.searchDocs(query, ["--source", source.id, "--limit", "5"])
@@ -115,14 +153,13 @@ struct ExhaustiveLexicalIndexTests {
             for result in results where result.source != nil {
                 #expect(result.source == source.id, "\(source.id) '\(query)' leaked source \(result.source ?? "?")")
             }
-            rows.append([query, "\(results.count)", results.first?.title ?? "(none)"])
+            items.append(("\"\(query)\"  ->  \(results.count) results", EnrichmentBattery.renderDocs(results)))
         }
         #expect(hits >= 18, "\(source.id): only \(hits)/\(source.queries.count) FTS queries hit")
-        EnrichmentBattery.recordTable(
-            order: 100 + EnrichmentBattery.docs.firstIndex { $0.id == sourceId }!,
+        EnrichmentBattery.recordDetails(
+            order: 100 + EnrichmentBattery.order(of: sourceId),
             title: "#1 Lexical Index -- search --source \(source.id) (\(source.queries.count) queries)",
-            header: ["query", "#results", "top result"],
-            rows: rows
+            items: items
         )
     }
 
@@ -131,35 +168,32 @@ struct ExhaustiveLexicalIndexTests {
         .enabled(if: LocalDBs.samplesAvailable || LocalDBs.packagesAvailable)
     )
     func samplesPackagesLexical() {
-        var rows: [[String]] = []
+        var items: [(String, String)] = []
         if LocalDBs.samplesAvailable {
             var hits = 0
             for query in EnrichmentBattery.samples {
-                let count = CupertinoCLI.searchSamples(query, ["--limit", "5"])?.files.count ?? 0
-                if count >= 1 { hits += 1 }
-                rows.append(["samples", query, "\(count)"])
+                let files = CupertinoCLI.searchSamples(query, ["--limit", "5"])?.files ?? []
+                if !files.isEmpty { hits += 1 }
+                let body = files.enumerated().map { "[\($0 + 1)] \($1.projectId) / \($1.path)" + ($1.snippet.map { "\n    \($0)" } ?? "") }.joined(separator: "\n")
+                items.append(("samples \"\(query)\"  ->  \(files.count) files", body))
             }
             #expect(hits >= 16, "samples: only \(hits)/\(EnrichmentBattery.samples.count) FTS queries hit")
         }
         if LocalDBs.packagesAvailable {
             var hits = 0
             for query in EnrichmentBattery.packages {
-                let count = CupertinoCLI.searchPackages(query, ["--limit", "5"])?.candidates.count ?? 0
-                if count >= 1 { hits += 1 }
-                rows.append(["packages", query, "\(count)"])
+                let cands = CupertinoCLI.searchPackages(query, ["--limit", "5"])?.candidates ?? []
+                if !cands.isEmpty { hits += 1 }
+                let body = cands.enumerated().map { "[\($0 + 1)] \($1.identifier)" + ($1.title.map { "  \u{2014} \($0)" } ?? "") }.joined(separator: "\n")
+                items.append(("packages \"\(query)\"  ->  \(cands.count) candidates", body))
             }
             #expect(hits >= 16, "packages: only \(hits)/\(EnrichmentBattery.packages.count) FTS queries hit")
         }
-        EnrichmentBattery.recordTable(
-            order: 106,
-            title: "#1 Lexical Index -- samples + packages FTS",
-            header: ["source", "query", "#results"],
-            rows: rows
-        )
+        EnrichmentBattery.recordDetails(order: 106, title: "#1 Lexical Index -- samples + packages FTS", items: items)
     }
 }
 
-// MARK: - #2 / #5 / #7 Symbol surfacing (AST symbols, boosting, identifier splitting)
+// MARK: - #2 / #5 / #7 Symbol surfacing
 
 @Suite(
     "Enrichment #2/#5/#7 Symbol surfacing (exhaustive)",
@@ -167,25 +201,6 @@ struct ExhaustiveLexicalIndexTests {
     .enabled(if: CupertinoCLI.available && LocalDBs.available(LocalDBs.appleDocumentation))
 )
 struct ExhaustiveSymbolTests {
-    @Test("search-symbols returns AST symbol rows for >= 20 queries (#5)")
-    func astSymbols() {
-        var rows: [[String]] = []
-        var hits = 0
-        for symbol in EnrichmentBattery.symbols {
-            let results = CupertinoCLI.searchSymbols(query: symbol, ["--limit", "5"])?.results ?? []
-            if !results.isEmpty { hits += 1 }
-            rows.append([symbol, "\(results.count)", results.first?.symbolName ?? "(none)", results.first?.symbolKind ?? ""])
-        }
-        #expect(hits >= 18, "search-symbols: only \(hits)/\(EnrichmentBattery.symbols.count) hit")
-        EnrichmentBattery.recordTable(
-            order: 110, title: "#5 AST Symbol Extraction -- search-symbols (\(EnrichmentBattery.symbols.count) queries)",
-            header: ["query", "#results", "top symbol", "kind"], rows: rows
-        )
-    }
-
-    // Exact API symbol names that each have a canonical apple-docs page. Symbol
-    // field boosting (#2) + identifier splitting (#7) should surface that page
-    // in the top results when you search the symbol name.
     static let canonicalSymbols = [
         "LazyVGrid", "LazyHGrid", "NavigationStack", "NavigationSplitView", "ScrollView",
         "AsyncStream", "AsyncThrowingStream", "URLSession", "URLRequest", "GeometryReader",
@@ -194,32 +209,40 @@ struct ExhaustiveSymbolTests {
         "UIViewController", "CALayer", "NSAttributedString", "DispatchQueue", "PropertyListDecoder",
     ]
 
+    @Test("search-symbols returns AST symbol rows for >= 20 queries (#5)")
+    func astSymbols() {
+        var items: [(String, String)] = []
+        var hits = 0
+        for symbol in EnrichmentBattery.symbols {
+            let results = CupertinoCLI.searchSymbols(query: symbol, ["--limit", "5"])?.results ?? []
+            if !results.isEmpty { hits += 1 }
+            items.append(("\"\(symbol)\"  ->  \(results.count) symbols", EnrichmentBattery.renderAST(results)))
+        }
+        #expect(hits >= 18, "search-symbols: only \(hits)/\(EnrichmentBattery.symbols.count) hit")
+        EnrichmentBattery.recordDetails(order: 110, title: "#5 AST Symbol Extraction -- search-symbols (\(EnrichmentBattery.symbols.count) queries)", items: items)
+    }
+
     @Test("exact symbol queries surface the canonical page (#2 boosting + #7 splitting)")
     func symbolBoosting() {
-        var rows: [[String]] = []
+        var items: [(String, String)] = []
         var surfaced = 0
         for symbol in Self.canonicalSymbols {
             let results = CupertinoCLI.searchDocs(symbol, ["--source", "apple-docs", "--limit", "3"])
             let needle = symbol.lowercased()
-            // The canonical page is surfaced when a top-3 result's uri/title
-            // contains the symbol, or it is exposed in matchedSymbols.
             let hit = results.prefix(3).contains { result in
                 result.uri.lowercased().contains(needle)
                     || result.title.lowercased().replacingOccurrences(of: " ", with: "").contains(needle)
                     || (result.matchedSymbols?.contains { $0.name.lowercased() == needle } ?? false)
             }
             if hit { surfaced += 1 }
-            rows.append([symbol, "\(results.count)", results.first?.title ?? "(none)", hit ? "canonical surfaced" : "-"])
+            items.append(("\"\(symbol)\"  ->  \(hit ? "canonical surfaced" : "not surfaced")", EnrichmentBattery.renderDocs(results)))
         }
         #expect(surfaced >= 20, "symbol boosting: only \(surfaced)/\(Self.canonicalSymbols.count) surfaced the canonical page")
-        EnrichmentBattery.recordTable(
-            order: 111, title: "#2 Symbol Field Boosting + #7 Identifier Splitting (\(Self.canonicalSymbols.count) exact symbols)",
-            header: ["query", "#results", "top result", "canonical surfaced?"], rows: rows
-        )
+        EnrichmentBattery.recordDetails(order: 111, title: "#2 Symbol Field Boosting + #7 Identifier Splitting (\(Self.canonicalSymbols.count) exact symbols)", items: items)
     }
 }
 
-// MARK: - #9 / #10 Generic constraints + #24 boilerplate demotion
+// MARK: - #9 / #10 Generic constraints
 
 @Suite(
     "Enrichment #9/#10 Constraints (exhaustive)",
@@ -229,22 +252,23 @@ struct ExhaustiveSymbolTests {
 struct ExhaustiveConstraintTests {
     @Test("search-generics returns constrained symbols for >= 20 constraints")
     func generics() {
-        var rows: [[String]] = []
+        var items: [(String, String)] = []
         var hits = 0
         for constraint in EnrichmentBattery.constraints {
             let results = CupertinoCLI.searchGenerics(constraint: constraint, ["--limit", "5"])?.results ?? []
             if !results.isEmpty { hits += 1 }
-            rows.append([constraint, "\(results.count)", results.first?.symbolName ?? "(none)", results.first?.genericParams ?? ""])
+            items.append(("\"\(constraint)\"  ->  \(results.count) symbols", EnrichmentBattery.renderAST(results)))
         }
         #expect(hits >= 12, "search-generics: only \(hits)/\(EnrichmentBattery.constraints.count) constraints hit")
-        EnrichmentBattery.recordTable(
-            order: 112, title: "#9/#10 Constraint Resolution + Propagation -- search-generics (\(EnrichmentBattery.constraints.count) constraints)",
-            header: ["constraint", "#results", "top symbol", "generic params"], rows: rows
+        EnrichmentBattery.recordDetails(
+            order: 112,
+            title: "#9/#10 Constraint Resolution + Propagation -- search-generics (\(EnrichmentBattery.constraints.count) constraints)",
+            items: items
         )
     }
 }
 
-// MARK: - Conformances command (>= 20)
+// MARK: - Conformances command
 
 @Suite(
     "search-conformances (exhaustive)",
@@ -252,28 +276,22 @@ struct ExhaustiveConstraintTests {
     .enabled(if: CupertinoCLI.available && LocalDBs.available(LocalDBs.appleDocumentation))
 )
 struct ExhaustiveConformanceTests {
-    @Test("search-conformances emits JSON results for >= 20 protocols")
+    @Test("search-conformances returns conformers for >= 20 protocols")
     func conformances() {
-        var rows: [[String]] = []
+        var items: [(String, String)] = []
         var hits = 0
         for proto in EnrichmentBattery.constraints {
-            let out = BatteryReport.stripLog(CupertinoCLI.run(["search-conformances", "--protocol", proto, "--limit", "5", "--format", "json"]))
-            let hasJSON = out.contains("{") || out.contains("[")
-            #expect(hasJSON, "search-conformances '\(proto)' emitted no JSON")
-            // crude result count from the JSON body
-            let count = out.components(separatedBy: "\"symbol_name\"").count - 1
+            let body = BatteryReport.stripLog(CupertinoCLI.run(["search-conformances", "--protocol", proto, "--limit", "5", "--format", "markdown"]))
+            let count = CupertinoCLI.run(["search-conformances", "--protocol", proto, "--limit", "5", "--format", "json"]).components(separatedBy: "\"symbol_name\"").count - 1
             if count >= 1 { hits += 1 }
-            rows.append([proto, "\(count)"])
+            items.append(("\"\(proto)\"  ->  \(count) conformers", body))
         }
         #expect(hits >= 10, "search-conformances: only \(hits)/\(EnrichmentBattery.constraints.count) protocols had conformers")
-        EnrichmentBattery.recordTable(
-            order: 113, title: "search-conformances (\(EnrichmentBattery.constraints.count) protocols)",
-            header: ["protocol", "#conformers"], rows: rows
-        )
+        EnrichmentBattery.recordDetails(order: 113, title: "search-conformances (\(EnrichmentBattery.constraints.count) protocols)", items: items)
     }
 }
 
-// MARK: - #15 Inheritance graph (>= 20)
+// MARK: - #15 Inheritance graph
 
 @Suite(
     "Enrichment #15 Inheritance Graph (exhaustive)",
@@ -289,24 +307,48 @@ struct ExhaustiveInheritanceTests {
 
     @Test("inheritance emits a graph for >= 20 symbols")
     func inheritance() {
-        var rows: [[String]] = []
+        var items: [(String, String)] = []
         var hits = 0
         for symbol in Self.symbols {
-            let out = BatteryReport.stripLog(CupertinoCLI.run(["inheritance", symbol, "--format", "json"]))
-            #expect(!out.isEmpty, "inheritance '\(symbol)' emitted nothing")
-            let hasEdges = out.contains("parent") || out.contains("child") || out.contains("\(symbol)")
+            let body = BatteryReport.stripLog(CupertinoCLI.run(["inheritance", symbol, "--format", "markdown"]))
+            let hasEdges = body.contains("parent") || body.contains("child") || body.contains(symbol) || body.count > 40
             if hasEdges { hits += 1 }
-            rows.append([symbol, "\(out.count) chars"])
+            items.append((symbol, body))
         }
         #expect(hits >= 15, "inheritance: only \(hits)/\(Self.symbols.count) symbols produced a graph")
-        EnrichmentBattery.recordTable(
-            order: 114, title: "#15 Inheritance Graph -- inheritance (\(Self.symbols.count) symbols)",
-            header: ["symbol", "output"], rows: rows
+        EnrichmentBattery.recordDetails(order: 114, title: "#15 Inheritance Graph -- inheritance (\(Self.symbols.count) symbols)", items: items)
+    }
+}
+
+// MARK: - #24 AST Boilerplate Demotion
+
+@Suite(
+    "Enrichment #24 AST Boilerplate Demotion (exhaustive)",
+    .serialized,
+    .enabled(if: CupertinoCLI.available && LocalDBs.available(LocalDBs.appleDocumentation))
+)
+struct ExhaustiveDemotionTests {
+    @Test("search-symbols ranks a named declaration first, demoting operator boilerplate (#177)")
+    func boilerplateDemotion() {
+        var items: [(String, String)] = []
+        var namedFirst = 0
+        for symbol in EnrichmentBattery.symbols {
+            let results = CupertinoCLI.searchSymbols(query: symbol, ["--limit", "5"])?.results ?? []
+            let top = results.first?.symbolName ?? ""
+            let namedTop = top.first.map { $0.isLetter || $0 == "_" } ?? false
+            if namedTop { namedFirst += 1 }
+            items.append(("\"\(symbol)\"  ->  top: \(top.isEmpty ? "(none)" : top)", EnrichmentBattery.renderAST(results)))
+        }
+        #expect(namedFirst >= 18, "boilerplate demotion: only \(namedFirst)/\(EnrichmentBattery.symbols.count) ranked a named symbol first")
+        EnrichmentBattery.recordDetails(
+            order: 115,
+            title: "#24 AST Boilerplate Demotion -- search-symbols top-hit named (\(EnrichmentBattery.symbols.count) queries)",
+            items: items
         )
     }
 }
 
-// MARK: - #3 / #17 Deployment floors -- min-version options (>= 20 per floor)
+// MARK: - #3 / #17 Deployment floors (min-version options)
 
 @Suite(
     "Enrichment #3/#17 Deployment Floors (exhaustive, per option)",
@@ -318,23 +360,24 @@ struct ExhaustiveFloorTests {
         "--min-ios", "--min-macos", "--min-tvos", "--min-watchos", "--min-visionos",
     ])
     func floor(_ option: String) {
-        var rows: [[String]] = []
+        var items: [(String, String)] = []
         var hits = 0
         for query in EnrichmentBattery.appleDocs {
             let results = CupertinoCLI.searchDocs(query, ["--source", "apple-docs", "--limit", "5", option, "16.0"])
             if !results.isEmpty { hits += 1 }
-            rows.append([query, "\(results.count)", results.first?.title ?? "(none)"])
+            items.append(("\"\(query)\" \(option) 16.0  ->  \(results.count) results", EnrichmentBattery.renderDocs(results)))
         }
         #expect(hits >= 10, "\(option): only \(hits)/\(EnrichmentBattery.appleDocs.count) queries returned results")
         let floorOrder = ["--min-ios": 0, "--min-macos": 1, "--min-tvos": 2, "--min-watchos": 3, "--min-visionos": 4][option] ?? 0
-        EnrichmentBattery.recordTable(
-            order: 120 + floorOrder, title: "#3/#17 Deployment Floors -- apple-docs \(option) 16.0 (\(EnrichmentBattery.appleDocs.count) queries)",
-            header: ["query", "#results", "top result"], rows: rows
+        EnrichmentBattery.recordDetails(
+            order: 120 + floorOrder,
+            title: "#3/#17 Deployment Floors -- apple-docs \(option) 16.0 (\(EnrichmentBattery.appleDocs.count) queries)",
+            items: items
         )
     }
 }
 
-// MARK: - #21 / #22 / #23 Query-time ranking (RRF, intent routing, reranking)
+// MARK: - #21 / #22 / #23 Query-time ranking
 
 @Suite(
     "Enrichment #21/#22/#23 Ranking (exhaustive)",
@@ -344,62 +387,55 @@ struct ExhaustiveFloorTests {
 struct ExhaustiveRankingTests {
     @Test("fan-out search fuses multiple sources via RRF for >= 20 queries (#21)")
     func rankFusion() {
-        var rows: [[String]] = []
+        var items: [(String, String)] = []
         var fused = 0
         for query in EnrichmentBattery.appleDocs {
             let response = CupertinoCLI.searchFanout(query, ["--limit", "10"])
             let sources = response?.contributingSources ?? []
-            let candidates = response?.candidates.count ?? 0
-            if sources.count >= 2, candidates >= 1 { fused += 1 }
-            rows.append([query, "\(sources.count)", "\(candidates)", sources.prefix(4).joined(separator: ",")])
+            let candidates = response?.candidates ?? []
+            if sources.count >= 2, !candidates.isEmpty { fused += 1 }
+            var body = "contributing sources: \(sources.joined(separator: ", "))\n\n"
+            for (index, candidate) in candidates.enumerated() {
+                body += "[\(index + 1)] (\(candidate.source ?? "?")) \(candidate.title ?? candidate.identifier ?? "")"
+                if let rank = candidate.rank { body += "  rank=\(String(format: "%.4f", rank))" }
+                body += "\n"
+            }
+            items.append(("\"\(query)\"  ->  \(sources.count) sources, \(candidates.count) candidates", body))
         }
         #expect(fused >= 15, "RRF: only \(fused)/\(EnrichmentBattery.appleDocs.count) queries fused >= 2 sources")
-        EnrichmentBattery.recordTable(
-            order: 130, title: "#21 Rank Fusion -- fan-out search (\(EnrichmentBattery.appleDocs.count) queries)",
-            header: ["query", "#sources", "#candidates", "contributing sources"], rows: rows
-        )
+        EnrichmentBattery.recordDetails(order: 130, title: "#21 Rank Fusion -- fan-out search (\(EnrichmentBattery.appleDocs.count) queries)", items: items)
     }
 
     @Test("exact-title queries rank that page first (#23 kind-aware reranking)")
     func reranking() {
-        let exact = ExhaustiveSymbolTests.canonicalSymbols
-        var rows: [[String]] = []
+        var items: [(String, String)] = []
         var topHit = 0
-        for symbol in exact {
+        for symbol in ExhaustiveSymbolTests.canonicalSymbols {
             let results = CupertinoCLI.searchDocs(symbol, ["--source", "apple-docs", "--limit", "3"])
             let needle = symbol.lowercased()
             let topIsExact = results.first.map {
-                $0.title.lowercased().replacingOccurrences(of: " ", with: "").contains(needle)
-                    || $0.uri.lowercased().contains(needle)
+                $0.title.lowercased().replacingOccurrences(of: " ", with: "").contains(needle) || $0.uri.lowercased().contains(needle)
             } ?? false
             if topIsExact { topHit += 1 }
-            rows.append([symbol, results.first?.title ?? "(none)", topIsExact ? "top" : "-"])
+            items.append(("\"\(symbol)\"  ->  \(topIsExact ? "exact first" : "not first")", EnrichmentBattery.renderDocs(results)))
         }
-        #expect(topHit >= 18, "reranking: only \(topHit)/\(exact.count) ranked the exact page first")
-        EnrichmentBattery.recordTable(
-            order: 131, title: "#23 Kind-Aware Reranking -- exact-title-first (\(exact.count) symbols)",
-            header: ["query", "top result", "exact first?"], rows: rows
-        )
+        #expect(topHit >= 18, "reranking: only \(topHit)/\(ExhaustiveSymbolTests.canonicalSymbols.count) ranked the exact page first")
+        EnrichmentBattery.recordDetails(order: 131, title: "#23 Kind-Aware Reranking -- exact-title-first (\(ExhaustiveSymbolTests.canonicalSymbols.count) symbols)", items: items)
     }
 
     @Test("intent-routed fan-out keeps apple-docs a top contributor for API queries (#22)")
     func intentRouting() {
-        var rows: [[String]] = []
+        var items: [(String, String)] = []
         var appleTop = 0
         for query in EnrichmentBattery.symbols {
-            let response = CupertinoCLI.searchFanout(query, ["--limit", "10"])
-            let candidates = response?.candidates ?? []
-            // Authority weighting (#254) gives apple-docs the highest authority;
-            // for API-symbol queries it should contribute the top candidate.
+            let candidates = CupertinoCLI.searchFanout(query, ["--limit", "10"])?.candidates ?? []
             let appleContributes = candidates.prefix(3).contains { ($0.source ?? "").contains("apple") }
             if appleContributes { appleTop += 1 }
-            rows.append([query, "\(candidates.count)", candidates.first?.source ?? "(none)"])
+            let body = candidates.enumerated().map { "[\($0 + 1)] (\($1.source ?? "?")) \($1.title ?? $1.identifier ?? "")" }.joined(separator: "\n")
+            items.append(("\"\(query)\"  ->  top source: \(candidates.first?.source ?? "(none)")", body))
         }
         #expect(appleTop >= 15, "intent routing: apple-docs in top-3 for only \(appleTop)/\(EnrichmentBattery.symbols.count)")
-        EnrichmentBattery.recordTable(
-            order: 132, title: "#22 Intent Routing -- apple-docs authority (\(EnrichmentBattery.symbols.count) queries)",
-            header: ["query", "#candidates", "top source"], rows: rows
-        )
+        EnrichmentBattery.recordDetails(order: 132, title: "#22 Intent Routing -- apple-docs authority (\(EnrichmentBattery.symbols.count) queries)", items: items)
     }
 }
 
@@ -411,7 +447,6 @@ struct ExhaustiveRankingTests {
     .enabled(if: CupertinoCLI.available && LocalDBs.available(LocalDBs.appleDocumentation))
 )
 struct ExhaustiveAliasingTests {
-    // (alias query, expected framework substring)
     static let aliases: [(query: String, framework: String)] = [
         ("bluetooth", "bluetooth"), ("location", "location"), ("machine learning", "ml"), ("augmented reality", "arkit"),
         ("nfc", "nfc"), ("health", "health"), ("home automation", "home"), ("payments", "passkit"),
@@ -423,26 +458,22 @@ struct ExhaustiveAliasingTests {
 
     @Test("alias queries route to the aliased framework for >= 20 terms")
     func aliasing() {
-        var rows: [[String]] = []
+        var items: [(String, String)] = []
         var routed = 0
         for entry in Self.aliases {
             let results = CupertinoCLI.searchDocs(entry.query, ["--source", "apple-docs", "--limit", "5"])
             let hit = results.contains { result in
-                (result.framework?.lowercased().contains(entry.framework) ?? false)
-                    || result.uri.lowercased().contains(entry.framework)
+                (result.framework?.lowercased().contains(entry.framework) ?? false) || result.uri.lowercased().contains(entry.framework)
             }
             if hit { routed += 1 }
-            rows.append([entry.query, "-> \(entry.framework)", "\(results.count)", hit ? "routed" : "-"])
+            items.append(("\"\(entry.query)\"  ->  \(entry.framework) (\(hit ? "routed" : "not routed"))", EnrichmentBattery.renderDocs(results)))
         }
         #expect(routed >= 12, "aliasing: only \(routed)/\(Self.aliases.count) terms routed to the framework")
-        EnrichmentBattery.recordTable(
-            order: 133, title: "#11 Framework Aliasing (\(Self.aliases.count) alias terms)",
-            header: ["query", "expected framework", "#results", "routed?"], rows: rows
-        )
+        EnrichmentBattery.recordDetails(order: 133, title: "#11 Framework Aliasing (\(Self.aliases.count) alias terms)", items: items)
     }
 }
 
-// MARK: - #14 / #16 read-surfaced enrichments (structured projection, code examples)
+// MARK: - #14 / #16 read-surfaced enrichments
 
 @Suite(
     "Enrichment #14/#16 read-surfaced (exhaustive)",
@@ -452,7 +483,6 @@ struct ExhaustiveAliasingTests {
 struct ExhaustiveReadFieldTests {
     @Test("reading >= 20 docs exposes structured projection + code examples")
     func readFields() {
-        // Gather >= 20 distinct apple-docs URIs.
         var seen = Set<String>()
         var uris: [String] = []
         for query in EnrichmentBattery.appleDocs {
@@ -463,33 +493,25 @@ struct ExhaustiveReadFieldTests {
         }
         #expect(uris.count >= 20, "only gathered \(uris.count) docs to read")
 
-        var rows: [[String]] = []
+        var items: [(String, String)] = []
         var structured = 0
         var withExamples = 0
         for uri in uris.prefix(25) {
             let body = BatteryReport.stripLog(CupertinoCLI.run(["read", uri, "--source", "apple-docs", "--format", "json"]))
-            // #14 Structured Projection: declaration / overview / sections lifted out.
             let hasStructure = body.contains("\"declaration\"") || body.contains("\"sections\"") || body.contains("\"overview\"")
             if hasStructure { structured += 1 }
-            // #16 Code Example Extraction: codeExamples array present (non-empty for many API pages).
             if body.contains("\"codeExamples\""), !body.contains("\"codeExamples\" : [ ]"), !body.contains("\"codeExamples\":[]") {
                 withExamples += 1
             }
-            rows.append([uri, hasStructure ? "structured" : "-", body.count > 200 ? "ok" : "thin"])
+            items.append((uri, body))
         }
         #expect(structured >= 20, "#14 structured projection: only \(structured)/\(uris.prefix(25).count) docs had structure")
         #expect(withExamples >= 1, "#16 code examples: none of the read docs carried codeExamples")
-        EnrichmentBattery.recordTable(
-            order: 134, title: "#14 Structured Projection + #16 Code Examples (\(uris.prefix(25).count) docs read)",
-            header: ["uri", "structured?", "body"], rows: rows
-        )
+        EnrichmentBattery.recordDetails(order: 134, title: "#14 Structured Projection + #16 Code Examples (\(uris.prefix(25).count) docs read)", items: items)
     }
 }
 
-// MARK: - Internal stored columns proven by DB probe (>= 20 populated rows)
-
-// #4 toolchain, #6 imports, #8 availability, #12 HIG NULLing, #13 apple-imports,
-// #18 dependency closure, #19 provenance, #20 row bookkeeping.
+// MARK: - Internal stored columns proven by DB probe (a count table is the content here)
 
 @Suite(
     "Enrichment #4/#6/#8/#12/#13/#18/#19/#20 stored columns (exhaustive probe)",
@@ -502,38 +524,38 @@ struct ExhaustiveStoredColumnTests {
         return probe.count("SELECT COUNT(*) FROM \(table) WHERE \(column) IS NOT NULL AND \(column) != ''")
     }
 
+    /// Sample up to `limit` actual values from a column, for the report body.
+    private func sample(_ db: String, table: String, column: String, limit: Int = 15) -> [String] {
+        guard let probe = DBProbe(db) else { return [] }
+        return probe.column("SELECT \(column) FROM \(table) WHERE \(column) IS NOT NULL AND \(column) != '' LIMIT \(limit)")
+    }
+
     @Test("every internal enrichment column is populated in >= 20 rows of its DB")
     func storedColumns() {
-        var rows: [[String]] = []
+        var items: [(String, String)] = []
         func check(_ label: String, _ db: String, _ table: String, _ column: String, min: Int64 = 20) {
             guard LocalDBs.available(db) else { return }
             let count = nonNull(db, table: table, column: column)
-            rows.append([label, "\(db) . \(table) . \(column)", "\(count)"])
+            let values = sample(db, table: table, column: column)
+            let body = "non-null rows: \(count)\n\nsample values:\n" + values.map { "  \u{2022} \($0)" }.joined(separator: "\n")
+            items.append(("\(label)  --  \(db).\(table).\(column)  ->  \(count) rows", body))
             #expect(count >= min, "\(label): \(db).\(table).\(column) populated in \(count) rows (< \(min))")
         }
-        // #19 provenance + #20 bookkeeping: every docs DB.
         for source in EnrichmentBattery.docs where LocalDBs.available(source.db) {
             check("#19 provenance", source.db, "docs_metadata", "source_type")
             check("#20 content_hash", source.db, "docs_metadata", "content_hash")
             check("#20 word_count", source.db, "docs_metadata", "word_count")
         }
-        // #4 toolchain stamping.
         check("#4 toolchain", LocalDBs.swiftEvolution, "docs_metadata", "implementation_swift_version", min: 5)
         check("#4 toolchain", LocalDBs.swiftBook, "docs_metadata", "implementation_swift_version", min: 1)
         check("#4 toolchain", LocalDBs.packages, "package_metadata", "swift_tools_version", min: 5)
-        // #6 imports (row presence in the imports tables).
         check("#6 imports", LocalDBs.appleDocumentation, "doc_imports", "module_name")
         check("#6 imports", LocalDBs.appleSampleCode, "file_imports", "module_name")
         check("#6 imports", LocalDBs.packages, "package_imports", "module_name")
-        // #8 availability capture.
         check("#8 availability", LocalDBs.packages, "package_files", "available_attrs_json", min: 5)
-        // #13 apple-framework usage + #18 dependency closure (packages).
         check("#13 apple-imports", LocalDBs.packages, "package_metadata", "apple_imports_json", min: 5)
         check("#18 dep closure", LocalDBs.packages, "package_metadata", "parents_json", min: 5)
-        EnrichmentBattery.recordTable(
-            order: 140, title: "Internal enrichment columns -- populated-row probe (>= 20 unless noted)",
-            header: ["enrichment", "db.table.column", "non-null rows"], rows: rows
-        )
+        EnrichmentBattery.recordDetails(order: 140, title: "Internal enrichment columns -- populated-row probe + sample values", items: items)
     }
 
     @Test(
@@ -544,41 +566,10 @@ struct ExhaustiveStoredColumnTests {
         guard let probe = DBProbe(LocalDBs.hig), probe.hasTable("docs_metadata") else { return }
         let total = probe.count("SELECT COUNT(*) FROM docs_metadata")
         let nulled = probe.count("SELECT COUNT(*) FROM docs_metadata WHERE min_ios IS NULL OR min_macos IS NULL")
+        let titles = probe.column("SELECT title FROM docs_metadata WHERE min_ios IS NULL OR min_macos IS NULL LIMIT 15")
         #expect(total >= 1)
         #expect(nulled >= 1, "#12: HIG has no NULLed platform rows (subtractive applicability not applied)")
-        EnrichmentBattery.recordTable(
-            order: 141, title: "#12 Platform Applicability -- HIG subtractive NULLing",
-            header: ["metric", "value"], rows: [["total HIG rows", "\(total)"], ["rows with a NULLed platform floor", "\(nulled)"]]
-        )
-    }
-}
-
-// MARK: - #24 AST Boilerplate Demotion (signal-rank ORDER BY on AST commands)
-
-@Suite(
-    "Enrichment #24 AST Boilerplate Demotion (exhaustive)",
-    .serialized,
-    .enabled(if: CupertinoCLI.available && LocalDBs.available(LocalDBs.appleDocumentation))
-)
-struct ExhaustiveDemotionTests {
-    @Test("search-symbols ranks a named declaration first, demoting synthesized/operator boilerplate (#177)")
-    func boilerplateDemotion() {
-        var rows: [[String]] = []
-        var namedFirst = 0
-        for symbol in EnrichmentBattery.symbols {
-            let results = CupertinoCLI.searchSymbols(query: symbol, ["--limit", "5"])?.results ?? []
-            // Boilerplate demotion: the top hit should be a real named symbol
-            // (starts with a letter), not a synthesized operator (`==`, `<`, ...)
-            // or other punctuation-led boilerplate pushed down by signal-rank.
-            let top = results.first?.symbolName ?? ""
-            let namedTop = top.first.map { $0.isLetter || $0 == "_" } ?? false
-            if namedTop { namedFirst += 1 }
-            rows.append([symbol, "\(results.count)", top.isEmpty ? "(none)" : top, namedTop ? "named" : "boilerplate"])
-        }
-        #expect(namedFirst >= 18, "boilerplate demotion: only \(namedFirst)/\(EnrichmentBattery.symbols.count) ranked a named symbol first")
-        EnrichmentBattery.recordTable(
-            order: 135, title: "#24 AST Boilerplate Demotion -- search-symbols top-hit is a named symbol (\(EnrichmentBattery.symbols.count) queries)",
-            header: ["query", "#results", "top symbol", "named/boilerplate"], rows: rows
-        )
+        let body = "total HIG rows: \(total)\nrows with a NULLed platform floor: \(nulled)\n\nexamples:\n" + titles.map { "  \u{2022} \($0)" }.joined(separator: "\n")
+        EnrichmentBattery.recordDetails(order: 141, title: "#12 Platform Applicability -- HIG subtractive NULLing", items: [("HIG rows with NULLed platform floors", body)])
     }
 }
