@@ -36,7 +36,7 @@ struct Issue930SearchHealthCheckTests {
     @Test("descriptor identity is `.search`; isRequired is true")
     func descriptorAndRequiredness() {
         let check = CLIImpl.Command.Doctor.SearchHealthCheck(
-            searchDBURL: URL(fileURLWithPath: "/tmp/does-not-exist.db")
+            dbURL: URL(fileURLWithPath: "/tmp/does-not-exist.db")
         )
         // The `"search"` id is intentionally a string literal here: there is
         // no `Shared.Constants.SourcePrefix.search` entry to lift it to,
@@ -57,7 +57,7 @@ struct Issue930SearchHealthCheckTests {
     @Test("missing-file path: emits the four-line section + setup hint, returns false (gates verdict)")
     func missingFileEmitsExpectedSectionAndReturnsFalse() async {
         let url = URL(fileURLWithPath: "/tmp/nonexistent-search-\(UUID().uuidString).db")
-        let check = CLIImpl.Command.Doctor.SearchHealthCheck(searchDBURL: url)
+        let check = CLIImpl.Command.Doctor.SearchHealthCheck(dbURL: url)
         let recorder = CapturingRecording()
         let ok = await check.run(output: recorder)
         #expect(ok == false, "search check must return false on missing file (required, gates verdict)")
@@ -72,7 +72,7 @@ struct Issue930SearchHealthCheckTests {
     @Test("conformer is `Distribution.DatabaseHealthCheck`-shaped (the strategy seam round-trips)")
     func conformerIsStrategy() async {
         let url = URL(fileURLWithPath: "/tmp/nonexistent-search-\(UUID().uuidString).db")
-        let check: any Distribution.DatabaseHealthCheck = CLIImpl.Command.Doctor.SearchHealthCheck(searchDBURL: url)
+        let check: any Distribution.DatabaseHealthCheck = CLIImpl.Command.Doctor.SearchHealthCheck(dbURL: url)
         let recorder = CapturingRecording()
         let ok = await check.run(output: recorder)
         #expect(ok == false)
@@ -198,7 +198,9 @@ private actor FakeDatabaseHealthCheck: Distribution.DatabaseHealthCheck {
         return returnValue
     }
 
-    var runCount: Int { _runCount }
+    var runCount: Int {
+        _runCount
+    }
 }
 
 @Suite("#930: Doctor.run iteration shape (regression pin)")
@@ -285,7 +287,7 @@ struct Issue930CrossConformerInvariantsTests {
     @Test("only the search conformer is required; aggregate verdict policy is correct")
     func requirednessPolicyByDescriptor() {
         let search: any Distribution.DatabaseHealthCheck = CLIImpl.Command.Doctor.SearchHealthCheck(
-            searchDBURL: URL(fileURLWithPath: "/tmp/x")
+            dbURL: URL(fileURLWithPath: "/tmp/x")
         )
         let samples: any Distribution.DatabaseHealthCheck = CLIImpl.Command.Doctor.SamplesHealthCheck(
             samplesDBURL: URL(fileURLWithPath: "/tmp/y")
@@ -305,7 +307,7 @@ struct Issue930CrossConformerInvariantsTests {
     @Test("descriptor.id values match canonical descriptor constants; the two content-source ids match SourcePrefix")
     func descriptorIDsLiftedToConstants() {
         let search: any Distribution.DatabaseHealthCheck = CLIImpl.Command.Doctor.SearchHealthCheck(
-            searchDBURL: URL(fileURLWithPath: "/tmp/x")
+            dbURL: URL(fileURLWithPath: "/tmp/x")
         )
         let samples: any Distribution.DatabaseHealthCheck = CLIImpl.Command.Doctor.SamplesHealthCheck(
             samplesDBURL: URL(fileURLWithPath: "/tmp/y")

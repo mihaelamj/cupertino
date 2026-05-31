@@ -145,18 +145,6 @@ extension CLIImpl.Command {
 
         @Option(
             name: .long,
-            help: """
-            Override the path used for every docs source's database (a single \
-            shared file). Legacy debug knob: post-#1037 each docs source normally \
-            resolves to its own per-source database through the registry; passing \
-            this points all the docs sources at the given file instead. Mostly \
-            useful for tests.
-            """
-        )
-        var searchDb: String?
-
-        @Option(
-            name: .long,
             help: "Path to packages database (packages.db). Used in fan-out mode and `--source packages`."
         )
         var packagesDb: String?

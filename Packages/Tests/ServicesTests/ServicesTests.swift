@@ -207,7 +207,7 @@ struct TeaserResultsResilienceTests {
     }
 
     @Test("withTeaserService throws when search.db is a directory (open fails)")
-    func searchDbAsDirectoryFails() async throws {
+    func docsDbAsDirectoryFails() async throws {
         // Pointing search.db at an existing directory makes
         // `sqlite3_open_v2` fail. This is the simplest reproducible
         // proxy for "search.db can't be read right now" — same shape as
@@ -224,7 +224,7 @@ struct TeaserResultsResilienceTests {
         let throwingFactory = ThrowingSearchDatabaseFactory()
         await #expect(throws: (any Error).self) {
             try await Services.ServiceContainer.withTeaserService(
-                searchDB: tempDir,
+                dbURL: tempDir,
                 samplesDB: tempDir.appendingPathComponent("nonexistent-samples.db"),
                 searchDatabaseFactory: throwingFactory,
                 sampleDatabaseFactory: ThrowingSampleDatabaseFactory()
@@ -249,7 +249,7 @@ struct TeaserResultsResilienceTests {
         let teasers: Services.Formatter.TeaserResults
         do {
             teasers = try await Services.ServiceContainer.withTeaserService(
-                searchDB: URL(fileURLWithPath: "/var/empty/intentionally-broken-search.db.\(UUID().uuidString)"),
+                dbURL: URL(fileURLWithPath: "/var/empty/intentionally-broken-search.db.\(UUID().uuidString)"),
                 samplesDB: URL(fileURLWithPath: "/var/empty/intentionally-broken-samples.db.\(UUID().uuidString)"),
                 searchDatabaseFactory: throwingFactory,
                 sampleDatabaseFactory: ThrowingSampleDatabaseFactory()

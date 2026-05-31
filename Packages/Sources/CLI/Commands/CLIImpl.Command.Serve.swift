@@ -133,7 +133,7 @@ extension CLIImpl.Command {
             // per-source bundle, so search / list_frameworks returned zero
             // results (#1071 family). Falls back to the legacy path if the
             // apple-docs provider is somehow absent.
-            let searchDBURL = CLIImpl.makeProductionSourceRegistry().allEnabled
+            let dbURL = CLIImpl.makeProductionSourceRegistry().allEnabled
                 .first { $0.definition.id == Shared.Constants.SourcePrefix.appleDocs }
                 .map { paths.baseDirectory.appendingPathComponent($0.destinationDB.filename) }
                 ?? paths.searchDatabase
@@ -144,7 +144,7 @@ extension CLIImpl.Command {
             let hasData = checkForData(
                 docsDir: config.crawler.outputDirectory,
                 evolutionDir: evolutionURL,
-                searchDB: searchDBURL,
+                dbURL: dbURL,
                 sampleDB: sampleDBURL
             )
 
@@ -169,7 +169,7 @@ extension CLIImpl.Command {
             await registerProviders(
                 server: server,
                 paths: paths,
-                searchDBURL: searchDBURL,
+                dbURL: dbURL,
                 sampleDBURL: sampleDBURL,
                 packagesDBURL: packagesDBURL
             )
@@ -177,7 +177,7 @@ extension CLIImpl.Command {
             printStartupMessages(
                 config: config,
                 evolutionURL: evolutionURL,
-                searchDBURL: searchDBURL,
+                dbURL: dbURL,
                 sampleDBURL: sampleDBURL
             )
 
@@ -203,7 +203,7 @@ extension CLIImpl.Command {
         private func registerProviders(
             server: MCP.Core.Server,
             paths: Shared.Paths,
-            searchDBURL: URL,
+            dbURL: URL,
             sampleDBURL: URL,
             packagesDBURL: URL
         ) async {
@@ -212,7 +212,7 @@ extension CLIImpl.Command {
             // the reason string so the tool provider can still advertise
             // search tools and fail loudly on call, rather than silently
             // dropping them from `tools/list`.
-            let searchLoadResult = await loadSearchIndex(searchDBURL: searchDBURL)
+            let searchLoadResult = await loadSearchIndex(dbURL: dbURL)
             let searchIndex: SearchModule.Index? = searchLoadResult.index
             let searchIndexDisabledReason: String? = searchLoadResult.disabledReason
 
@@ -233,7 +233,7 @@ extension CLIImpl.Command {
             // automatically — no edit to Serve or the MCP dispatcher.
             let resourceRegistry = CLIImpl.makeProductionSourceRegistry()
             let resourceProviders = resourceRegistry.allEnabled
-            let docsDBURLs: [String: URL] = resourceProviders
+            let dbURLs: [String: URL] = resourceProviders
                 .filter { $0.destinationDB != .packages && $0.destinationDB != .appleSampleCode }
                 .reduce(into: [:]) { dict, provider in
                     dict[provider.definition.id] = paths.baseDirectory
@@ -248,7 +248,7 @@ extension CLIImpl.Command {
             )
             let markdownLookup = LiveMarkdownLookupStrategy(
                 providers: resourceProviders,
-                docsDBURLs: docsDBURLs,
+                dbURLs: dbURLs,
                 samplesDBURL: sampleDBURL,
                 packagesDBURL: packagesDBURL,
                 searchDatabaseFactory: LiveSearchDatabaseFactory(),
@@ -407,9 +407,9 @@ extension CLIImpl.Command {
             let disabledReason: String?
         }
 
-        private func loadSearchIndex(searchDBURL: URL) async -> SearchIndexLoadResult {
-            guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
-                let infoMsg = "ℹ️  Search index not found at: \(searchDBURL.path)"
+        private func loadSearchIndex(dbURL: URL) async -> SearchIndexLoadResult {
+            guard FileManager.default.fileExists(atPath: dbURL.path) else {
+                let infoMsg = "ℹ️  Search index not found at: \(dbURL.path)"
                 let cmd = "\(Shared.Constants.App.commandName) save"
                 let hintMsg = "   Tools will not be available. Run '\(cmd)' to enable search."
                 Cupertino.Context.composition.logging.recording.info("\(infoMsg) \(hintMsg)", category: .mcp)
@@ -427,7 +427,7 @@ extension CLIImpl.Command {
                 // #1194: MCP serve is a read path; open read-only so a query
                 // connection cannot write or delete rows.
                 let index = try await SearchModule.Index(
-                    dbPath: searchDBURL,
+                    dbPath: dbURL,
                     logger: Cupertino.Context.composition.logging.recording,
                     indexers: [:],
                     sourceLookup: .empty,
@@ -461,14 +461,14 @@ extension CLIImpl.Command {
         private func printStartupMessages(
             config _: Shared.Configuration,
             evolutionURL _: URL,
-            searchDBURL: URL,
+            dbURL: URL,
             sampleDBURL: URL
         ) {
             var messages = ["🚀 Cupertino MCP Server starting..."]
 
             // Add search DB path if it exists
-            if FileManager.default.fileExists(atPath: searchDBURL.path) {
-                messages.append("   Search DB: \(searchDBURL.path)")
+            if FileManager.default.fileExists(atPath: dbURL.path) {
+                messages.append("   Search DB: \(dbURL.path)")
             }
 
             // Add samples DB path if it exists
@@ -483,11 +483,11 @@ extension CLIImpl.Command {
             }
         }
 
-        private func checkForData(docsDir _: URL, evolutionDir _: URL, searchDB: URL, sampleDB: URL) -> Bool {
+        private func checkForData(docsDir _: URL, evolutionDir _: URL, dbURL: URL, sampleDB: URL) -> Bool {
             let fileManager = FileManager.default
 
             // Check if either database exists
-            let hasSearchDB = fileManager.fileExists(atPath: searchDB.path)
+            let hasSearchDB = fileManager.fileExists(atPath: dbURL.path)
             let hasSamplesDB = fileManager.fileExists(atPath: sampleDB.path)
 
             return hasSearchDB || hasSamplesDB

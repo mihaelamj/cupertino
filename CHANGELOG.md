@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Breaking
+
+- **fix: remove the `--search-db` flag and rename the internal `searchDB` identifiers to generic `dbURL` / `dbPath`.** The legacy `--search-db` docs-database-path override is removed from all six commands that carried it (`search`, `read`, `save`, `doctor`, `list-frameworks`, `inheritance`). Post-#1037 each docs source resolves to its own per-source database through the registry, so the single-file override no longer has a meaning worth surfacing; scripts passing `--search-db` now error. Internally every `searchDB` / `searchDb` identifier was renamed to the generic `dbURL` / `dbPath` (there is no single "the db"; the bundle has 8 per-source databases and grows) (~230 sites across CLI / Services / Indexer / SearchModels / SearchToolProvider). `doctor`'s `--kind-coverage` / `--freshness` probes, which previously pointed at the legacy `search.db` path (absent on a per-source bundle, so they silently skipped), now target the per-source apple-docs database. The literal `search.db` filename remains only where the upgrade shim (`Distribution.PerSourceDBSplitMigrator`, invoked by `cupertino setup`) must detect a real pre-v1.3.0 file by name. Regression test `searchDBFlagRejectedEverywhere` pins the removal across all six commands.
+
 ### Fixed
 
 - **fix(#1200): the `list_samples` MCP tool now advertises its `framework` + `limit` parameters in `tools/list`.** The tool was registered with an empty input schema (`objectSchema(properties: [:])`) even though `handleListSamples` reads `framework` (optional) and `limit` (default 50), so a client introspecting the tool surface could not discover those params. The schema now declares both, matching the handler and the `cupertino list-samples` CLI. Regression test `listSamplesSchemaAdvertisesParams` pins the advertised keys.

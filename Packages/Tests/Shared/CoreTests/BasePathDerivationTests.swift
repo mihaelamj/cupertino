@@ -11,7 +11,9 @@ import Testing
 @Suite("Shared.Paths derives every subpath from its baseDirectory (#535)")
 struct BasePathDerivationTests {
     private let base = URL(fileURLWithPath: "/tmp/cupertino-base-path-derivation-test")
-    private var paths: Shared.Paths { Shared.Paths(baseDirectory: base) }
+    private var paths: Shared.Paths {
+        Shared.Paths(baseDirectory: base)
+    }
 
     private var basePrefix: String {
         // Trailing slash so "/foo" is not accepted as prefix of "/foobar".
@@ -78,7 +80,7 @@ struct BasePathDerivationTests {
     }
 
     @Test("searchDatabase")
-    func searchDB() {
+    func dbURL() {
         assertUnderBase(paths.searchDatabase, expectedLeaf: "search.db")
     }
 

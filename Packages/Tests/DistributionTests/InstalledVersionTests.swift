@@ -8,10 +8,10 @@ import Testing
 @Suite("Distribution.InstalledVersion.classify")
 struct InstalledVersionStatusTests {
     // Descriptor fixtures (#248 first cut: classify takes Set<Shared.Models.DatabaseDescriptor>).
-    private static let searchDB: Shared.Models.DatabaseDescriptor = .search
+    private static let dbURL: Shared.Models.DatabaseDescriptor = .search
     private static let samplesDB: Shared.Models.DatabaseDescriptor = .samples
     private static let packagesDB: Shared.Models.DatabaseDescriptor = .packages
-    private static let requiredAll: Set<Shared.Models.DatabaseDescriptor> = [searchDB, samplesDB, packagesDB]
+    private static let requiredAll: Set<Shared.Models.DatabaseDescriptor> = [dbURL, samplesDB, packagesDB]
 
     @Test("Missing search.db classifies as .missing")
     func missingSearch() {
@@ -27,7 +27,7 @@ struct InstalledVersionStatusTests {
     @Test("Missing samples.db classifies as .missing")
     func missingSamples() {
         let status = Distribution.InstalledVersion.classify(
-            present: [Self.searchDB, Self.packagesDB],
+            present: [Self.dbURL, Self.packagesDB],
             required: Self.requiredAll,
             installedVersion: "0.9.0",
             currentVersion: "0.9.0"
@@ -41,7 +41,7 @@ struct InstalledVersionStatusTests {
         // would report .current even when packages.db hadn't been
         // downloaded yet. Now any missing DB → .missing.
         let status = Distribution.InstalledVersion.classify(
-            present: [Self.searchDB, Self.samplesDB],
+            present: [Self.dbURL, Self.samplesDB],
             required: Self.requiredAll,
             installedVersion: "0.9.0",
             currentVersion: "0.9.0"
@@ -63,7 +63,7 @@ struct InstalledVersionStatusTests {
     @Test("All DBs present + nil version file = .unknown (legacy install)")
     func unknownLegacyInstall() {
         let status = Distribution.InstalledVersion.classify(
-            present: [Self.searchDB, Self.samplesDB, Self.packagesDB],
+            present: [Self.dbURL, Self.samplesDB, Self.packagesDB],
             required: Self.requiredAll,
             installedVersion: nil,
             currentVersion: "0.9.0"
@@ -74,7 +74,7 @@ struct InstalledVersionStatusTests {
     @Test("All DBs present + matching version = .current")
     func currentDBs() {
         let status = Distribution.InstalledVersion.classify(
-            present: [Self.searchDB, Self.samplesDB, Self.packagesDB],
+            present: [Self.dbURL, Self.samplesDB, Self.packagesDB],
             required: Self.requiredAll,
             installedVersion: "0.9.0",
             currentVersion: "0.9.0"
@@ -85,7 +85,7 @@ struct InstalledVersionStatusTests {
     @Test("All DBs present + different version = .stale")
     func staleDBs() {
         let status = Distribution.InstalledVersion.classify(
-            present: [Self.searchDB, Self.samplesDB, Self.packagesDB],
+            present: [Self.dbURL, Self.samplesDB, Self.packagesDB],
             required: Self.requiredAll,
             installedVersion: "0.8.0",
             currentVersion: "0.9.0"
@@ -99,8 +99,8 @@ struct InstalledVersionStatusTests {
         // a three-DB shim. A future 1-DB or 4-DB install works without
         // touching this function.
         let status = Distribution.InstalledVersion.classify(
-            present: [Self.searchDB],
-            required: [Self.searchDB],
+            present: [Self.dbURL],
+            required: [Self.dbURL],
             installedVersion: "1.2.0",
             currentVersion: "1.2.0"
         )

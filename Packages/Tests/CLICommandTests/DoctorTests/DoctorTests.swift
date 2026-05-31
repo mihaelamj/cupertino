@@ -53,14 +53,14 @@ struct MCPDoctorCommandTests {
 
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-        let searchDBURL = tempDir.appendingPathComponent("search.db")
+        let dbURL = tempDir.appendingPathComponent("search.db")
 
         // Create a search database
-        let searchIndex = try await Search.Index(dbPath: searchDBURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let searchIndex = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         await searchIndex.disconnect()
 
         // Verify database file exists
-        #expect(FileManager.default.fileExists(atPath: searchDBURL.path))
+        #expect(FileManager.default.fileExists(atPath: dbURL.path))
 
         print("   ✅ Search database verification tested")
     }

@@ -20,7 +20,7 @@ import Testing
 // file + returns the row.
 //
 // Companion to `ServicesReadServiceURIRoutingTests` which pins the
-// pure `resolveDocsDBURL` string helper. Without an end-to-end test,
+// pure `resolveDBURL` string helper. Without an end-to-end test,
 // a future refactor that quietly bypasses the helper (e.g. opens the
 // wrong DB inside `readFromDocs`) would not be caught by unit tests
 // alone.
@@ -70,11 +70,11 @@ struct Issue1039ReadHigRoundtripTests {
         ))
         await writer.disconnect()
 
-        // 2. ReadService composition root: docsDBURLs map points
-        // `hig` -> the temp hig.db. `searchDB` is a non-existent
+        // 2. ReadService composition root: dbURLs map points
+        // `hig` -> the temp hig.db. `dbURL` is a non-existent
         // path so any fallback would loudly fail; this proves the
         // routing genuinely picked hig.db.
-        let docsDBURLs: [String: URL] = ["hig": higDBPath]
+        let dbURLs: [String: URL] = ["hig": higDBPath]
         let bogusSearchDB = tempDir.appendingPathComponent("nonexistent.db")
         let bogusSamplesDB = tempDir.appendingPathComponent("nonexistent-samples.db")
         let bogusPackagesDB = tempDir.appendingPathComponent("nonexistent-packages.db")
@@ -83,13 +83,13 @@ struct Issue1039ReadHigRoundtripTests {
             identifier: "hig://buttons/standard-button",
             explicit: nil,
             format: .markdown,
-            searchDB: bogusSearchDB,
+            dbURL: bogusSearchDB,
             samplesDB: bogusSamplesDB,
             packagesDB: bogusPackagesDB,
             searchDatabaseFactory: LiveSearchDatabaseFactory(),
             sampleDatabaseFactory: LiveSampleIndexDatabaseFactory(),
             packageFileLookup: NoopPackageFileLookup(),
-            docsDBURLs: docsDBURLs,
+            dbURLs: dbURLs,
             providers: CupertinoComposition.makeProductionSourceRegistry().allEnabled
         )
 
@@ -101,8 +101,8 @@ struct Issue1039ReadHigRoundtripTests {
     func nonURIWithExplicitSourceHigRoutesEndToEnd() async throws {
         // Round-17 critic finding #3: pre-fix `cupertino read foo
         // --source hig` (non-URI identifier with explicit source)
-        // fell back to legacy searchDB. Post-fix the explicit
-        // source-id is threaded into `resolveDocsDBURL` and routes
+        // fell back to legacy dbURL. Post-fix the explicit
+        // source-id is threaded into `resolveDBURL` and routes
         // to hig.db. Round-18 critic finding #3 strengthened the
         // test to actually call `ReadService.read` (not just the
         // pure helper), so an end-to-end regression that breaks
@@ -146,13 +146,13 @@ struct Issue1039ReadHigRoundtripTests {
             identifier: nonURIIdentifier,
             explicit: .docs,
             format: .markdown,
-            searchDB: bogusSearchDB,
+            dbURL: bogusSearchDB,
             samplesDB: bogusSamplesDB,
             packagesDB: bogusPackagesDB,
             searchDatabaseFactory: LiveSearchDatabaseFactory(),
             sampleDatabaseFactory: LiveSampleIndexDatabaseFactory(),
             packageFileLookup: NoopPackageFileLookup(),
-            docsDBURLs: ["hig": higDBPath],
+            dbURLs: ["hig": higDBPath],
             explicitDocsSourceID: "hig",
             providers: CupertinoComposition.makeProductionSourceRegistry().allEnabled
         )

@@ -64,7 +64,7 @@ public struct AppleArchiveSource: Search.SourceProvider {
 
     /// 2026-05-26 audit #1055: per-source read strategy. Shared
     /// `Search.DocsReadStrategy` resolves to this source's per-source
-    /// DB via `env.docsDBURLs[sourceID]`.
+    /// DB via `env.dbURLs[sourceID]`.
     public func makeReadStrategy() -> (any Search.SourceReadStrategy)? {
         Search.DocsReadStrategy(sourceID: definition.id)
     }

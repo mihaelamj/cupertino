@@ -1181,7 +1181,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         // `packages` (packages.db) live in different DBs and aren't
         // affected by `search.db` being closed, so they stay out of the
         // synthesized degraded list.
-        let searchDBSources: [String] = [
+        let dbSources: [String] = [
             Shared.Constants.SourcePrefix.appleDocs,
             Shared.Constants.SourcePrefix.appleArchive,
             Shared.Constants.SourcePrefix.hig,
@@ -1196,7 +1196,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         // that wires partial-fetcher availability shouldn't double-
         // count).
         let existing = Set(input.degradedSources.map(\.name))
-        let synthesised = searchDBSources
+        let synthesised = dbSources
             .filter { !existing.contains($0) }
             .map { Search.DegradedSource(name: $0, reason: disabledReason) }
 

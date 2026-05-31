@@ -58,7 +58,7 @@ extension CLIImpl.Command.Save {
 
     // swiftlint:disable:next function_body_length
     func runDocsIndexer(effectiveBase: URL, selectedSourceIDs: Set<String>?) async throws {
-        // Resolve searchDB destination. In --dry-run, route writes to a
+        // Resolve dbURL destination. In --dry-run, route writes to a
         // throwaway temp file so the existing on-disk search.db is
         // untouched; the temp file is deleted after the run regardless of
         // outcome. Same code path otherwise, so the dry-run is a
@@ -71,8 +71,6 @@ extension CLIImpl.Command.Save {
             Cupertino.Context.composition.logging.recording.info(
                 "🧪 Dry-run: writing to throwaway \(actualSearchDB.path)"
             )
-        } else if let userPath = searchDB {
-            actualSearchDB = URL(fileURLWithPath: userPath).expandingTildeInPath
         } else {
             actualSearchDB = effectiveBase.appendingPathComponent(Shared.Constants.FileName.searchDatabase)
         }
@@ -176,7 +174,7 @@ extension CLIImpl.Command.Save {
             // layers in through CLIImpl.makeDocsIndexingDirectoryByKey
             // below.
             higDir: higDir.map { URL(fileURLWithPath: $0).expandingTildeInPath },
-            searchDB: resolvedSearchDB,
+            dbURL: resolvedSearchDB,
             clear: clear,
             directoryByKey: saveDirectoryByKey,
             // #1059: thread the selection through so DocsService gates
@@ -245,7 +243,7 @@ extension CLIImpl.Command.Save {
         //
         // 2026-05-27 (#1062): post-#1036 per-source DB split the runner
         // writes directly to `<base>/<destinationDB.filename>` per
-        // source and never touches `searchDBURL` (the sidecar path).
+        // source and never touches `dbURL` (the sidecar path).
         // The sidecar at `<base>/search.db.in-flight` is therefore not
         // created by the run; attempting the rename throws "file
         // doesn't exist" after a successful save. Gate the rename on
@@ -347,7 +345,7 @@ extension CLIImpl.Command.Save {
             // nested grandchild.
             let isoStamp = ISO8601DateFormatter().string(from: Date())
                 .replacingOccurrences(of: ":", with: "-")
-            let logURL = input.searchDBPath.deletingLastPathComponent()
+            let logURL = input.dbPath.deletingLastPathComponent()
                 .appendingPathComponent("save-\(isoStamp).jsonl")
             let importLogSink = try? Search.JSONLImportLogSink(path: logURL)
             logPathCapture.path = importLogSink == nil ? nil : logURL
@@ -368,7 +366,7 @@ extension CLIImpl.Command.Save {
             // `CLIImpl.SourceRegistry.swift`; zero edits here.
             let productionRegistry = CLIImpl.makeProductionSourceRegistry()
             let logger = Cupertino.Context.composition.logging.recording
-            let baseDirectory = input.searchDBPath.deletingLastPathComponent()
+            let baseDirectory = input.dbPath.deletingLastPathComponent()
 
             // Authoritative Apple-type constraints, read LAZILY at the
             // enrichment phase rather than here at setup (#1144). The
@@ -737,7 +735,7 @@ extension CLIImpl.Command.Save {
 
         // #1047: post-#1036 each source writes to its OWN per-source DB
         // (apple-documentation.db / hig.db / etc.), not the legacy
-        // monolithic search.db that `outcome.searchDBPath` still names.
+        // monolithic search.db that `outcome.dbPath` still names.
         // Derive the actual destinations from the registry + the
         // selected source-ids. For `--all` we list every registered
         // source's destination DB; for `--source <id>` we list only
@@ -760,10 +758,10 @@ extension CLIImpl.Command.Save {
         if dbFilenames.isEmpty {
             // Defensive: an empty selectedSourceIDs (or one with no
             // registered match) should never reach here, but fall back
-            // to the legacy outcome.searchDBPath so the summary stays
+            // to the legacy outcome.dbPath so the summary stays
             // non-empty rather than silently dropping the line.
-            recording.info("   Database: \(outcome.searchDBPath.path)")
-            recording.info("   Size: \(CLIImpl.Command.Save.formatFileSize(outcome.searchDBPath))")
+            recording.info("   Database: \(outcome.dbPath.path)")
+            recording.info("   Size: \(CLIImpl.Command.Save.formatFileSize(outcome.dbPath))")
         } else if dbFilenames.count == 1 {
             let path = baseDirectory.appendingPathComponent(dbFilenames[0])
             recording.info("   Database: \(path.path)")

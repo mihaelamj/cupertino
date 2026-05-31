@@ -93,7 +93,7 @@ struct SetupServiceModelTests {
     // literals, so a production rename silently left tests green while
     // live callers got nil from `Outcome.path(forDatabaseId:)`. Reading
     // the constants here makes that drift structurally impossible.
-    private static let searchDB: Shared.Models.DatabaseDescriptor = .search
+    private static let dbURL: Shared.Models.DatabaseDescriptor = .search
     private static let samplesDB: Shared.Models.DatabaseDescriptor = .samples
     private static let packagesDB: Shared.Models.DatabaseDescriptor = .packages
 
@@ -101,7 +101,7 @@ struct SetupServiceModelTests {
     func outcomeRoundTrip() {
         let outcome = Distribution.SetupService.Outcome(
             databases: [
-                .init(descriptor: Self.searchDB, path: URL(fileURLWithPath: "/tmp/search.db")),
+                .init(descriptor: Self.dbURL, path: URL(fileURLWithPath: "/tmp/search.db")),
                 .init(descriptor: Self.samplesDB, path: URL(fileURLWithPath: "/tmp/samples.db")),
                 .init(descriptor: Self.packagesDB, path: URL(fileURLWithPath: "/tmp/packages.db")),
             ],
@@ -121,7 +121,7 @@ struct SetupServiceModelTests {
     func outcomeEquatable() {
         let lhs = Distribution.SetupService.Outcome(
             databases: [
-                .init(descriptor: Self.searchDB, path: URL(fileURLWithPath: "/tmp/x.db")),
+                .init(descriptor: Self.dbURL, path: URL(fileURLWithPath: "/tmp/x.db")),
                 .init(descriptor: Self.samplesDB, path: URL(fileURLWithPath: "/tmp/y.db")),
                 .init(descriptor: Self.packagesDB, path: URL(fileURLWithPath: "/tmp/z.db")),
             ],
@@ -142,7 +142,7 @@ struct SetupServiceModelTests {
         )
         let outcome = Distribution.SetupService.Outcome(
             databases: [
-                .init(descriptor: Self.searchDB, path: URL(fileURLWithPath: "/tmp/s")),
+                .init(descriptor: Self.dbURL, path: URL(fileURLWithPath: "/tmp/s")),
                 .init(descriptor: Self.samplesDB, path: URL(fileURLWithPath: "/tmp/sa")),
                 .init(descriptor: Self.packagesDB, path: URL(fileURLWithPath: "/tmp/p")),
             ],
