@@ -1,9 +1,5 @@
 # 🍎📚 Cupertino
 
-> 🕯️ *v1.3.0 released on 2026-05-31.* Per-source database bundle + read-only databases. The unified `search.db` is split into 8 per-source databases (`apple-documentation.db`, `hig.db`, `apple-archive.db`, `swift-evolution.db`, `swift-org.db`, `swift-book.db`, `apple-sample-code.db`, `packages.db`), each shipped in rollback journal mode so it opens read-only without an `-shm` sidecar. Every query / read / serve connection now opens the databases read-only ([#1194](https://github.com/mihaelamj/cupertino/issues/1194)), so an end user cannot write or delete rows. `databaseVersion` is `1.3.0`: `cupertino setup` downloads `cupertino-databases-v1.3.0.zip` (742 MB) carrying **351,505 documents / 240,543 symbols** in `apple-documentation.db` (2.8 GB, `user_version` 18), plus `packages.db` (1.09 GB, `user_version` 5, 185 packages), `apple-sample-code.db` (192 MB, `samples_schema_version` 4), and the HIG / archive / evolution / org / book databases (all `user_version` 18). Live dashboard at <https://cupertino.aleahim.com/>. See the [v1.3.0 release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.3.0).
->
-> *v1.2.1 (2026-05-23) and v1.2.0 "ironclad" (2026-05-20) were the prior releases.* v1.2.0 was the search-quality release (rank-1 accuracy on canonical-lookup queries 52% to 92%); v1.2.1 reached [Source Independence Day](https://github.com/mihaelamj/cupertino/issues/919) (adding a content source is a composition-root-only PR) and closed the [strict-DI + standalone-portability epic](https://github.com/mihaelamj/cupertino/issues/893). Both shipped the unified `cupertino-databases-v1.2.0.zip` bundle (690 MiB, 352,712 documents). See the [v1.2.1](https://github.com/mihaelamj/cupertino/releases/tag/v1.2.1) and [v1.2.0](https://github.com/mihaelamj/cupertino/releases/tag/v1.2.0) notes.
-
 **Apple documentation CLI for humans and MCP server for AI agents**
 
 Cupertino is a CLI for human developers and an MCP server for AI agents. Both surfaces use the same local index of Apple documentation, Swift packages, sample code, Human Interface Guidelines, Swift Evolution proposals, and Swift.org pages.
@@ -15,7 +11,11 @@ Cupertino is a CLI for human developers and an MCP server for AI agents. Both su
 [![LobeHub](https://img.shields.io/badge/LobeHub-listed-purple)](https://lobehub.com/mcp/mihaelamj-cupertino)
 [![X](https://img.shields.io/badge/X-@cupertinomcp-black?logo=x)](https://x.com/cupertinomcp)
 
+Follow updates on X: [@cupertinomcp](https://x.com/cupertinomcp)
+
 ![Cupertino Demo](docs/images/cupertino.gif)
+
+> **Latest:** v1.3.0 (2026-05-31) — per-source database bundle, read-only databases. [Release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.3.0) · [Project Status](#project-status) · [CHANGELOG](CHANGELOG.md)
 
 ## What is Cupertino?
 
@@ -832,11 +832,9 @@ For development setup, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Project Status
 
-**Released:** v1.2.0 "ironclad" on 2026-05-20. `databaseVersion` is `1.2.0`; `cupertino setup` downloads the v1.2.0 bundle (352,712 documents across 420 frameworks, 0 poison rows under all 13 audit categories, schema `user_version = 18`).
+**Released:** v1.3.0 on 2026-05-31. Per-source database bundle + read-only databases: the unified `search.db` is split into 8 per-source databases, each shipped in rollback journal mode so it opens read-only without an `-shm` sidecar, and every query / read / serve connection opens read-only ([#1194](https://github.com/mihaelamj/cupertino/issues/1194)) so an end user cannot write or delete rows. `databaseVersion` is `1.3.0`; `cupertino setup` downloads `cupertino-databases-v1.3.0.zip` (742 MB) carrying 351,505 documents / 240,543 symbols in `apple-documentation.db` (2.8 GB, `user_version` 18), plus `packages.db` (1.09 GB, 185 packages), `apple-sample-code.db` (192 MB), and the HIG / archive / evolution / org / book databases. Live dashboard at <https://cupertino.aleahim.com/>; full notes in the [v1.3.0 release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.3.0) and [CHANGELOG.md](CHANGELOG.md).
 
-Headline jump from v1.1.0: **rank-1 accuracy on canonical-lookup queries went from 52% to 92%** on the 50-query Phase 1 corpus. **30 / 30 modern Swift wins on the deprecation pair corpus** (was 27 / 30). **Zero regressions across 110 paired queries.** Live dashboard at <https://cupertino.aleahim.com/>; full release write-up at `docs/release-writeup-v1.2.0.md`; harness at `scripts/eval/search-quality-phase1.py` (reproducible: two runs against the same `(binary, database)` pair produce byte-identical per-query ranks).
-
-**Previously released:** v1.1.0 on 2026-05-14 (refactor release: namespacing + Crawler extract + DI epic kickoff; 285,735 documents, schema 13). v1.0.2 on 2026-05-11 (URL canonicalization + re-indexed bundle, 277,640 documents).
+**Previously released:** v1.2.1 (2026-05-23, maintenance + [Source Independence Day](https://github.com/mihaelamj/cupertino/issues/919)) and v1.2.0 "ironclad" (2026-05-20, search-quality release: rank-1 accuracy on canonical-lookup queries 52% → 92%). Earlier: v1.1.0 (2026-05-14), v1.0.2 (2026-05-11). See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
 - ✅ All core functionality working
 - ✅ 350+ test functions across 230+ test files (2,408 / 347 suites green at v1.2.0 ship)
