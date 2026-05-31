@@ -3,6 +3,7 @@
 ### Fixed
 
 - **fix(#1200): the `list_samples` MCP tool now advertises its `framework` + `limit` parameters in `tools/list`.** The tool was registered with an empty input schema (`objectSchema(properties: [:])`) even though `handleListSamples` reads `framework` (optional) and `limit` (default 50), so a client introspecting the tool surface could not discover those params. The schema now declares both, matching the handler and the `cupertino list-samples` CLI. Regression test `listSamplesSchemaAdvertisesParams` pins the advertised keys.
+- **fix(#1201): `cupertino save --help` now generates its valid-source list and source-to-database dispatch mapping from the production source registry instead of a hardcoded literal.** The DISPATCH section previously hardcoded each source-to-DB line and still claimed `swift-org` / `swift-book` share a `swift-documentation.db`, stale since the #1038 per-source split (they build separate `swift-org.db` / `swift-book.db`). The help now derives both lists from `makeProductionSourceRegistry().allEnabled` (`definition.id` + `definition.displayName` + `destinationDB.filename`), the same registry-driven pattern `doctor` and `bundleRequiredDescriptors()` use, so adding a source extends the help with no edit here (Source Independence Day). Regression test `saveHelpDispatchMappingIsRegistryGenerated` pins the generated mapping.
 
 ## v1.3.0 (2026-05-31)
 

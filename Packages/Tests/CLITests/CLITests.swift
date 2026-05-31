@@ -69,6 +69,25 @@ struct CommandRegistrationTests {
         #expect(!config.version.isEmpty)
     }
 
+    @Test("#1201 — save --help source-to-DB mapping is registry-generated, not a hardcoded swift-documentation.db")
+    func saveHelpDispatchMappingIsRegistryGenerated() {
+        let discussion = CLIImpl.Command.Save.configuration.discussion
+        // The mapping is generated from makeProductionSourceRegistry(); each
+        // enabled source's `definition.id` -> `destinationDB.filename` line
+        // must appear, proving no hardcoded database literal.
+        #expect(discussion.contains("`--source apple-docs` builds apple-documentation.db"))
+        #expect(discussion.contains("`--source swift-org` builds swift-org.db"))
+        #expect(discussion.contains("`--source swift-book` builds swift-book.db"))
+        #expect(discussion.contains("`--source samples` builds apple-sample-code.db"))
+        #expect(discussion.contains("`--source packages` builds packages.db"))
+        // Post-#1038 swift-org and swift-book are separate DBs; the pre-#1038
+        // shared file must not resurface.
+        #expect(
+            !discussion.contains("swift-documentation.db"),
+            "save help must not reference the pre-#1038 shared swift-documentation.db"
+        )
+    }
+
     @Test("Abstract description exists")
     func abstractExists() {
         let config = Cupertino.configuration

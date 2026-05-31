@@ -24,53 +24,77 @@ extension CLIImpl.Command {
         static let configuration = CommandConfiguration(
             commandName: "save",
             abstract: "Rebuild per-source databases from on-disk sources",
-            discussion: """
-            Most users do NOT need this command. `cupertino setup` downloads the pre-built
-            bundle and is the supported end-user workflow. `save` is for maintainers
-            rebuilding the bundle, or advanced users rebuilding from a local crawl produced
-            by `cupertino fetch`.
-
-            Build target is selected per source via `--source <id>` (repeatable) or
-            `--all` for every source. Valid source ids:
-
-              apple-docs       Apple Developer Documentation
-              swift-evolution  Swift Evolution proposals
-              hig              Human Interface Guidelines
-              apple-archive    Apple Archive legacy guides
-              swift-org        Swift.org documentation
-              swift-book       Swift Book (view-source, co-located with swift-org)
-              samples          Apple Sample Code (rich schema + FTS rows)
-              packages         Swift package metadata + source archives
-
-            Sources whose input directory is absent or whose catalog is empty are
-            skipped cleanly (`[source] skipped (no local corpus)`) and do not count as
-            failures.
-
-            A preflight summary is printed before indexing starts. Pass --yes (or pipe stdin)
-            to skip the confirmation prompt. Run 'cupertino doctor --save' to preview the
-            preflight output without writing any database.
-
-            DISPATCH:
-              `--source <id>` narrows the docs runner to ONLY the
-              destination DB whose providers include that id.
-              `--source apple-docs` builds apple-documentation.db
-              alone; `--source hig` builds hig.db alone, etc.
-              View-source pairs (`swift-org` + `swift-book`) co-locate
-              in `swift-documentation.db`, so either id pulls both.
-              `--source samples` runs both the Sample.Index rich-data
-              pipeline AND the SampleCodeSource FTS rows under the
-              single `apple-sample-code.db` file (one-DB-two-tracks
-              per #1037). `--source packages` runs the standalone
-              PackagesService against `packages.db`.
-
-            EXAMPLES
-              cupertino save --all                          # build every source's DB
-              cupertino save --source apple-docs            # apple-documentation.db only
-              cupertino save --source samples               # apple-sample-code.db (both tracks)
-              cupertino save --source apple-docs --source hig   # two DBs
-              cupertino save --remote                       # stream docs from GitHub
-            """
+            discussion: Self.discussionText
         )
+
+        // MARK: - Registry-generated help (Source Independence Day, #1201)
+
+        //
+        // The valid-source list and the source-to-database dispatch mapping
+        // are GENERATED from the production source registry, never hardcoded.
+        // Adding a source (one `.register(<X>Source())` line in the
+        // composition root) extends both lists automatically; there is no
+        // per-source database literal to keep in sync here. Mirrors the
+        // registry-driven derivation `doctor` and `bundleRequiredDescriptors()`
+        // already use.
+
+        /// `<id>  <displayName>` per enabled source, from `definition`.
+        private static let registrySourceLines: String = {
+            let providers = CLIImpl.makeProductionSourceRegistry().allEnabled
+            let width = (providers.map(\.definition.id.count).max() ?? 16) + 2
+            return providers
+                .map { provider in
+                    let id = provider.definition.id.padding(toLength: width, withPad: " ", startingAt: 0)
+                    return "  \(id)\(provider.definition.displayName)"
+                }
+                .joined(separator: "\n")
+        }()
+
+        /// `--source <id>` builds `<destinationDB.filename>` per enabled source.
+        private static let registryDispatchLines: String = CLIImpl
+            .makeProductionSourceRegistry()
+            .allEnabled
+            .map { "  `--source \($0.definition.id)` builds \($0.destinationDB.filename)" }
+            .joined(separator: "\n")
+
+        private static let discussionText: String = """
+        Most users do NOT need this command. `cupertino setup` downloads the pre-built
+        bundle and is the supported end-user workflow. `save` is for maintainers
+        rebuilding the bundle, or advanced users rebuilding from a local crawl produced
+        by `cupertino fetch`.
+
+        Build target is selected per source via `--source <id>` (repeatable) or
+        `--all` for every source. Valid source ids (generated from the registry):
+
+        \(registrySourceLines)
+
+        Sources whose input directory is absent or whose catalog is empty are
+        skipped cleanly (`[source] skipped (no local corpus)`) and do not count as
+        failures.
+
+        A preflight summary is printed before indexing starts. Pass --yes (or pipe stdin)
+        to skip the confirmation prompt. Run 'cupertino doctor --save' to preview the
+        preflight output without writing any database.
+
+        DISPATCH:
+          `--source <id>` builds only that source's destination database. This
+          source-to-database mapping is generated from the production source
+          registry (adding a source needs no edit here):
+
+        \(registryDispatchLines)
+
+          `--source samples` writes both the Sample.Index rich-data pipeline AND
+          the SampleCodeSource FTS rows under one `apple-sample-code.db` file
+          (one-DB-two-tracks per #1037). `--source packages` runs the standalone
+          PackagesService.
+
+        EXAMPLES
+          cupertino save --all                          # build every source's DB
+          cupertino save --source apple-docs            # apple-docs database only
+          cupertino save --source samples               # samples (both tracks)
+          cupertino save --source apple-docs --source hig   # two databases
+          cupertino save --remote                       # stream docs from GitHub
+        """
 
         @Option(name: .long, help: "Base directory (auto-fills all directories from standard structure)")
         var baseDir: String?
