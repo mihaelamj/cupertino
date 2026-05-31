@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Added
+
+- **docs: README links the project's X account.** Added an X badge ([@cupertinomcp](https://x.com/cupertinomcp)) to the badge row alongside the existing PulseMCP and LobeHub listings.
+
 ## v1.3.0 (2026-05-31)
 
 ### Breaking
