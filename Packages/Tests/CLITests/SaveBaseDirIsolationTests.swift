@@ -1,9 +1,10 @@
-import Foundation
 @testable import CLI
+import Foundation
 import SharedConstants
 import Testing
 
 // MARK: - #597 — `--base-dir` must isolate ALL output DB paths
+
 //
 // Pre-fix, `cupertino save --base-dir /tmp/x` silently wrote to
 // `~/.cupertino/samples.db` (and packages.db, depending on path) because
@@ -30,8 +31,10 @@ struct SaveBaseDirIsolationTests {
         let resolved = SUT.resolveSamplesDBPath(effectiveBase: base, override: nil)
         // Must be under the given base — NOT under ~/.cupertino.
         #expect(resolved.path.hasPrefix(base.path))
-        #expect(!resolved.path.contains(".cupertino/samples.db") || resolved.path.hasPrefix(base.path),
-                "samples.db must not leak to ~/.cupertino when effectiveBase is set")
+        #expect(
+            !resolved.path.contains(".cupertino/samples.db") || resolved.path.hasPrefix(base.path),
+            "samples.db must not leak to ~/.cupertino when effectiveBase is set"
+        )
     }
 
     @Test("samples.db override flag wins over effectiveBase")
@@ -72,7 +75,7 @@ struct SaveBaseDirIsolationTests {
     // MARK: - search.db (already correct pre-fix; pin the shape)
 
     @Test("search.db path derives from effectiveBase when no override")
-    func searchDBDerivesFromEffectiveBase() {
+    func docsDBDerivesFromEffectiveBase() {
         let base = URL(fileURLWithPath: "/tmp/cupertino-iso-\(UUID().uuidString)")
         let resolved = SUT.resolveSearchDBPath(effectiveBase: base, override: nil)
         #expect(resolved.path.hasPrefix(base.path))
@@ -80,7 +83,7 @@ struct SaveBaseDirIsolationTests {
     }
 
     @Test("search.db override wins")
-    func searchDBOverrideWins() {
+    func docsDBOverrideWins() {
         let base = URL(fileURLWithPath: "/tmp/cupertino-iso")
         let override = "/tmp/custom-search.db"
         let resolved = SUT.resolveSearchDBPath(effectiveBase: base, override: override)
@@ -101,8 +104,10 @@ struct SaveBaseDirIsolationTests {
         let liveCupertino = "\(home)/.cupertino"
 
         for path in [samples, packages, search] {
-            #expect(!path.hasPrefix(liveCupertino),
-                    "DB path \(path) leaked to ~/.cupertino despite effectiveBase=\(base.path)")
+            #expect(
+                !path.hasPrefix(liveCupertino),
+                "DB path \(path) leaked to ~/.cupertino despite effectiveBase=\(base.path)"
+            )
         }
     }
 }

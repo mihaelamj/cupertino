@@ -1254,7 +1254,7 @@ extension Shared.Constants {
         public static let evolutionDir = "Swift Evolution proposals directory"
 
         /// Search database path help text
-        public static let searchDB = "Search database path"
+        public static let dbURL = "Search database path"
 
         /// MCP server abstract description
         public static let mcpAbstract =

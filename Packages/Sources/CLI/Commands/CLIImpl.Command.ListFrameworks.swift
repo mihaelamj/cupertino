@@ -23,17 +23,6 @@ extension CLIImpl.Command {
         )
         var format: OutputFormat = .text
 
-        @Option(
-            name: .long,
-            help: """
-            Override the apple-docs database path. Default: \
-            apple-documentation.db (resolved through the production source \
-            registry). Override applies to apple-docs only; apple-archive \
-            still resolves through its own per-source DB.
-            """
-        )
-        var searchDb: String?
-
         mutating func run() async throws {
             // GoF Factory Method (1994 p. 107): construct the concrete
             // Creator at the command's composition sub-root. Stateless
@@ -48,17 +37,15 @@ extension CLIImpl.Command {
             // `.listFrameworks` adds it to this fan-out with zero
             // edits here (the "2-file PR" standard).
             //
-            // The `--search-db` override applies only to the apple-docs
-            // source (this command's legacy override semantic).
-            // Other framework-scoped sources resolve through their
-            // own per-source DB filenames declared by each
+            // Each framework-scoped source resolves through its own
+            // per-source DB filename declared by
             // `SourceProvider.destinationDB.filename`.
             let baseDirectory = Shared.Paths.live().baseDirectory
             let registry = CLIImpl.makeProductionSourceRegistry()
             let frameworkSources = registry.allEnabled.filter {
                 $0.capabilities.operations.contains(.listFrameworks)
             }
-            let appleDocsURL = CLIImpl.resolveAppleDocsDBURL(override: searchDb)
+            let appleDocsURL = CLIImpl.resolveAppleDocsDBURL()
 
             // Fail-fast: surface the apple-docs missing-DB diagnostic
             // before opening any other DB. Pre-#1037 the user was
@@ -78,7 +65,6 @@ extension CLIImpl.Command {
             for provider in frameworkSources {
                 let dbURL: URL
                 if provider.definition.id == Shared.Constants.SourcePrefix.appleDocs {
-                    // Honour --search-db for apple-docs only.
                     dbURL = appleDocsURL
                 } else {
                     dbURL = baseDirectory.appendingPathComponent(provider.destinationDB.filename)
@@ -90,7 +76,7 @@ extension CLIImpl.Command {
                     continue
                 }
                 let perDB = try await Services.ServiceContainer.withDocsService(
-                    searchDB: dbURL,
+                    dbURL: dbURL,
                     searchDatabaseFactory: searchDatabaseFactory
                 ) { service in
                     let perDBFrameworks = try await service.listFrameworks()

@@ -7,7 +7,7 @@ import Testing
 
 @Suite("#919 coverage: Distribution.SetupService.Outcome lookup contract")
 struct Issue919OutcomeLookupTests {
-    private static let searchDB: Shared.Models.DatabaseDescriptor = .search
+    private static let dbURL: Shared.Models.DatabaseDescriptor = .search
     private static let samplesDB: Shared.Models.DatabaseDescriptor = .samples
     private static let packagesDB: Shared.Models.DatabaseDescriptor = .packages
 
@@ -15,7 +15,7 @@ struct Issue919OutcomeLookupTests {
         placements: [Distribution.SetupService.DatabasePlacement]? = nil
     ) -> Distribution.SetupService.Outcome {
         let defaults: [Distribution.SetupService.DatabasePlacement] = [
-            .init(descriptor: Self.searchDB, path: URL(fileURLWithPath: "/tmp/search.db")),
+            .init(descriptor: Self.dbURL, path: URL(fileURLWithPath: "/tmp/search.db")),
             .init(descriptor: Self.samplesDB, path: URL(fileURLWithPath: "/tmp/samples.db")),
             .init(descriptor: Self.packagesDB, path: URL(fileURLWithPath: "/tmp/packages.db")),
         ]
@@ -47,7 +47,7 @@ struct Issue919OutcomeLookupTests {
     func descriptorNotInOutcome() {
         // Outcome with only the search placement; ask for packages.
         let placements: [Distribution.SetupService.DatabasePlacement] = [
-            .init(descriptor: Self.searchDB, path: URL(fileURLWithPath: "/tmp/search.db")),
+            .init(descriptor: Self.dbURL, path: URL(fileURLWithPath: "/tmp/search.db")),
         ]
         let outcome = Self.makeOutcome(placements: placements)
         #expect(outcome.path(forDatabaseId: "search")?.lastPathComponent == "search.db")
@@ -58,12 +58,12 @@ struct Issue919OutcomeLookupTests {
     @Test("Outcome equality is order-sensitive on the databases array (documented contract)")
     func equalityIsOrderSensitive() {
         let orderA = Self.makeOutcome(placements: [
-            .init(descriptor: Self.searchDB, path: URL(fileURLWithPath: "/tmp/s.db")),
+            .init(descriptor: Self.dbURL, path: URL(fileURLWithPath: "/tmp/s.db")),
             .init(descriptor: Self.samplesDB, path: URL(fileURLWithPath: "/tmp/sa.db")),
         ])
         let orderB = Self.makeOutcome(placements: [
             .init(descriptor: Self.samplesDB, path: URL(fileURLWithPath: "/tmp/sa.db")),
-            .init(descriptor: Self.searchDB, path: URL(fileURLWithPath: "/tmp/s.db")),
+            .init(descriptor: Self.dbURL, path: URL(fileURLWithPath: "/tmp/s.db")),
         ])
         // Pre-#919 the Outcome carried 3 named fields; equality compared
         // each independently. Post-#919 it carries an Array of

@@ -59,7 +59,7 @@ struct Issue1033AllSourcesRoundtripTests {
     /// production registry whose `destinationDB != .packages`. Derived,
     /// not hardcoded: adding a new search-bound source automatically
     /// joins the sweep via this filter.
-    private var searchDBSourceIDs: [String] {
+    private var docsDBSourceIDs: [String] {
         CLIImpl.makeProductionSourceRegistry().allEnabled
             .filter { $0.destinationDB != .packages }
             .map(\.definition.id)
@@ -69,7 +69,7 @@ struct Issue1033AllSourcesRoundtripTests {
 
     @Test("Each registered search.db source roundtrips: write tagged row, query, source-id unchanged")
     func eachSourceRoundtripsItsSourceTag() async throws {
-        for sourceID in searchDBSourceIDs {
+        for sourceID in docsDBSourceIDs {
             let (index, dbPath) = try await makeFreshIndex()
             defer { try? FileManager.default.removeItem(at: dbPath) }
 
@@ -114,7 +114,7 @@ struct Issue1033AllSourcesRoundtripTests {
         // Write one fixture row per search.db source with a SHARED title term so
         // a single query returns all of them.
         let sharedTerm = "Issue1033SharedFixtureTerm"
-        for sourceID in searchDBSourceIDs {
+        for sourceID in docsDBSourceIDs {
             try await index.indexDocument(Search.IndexDocumentParams(
                 uri: "\(sourceID)://issue-1033/shared",
                 source: sourceID,
@@ -140,7 +140,7 @@ struct Issue1033AllSourcesRoundtripTests {
         await reopenIndex.disconnect()
 
         let returnedSources = Set(results.map(\.source))
-        let expectedSources = Set(searchDBSourceIDs)
+        let expectedSources = Set(docsDBSourceIDs)
         #expect(returnedSources == expectedSources, "Cross-source query must return every search.db source's row; expected \(expectedSources), got \(returnedSources)")
     }
 
@@ -152,7 +152,7 @@ struct Issue1033AllSourcesRoundtripTests {
         defer { try? FileManager.default.removeItem(at: dbPath) }
 
         let sharedTerm = "Issue1033FilterFixtureTerm"
-        for sourceID in searchDBSourceIDs {
+        for sourceID in docsDBSourceIDs {
             try await index.indexDocument(Search.IndexDocumentParams(
                 uri: "\(sourceID)://issue-1033/filter",
                 source: sourceID,
@@ -173,7 +173,7 @@ struct Issue1033AllSourcesRoundtripTests {
             sourceLookup: .empty
         )
 
-        for sourceID in searchDBSourceIDs {
+        for sourceID in docsDBSourceIDs {
             // includeArchive: true so apple-archive's own --source filter works.
             let results = try await reopenIndex.search(query: sharedTerm, source: sourceID, includeArchive: true)
             #expect(results.count >= 1, "Filter '--source \(sourceID)' must return at least 1 row")

@@ -57,9 +57,6 @@ extension CLIImpl.Command {
         @Option(name: .long, help: ArgumentHelp(Shared.Constants.HelpText.evolutionDir))
         var evolutionDir: String = Shared.Paths.live().swiftEvolutionDirectory.path
 
-        @Option(name: .long, help: ArgumentHelp(Shared.Constants.HelpText.searchDB))
-        var searchDB: String = Shared.Paths.live().searchDatabase.path
-
         @Flag(
             name: .long,
             help: """
@@ -157,11 +154,11 @@ extension CLIImpl.Command {
             // a spurious doctor failure. The per-source FTS checks
             // below (isRequired: false) carry the real readiness
             // signal now.
-            let legacySearchURL = URL(fileURLWithPath: searchDB).expandingTildeInPath
+            let legacySearchURL = Shared.Paths.live().searchDatabase
             if FileManager.default.fileExists(atPath: legacySearchURL.path) {
                 healthChecks.append(SearchHealthCheck(
                     descriptor: .search,
-                    searchDBURL: legacySearchURL,
+                    dbURL: legacySearchURL,
                     isRequired: true
                 ))
             }
@@ -182,7 +179,7 @@ extension CLIImpl.Command {
                 seen.insert(descriptor.id)
                 healthChecks.append(SearchHealthCheck(
                     descriptor: descriptor,
-                    searchDBURL: paths.baseDirectory.appendingPathComponent(descriptor.filename),
+                    dbURL: paths.baseDirectory.appendingPathComponent(descriptor.filename),
                     isRequired: false
                 ))
             }
@@ -323,7 +320,7 @@ extension CLIImpl.Command {
             // (pre-#1036 bundle a user hasn't re-fetched yet); a
             // post-split install should never see a `⚠ search.db: not
             // built` line for a DB that's intentionally gone.
-            let legacySearchURL = URL(fileURLWithPath: searchDB).expandingTildeInPath
+            let legacySearchURL = Shared.Paths.live().searchDatabase
             var entries: [(Shared.Models.DatabaseDescriptor, URL)] = []
             if FileManager.default.fileExists(atPath: legacySearchURL.path) {
                 entries.append((.search, legacySearchURL))
@@ -661,17 +658,17 @@ extension CLIImpl.Command {
         /// missing or unopenable (the regular `checkSearchDatabase`
         /// already surfaced that).
         private func checkKindCoverage() {
-            let searchDBURL = URL(fileURLWithPath: searchDB).expandingTildeInPath
+            let dbURL = CLIImpl.resolveAppleDocsDBURL()
             Cupertino.Context.composition.logging.recording.output("🧩 Kind distribution audit (#626)")
 
-            guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
-                Cupertino.Context.composition.logging.recording.output("   ⚠  documentation database not found at \(searchDBURL.path) (skipped)")
+            guard FileManager.default.fileExists(atPath: dbURL.path) else {
+                Cupertino.Context.composition.logging.recording.output("   ⚠  documentation database not found at \(dbURL.path) (skipped)")
                 Cupertino.Context.composition.logging.recording.output("")
                 return
             }
 
-            guard let rows = Diagnostics.Probes.kindHistogramBySource(at: searchDBURL) else {
-                Cupertino.Context.composition.logging.recording.output("   ⚠  Could not read kind histogram from \(searchDBURL.path) (skipped — schema mismatch or DB unopenable)")
+            guard let rows = Diagnostics.Probes.kindHistogramBySource(at: dbURL) else {
+                Cupertino.Context.composition.logging.recording.output("   ⚠  Could not read kind histogram from \(dbURL.path) (skipped — schema mismatch or DB unopenable)")
                 Cupertino.Context.composition.logging.recording.output("")
                 return
             }
@@ -734,18 +731,18 @@ extension CLIImpl.Command {
         /// discussion. Users decide their own "fresh / aging / stale"
         /// definitions; thresholds are a separate follow-up if needed.
         private func checkFreshness() {
-            let searchDBURL = URL(fileURLWithPath: searchDB).expandingTildeInPath
+            let dbURL = CLIImpl.resolveAppleDocsDBURL()
             Cupertino.Context.composition.logging.recording.output("📅 Freshness / drift signal (#275)")
 
-            guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
-                Cupertino.Context.composition.logging.recording.output("   ⚠  documentation database not found at \(searchDBURL.path) (skipped)")
+            guard FileManager.default.fileExists(atPath: dbURL.path) else {
+                Cupertino.Context.composition.logging.recording.output("   ⚠  documentation database not found at \(dbURL.path) (skipped)")
                 Cupertino.Context.composition.logging.recording.output("")
                 return
             }
 
-            guard let rows = Diagnostics.Probes.freshnessBySource(at: searchDBURL) else {
+            guard let rows = Diagnostics.Probes.freshnessBySource(at: dbURL) else {
                 Cupertino.Context.composition.logging.recording.output(
-                    "   ⚠  Could not read freshness from \(searchDBURL.path) (skipped — schema mismatch or DB unopenable)"
+                    "   ⚠  Could not read freshness from \(dbURL.path) (skipped — schema mismatch or DB unopenable)"
                 )
                 Cupertino.Context.composition.logging.recording.output("")
                 return

@@ -25,7 +25,7 @@ extension Services {
 
         /// Execute an operation with a docs service, handling lifecycle.
         ///
-        /// `searchDB` is the resolved search.db URL supplied by the caller
+        /// `dbURL` is the resolved search.db URL supplied by the caller
         /// at its composition root. Pre-#535 this method accepted an
         /// optional `String?` path and fell back to
         /// `Shared.Constants.defaultSearchDatabase` via
@@ -33,15 +33,15 @@ extension Services {
         /// shape — Seemann 2011 ch. 5). Strict DI requires the caller to
         /// supply the URL it wants; no producer-side default reaches.
         public static func withDocsService<T>(
-            searchDB: URL,
+            dbURL: URL,
             searchDatabaseFactory: any Search.DatabaseFactory,
             operation: (Services.DocsSearchService) async throws -> T
         ) async throws -> T {
-            guard FileManager.default.fileExists(atPath: searchDB.path) else {
-                throw Shared.Core.ToolError.noData("Search database not found at \(searchDB.path). Run 'cupertino save' to build the index.")
+            guard FileManager.default.fileExists(atPath: dbURL.path) else {
+                throw Shared.Core.ToolError.noData("Search database not found at \(dbURL.path). Run 'cupertino save' to build the index.")
             }
 
-            let database = try await searchDatabaseFactory.openDatabase(at: searchDB)
+            let database = try await searchDatabaseFactory.openDatabase(at: dbURL)
             let service = Services.DocsSearchService(database: database)
             defer {
                 Task {
@@ -82,15 +82,15 @@ extension Services {
         /// degrade each source to empty rather than failing — pass any
         /// URL the caller has resolved; existence is checked here.
         public static func withTeaserService<T: Sendable>(
-            searchDB: URL,
+            dbURL: URL,
             samplesDB: URL,
             searchDatabaseFactory: any Search.DatabaseFactory,
             sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
             operation: (Services.TeaserService) async throws -> T
         ) async throws -> T {
             let searchIndex: (any Search.Database)?
-            if FileManager.default.fileExists(atPath: searchDB.path) {
-                searchIndex = try await searchDatabaseFactory.openDatabase(at: searchDB)
+            if FileManager.default.fileExists(atPath: dbURL.path) {
+                searchIndex = try await searchDatabaseFactory.openDatabase(at: dbURL)
             } else {
                 searchIndex = nil
             }
@@ -113,15 +113,15 @@ extension Services {
         /// Execute an operation with a unified search service. Same
         /// composition pattern as `withTeaserService`.
         public static func withUnifiedSearchService<T: Sendable>(
-            searchDB: URL,
+            dbURL: URL,
             samplesDB: URL,
             searchDatabaseFactory: any Search.DatabaseFactory,
             sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
             operation: (Services.UnifiedSearchService) async throws -> T
         ) async throws -> T {
             let searchIndex: (any Search.Database)?
-            if FileManager.default.fileExists(atPath: searchDB.path) {
-                searchIndex = try await searchDatabaseFactory.openDatabase(at: searchDB)
+            if FileManager.default.fileExists(atPath: dbURL.path) {
+                searchIndex = try await searchDatabaseFactory.openDatabase(at: dbURL)
             } else {
                 searchIndex = nil
             }

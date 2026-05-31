@@ -20,9 +20,9 @@ extension Services {
             self.searchDatabaseFactory = searchDatabaseFactory
         }
 
-        public func read(uri: String, format: Search.DocumentFormat, searchDB: URL) async throws -> String? {
+        public func read(uri: String, format: Search.DocumentFormat, dbURL: URL) async throws -> String? {
             try await Services.ServiceContainer.withDocsService(
-                searchDB: searchDB,
+                dbURL: dbURL,
                 searchDatabaseFactory: searchDatabaseFactory
             ) { service in
                 try await service.read(uri: uri, format: format)

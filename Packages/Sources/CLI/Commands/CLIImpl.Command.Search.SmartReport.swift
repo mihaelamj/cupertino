@@ -128,7 +128,7 @@ extension CLIImpl.Command.Search {
         // (no `--source`) path honours it. Other fetchers (packages,
         // samples) don't partition by Apple framework at the row level.
         let docsResult = await Self.openDocsFetchers(
-            override: searchDb,
+            override: nil,
             skip: skipDocs,
             availability: availabilityFilter,
             framework: framework,

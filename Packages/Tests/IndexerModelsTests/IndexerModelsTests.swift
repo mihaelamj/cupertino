@@ -58,18 +58,18 @@ struct DocsServiceModelTests {
         #expect(request.swiftOrgDir == nil)
         #expect(request.archiveDir == nil)
         #expect(request.higDir == nil)
-        #expect(request.searchDB == nil)
+        #expect(request.dbURL == nil)
     }
 
     @Test("Outcome stores every public field via init")
     func outcomeRoundTrip() {
         let path = URL(fileURLWithPath: "/tmp/search.db")
         let outcome = Indexer.DocsService.Outcome(
-            searchDBPath: path,
+            dbPath: path,
             documentCount: 42,
             frameworkCount: 7
         )
-        #expect(outcome.searchDBPath == path)
+        #expect(outcome.dbPath == path)
         #expect(outcome.documentCount == 42)
         #expect(outcome.frameworkCount == 7)
     }
@@ -84,7 +84,7 @@ struct DocsServiceModelTests {
             .availabilityMissing,
             .progress(processed: 1, total: 10, percent: 10.0),
             .finished(Indexer.DocsService.Outcome(
-                searchDBPath: URL(fileURLWithPath: "/tmp/x.db"),
+                dbPath: URL(fileURLWithPath: "/tmp/x.db"),
                 documentCount: 1,
                 frameworkCount: 1
             )),

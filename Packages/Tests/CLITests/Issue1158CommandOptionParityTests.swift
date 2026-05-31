@@ -161,7 +161,6 @@ struct Issue1158CommandOptionParityTests {
             "--hig-dir", "/tmp/hig",
             "--swift-book-dir", "/tmp/book",
             "--metadata-file", "/tmp/meta.json",
-            "--search-db", "/tmp/search.db",
             "--clear",
             "--allow-degraded-enrichment",
             "--remote",
@@ -185,7 +184,6 @@ struct Issue1158CommandOptionParityTests {
         #expect(cmd.higDir == "/tmp/hig")
         #expect(cmd.swiftBookDir == "/tmp/book")
         #expect(cmd.metadataFile == "/tmp/meta.json")
-        #expect(cmd.searchDB == "/tmp/search.db")
         #expect(cmd.clear == true)
         #expect(cmd.allowDegradedEnrichment == true)
         #expect(cmd.remote == true)
@@ -236,7 +234,6 @@ struct Issue1158CommandOptionParityTests {
             "--min-visionos", "1.0",
             "--swift", "6.0",
             "--apple-imports", "Combine",
-            "--search-db", "/tmp/search.db",
             "--packages-db", "/tmp/packages.db",
             "--sample-db", "/tmp/sample.db",
             "--per-source", "4",
@@ -261,7 +258,6 @@ struct Issue1158CommandOptionParityTests {
         #expect(cmd.minVisionos == "1.0")
         #expect(cmd.swift == "6.0")
         #expect(cmd.appleImports == "Combine")
-        #expect(cmd.searchDb == "/tmp/search.db")
         #expect(cmd.packagesDb == "/tmp/packages.db")
         #expect(cmd.sampleDb == "/tmp/sample.db")
         #expect(cmd.perSource == 4)
@@ -301,14 +297,12 @@ struct Issue1158CommandOptionParityTests {
             "apple-docs://swiftui/documentation_swiftui_view",
             "--source", "apple-docs",
             "--format", "markdown",
-            "--search-db", "/tmp/search.db",
             "--sample-db", "/tmp/sample.db",
             "--packages-db", "/tmp/packages.db",
         ])
         #expect(cmd.identifier == "apple-docs://swiftui/documentation_swiftui_view")
         #expect(cmd.source == "apple-docs")
         #expect(cmd.format == .markdown)
-        #expect(cmd.searchDb == "/tmp/search.db")
         #expect(cmd.sampleDb == "/tmp/sample.db")
         #expect(cmd.packagesDb == "/tmp/packages.db")
     }
@@ -319,10 +313,8 @@ struct Issue1158CommandOptionParityTests {
     func listFrameworksOptions() throws {
         let cmd = try CLIImpl.Command.ListFrameworks.parse([
             "--format", "json",
-            "--search-db", "/tmp/search.db",
         ])
         #expect(cmd.format == .json)
-        #expect(cmd.searchDb == "/tmp/search.db")
     }
 
     // MARK: - list-samples
@@ -382,14 +374,12 @@ struct Issue1158CommandOptionParityTests {
         let cmd = try CLIImpl.Command.Doctor.parse([
             "--docs-dir", "/tmp/docs",
             "--evolution-dir", "/tmp/evo",
-            "--search-db", "/tmp/search.db",
             "--save",
             "--kind-coverage",
             "--freshness",
         ])
         #expect(cmd.docsDir == "/tmp/docs")
         #expect(cmd.evolutionDir == "/tmp/evo")
-        #expect(cmd.searchDB == "/tmp/search.db")
         #expect(cmd.save == true)
         #expect(cmd.kindCoverage == true)
         #expect(cmd.freshness == true)
@@ -456,14 +446,12 @@ struct Issue1158CommandOptionParityTests {
             "--direction", "down",
             "--depth", "3",
             "--format", "json",
-            "--search-db", "/tmp/search.db",
             "--framework", "uikit",
         ])
         #expect(cmd.symbol == "UIButton")
         #expect(cmd.direction == .down)
         #expect(cmd.depth == 3)
         #expect(cmd.format == .json)
-        #expect(cmd.searchDb == "/tmp/search.db")
         #expect(cmd.framework == "uikit")
     }
 

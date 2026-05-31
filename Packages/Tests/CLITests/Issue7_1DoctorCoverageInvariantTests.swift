@@ -43,13 +43,22 @@ private struct CoverageFake: Search.SourceProvider {
         )
     }
 
-    var destinationDB: Shared.Models.DatabaseDescriptor { destination }
-    var fetchInfo: Search.FetchInfo? { nil }
+    var destinationDB: Shared.Models.DatabaseDescriptor {
+        destination
+    }
+
+    var fetchInfo: Search.FetchInfo? {
+        nil
+    }
+
     var capabilities: Search.Capabilities {
         Search.Capabilities(searchers: [.text], operations: [.readByURI])
     }
 
-    var legacySourceIDAliases: Set<String> { [] }
+    var legacySourceIDAliases: Set<String> {
+        []
+    }
+
     func makeStrategy(env _: Search.IndexEnvironment) -> any Search.SourceIndexingStrategy {
         preconditionFailure("CoverageFake never invokes makeStrategy")
     }
@@ -77,7 +86,7 @@ struct Issue7_1DoctorCoverageInvariantTests {
             CLIImpl.Command.Doctor.SamplesHealthCheck(samplesDBURL: paths.baseDirectory.appendingPathComponent(Shared.Models.DatabaseDescriptor.appleSampleCode.filename)),
             CLIImpl.Command.Doctor.SearchHealthCheck(
                 descriptor: .search,
-                searchDBURL: legacySearchDBURL,
+                dbURL: legacySearchDBURL,
                 isRequired: true
             ),
         ]
@@ -92,7 +101,7 @@ struct Issue7_1DoctorCoverageInvariantTests {
             seen.insert(descriptor.id)
             healthChecks.append(CLIImpl.Command.Doctor.SearchHealthCheck(
                 descriptor: descriptor,
-                searchDBURL: paths.baseDirectory.appendingPathComponent(descriptor.filename),
+                dbURL: paths.baseDirectory.appendingPathComponent(descriptor.filename),
                 isRequired: false
             ))
         }
@@ -144,7 +153,7 @@ struct Issue7_1DoctorCoverageInvariantTests {
         // against the test paths, not hardcoded.
         let fakeCheck = checks.first { $0.descriptor.id == "audit-7_1-fake" }
         if let searchCheck = fakeCheck as? CLIImpl.Command.Doctor.SearchHealthCheck {
-            #expect(searchCheck.searchDBURL.path == "/tmp/doctor-coverage-fake/audit-7_1-fake.db")
+            #expect(searchCheck.dbURL.path == "/tmp/doctor-coverage-fake/audit-7_1-fake.db")
             #expect(searchCheck.isRequired == false, "per-source DBs default to warning-only; only legacy .search is hard-required")
         } else {
             Issue.record("New conformer should be SearchHealthCheck-shaped; got \(type(of: fakeCheck))")

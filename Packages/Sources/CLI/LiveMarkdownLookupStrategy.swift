@@ -42,7 +42,7 @@ struct LiveMarkdownLookupStrategy: MCP.Support.MarkdownLookupStrategy {
     /// open per provider, keyed by `resourceListMode`).
     let providers: [any Search.SourceProvider]
     /// Per-source docs DB URLs keyed by `SourceProvider.definition.id`.
-    let docsDBURLs: [String: URL]
+    let dbURLs: [String: URL]
     let samplesDBURL: URL
     let packagesDBURL: URL
     let searchDatabaseFactory: any Search.DatabaseFactory
@@ -58,13 +58,13 @@ struct LiveMarkdownLookupStrategy: MCP.Support.MarkdownLookupStrategy {
                 identifier: uri,
                 explicit: nil,
                 format: .markdown,
-                searchDB: docsFallbackDB,
+                dbURL: docsFallbackDB,
                 samplesDB: samplesDBURL,
                 packagesDB: packagesDBURL,
                 searchDatabaseFactory: searchDatabaseFactory,
                 sampleDatabaseFactory: sampleDatabaseFactory,
                 packageFileLookup: packageFileLookup,
-                docsDBURLs: docsDBURLs,
+                dbURLs: dbURLs,
                 explicitDocsSourceID: nil,
                 providers: providers
             )
@@ -77,11 +77,11 @@ struct LiveMarkdownLookupStrategy: MCP.Support.MarkdownLookupStrategy {
     }
 
     /// Fallback DB URL for `ReadService` when a URI's scheme isn't in
-    /// `docsDBURLs`. Prefer apple-docs' DB (the largest docs corpus);
+    /// `dbURLs`. Prefer apple-docs' DB (the largest docs corpus);
     /// fall back to any docs DB if apple-docs isn't wired.
     private var docsFallbackDB: URL {
-        docsDBURLs[Shared.Constants.SourcePrefix.appleDocs]
-            ?? docsDBURLs.values.first
+        dbURLs[Shared.Constants.SourcePrefix.appleDocs]
+            ?? dbURLs.values.first
             ?? packagesDBURL
     }
 
@@ -92,7 +92,7 @@ struct LiveMarkdownLookupStrategy: MCP.Support.MarkdownLookupStrategy {
         for provider in providers {
             let mode = provider.resourceListMode
             if mode == .none { continue }
-            guard let dbURL = docsDBURLs[provider.definition.id] else { continue }
+            guard let dbURL = dbURLs[provider.definition.id] else { continue }
             guard FileManager.default.fileExists(atPath: dbURL.path) else {
                 logger.warning(
                     "LiveMarkdownLookupStrategy: \(provider.definition.id) DB absent at "

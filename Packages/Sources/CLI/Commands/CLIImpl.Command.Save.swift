@@ -126,9 +126,6 @@ extension CLIImpl.Command {
         @Option(name: .long, help: "Metadata file path")
         var metadataFile: String?
 
-        @Option(name: .long, help: "Search database path")
-        var searchDB: String?
-
         @Flag(name: .long, help: "Clear existing index before building")
         var clear: Bool = false
 
@@ -763,8 +760,7 @@ extension CLIImpl.Command.Save {
 
         let effectiveBase = baseDir.map { URL(fileURLWithPath: $0).expandingTildeInPath }
             ?? Shared.Paths.live().baseDirectory
-        let searchDBURL = searchDB.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-            ?? effectiveBase.appendingPathComponent(Shared.Constants.FileName.searchDatabase)
+        let dbURL = effectiveBase.appendingPathComponent(Shared.Constants.FileName.searchDatabase)
         let stateFileURL = effectiveBase.appendingPathComponent("remote-save-state.json")
 
         // #1042 Cluster 11 sub-2 wiring: derive the phase→URI-scheme
@@ -801,18 +797,18 @@ extension CLIImpl.Command.Save {
         if await indexer.hasResumableState() {
             try await handleResumableRemoteSession(
                 indexer: indexer,
-                searchDBURL: searchDBURL
+                dbURL: dbURL
             )
-        } else if FileManager.default.fileExists(atPath: searchDBURL.path) {
+        } else if FileManager.default.fileExists(atPath: dbURL.path) {
             Cupertino.Context.composition.logging.recording.info("🗑️  Removing existing database for clean re-index...")
-            try FileManager.default.removeItem(at: searchDBURL)
+            try FileManager.default.removeItem(at: dbURL)
         }
 
         Cupertino.Context.composition.logging.recording.info("🗄️  Initializing search database...")
         // #932: this Save path indexes via `RemoteSync.Indexer.run` +
         // `SearchIndexDocumentIndexer` which calls bare `indexDocument` on
         // the actor, NOT `indexItem`. Empty dict is correct.
-        let searchIndex = try await SearchModule.Index(dbPath: searchDBURL, logger: Cupertino.Context.composition.logging.recording, indexers: [:], sourceLookup: .empty)
+        let searchIndex = try await SearchModule.Index(dbPath: dbURL, logger: Cupertino.Context.composition.logging.recording, indexers: [:], sourceLookup: .empty)
 
         let progressDisplay = RemoteSync.AnimatedProgress(barWidth: 20, useEmoji: true)
         let reporter = RemoteSync.ProgressReporter(display: progressDisplay)
@@ -838,8 +834,8 @@ extension CLIImpl.Command.Save {
         Cupertino.Context.composition.logging.recording.info("   Frameworks: \(frameworks.count)")
         Cupertino.Context.composition.logging.recording.info("   Indexed: \(stats.successCount) | Errors: \(stats.errorCount)")
         Cupertino.Context.composition.logging.recording.info("   Time: \(Shared.Utils.Formatting.formatDuration(elapsed))")
-        Cupertino.Context.composition.logging.recording.info("   Database: \(searchDBURL.path)")
-        Cupertino.Context.composition.logging.recording.info("   Size: \(Self.formatFileSize(searchDBURL))")
+        Cupertino.Context.composition.logging.recording.info("   Database: \(dbURL.path)")
+        Cupertino.Context.composition.logging.recording.info("   Size: \(Self.formatFileSize(dbURL))")
         Cupertino.Context.composition.logging.recording.info(
             "\n💡 Tip: Start the MCP server with '\(Shared.Constants.App.commandName) serve' to enable search"
         )
@@ -847,7 +843,7 @@ extension CLIImpl.Command.Save {
 
     private func handleResumableRemoteSession(
         indexer: RemoteSync.Indexer,
-        searchDBURL: URL
+        dbURL: URL
     ) async throws {
         let state = await indexer.getState()
         let completedCount = state.frameworksCompleted.count
@@ -868,8 +864,8 @@ extension CLIImpl.Command.Save {
         if let response = readLine()?.lowercased(), response == "n" || response == "no" {
             Cupertino.Context.composition.logging.recording.info("🔄 Starting fresh...")
             try await indexer.clearState()
-            if FileManager.default.fileExists(atPath: searchDBURL.path) {
-                try FileManager.default.removeItem(at: searchDBURL)
+            if FileManager.default.fileExists(atPath: dbURL.path) {
+                try FileManager.default.removeItem(at: dbURL)
             }
         } else {
             Cupertino.Context.composition.logging.recording.info("▶️  Resuming...")

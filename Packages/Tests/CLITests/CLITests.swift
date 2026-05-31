@@ -115,6 +115,19 @@ struct CommandRegistrationTests {
         #expect(!doctor.contains("search.db"), "doctor help discussion must not name the legacy unified search.db")
         #expect(!doctor.contains("samples.db"))
     }
+
+    @Test("the removed --search-db flag is rejected on every command that used to carry it")
+    func searchDBFlagRejectedEverywhere() {
+        func rejects(_ parse: () throws -> Void) -> Bool {
+            do { try parse(); return false } catch { return true }
+        }
+        #expect(rejects { _ = try CLIImpl.Command.Search.parse(["View", "--search-db", "/tmp/x"]) })
+        #expect(rejects { _ = try CLIImpl.Command.Read.parse(["apple-docs://swift/array", "--search-db", "/tmp/x"]) })
+        #expect(rejects { _ = try CLIImpl.Command.Save.parse(["--source", "apple-docs", "--search-db", "/tmp/x"]) })
+        #expect(rejects { _ = try CLIImpl.Command.Doctor.parse(["--search-db", "/tmp/x"]) })
+        #expect(rejects { _ = try CLIImpl.Command.ListFrameworks.parse(["--search-db", "/tmp/x"]) })
+        #expect(rejects { _ = try CLIImpl.Command.Inheritance.parse(["UIButton", "--search-db", "/tmp/x"]) })
+    }
 }
 
 // MARK: - FetchType Enum Tests (dissolved post-#1031)

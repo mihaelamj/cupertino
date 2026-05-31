@@ -93,7 +93,7 @@ struct Issue1059OptionalDirScopeTests {
             swiftOrgDir: nonexistent("swift-org"),
             archiveDir: nonexistent("archive"),
             higDir: nonexistent("hig"),
-            searchDB: baseDir.appendingPathComponent("search.db"),
+            dbURL: baseDir.appendingPathComponent("search.db"),
             clear: false,
             directoryByKey: [:],
             selectedSourceIDs: selectedSourceIDs

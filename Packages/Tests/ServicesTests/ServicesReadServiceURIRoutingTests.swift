@@ -7,12 +7,12 @@ import Testing
 
 //
 // Pins the post-#1037 per-source URI dispatch in `ReadService.read`.
-// Pre-fix every docs URI routed to a single `searchDB` URL (the
+// Pre-fix every docs URI routed to a single `dbURL` URL (the
 // legacy monolithic search.db); post-fix `read` accepts an optional
-// `docsDBURLs: [String: URL]` map keyed by source-id and picks the
+// `dbURLs: [String: URL]` map keyed by source-id and picks the
 // right per-source DB file based on the URI's scheme. The mapping
 // preserves back-compat (nil map or unknown scheme falls back to
-// `searchDB`) so existing callers + tests that pin the old shape
+// `dbURL`) so existing callers + tests that pin the old shape
 // keep working.
 
 @Suite("Services.ReadService URI scheme routing (#1039)")
@@ -34,87 +34,87 @@ struct ServicesReadServiceURIRoutingTests {
 
     @Test("apple-docs URI routes to apple-documentation.db")
     func appleDocsURIRoutesToOwnDB() {
-        let url = Services.ReadService.resolveDocsDBURL(
+        let url = Services.ReadService.resolveDBURL(
             identifier: "apple-docs://swiftui/view",
             fallback: fallback,
-            docsDBURLs: productionishMap
+            dbURLs: productionishMap
         )
         #expect(url.path == appleDocsDB.path)
     }
 
     @Test("hig URI routes to hig.db (post-#1037 the previously-broken case)")
     func higURIRoutesToHigDB() {
-        let url = Services.ReadService.resolveDocsDBURL(
+        let url = Services.ReadService.resolveDBURL(
             identifier: "hig://buttons/standard-button",
             fallback: fallback,
-            docsDBURLs: productionishMap
+            dbURLs: productionishMap
         )
         #expect(url.path == higDB.path)
     }
 
     @Test("swift-evolution URI routes to swift-evolution.db")
     func swiftEvolutionURIRoutesToOwnDB() {
-        let url = Services.ReadService.resolveDocsDBURL(
+        let url = Services.ReadService.resolveDBURL(
             identifier: "swift-evolution://proposals/SE-0001",
             fallback: fallback,
-            docsDBURLs: productionishMap
+            dbURLs: productionishMap
         )
         #expect(url.path == swiftEvoDB.path)
     }
 
     // MARK: - Fallback paths
 
-    @Test("Nil map falls back to the legacy searchDB URL (pre-#1037 callers + tests)")
+    @Test("Nil map falls back to the legacy dbURL URL (pre-#1037 callers + tests)")
     func nilMapFallsBackToLegacy() {
-        let url = Services.ReadService.resolveDocsDBURL(
+        let url = Services.ReadService.resolveDBURL(
             identifier: "apple-docs://swiftui/view",
             fallback: fallback,
-            docsDBURLs: nil
+            dbURLs: nil
         )
         #expect(url.path == fallback.path)
     }
 
-    @Test("Empty map falls back to the legacy searchDB URL")
+    @Test("Empty map falls back to the legacy dbURL URL")
     func emptyMapFallsBackToLegacy() {
-        let url = Services.ReadService.resolveDocsDBURL(
+        let url = Services.ReadService.resolveDBURL(
             identifier: "apple-docs://swiftui/view",
             fallback: fallback,
-            docsDBURLs: [:]
+            dbURLs: [:]
         )
         #expect(url.path == fallback.path)
     }
 
-    @Test("URI with a scheme not in the map falls back to the legacy searchDB URL")
+    @Test("URI with a scheme not in the map falls back to the legacy dbURL URL")
     func unknownSchemeFallsBackToLegacy() {
-        let url = Services.ReadService.resolveDocsDBURL(
+        let url = Services.ReadService.resolveDBURL(
             identifier: "future-source://something/foo",
             fallback: fallback,
-            docsDBURLs: productionishMap
+            dbURLs: productionishMap
         )
         #expect(url.path == fallback.path)
     }
 
-    @Test("Identifier without a scheme separator falls back to the legacy searchDB URL")
+    @Test("Identifier without a scheme separator falls back to the legacy dbURL URL")
     func schemelessIdentifierFallsBackToLegacy() {
         // Non-URI identifiers (sample-id, owner/repo paths) are
         // routed through the samples / packages backends, not docs.
         // ReadService still computes the resolved docs URL up front,
         // so this helper must return SOMETHING; the legacy fallback
         // is the safe default.
-        let url = Services.ReadService.resolveDocsDBURL(
+        let url = Services.ReadService.resolveDBURL(
             identifier: "swiftui-landmarks-sample",
             fallback: fallback,
-            docsDBURLs: productionishMap
+            dbURLs: productionishMap
         )
         #expect(url.path == fallback.path)
     }
 
-    @Test("Owner/repo identifier (no URI scheme) falls back to the legacy searchDB URL")
+    @Test("Owner/repo identifier (no URI scheme) falls back to the legacy dbURL URL")
     func ownerRepoIdentifierFallsBackToLegacy() {
-        let url = Services.ReadService.resolveDocsDBURL(
+        let url = Services.ReadService.resolveDBURL(
             identifier: "pointfreeco/swift-snapshot-testing/Sources/SnapshotTesting/Recording.swift",
             fallback: fallback,
-            docsDBURLs: productionishMap
+            dbURLs: productionishMap
         )
         #expect(url.path == fallback.path)
     }

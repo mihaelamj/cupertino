@@ -57,18 +57,6 @@ extension CLIImpl.Command {
 
         @Option(
             name: .long,
-            help: """
-            Override the docs database path. Post-#1037 each docs source \
-            owns its own file (apple-documentation.db, hig.db, ...); when \
-            this flag is set, EVERY docs source-id routes to the override \
-            URL (legacy single-DB debug semantic). Mostly useful for tests \
-            + custom-database workflows.
-            """
-        )
-        var searchDb: String?
-
-        @Option(
-            name: .long,
             help: "Path to the sample index database (apple-sample-code.db)"
         )
         var sampleDb: String?
@@ -119,7 +107,7 @@ extension CLIImpl.Command {
             // the identifier carries a URI scheme AND `--source` is
             // given, the two must agree. Pre-fix `cupertino read
             // 'hig://...' --source apple-docs` silently routed to
-            // apple-documentation.db (resolveDocsDBURL short-circuits
+            // apple-documentation.db (resolveDBURL short-circuits
             // on explicit source-id before checking the URI scheme),
             // then returned `docsNotFound` against the wrong DB. Now
             // we reject the mismatch with a clear diagnostic before
@@ -145,45 +133,24 @@ extension CLIImpl.Command {
 
             // Path-DI composition sub-root (#535).
             let paths = Shared.Paths.live()
-            let searchDBURL = searchDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
-                ?? paths.searchDatabase
+            let dbURL = CLIImpl.resolveAppleDocsDBURL()
             let samplesDBURL = sampleDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
                 ?? Sample.Index.databasePath(baseDirectory: paths.baseDirectory)
             let packagesDBURL = packagesDb.map { URL(fileURLWithPath: $0).expandingTildeInPath }
                 ?? paths.packagesDatabase
 
             // #1039: build the per-source docs DB map so a URI like
-            // `hig://buttons/standard-button` routes to hig.db
-            // (post-#1037 per-source DB world). Pre-#1037 every docs
-            // URI resolved through one search.db; post-#1037 each docs
-            // source owns its own SQLite file. ReadService falls back
-            // to `searchDB` (above) when the URI's scheme isn't in the
-            // map, preserving back-compat for tests + the migration
-            // window.
-            //
-            // `--search-db` override (when set): every docs source-id
-            // maps to the override URL, so the legacy single-DB debug
-            // workflow ("redirect every read to /tmp/my.db") still
-            // works post-per-source-split. Without this branch the
-            // map would shadow the override silently (the helper
-            // checks the map first).
-            let docsDBURLs: [String: URL]
-            if let override = searchDb.map({ URL(fileURLWithPath: $0).expandingTildeInPath }) {
-                docsDBURLs = CLIImpl.makeProductionSourceRegistry()
-                    .allEnabled
-                    .filter { $0.destinationDB != .packages && $0.destinationDB != .appleSampleCode }
-                    .reduce(into: [:]) { dict, provider in
-                        dict[provider.definition.id] = override
-                    }
-            } else {
-                docsDBURLs = CLIImpl.makeProductionSourceRegistry()
-                    .allEnabled
-                    .filter { $0.destinationDB != .packages && $0.destinationDB != .appleSampleCode }
-                    .reduce(into: [:]) { dict, provider in
-                        dict[provider.definition.id] = paths.baseDirectory
-                            .appendingPathComponent(provider.destinationDB.filename)
-                    }
-            }
+            // `hig://buttons/standard-button` routes to hig.db. Each docs
+            // source owns its own SQLite file (post-#1037 per-source DB
+            // world); ReadService falls back to `dbURL` (above) when the
+            // URI's scheme isn't in the map.
+            let dbURLs: [String: URL] = CLIImpl.makeProductionSourceRegistry()
+                .allEnabled
+                .filter { $0.destinationDB != .packages && $0.destinationDB != .appleSampleCode }
+                .reduce(into: [:]) { dict, provider in
+                    dict[provider.definition.id] = paths.baseDirectory
+                        .appendingPathComponent(provider.destinationDB.filename)
+                }
 
             let result: Services.ReadService.Result
             do {
@@ -196,13 +163,13 @@ extension CLIImpl.Command {
                     identifier: identifier,
                     explicit: explicit,
                     format: documentFormat,
-                    searchDB: searchDBURL,
+                    dbURL: dbURL,
                     samplesDB: samplesDBURL,
                     packagesDB: packagesDBURL,
                     searchDatabaseFactory: searchDatabaseFactory,
                     sampleDatabaseFactory: sampleDatabaseFactory,
                     packageFileLookup: LivePackageFileLookupStrategy(),
-                    docsDBURLs: docsDBURLs,
+                    dbURLs: dbURLs,
                     explicitDocsSourceID: source,
                     providers: registry.allEnabled
                 )
@@ -213,11 +180,11 @@ extension CLIImpl.Command {
                 // pipeline used) instead of plumbing the URL through
                 // the ReadError enum, which would be a breaking
                 // enum-shape change for non-CLI consumers.
-                let resolved = Services.ReadService.resolveDocsDBURL(
+                let resolved = Services.ReadService.resolveDBURL(
                     identifier: id,
                     explicitSourceID: source,
-                    fallback: searchDBURL,
-                    docsDBURLs: docsDBURLs
+                    fallback: dbURL,
+                    dbURLs: dbURLs
                 )
                 CLIImpl.printUserFacingDiagnostic(
                     "Document not found in \(resolved.lastPathComponent): \(id)",
@@ -226,7 +193,7 @@ extension CLIImpl.Command {
                 throw ExitCode.failure
             } catch Services.ReadService.ReadError.samplesNotFound(let id) {
                 CLIImpl.printUserFacingDiagnostic(
-                    "Not found in samples.db: \(id)",
+                    "Not found in apple-sample-code.db: \(id)",
                     recording: Cupertino.Context.composition.logging.recording
                 )
                 throw ExitCode.failure

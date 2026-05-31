@@ -36,20 +36,20 @@ extension Indexer.DocsService {
             ?? request.baseDir.appendingPathComponent(Shared.Constants.Directory.archive)
         let higURL = request.higDir
             ?? request.baseDir.appendingPathComponent(Shared.Constants.Directory.hig)
-        let searchDBURL = request.searchDB
+        let dbURL = request.dbURL
             ?? request.baseDir.appendingPathComponent(Shared.Constants.FileName.searchDatabase)
 
         // Surface the resolved output path upfront so long-running save
         // jobs make their destination visible without the user having
         // to re-derive base-dir + filename composition from CLI args.
         // Fires before any disk activity.
-        events.observe(event: .databaseTarget(searchDBURL))
+        events.observe(event: .databaseTarget(dbURL))
 
         // FTS5 doesn't tolerate INSERT OR REPLACE cleanly; fresh DB
         // every time keeps the correctness story simple.
-        if FileManager.default.fileExists(atPath: searchDBURL.path) {
-            events.observe(event: .removingExistingDB(searchDBURL))
-            try FileManager.default.removeItem(at: searchDBURL)
+        if FileManager.default.fileExists(atPath: dbURL.path) {
+            events.observe(event: .removingExistingDB(dbURL))
+            try FileManager.default.removeItem(at: dbURL)
         }
 
         events.observe(event: .initializingIndex)
@@ -100,7 +100,7 @@ extension Indexer.DocsService {
         // resolveSourceDirectory can route arbitrary new sources by
         // their definition.id without a typed-field-or-switch-arm edit.
         let input = Search.DocsIndexingInput(
-            searchDBPath: searchDBURL,
+            dbPath: dbURL,
             docsDirectory: docsURL,
             evolutionDirectory: evolutionDirToUse,
             swiftOrgDirectory: swiftOrgDirToUse,
@@ -117,7 +117,7 @@ extension Indexer.DocsService {
         let result = try await docsIndexingRunner.run(input: input, progress: reporter)
 
         let outcome = Outcome(
-            searchDBPath: searchDBURL,
+            dbPath: dbURL,
             documentCount: result.documentCount,
             frameworkCount: result.frameworkCount
         )

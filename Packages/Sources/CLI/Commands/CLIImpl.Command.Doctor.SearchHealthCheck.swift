@@ -28,15 +28,15 @@ extension CLIImpl.Command.Doctor {
         let descriptor: Shared.Models.DatabaseDescriptor
         let isRequired: Bool
 
-        let searchDBURL: URL
+        let dbURL: URL
 
         init(
             descriptor: Shared.Models.DatabaseDescriptor = .search,
-            searchDBURL: URL,
+            dbURL: URL,
             isRequired: Bool = true
         ) {
             self.descriptor = descriptor
-            self.searchDBURL = searchDBURL
+            self.dbURL = dbURL
             self.isRequired = isRequired
         }
 
@@ -51,24 +51,24 @@ extension CLIImpl.Command.Doctor {
                 recording.output("🔍 \(descriptor.displayName) (\(descriptor.filename))")
             }
 
-            guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
+            guard FileManager.default.fileExists(atPath: dbURL.path) else {
                 // Missing-file verdict scales with isRequired: hard
                 // fail for the legacy required `.search`; informational
                 // for per-source DBs the user may not have built yet.
                 if isRequired {
-                    recording.output("   ✗ Database: \(searchDBURL.path) (not found)")
+                    recording.output("   ✗ Database: \(dbURL.path) (not found)")
                     recording.output("     → Run: cupertino setup  (or `cupertino save` if building locally)")
                     recording.output("")
                     return false
                 } else {
-                    recording.output("   ⚠  Database: \(searchDBURL.path) (not built — run `cupertino save --source \(descriptor.id)` to populate)")
+                    recording.output("   ⚠  Database: \(dbURL.path) (not built — run `cupertino save --source \(descriptor.id)` to populate)")
                     recording.output("")
                     return true
                 }
             }
 
-            let fileSize = (try? FileManager.default.attributesOfItem(atPath: searchDBURL.path)[.size] as? UInt64) ?? 0
-            recording.output("   ✓ Database: \(searchDBURL.path)")
+            let fileSize = (try? FileManager.default.attributesOfItem(atPath: dbURL.path)[.size] as? UInt64) ?? 0
+            recording.output("   ✓ Database: \(dbURL.path)")
             recording.output("   ✓ Size: \(Shared.Utils.Formatting.formatBytes(Int64(fileSize)))")
 
             if !reportSchemaVersion(recording: recording) {
@@ -92,10 +92,10 @@ extension CLIImpl.Command.Doctor {
             let searchIndex: SearchModule.Index
             do {
                 // #932: doctor read-only probe; never calls indexItem.
-                searchIndex = try await SearchModule.Index(dbPath: searchDBURL, logger: recording, indexers: [:], sourceLookup: .empty)
+                searchIndex = try await SearchModule.Index(dbPath: dbURL, logger: recording, indexers: [:], sourceLookup: .empty)
             } catch {
                 recording.output("   ✗ Database error: \(error)")
-                recording.output("     → rm \(searchDBURL.path) && cupertino save")
+                recording.output("     → rm \(dbURL.path) && cupertino save")
                 recording.output("")
                 return false
             }
@@ -104,7 +104,7 @@ extension CLIImpl.Command.Doctor {
                 recording.output("   ✓ Frameworks: \(frameworks.count)")
             } catch {
                 recording.output("   ✗ Database error: \(error)")
-                recording.output("     → rm \(searchDBURL.path) && cupertino save")
+                recording.output("     → rm \(dbURL.path) && cupertino save")
                 recording.output("")
                 await searchIndex.disconnect()
                 return false
@@ -119,7 +119,7 @@ extension CLIImpl.Command.Doctor {
         /// migrating from an incompatible version throws during init, and the
         /// user wants to know which version they're stuck on.
         private func reportSchemaVersion(recording: any Logging.Recording) -> Bool {
-            let onDiskVersion = Diagnostics.Probes.userVersion(at: searchDBURL)
+            let onDiskVersion = Diagnostics.Probes.userVersion(at: dbURL)
             let expected = SearchModule.Index.schemaVersion
             guard let onDiskVersion else {
                 recording.output("   ⚠  Schema version: could not read PRAGMA user_version")
@@ -131,7 +131,7 @@ extension CLIImpl.Command.Doctor {
             }
             if onDiskVersion < expected {
                 recording.output("   ✗ Schema version: \(onDiskVersion) (binary expects \(expected), rebuild required)")
-                recording.output("     → rm \(searchDBURL.path) && cupertino save")
+                recording.output("     → rm \(dbURL.path) && cupertino save")
             } else {
                 recording.output("   ✗ Schema version: \(onDiskVersion) (newer than binary, expected \(expected))")
                 recording.output("     → Upgrade cupertino: brew upgrade cupertino")
@@ -144,7 +144,7 @@ extension CLIImpl.Command.Doctor {
         /// for "can my MCP answer queries about source X?". Hard-fails if the DB
         /// opens but has zero indexed rows (silent-empty MCP otherwise).
         private func reportIndexedSources(recording: any Logging.Recording) -> Bool {
-            let perSource = Diagnostics.Probes.perSourceCounts(at: searchDBURL)
+            let perSource = Diagnostics.Probes.perSourceCounts(at: dbURL)
             if !perSource.isEmpty {
                 recording.output("   📚 Indexed sources:")
                 for (source, count) in perSource {
@@ -160,7 +160,7 @@ extension CLIImpl.Command.Doctor {
                 // `cupertino save --source <id>` yet stays informational.
                 if isRequired {
                     recording.output("   ✗ Search index is empty (0 rows in docs_metadata)")
-                    recording.output("     → Rebuild: rm \(searchDBURL.path) && cupertino setup")
+                    recording.output("     → Rebuild: rm \(dbURL.path) && cupertino setup")
                     recording.output("")
                     return false
                 } else {

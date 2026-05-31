@@ -55,7 +55,7 @@ extension Search.DocsIndexing {
     /// strategy / provider conformers the indexer threads down into its
     /// strategy implementations.
     public struct Input: Sendable {
-        public let searchDBPath: URL
+        public let dbPath: URL
         public let docsDirectory: URL
         public let evolutionDirectory: URL?
         public let swiftOrgDirectory: URL?
@@ -100,7 +100,7 @@ extension Search.DocsIndexing {
         public let allowDegradedEnrichment: Bool
 
         public init(
-            searchDBPath: URL,
+            dbPath: URL,
             docsDirectory: URL,
             evolutionDirectory: URL?,
             swiftOrgDirectory: URL?,
@@ -112,7 +112,7 @@ extension Search.DocsIndexing {
             directoryByKey: [String: URL?] = [:],
             allowDegradedEnrichment: Bool = false
         ) {
-            self.searchDBPath = searchDBPath
+            self.dbPath = dbPath
             self.docsDirectory = docsDirectory
             self.evolutionDirectory = evolutionDirectory
             self.swiftOrgDirectory = swiftOrgDirectory

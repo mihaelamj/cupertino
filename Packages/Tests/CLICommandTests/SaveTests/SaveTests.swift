@@ -70,8 +70,8 @@ struct SaveCommandTests {
         _ = try await crawler.crawl()
 
         // Build search index
-        let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let docsDbPath = tempDir.appendingPathComponent("search.db")
+        let searchIndex = try await Search.Index(dbPath: docsDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         let metadata = try Shared.Models.CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
         // #933: inline strategy assembly (factory dissolved).
@@ -92,7 +92,7 @@ struct SaveCommandTests {
         try await builder.buildIndex()
 
         // Verify search.db was created
-        #expect(FileManager.default.fileExists(atPath: searchDbPath.path), "Search database should exist")
+        #expect(FileManager.default.fileExists(atPath: docsDbPath.path), "Search database should exist")
 
         // Verify we can search
         let results = try await searchIndex.search(query: "swift", limit: 10)
@@ -139,8 +139,8 @@ struct SaveCommandTests {
         )
         _ = try await crawler.crawl()
 
-        let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let docsDbPath = tempDir.appendingPathComponent("search.db")
+        let searchIndex = try await Search.Index(dbPath: docsDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         let metadata = try Shared.Models.CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
         // #933: inline strategy assembly (factory dissolved).
@@ -185,8 +185,8 @@ struct SaveCommandTests {
 
         print("🧪 Test: Save empty directory")
 
-        let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let docsDbPath = tempDir.appendingPathComponent("search.db")
+        let searchIndex = try await Search.Index(dbPath: docsDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         // Create empty metadata
         let emptyMetadata = Shared.Models.CrawlMetadata()
@@ -228,7 +228,7 @@ struct SaveCommandTests {
         // Create directory structure
         let docsDir = baseDir.appendingPathComponent("docs")
         let evolutionDir = baseDir.appendingPathComponent("swift-evolution")
-        let searchDbPath = baseDir.appendingPathComponent("search.db")
+        let docsDbPath = baseDir.appendingPathComponent("search.db")
 
         try FileManager.default.createDirectory(at: docsDir, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: evolutionDir, withIntermediateDirectories: true)
@@ -252,14 +252,14 @@ struct SaveCommandTests {
             "metadata-file should be base-dir/metadata.json"
         )
         #expect(
-            searchDbPath.path == baseDir.appendingPathComponent(Shared.Constants.FileName.searchDatabase).path,
+            docsDbPath.path == baseDir.appendingPathComponent(Shared.Constants.FileName.searchDatabase).path,
             "search-db should be base-dir/search.db"
         )
 
         print("   ✅ Base directory paths verified!")
 
         // Test that index builds successfully with base-dir structure
-        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let searchIndex = try await Search.Index(dbPath: docsDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         // #933: inline strategy assembly (factory dissolved). This test
         // exercises both AppleDocs + SwiftEvolution indexing paths.
         let strategies: [any Search.SourceIndexingStrategy] = [
@@ -282,7 +282,7 @@ struct SaveCommandTests {
 
         try await builder.buildIndex()
 
-        #expect(FileManager.default.fileExists(atPath: searchDbPath.path), "Search DB should be created")
+        #expect(FileManager.default.fileExists(atPath: docsDbPath.path), "Search DB should be created")
 
         print("   ✅ Base directory test passed!")
     }
@@ -340,8 +340,8 @@ struct SaveCommandTests {
         try Shared.Utils.JSONCoding.encode(viewPage, to: viewDoc)
 
         // Build index WITHOUT metadata.json
-        let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let docsDbPath = tempDir.appendingPathComponent("search.db")
+        let searchIndex = try await Search.Index(dbPath: docsDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         // #933: inline strategy assembly (factory dissolved).
         let strategies: [any Search.SourceIndexingStrategy] = [
@@ -402,8 +402,8 @@ struct SaveCommandTests {
         try Shared.Utils.JSONCoding.encode(nestedPage, to: nestedDoc)
 
         // Build index
-        let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let docsDbPath = tempDir.appendingPathComponent("search.db")
+        let searchIndex = try await Search.Index(dbPath: docsDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         // #933: inline strategy assembly (factory dissolved).
         let strategies: [any Search.SourceIndexingStrategy] = [
@@ -468,8 +468,8 @@ struct SaveCommandTests {
 
         print("🧪 Test: Index packages catalog (post-#194 empty contract)")
 
-        let searchDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: searchDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let docsDbPath = tempDir.appendingPathComponent("search.db")
+        let searchIndex = try await Search.Index(dbPath: docsDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         // #933: inline strategy assembly (factory dissolved).
         let strategies: [any Search.SourceIndexingStrategy] = [

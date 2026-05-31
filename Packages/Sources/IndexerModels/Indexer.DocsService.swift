@@ -18,7 +18,7 @@ extension Indexer {
             public let swiftOrgDir: URL?
             public let archiveDir: URL?
             public let higDir: URL?
-            public let searchDB: URL?
+            public let dbURL: URL?
             public let clear: Bool
 
             /// #1045 Gap 4: registry-derived per-source directory map.
@@ -59,7 +59,7 @@ extension Indexer {
                 swiftOrgDir: URL? = nil,
                 archiveDir: URL? = nil,
                 higDir: URL? = nil,
-                searchDB: URL? = nil,
+                dbURL: URL? = nil,
                 clear: Bool = false,
                 directoryByKey: [String: URL?] = [:],
                 selectedSourceIDs: Set<String>? = nil,
@@ -71,7 +71,7 @@ extension Indexer {
                 self.swiftOrgDir = swiftOrgDir
                 self.archiveDir = archiveDir
                 self.higDir = higDir
-                self.searchDB = searchDB
+                self.dbURL = dbURL
                 self.clear = clear
                 self.directoryByKey = directoryByKey
                 self.selectedSourceIDs = selectedSourceIDs
@@ -80,16 +80,16 @@ extension Indexer {
         }
 
         public struct Outcome: Sendable {
-            public let searchDBPath: URL
+            public let dbPath: URL
             public let documentCount: Int
             public let frameworkCount: Int
 
             public init(
-                searchDBPath: URL,
+                dbPath: URL,
                 documentCount: Int,
                 frameworkCount: Int
             ) {
-                self.searchDBPath = searchDBPath
+                self.dbPath = dbPath
                 self.documentCount = documentCount
                 self.frameworkCount = frameworkCount
             }

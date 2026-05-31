@@ -67,12 +67,6 @@ extension CLIImpl.Command {
 
         @Option(
             name: .long,
-            help: CLIImpl.appleDocsDBOverrideHelp
-        )
-        var searchDb: String?
-
-        @Option(
-            name: .long,
             help: "Disambiguate to a specific framework when the symbol exists in multiple"
         )
         var framework: String?
@@ -85,11 +79,11 @@ extension CLIImpl.Command {
                 throw ExitCode.failure
             }
 
-            let searchDBURL = CLIImpl.resolveAppleDocsDBURL(override: searchDb)
+            let dbURL = CLIImpl.resolveAppleDocsDBURL()
 
-            guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
+            guard FileManager.default.fileExists(atPath: dbURL.path) else {
                 CLIImpl.printUserFacingDiagnostic(
-                    CLIImpl.perSourceDBMissingMessage(url: searchDBURL),
+                    CLIImpl.perSourceDBMissingMessage(url: dbURL),
                     recording: recording
                 )
                 throw ExitCode.failure
@@ -99,7 +93,7 @@ extension CLIImpl.Command {
             // explicitly because no `indexItem` dispatch happens on this
             // path (this command only resolves URIs + reads metadata).
             let index = try await SearchModule.Index(
-                dbPath: searchDBURL,
+                dbPath: dbURL,
                 logger: Cupertino.Context.composition.logging.recording,
                 indexers: [:],
                 sourceLookup: .empty

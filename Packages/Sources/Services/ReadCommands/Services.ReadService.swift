@@ -130,20 +130,20 @@ extension Services {
         /// 1. URI scheme present → docs.
         /// 2. Else: try samples first; fall through to packages on miss.
         ///
-        /// `searchDB`, `samplesDB`, `packagesDB` are all required: callers
+        /// `dbURL`, `samplesDB`, `packagesDB` are all required: callers
         /// must resolve the URLs at their composition root and supply them
         /// here. Pre-#535 these were `URL?` with internal fallbacks to
         /// `Shared.Constants.default*` / `Sample.Index.defaultDatabasePath`
         /// (a Service Locator shape per Seemann 2011 ch. 5); strict DI gives
         /// the caller responsibility for path resolution.
         ///
-        /// `docsDBURLs` (post-#1039) is the per-source docs DB map:
+        /// `dbURLs` (post-#1039) is the per-source docs DB map:
         /// `[sourceID: URL]` keyed by `SourceProvider.definition.id`
         /// (e.g. `apple-docs` -> `apple-documentation.db`, `hig` ->
         /// `hig.db`). When non-nil AND the URI's scheme matches a key,
         /// the docs read routes to the matching per-source DB. When
         /// nil OR the URI's scheme isn't in the map, falls back to
-        /// `searchDB` (the legacy monolithic search.db path; required
+        /// `dbURL` (the legacy monolithic search.db path; required
         /// for the pre-#1037 migration window + tests that pin the
         /// old shape). Defaulted nil so existing callers keep working
         /// without changes.
@@ -151,13 +151,13 @@ extension Services {
             identifier rawIdentifier: String,
             explicit: Source?,
             format: Search.DocumentFormat,
-            searchDB: URL,
+            dbURL: URL,
             samplesDB: URL,
             packagesDB: URL,
             searchDatabaseFactory: any Search.DatabaseFactory,
             sampleDatabaseFactory: any Sample.Index.DatabaseFactory,
             packageFileLookup: any PackageFileLookupStrategy,
-            docsDBURLs: [String: URL]? = nil,
+            dbURLs: [String: URL]? = nil,
             explicitDocsSourceID: String? = nil,
             providers: [any Search.SourceProvider]
         ) async throws -> Result {
@@ -168,11 +168,11 @@ extension Services {
 
             // #1039: resolve the docs DB URL once. Per-source routing
             // happens via the URI scheme or the `explicitDocsSourceID`.
-            let resolvedDocsDB = resolveDocsDBURL(
+            let resolvedDocsDB = resolveDBURL(
                 identifier: identifier,
                 explicitSourceID: explicitDocsSourceID,
-                fallback: searchDB,
-                docsDBURLs: docsDBURLs
+                fallback: dbURL,
+                dbURLs: dbURLs
             )
 
             // 2026-05-26 audit #1055: build the read env once and
@@ -185,14 +185,14 @@ extension Services {
             let docsLookup = LiveDocsLookupStrategy(searchDatabaseFactory: searchDatabaseFactory)
             let sampleLookup = LiveSampleLookupStrategy(sampleDatabaseFactory: sampleDatabaseFactory)
 
-            // The legacy `docsDBURLs` map flows through to the env
+            // The legacy `dbURLs` map flows through to the env
             // so `Search.DocsReadStrategy` resolves per-source DBs.
             // When the caller didn't supply one (pre-#1037 tests),
-            // the fallback `searchDB` URL is used for every docs id.
+            // the fallback `dbURL` URL is used for every docs id.
             let env = Search.ReadEnvironment(
                 identifier: identifier,
                 format: format,
-                docsDBURLs: docsDBURLs ?? [:],
+                dbURLs: dbURLs ?? [:],
                 fallbackSearchDB: resolvedDocsDB,
                 samplesDB: samplesDB,
                 packagesDB: packagesDB,
@@ -262,24 +262,24 @@ extension Services {
         ///    a `<scheme>://...` shape, extract the scheme and look it
         ///    up in the map. Covers `cupertino read hig://...`.
         ///
-        /// Falls back to `fallback` (the legacy `searchDB` URL) when
+        /// Falls back to `fallback` (the legacy `dbURL` URL) when
         /// neither path resolves. Made `public static` so tests can
         /// pin the resolution logic without standing up the full read
         /// pipeline. Round-14/16 critic + this commit's round-17
         /// findings #1 and #3 closed by this signature.
-        public static func resolveDocsDBURL(
+        public static func resolveDBURL(
             identifier: String,
             explicitSourceID: String? = nil,
             fallback: URL,
-            docsDBURLs: [String: URL]?
+            dbURLs: [String: URL]?
         ) -> URL {
-            guard let docsDBURLs, !docsDBURLs.isEmpty else { return fallback }
-            if let explicitSourceID, let url = docsDBURLs[explicitSourceID] {
+            guard let dbURLs, !dbURLs.isEmpty else { return fallback }
+            if let explicitSourceID, let url = dbURLs[explicitSourceID] {
                 return url
             }
             guard let schemeEnd = identifier.range(of: "://") else { return fallback }
             let scheme = String(identifier[..<schemeEnd.lowerBound])
-            return docsDBURLs[scheme] ?? fallback
+            return dbURLs[scheme] ?? fallback
         }
 
         // MARK: - Identifier normalisation (#587)

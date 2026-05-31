@@ -201,9 +201,9 @@ struct MCPCommandTests {
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         // Create search index with test data
-        let searchDbPath = tempDir.appendingPathComponent("search.db")
+        let docsDbPath = tempDir.appendingPathComponent("search.db")
         let searchIndex = try await Search.Index(
-            dbPath: searchDbPath,
+            dbPath: docsDbPath,
             logger: Logging.NoopRecording(),
             indexers: [:],
             sourceLookup: .empty
@@ -253,9 +253,9 @@ struct MCPCommandTests {
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         // Create and populate search index
-        let searchDbPath = tempDir.appendingPathComponent("search.db")
+        let docsDbPath = tempDir.appendingPathComponent("search.db")
         let searchIndex = try await Search.Index(
-            dbPath: searchDbPath,
+            dbPath: docsDbPath,
             logger: Logging.NoopRecording(),
             indexers: [:],
             sourceLookup: .empty
@@ -495,9 +495,9 @@ struct MCPServerIntegrationTests {
 
         // Step 2: Build index
         print("\n   🔍 Step 2: Building search index...")
-        let searchDbPath = tempDir.appendingPathComponent("search.db")
+        let docsDbPath = tempDir.appendingPathComponent("search.db")
         let searchIndex = try await Search.Index(
-            dbPath: searchDbPath,
+            dbPath: docsDbPath,
             logger: Logging.NoopRecording(),
             indexers: [:],
             sourceLookup: .empty
@@ -544,7 +544,7 @@ struct MCPServerIntegrationTests {
         // into, via the DB-backed lookup — no filesystem corpus access.
         let docsProvider = MCP.Support.DocsResourceProvider(
             knownURISchemes: [Shared.Constants.Search.appleDocsScheme],
-            markdownLookup: IndexBackedLookup(dbURL: searchDbPath, mode: .allDocuments),
+            markdownLookup: IndexBackedLookup(dbURL: docsDbPath, mode: .allDocuments),
             logger: Logging.NoopRecording()
         )
         let searchProvider = CompositeToolProvider(searchIndex: searchIndex, sampleDatabase: nil)

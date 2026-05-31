@@ -53,7 +53,7 @@ extension Search {
         /// owns its own file: hig.db / swift-evolution.db / etc.).
         /// Keyed by `SourceProvider.definition.id`. The shared
         /// `Search.DocsReadStrategy` picks the matching URL.
-        public let docsDBURLs: [String: URL]
+        public let dbURLs: [String: URL]
         /// Fallback search.db URL for callers that haven't migrated
         /// to the per-source map (pre-#1037 single-DB world + tests).
         public let fallbackSearchDB: URL
@@ -81,7 +81,7 @@ extension Search {
         public init(
             identifier: String,
             format: DocumentFormat,
-            docsDBURLs: [String: URL],
+            dbURLs: [String: URL],
             fallbackSearchDB: URL,
             samplesDB: URL,
             packagesDB: URL,
@@ -93,7 +93,7 @@ extension Search {
         ) {
             self.identifier = identifier
             self.format = format
-            self.docsDBURLs = docsDBURLs
+            self.dbURLs = dbURLs
             self.fallbackSearchDB = fallbackSearchDB
             self.samplesDB = samplesDB
             self.packagesDB = packagesDB
@@ -117,11 +117,11 @@ extension Search {
     // each call into the real backend.
 
     public protocol DocsLookupStrategy: Sendable {
-        /// Read a docs-tier URI's content. `searchDB` is the
+        /// Read a docs-tier URI's content. `dbURL` is the
         /// per-source DB URL the CLI resolved from the URI's scheme
         /// (or the fallback). Returns nil when the URI is not in
         /// this DB (404).
-        func read(uri: String, format: DocumentFormat, searchDB: URL) async throws -> String?
+        func read(uri: String, format: DocumentFormat, dbURL: URL) async throws -> String?
     }
 
     public protocol SampleLookupStrategy: Sendable {
@@ -160,5 +160,7 @@ extension Search {
 extension Search.SourceProvider {
     /// Default: no read capability. Sources whose content is
     /// readable through `cupertino read` override.
-    public func makeReadStrategy() -> (any Search.SourceReadStrategy)? { nil }
+    public func makeReadStrategy() -> (any Search.SourceReadStrategy)? {
+        nil
+    }
 }

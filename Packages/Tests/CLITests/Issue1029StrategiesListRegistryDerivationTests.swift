@@ -149,7 +149,7 @@ extension Issue1029StrategiesListRegistryDerivationTests {
     /// the dispatcher. Tests construct the dict directly so the
     /// assertions exercise the production code path.
     static let fullInput = Search.DocsIndexingInput(
-        searchDBPath: URL(fileURLWithPath: "/tmp/search.db"),
+        dbPath: URL(fileURLWithPath: "/tmp/search.db"),
         docsDirectory: URL(fileURLWithPath: "/tmp/docs"),
         evolutionDirectory: URL(fileURLWithPath: "/tmp/evo"),
         swiftOrgDirectory: URL(fileURLWithPath: "/tmp/swift-org"),
@@ -177,7 +177,7 @@ extension Issue1029StrategiesListRegistryDerivationTests {
     )
 
     static let minimalInput = Search.DocsIndexingInput(
-        searchDBPath: URL(fileURLWithPath: "/tmp/search.db"),
+        dbPath: URL(fileURLWithPath: "/tmp/search.db"),
         docsDirectory: URL(fileURLWithPath: "/tmp/docs"),
         evolutionDirectory: nil,
         swiftOrgDirectory: nil,

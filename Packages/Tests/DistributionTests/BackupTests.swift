@@ -53,10 +53,10 @@ struct DBBackupIntegrationTests {
 
         // Seed a fake old install with all three DBs (the v0.11+ → v1.0.x
         // upgrade case), plus a version stamp.
-        let searchDB = dir.appendingPathComponent(Shared.Constants.FileName.searchDatabase)
+        let dbURL = dir.appendingPathComponent(Shared.Constants.FileName.searchDatabase)
         let samplesDB = dir.appendingPathComponent(Shared.Constants.FileName.samplesDatabase)
         let packagesDB = dir.appendingPathComponent(Shared.Constants.FileName.packagesIndexDatabase)
-        try Data("old-search-db-content".utf8).write(to: searchDB)
+        try Data("old-search-db-content".utf8).write(to: dbURL)
         try Data("old-samples-db-content".utf8).write(to: samplesDB)
         try Data("old-packages-db-content".utf8).write(to: packagesDB)
         try Distribution.InstalledVersion.write("0.11.0", in: dir)
@@ -98,7 +98,7 @@ struct DBBackupIntegrationTests {
         try await Task.sleep(nanoseconds: 100000000)
 
         // All three originals should be gone (renamed away).
-        #expect(!FileManager.default.fileExists(atPath: searchDB.path))
+        #expect(!FileManager.default.fileExists(atPath: dbURL.path))
         #expect(!FileManager.default.fileExists(atPath: samplesDB.path))
         #expect(!FileManager.default.fileExists(atPath: packagesDB.path))
 
@@ -134,9 +134,9 @@ struct DBBackupIntegrationTests {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: dir) }
 
-        let searchDB = dir.appendingPathComponent(Shared.Constants.FileName.searchDatabase)
+        let dbURL = dir.appendingPathComponent(Shared.Constants.FileName.searchDatabase)
         let samplesDB = dir.appendingPathComponent(Shared.Constants.FileName.samplesDatabase)
-        try Data("old".utf8).write(to: searchDB)
+        try Data("old".utf8).write(to: dbURL)
         try Data("old".utf8).write(to: samplesDB)
         try Distribution.InstalledVersion.write("0.10.0", in: dir)
 
