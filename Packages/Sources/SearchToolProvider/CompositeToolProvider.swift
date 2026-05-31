@@ -239,6 +239,17 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             ),
         ]
 
+        // #1200 — advertise the params `handleListSamples` actually reads.
+        // Both are optional; matches the `cupertino list-samples` CLI options.
+        let listSamplesProperties: [String: MCP.Core.Protocols.AnyCodable] = [
+            Shared.Constants.Search.schemaParamFramework: stringSchema(
+                description: "Filter by framework name (e.g. swiftui, uikit)."
+            ),
+            Shared.Constants.Search.schemaParamLimit: intSchema(
+                description: "Maximum results to return (default 50)."
+            ),
+        ]
+
         // #226 — platform-filter schema fragment shared by all 4
         // AST search-style tools. Same shape as the unified `search`
         // tool's existing platform args (CompositeToolProvider.swift:147-161).
@@ -387,7 +398,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             allTools.append(MCP.Core.Protocols.Tool(
                 name: Shared.Constants.Search.toolListSamples,
                 description: MCP.SharedTools.Copy.toolListSamplesDescription,
-                inputSchema: objectSchema(properties: [:])
+                inputSchema: objectSchema(properties: listSamplesProperties)
             ))
 
             allTools.append(MCP.Core.Protocols.Tool(
