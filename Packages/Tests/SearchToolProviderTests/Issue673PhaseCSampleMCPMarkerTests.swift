@@ -85,6 +85,26 @@ struct Issue673PhaseCSampleMCPMarkerTests {
 
     // MARK: - list_samples
 
+    @Test("#1200 — list_samples tools/list schema advertises framework + limit (handler reads them)")
+    func listSamplesSchemaAdvertisesParams() async throws {
+        let (provider, cleanup) = try await Self.makeProvider { _ in }
+        defer { cleanup() }
+        let listing = try await provider.listTools(cursor: nil)
+        guard let tool = listing.tools.first(where: { $0.name == Shared.Constants.Search.toolListSamples }) else {
+            Issue.record("list_samples missing from tools/list")
+            return
+        }
+        let propertyKeys = Set(tool.inputSchema.properties?.keys ?? [:].keys)
+        #expect(
+            propertyKeys.contains(Shared.Constants.Search.schemaParamFramework),
+            "list_samples must advertise `framework` (the handler reads it); got: \(propertyKeys)"
+        )
+        #expect(
+            propertyKeys.contains(Shared.Constants.Search.schemaParamLimit),
+            "list_samples must advertise `limit` (the handler reads it); got: \(propertyKeys)"
+        )
+    }
+
     @Test("list_samples empty: '# Indexed Sample Code Projects' header + empty-projects marker")
     func listSamplesEmpty() async throws {
         let (provider, cleanup) = try await Self.makeProvider { _ in
