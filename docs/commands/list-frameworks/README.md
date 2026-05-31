@@ -5,7 +5,7 @@ List available frameworks with document counts.
 ## Synopsis
 
 ```bash
-cupertino list-frameworks [--format <format>] [--search-db <path>]
+cupertino list-frameworks [--format <format>]
 ```
 
 ## Description
@@ -17,10 +17,6 @@ Lists all frameworks in the search index with their document counts. Use this to
 ### --format
 
 Output format: `text` (default), `json`, or `markdown` / `md`.
-
-### --search-db
-
-Override the apple-docs database path. Defaults to `~/.cupertino/apple-documentation.db` (resolved through the production source registry). The command also reads `apple-archive.db` for archived framework rows; the override applies to apple-docs only.
 
 ## Examples
 

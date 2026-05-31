@@ -17,7 +17,6 @@ Equivalent to:
 ```bash
 cupertino search "your query" \
   --source all \
-  --search-db ~/.cupertino/apple-documentation.db \
   --packages-db ~/.cupertino/packages.db \
   --sample-db ~/.cupertino/apple-sample-code.db \
   --limit 20 \
@@ -33,7 +32,6 @@ cupertino search "your query" \
 | `--limit` | `20` | Maximum results returned |
 | `--per-source` | `10` | Per-source candidate cap before RRF (fan-out only) |
 | `--format` | `text` | Output format (text / json / markdown / md) |
-| `--search-db` | (registry-resolved) | legacy override for the docs DBs (`apple-documentation.db`, `hig.db`, `apple-archive.db`, `swift-evolution.db`, `swift-org.db`, `swift-book.db`) |
 | `--packages-db` | `~/.cupertino/packages.db` | packages source |
 | `--sample-db` | `~/.cupertino/apple-sample-code.db` | samples source |
 | `--include-archive` | `false` | Apple Archive excluded from fan-out unless on |

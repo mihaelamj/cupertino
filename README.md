@@ -728,7 +728,7 @@ log stream --predicate 'subsystem == "com.cupertino.cli"'
 | Crawl ~414,000+ raw pages (post-dedup 351,505 indexed, v1.3.0) | 12+ days | 2-3GB |
 | Swift Evolution | 2-5 min | 429 proposals |
 | Swift.org docs | 5-10 min | 501 pages |
-| Build search index (full Apple docs corpus) | ~12h | ~2.87 GB search.db |
+| Build search index (full Apple docs corpus) | ~12h | ~2.8 GB apple-documentation.db (+ per-source siblings) |
 | Search query | <100ms | - |
 
 ### Why Crawling Takes 12+ Days
@@ -833,7 +833,7 @@ For development setup, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 **Released:** v1.2.0 "ironclad" on 2026-05-20. `databaseVersion` is `1.2.0`; `cupertino setup` downloads the v1.2.0 bundle (352,712 documents across 420 frameworks, 0 poison rows under all 13 audit categories, schema `user_version = 18`).
 
-Headline jump from v1.1.0: **rank-1 accuracy on canonical-lookup queries went from 52% to 92%** on the 50-query Phase 1 corpus. **30 / 30 modern Swift wins on the deprecation pair corpus** (was 27 / 30). **Zero regressions across 110 paired queries.** Live dashboard at <https://cupertino.aleahim.com/>; full release write-up at `docs/release-writeup-v1.2.0.md`; harness at `scripts/eval/search-quality-phase1.py` (reproducible: two runs against the same `(binary, search.db)` pair produce byte-identical per-query ranks).
+Headline jump from v1.1.0: **rank-1 accuracy on canonical-lookup queries went from 52% to 92%** on the 50-query Phase 1 corpus. **30 / 30 modern Swift wins on the deprecation pair corpus** (was 27 / 30). **Zero regressions across 110 paired queries.** Live dashboard at <https://cupertino.aleahim.com/>; full release write-up at `docs/release-writeup-v1.2.0.md`; harness at `scripts/eval/search-quality-phase1.py` (reproducible: two runs against the same `(binary, database)` pair produce byte-identical per-query ranks).
 
 **Previously released:** v1.1.0 on 2026-05-14 (refactor release: namespacing + Crawler extract + DI epic kickoff; 285,735 documents, schema 13). v1.0.2 on 2026-05-11 (URL canonicalization + re-indexed bundle, 277,640 documents).
 

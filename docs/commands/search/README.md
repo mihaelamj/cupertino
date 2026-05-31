@@ -178,18 +178,6 @@ cupertino search "immersive" --min-visionos 1.0
 cupertino search "spatial" --min-visionos 1.0 --framework realitykit
 ```
 
-### --search-db
-
-Legacy debug knob: override the docs database path. Post-#1037 each docs source owns its own per-source DB (`apple-documentation.db`, `hig.db`, `apple-archive.db`, `swift-evolution.db`, `swift-org.db`, `swift-book.db`), resolved through the registry under the base directory.
-
-**Type:** String
-**Default:** resolved per-source via the registry (no single `search.db`)
-
-**Example:**
-```bash
-cupertino search "View" --search-db ~/custom/apple-documentation.db
-```
-
 ### --packages-db
 
 Path to the packages database. Used in fan-out mode (and with `--source packages`).

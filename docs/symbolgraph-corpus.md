@@ -68,7 +68,7 @@ swift build --product cupertino-constraints-gen
   cupertino save --source apple-docs --base-dir <baseDir>   # or --all
   ```
 
-  `--base-dir` is where `save` writes the per-source DBs and reads `apple-constraints.json` from (finer per-DB overrides: `--search-db`, `--samples-db`, `--metadata-file`). Never target the brew base `~/.cupertino`; use a dev base such as `~/.cupertino-dev`.
+  `--base-dir` is where `save` writes the per-source DBs and reads `apple-constraints.json` from (finer per-DB overrides: `--samples-db`, `--metadata-file`). Never target the brew base `~/.cupertino`; use a dev base such as `~/.cupertino-dev`.
 - For distribution: commit it to `cupertino-docs` (root), which is what `cupertino setup` downloads into the user's base dir.
 
 ## Where it is used

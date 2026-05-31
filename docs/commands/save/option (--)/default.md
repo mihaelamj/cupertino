@@ -19,7 +19,6 @@ Equivalent to specifying every default explicitly:
 ```bash
 cupertino save --all \
   --base-dir ~/.cupertino \
-  --search-db ~/.cupertino/apple-documentation.db \
   --samples-db ~/.cupertino/apple-sample-code.db
 ```
 
@@ -37,7 +36,6 @@ cupertino save --all \
 | `--archive-dir` | `~/.cupertino/archive` | Apple Archive legacy guides corpus |
 | `--samples-dir` | `~/.cupertino/sample-code` | Extracted sample-code projects |
 | `--metadata-file` | `~/.cupertino/docs/metadata.json` | Crawler-side metadata index |
-| `--search-db` | `~/.cupertino/apple-documentation.db` | apple-docs database output path (legacy flag name) |
 | `--samples-db` | `~/.cupertino/apple-sample-code.db` | apple-sample-code.db output path |
 | `--source <id>` | (no default; required unless `--all` is passed) | Source id to build, repeatable |
 | `--all` | `false` (no default; required unless `--source` is passed) | Build every source's DB |
@@ -78,7 +76,7 @@ None of the source directories are individually required. Each scope is best-eff
 │   └── <owner>/<repo>/...
 ├── sample-code/                   # --samples-dir    (apple-sample-code.db scope)
 │   └── <project_id>/
-├── apple-documentation.db         # --search-db      (apple-docs output; + sibling per-source DBs)
+├── apple-documentation.db         # apple-docs output (+ sibling per-source DBs)
 ├── packages.db                    #                  (output, derived path)
 └── apple-sample-code.db                     # --samples-db     (output)
 ```

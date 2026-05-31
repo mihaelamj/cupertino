@@ -102,7 +102,7 @@ The eight databases above are the v1.3.0 per-source split of the former unified 
 
 All default locations can be customized:
 - Use `--output-dir` for crawl/fetch operations
-- Use `--search-db` for index operations
+- Use `--base-dir` / `--source <id>` for index operations
 - Use `--metadata-file` to specify custom metadata location
 
 ## See Also

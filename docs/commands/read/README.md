@@ -65,13 +65,6 @@ Output format. Honoured by docs reads only; samples + packages return their stor
 **Type:** String  
 **Values:** `json` (default), `markdown`, `md`
 
-### --search-db
-
-Override the docs database path. Post-#1037 each docs source owns its own SQLite file (`apple-documentation.db`, `hig.db`, etc.). When this flag is set, EVERY docs source-id routes to the override URL (legacy single-DB debug semantic, useful for tests + custom-database workflows).
-
-**Type:** String  
-**Default:** `~/.cupertino/apple-documentation.db` for `apple-docs`, `~/.cupertino/hig.db` for `hig`, etc.; resolved through the production source registry.
-
 ### --sample-db
 
 Path to the sample-code database (`apple-sample-code.db`).

@@ -88,7 +88,6 @@ Overall: 28.5%
 When using `--remote`, these options change behavior:
 
 - [--base-dir](option%20%28--%29/base-dir.md) - Base directory for state file only (not documentation)
-- [--search-db](option%20%28--%29/search-db.md) - Output path for search database
 
 ## Comparison
 
