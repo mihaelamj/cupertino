@@ -665,7 +665,7 @@ extension CLIImpl.Command {
             Cupertino.Context.composition.logging.recording.output("🧩 Kind distribution audit (#626)")
 
             guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
-                Cupertino.Context.composition.logging.recording.output("   ⚠  search.db not found at \(searchDBURL.path) (skipped)")
+                Cupertino.Context.composition.logging.recording.output("   ⚠  documentation database not found at \(searchDBURL.path) (skipped)")
                 Cupertino.Context.composition.logging.recording.output("")
                 return
             }
@@ -738,7 +738,7 @@ extension CLIImpl.Command {
             Cupertino.Context.composition.logging.recording.output("📅 Freshness / drift signal (#275)")
 
             guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
-                Cupertino.Context.composition.logging.recording.output("   ⚠  search.db not found at \(searchDBURL.path) (skipped)")
+                Cupertino.Context.composition.logging.recording.output("   ⚠  documentation database not found at \(searchDBURL.path) (skipped)")
                 Cupertino.Context.composition.logging.recording.output("")
                 return
             }
