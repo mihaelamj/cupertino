@@ -2,7 +2,9 @@
 
 ### Added
 
-- **docs: README links the project's X account.** Added an X badge ([@cupertinomcp](https://x.com/cupertinomcp)) to the badge row alongside the existing PulseMCP and LobeHub listings.
+- **docs: README links the project's X account.** Added an X badge ([@cupertinomcp](https://x.com/cupertinomcp)) to the badge row alongside the existing PulseMCP and LobeHub listings, plus a plain-text "Follow updates on X" line under the badges.
+
+- **docs: declutter the README top.** Removed the two-paragraph release-notes blockquote from above the project description (it pushed the badges and tagline below the fold). The first thing a visitor now sees is the tagline, description, badges, and demo, followed by a single one-line `Latest:` pointer. The full v1.3.0 release detail moved down into a refreshed `## Project Status` section (which was stale at v1.2.0), with prior-release history collapsed to a one-line summary pointing at `CHANGELOG.md`.
 
 ## v1.3.0 (2026-05-31)
 
