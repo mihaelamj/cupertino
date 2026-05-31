@@ -54,12 +54,12 @@ flowchart TB
     subgraph SearchDB["a documentation DB · layered storage (schema shared by all 6 docs DBs)"]
         direction TB
         subgraph Relational["B-tree (relational) tables"]
-            DM["docs_metadata · 352,712 rows<br/>authoritative per-doc record"]
+            DM["docs_metadata · 351,505 rows<br/>authoritative per-doc record"]
             DS["docs_structured<br/>parsed DocC fields"]
             FA["framework_aliases · 340<br/>canonicalisation"]
             IN["inheritance · 8,560<br/>class graph"]
-            CE["doc_code_examples · 15,760"]
-            SY["doc_symbols · 240,794"]
+            CE["doc_code_examples · 15,758"]
+            SY["doc_symbols · 240,543"]
         end
         subgraph FTS["FTS5 virtual tables (full-text-search surface)"]
             DF["docs_fts<br/>porter unicode61<br/>prose + AST symbol cols"]
@@ -88,14 +88,16 @@ The live schema definition is in `Packages/Sources/SearchSQLite/Search.Index.Sch
 
 ### 3.1 Relational (B-tree) tables
 
-| Table | Cardinality at v1.2.0 | Function |
+Cardinalities below are for `apple-documentation.db` (the largest per-source docs DB); the other five per-source documentation databases share this schema with much smaller row counts (e.g. `hig.db` ~173 docs, `swift-book.db` ~43).
+
+| Table | Cardinality (`apple-documentation.db`, v1.3.0) | Function |
 |---|---|---|
-| `docs_metadata` | 352,712 | Authoritative per-document record. Primary key is the cupertino URI (`apple-docs://swiftui/view`). Holds source, framework, language, kind, content hash, last-crawl timestamp, word count, and the six availability columns (`min_ios`, `min_macos`, `min_tvos`, `min_watchos`, `min_visionos`, plus `implementation_swift_version` for evolution rows). All filter predicates on `cupertino search` resolve to constraints on this table. |
+| `docs_metadata` | 351,505 | Authoritative per-document record. Primary key is the cupertino URI (`apple-docs://swiftui/view`). Holds source, framework, language, kind, content hash, last-crawl timestamp, word count, and the six availability columns (`min_ios`, `min_macos`, `min_tvos`, `min_watchos`, `min_visionos`, plus `implementation_swift_version` for evolution rows). All filter predicates on `cupertino search` resolve to constraints on this table. |
 | `docs_structured` | parity with `docs_metadata` | Parsed DocC fields: title, abstract, declaration, overview, module, platforms, conformances, attributes. Decoupled from `docs_metadata` so the JSON-parse output can evolve without altering the primary index. |
 | `framework_aliases` | 340 | Maps framework identifier (`appintents`), import name (`AppIntents`), display name (`App Intents`), and a comma-separated synonyms list (`nfc → corenfc`). Consulted at query time to canonicalise `--framework` arguments and to expand abbreviated user input. |
 | `inheritance` | 8,560 | Class inheritance edges, one row per `(parent_uri, child_uri)` pair. Both `parent_uri` and `child_uri` are indexed so walks in either direction are equally efficient. Populated by reading Apple's DocC `relationshipsSections.inheritsFrom` / `inheritedBy` arrays from the corpus JSON (#274). |
-| `doc_code_examples` | 15,760 | Code snippets extracted from doc pages. One row per snippet, with parent `doc_uri`, language, and intra-page position. |
-| `doc_symbols` | 240,794 | One row per Swift symbol extracted from snippets. Columns: `name`, `kind`, source position (line, column), full signature, async/throws/public/static flags, `attributes` (e.g. `@MainActor`), `conformances`, `generic_params`, `generic_constraints`. Used both for symbol-targeted searches and as the substrate for the constraint-enrichment pipeline of Section 4.3. |
+| `doc_code_examples` | 15,758 | Code snippets extracted from doc pages. One row per snippet, with parent `doc_uri`, language, and intra-page position. |
+| `doc_symbols` | 240,543 | One row per Swift symbol extracted from snippets. Columns: `name`, `kind`, source position (line, column), full signature, async/throws/public/static flags, `attributes` (e.g. `@MainActor`), `conformances`, `generic_params`, `generic_constraints`. Used both for symbol-targeted searches and as the substrate for the constraint-enrichment pipeline of Section 4.3. |
 | `doc_imports` | small | Per-snippet import declarations, used for module-graph queries. |
 
 A small number of FOREIGN KEY declarations exist on the secondary tables (`doc_symbols.doc_uri → docs_metadata.uri`) for documentation purposes. `PRAGMA foreign_keys` is not enabled at runtime: deletion is rare, and the supported recovery path for inconsistency is a full rebuild rather than referential repair.
