@@ -1,6 +1,6 @@
 # cupertino save
 
-Rebuild `search.db` / `packages.db` / `apple-sample-code.db` from on-disk sources.
+Rebuild the per-source databases (`apple-documentation.db`, `packages.db`, `apple-sample-code.db`, and the smaller per-source files) from on-disk sources.
 
 > **Most users do not need this command.** `cupertino setup` downloads the pre-built bundle and is the supported end-user workflow. `save` is for maintainers rebuilding the bundle, or advanced users rebuilding from a local crawl produced by `cupertino fetch`. ([#671](https://github.com/mihaelamj/cupertino/issues/671))
 
@@ -20,8 +20,8 @@ The `save` command builds the local SQLite databases that back `cupertino search
 | `swift-evolution` | `swift-evolution.db` | `~/.cupertino/swift-evolution/` |
 | `hig` | `hig.db` | `~/.cupertino/hig/` |
 | `apple-archive` | `apple-archive.db` | `~/.cupertino/archive/` |
-| `swift-org` | `swift-documentation.db` (view-source, shared with `swift-book`) | `~/.cupertino/swift-org/` |
-| `swift-book` | `swift-documentation.db` (view-source, shared with `swift-org`) | `~/.cupertino/swift-org/swift-book/` |
+| `swift-org` | `swift-org.db` | `~/.cupertino/swift-org/` |
+| `swift-book` | `swift-book.db` | `~/.cupertino/swift-org/swift-book/` |
 | `samples` | `apple-sample-code.db` (Sample.Index rich schema + SampleCodeSource FTS rows; one DB, two table tracks per #1037) | `~/.cupertino/sample-code/*.zip` |
 | `packages` | `packages.db` | `~/.cupertino/packages/<owner>/<repo>/` |
 
@@ -29,7 +29,7 @@ The `save` command builds the local SQLite databases that back `cupertino search
 
 Bare `cupertino save` (no `--source` and no `--all`) is a usage error post-#1037. Sources whose input directory is absent or whose catalog is empty are skipped cleanly; the per-source summary shows `[source] skipped (no local corpus)` and the run does not count as a failure ([#671](https://github.com/mihaelamj/cupertino/issues/671)).
 
-**Dispatch granularity**: `--source <id>` narrows the docs runner to ONLY the destination DB whose providers include that id. `--source apple-docs` builds `apple-documentation.db` alone; view-source pairs (`swift-org` + `swift-book`) co-locate so either id pulls both; `--source samples` writes to `apple-sample-code.db` via BOTH the Sample.Index rich-data pipeline AND the docs runner's SampleCodeSource group; `--source packages` runs the standalone PackagesService outside the docs runner. See [source.md](option%20%28--%29/source.md) Dispatch section.
+**Dispatch granularity**: `--source <id>` narrows the docs runner to ONLY the destination DB whose providers include that id. `--source apple-docs` builds `apple-documentation.db` alone; post-#1038 `swift-org` builds `swift-org.db` and `swift-book` builds `swift-book.db` (separate files); `--source samples` writes to `apple-sample-code.db` via BOTH the Sample.Index rich-data pipeline AND the docs runner's SampleCodeSource group; `--source packages` runs the standalone PackagesService outside the docs runner. See [source.md](option%20%28--%29/source.md) Dispatch section.
 
 ## Options
 
@@ -48,7 +48,7 @@ Bare `cupertino save` (no `--source` and no `--all`) is a usage error post-#1037
 - [--packages-dir](option%20%28--%29/packages-dir.md) - Directory containing package READMEs
 - `--archive-dir` - Directory containing Apple Archive documentation (legacy programming guides like Core Animation, Quartz 2D, KVO/KVC)
 - [--metadata-file](option%20%28--%29/metadata-file.md) - Path to metadata.json file
-- [--search-db](option%20%28--%29/search-db.md) - Output path for search database
+- [--search-db](option%20%28--%29/search-db.md) - Output path for the apple-docs database (legacy flag name; default `apple-documentation.db`)
 - [--clear](option%20%28--%29/clear.md) - Clear existing index before building
 
 ### Samples-build options (consumed only when `--source samples` is in scope; passing them otherwise emits a warning)
@@ -75,7 +75,7 @@ cupertino save --remote
 
 ### Scoped builds
 ```bash
-cupertino save --source apple-docs                   # search.db only
+cupertino save --source apple-docs                   # apple-documentation.db only
 cupertino save --source packages               # packages.db only
 cupertino save --source samples                # apple-sample-code.db only (was: cupertino index)
 cupertino save --source packages --source samples     # both packages and samples, skip docs
@@ -83,7 +83,7 @@ cupertino save --source packages --source samples     # both packages and sample
 
 ### Custom paths
 ```bash
-cupertino save --source apple-docs --docs-dir ./my-docs --search-db ./my-search.db
+cupertino save --source apple-docs --docs-dir ./my-docs --search-db ./apple-documentation.db
 cupertino save --source samples --samples-dir ~/my-samples --samples-db ~/my-apple-sample-code.db
 ```
 
@@ -100,7 +100,7 @@ cupertino save --source apple-docs --docs-dir ./apple-docs --evolution-dir ./evo
 ## Output
 
 The indexer creates:
-- **search.db** - SQLite database with FTS5 index
+- **apple-documentation.db** (plus the sibling per-source DBs) - SQLite databases with FTS5 indexes
 - Indexed fields:
   - Page titles
   - Full content

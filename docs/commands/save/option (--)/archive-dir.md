@@ -26,4 +26,4 @@ cupertino save --archive-dir ~/old-docs/archive
 
 - Tilde (`~`) expansion supported.
 - Missing directory → archive content is skipped with an info log; the docs build still succeeds.
-- Indexed into `search.db` under the `apple-archive` source prefix.
+- Indexed into `apple-archive.db` (its own per-source database post-#1037).

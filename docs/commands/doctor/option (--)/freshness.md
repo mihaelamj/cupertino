@@ -1,6 +1,6 @@
 # --freshness
 
-Print a per-source freshness / drift report for `search.db` based on `docs_metadata.last_crawled` timestamps.
+Print a per-source freshness / drift report across the per-source documentation databases, based on `docs_metadata.last_crawled` timestamps.
 
 ## Synopsis
 
@@ -63,7 +63,7 @@ Quantile rule: nearest-rank (no interpolation), `p50` and `p90` are always real 
 
 - **Read-only**; no DB writes.
 - **Doesn't gate the doctor verdict**, purely informational signal.
-- Skipped silently when `search.db` is missing or schema-mismatched (the regular `checkSearchDatabase` already surfaced that).
+- Skipped silently when the apple-docs database is missing or schema-mismatched (the regular per-source health check already surfaced that).
 - Rows where `last_crawled == 0` (never stamped) are excluded from the quantile computation so they don't pull the oldest down to epoch 0.
 - **No thresholds**, raw ages only. Per [#275](https://github.com/mihaelamj/cupertino/issues/275)'s design discussion, "fresh / aging / stale" labels are deferred so users can set their own thresholds (a v1.2 bundle may be perfectly current for one user and ancient for another, depending on how often they reset).
 

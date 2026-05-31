@@ -19,7 +19,7 @@ Equivalent to specifying every default explicitly:
 ```bash
 cupertino save --all \
   --base-dir ~/.cupertino \
-  --search-db ~/.cupertino/search.db \
+  --search-db ~/.cupertino/apple-documentation.db \
   --samples-db ~/.cupertino/apple-sample-code.db
 ```
 
@@ -37,7 +37,7 @@ cupertino save --all \
 | `--archive-dir` | `~/.cupertino/archive` | Apple Archive legacy guides corpus |
 | `--samples-dir` | `~/.cupertino/sample-code` | Extracted sample-code projects |
 | `--metadata-file` | `~/.cupertino/docs/metadata.json` | Crawler-side metadata index |
-| `--search-db` | `~/.cupertino/search.db` | search.db output path |
+| `--search-db` | `~/.cupertino/apple-documentation.db` | apple-docs database output path (legacy flag name) |
 | `--samples-db` | `~/.cupertino/apple-sample-code.db` | apple-sample-code.db output path |
 | `--source <id>` | (no default; required unless `--all` is passed) | Source id to build, repeatable |
 | `--all` | `false` (no default; required unless `--source` is passed) | Build every source's DB |
@@ -52,7 +52,7 @@ Under `cupertino save --all` (or `--source` covering all three buckets), `cupert
 
 1. **Loads `BinaryConfig`**, resolves `defaultBaseDirectory` (overridable via `cupertino.config.json` next to the binary).
 2. **Runs the preflight**, prints the resolved scope set, source directories, output DB paths, and asks for confirmation (skipped when stdin isn't a TTY or `--yes` is set; #232).
-3. **Builds `search.db` and its per-source siblings** (docs bucket), iterates `--docs-dir`, `--evolution-dir`, `--swift-org-dir`, `--archive-dir`, `--metadata-file`. Missing directories are skipped with an info-level log (not a hard error).
+3. **Builds the per-source documentation databases** (`apple-documentation.db`, `hig.db`, `apple-archive.db`, `swift-evolution.db`, `swift-org.db`, `swift-book.db`; docs bucket), iterates `--docs-dir`, `--evolution-dir`, `--swift-org-dir`, `--archive-dir`, `--metadata-file`. Missing directories are skipped with an info-level log (not a hard error).
 4. **Builds `packages.db`** (packages bucket), iterates `--packages-dir/<owner>/<repo>/`. Skipped if no extracted archives exist.
 5. **Builds `apple-sample-code.db`** (samples bucket), iterates `--samples-dir`. Always wipes-and-rebuilds (the samples-side schema doesn't yet support partial updates).
 
@@ -66,19 +66,19 @@ None of the source directories are individually required. Each scope is best-eff
 
 ```
 ~/.cupertino/
-├── docs/                          # --docs-dir       (search.db scope)
+├── docs/                          # --docs-dir       (docs scope)
 │   ├── metadata.json              # --metadata-file
 │   ├── Foundation/
 │   └── SwiftUI/
-├── swift-evolution/               # --evolution-dir  (search.db scope)
-├── swift-org/                     # --swift-org-dir  (search.db scope)
-├── archive/                       # --archive-dir    (search.db scope)
-├── hig/                           # search.db scope
+├── swift-evolution/               # --evolution-dir  (docs scope)
+├── swift-org/                     # --swift-org-dir  (docs scope)
+├── archive/                       # --archive-dir    (docs scope)
+├── hig/                           # docs scope
 ├── packages/                      # --packages-dir   (packages.db scope)
 │   └── <owner>/<repo>/...
 ├── sample-code/                   # --samples-dir    (apple-sample-code.db scope)
 │   └── <project_id>/
-├── search.db                      # --search-db      (output)
+├── apple-documentation.db         # --search-db      (apple-docs output; + sibling per-source DBs)
 ├── packages.db                    #                  (output, derived path)
 └── apple-sample-code.db                     # --samples-db     (output)
 ```
@@ -154,7 +154,7 @@ cupertino save --yes
 ```
 ℹ️  No package archives at ~/.cupertino/packages/, skipping packages scope.
 ℹ️  No sample-code at ~/.cupertino/sample-code/, skipping samples scope.
-✓ search.db built (docs scope).
+✓ apple-documentation.db built (docs scope).
 ```
 
 ## Notes

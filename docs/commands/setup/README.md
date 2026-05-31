@@ -1,6 +1,6 @@
 # cupertino setup
 
-Download every cupertino database (search.db, apple-sample-code.db, packages.db) in one go.
+Download every cupertino database (the 8 per-source DBs: `apple-documentation.db`, `hig.db`, `apple-archive.db`, `swift-evolution.db`, `swift-org.db`, `swift-book.db`, `apple-sample-code.db`, `packages.db`) in one go.
 
 ## Synopsis
 
@@ -14,19 +14,24 @@ The `setup` command downloads pre-built databases from GitHub Releases, providin
 
 This is the **fastest way to get started** with Cupertino.
 
-All three databases ship in a single bundle from the [`cupertino-docs`](https://github.com/mihaelamj/cupertino-docs) releases (`cupertino-databases-vX.zip`). One download, one extract, all three databases on disk. (Earlier releases split `packages.db` into a separate companion repo; that proved to be needless complexity and is gone as of v1.0.0.)
+Every database ships in a single bundle from the [`cupertino-docs`](https://github.com/mihaelamj/cupertino-docs) releases (`cupertino-databases-vX.zip`). One download, one extract, every database on disk. (Earlier releases split `packages.db` into a separate companion repo; that proved to be needless complexity and is gone as of v1.0.0.)
 
 ## What Gets Downloaded
 
-A single zip from the [`cupertino-docs`](https://github.com/mihaelamj/cupertino-docs) GitHub Releases (`cupertino-databases-vX.zip`) containing all three databases. Exact contents vary by release; the v1.0.2 bundle ships roughly:
+A single zip from the [`cupertino-docs`](https://github.com/mihaelamj/cupertino-docs) GitHub Releases (`cupertino-databases-vX.zip`) containing every per-source database. Exact contents vary by release; the v1.3.0 bundle ships:
 
 | Database | Contents | Size |
 |----------|----------|------|
-| `search.db` | ~277,000 documentation pages across Apple frameworks + Swift Evolution + Swift.org + HIG + Apple Archive + Swift Book (post-#283 dedup; was ~405k in v1.0.0 / v1.0.1 with case-axis duplicates) | ~2.4 GB |
-| `apple-sample-code.db` | Indexed Apple sample-code catalog and crawled GitHub sample projects (READMEs + source files + AST symbols) | ~150-200 MB |
-| `packages.db` | 183 Apple-official Swift packages with README, Package.swift, Sources/, Tests/, .docc/ extracted | ~940 MB |
+| `apple-documentation.db` | 351,505 Apple documentation pages / 240,543 AST symbols across 420+ frameworks | ~2.8 GB |
+| `hig.db` | Human Interface Guidelines | ~12 MB |
+| `apple-archive.db` | Legacy Apple programming guides | ~25 MB |
+| `swift-evolution.db` | Swift Evolution proposals | ~25 MB |
+| `swift-org.db` | Swift.org documentation | ~14 MB |
+| `swift-book.db` | The Swift Programming Language book | ~2 MB |
+| `apple-sample-code.db` | Apple sample-code catalog + crawled GitHub sample projects (READMEs + source files + AST symbols) | ~192 MB |
+| `packages.db` | 185 Swift packages with README, Package.swift, Sources/, Tests/, .docc/ extracted | ~1.09 GB |
 
-Numbers above are approximate and snapshot the v1.0.2 bundle; check the corresponding GitHub Release for the per-release totals.
+Numbers above are approximate and snapshot the v1.3.0 bundle (~742 MB compressed download, ~4.2 GB on disk); check the corresponding GitHub Release for the per-release totals.
 
 ## Options
 
@@ -81,7 +86,7 @@ cupertino setup --keep-existing
    ✓ Packages database (xx.x MB)
 
 ✅ Setup complete!
-   Documentation: /Users/you/.cupertino/search.db
+   Documentation: /Users/you/.cupertino/apple-documentation.db
    Sample code:   /Users/you/.cupertino/apple-sample-code.db
    Packages:      /Users/you/.cupertino/packages.db
 
@@ -92,7 +97,7 @@ cupertino setup --keep-existing
 
 | Method | Time | Disk Space |
 |--------|------|------------|
-| `cupertino setup` | ~30 seconds | ~250 MB |
+| `cupertino setup` | ~1-2 minutes | ~742 MB download, ~4.2 GB on disk |
 | `cupertino save --remote` | ~45 minutes | ~250 MB |
 | `cupertino fetch && save` | ~20+ hours | ~3 GB + 250 MB |
 

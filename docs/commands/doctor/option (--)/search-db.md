@@ -1,6 +1,6 @@
 # --search-db
 
-Path to search database file
+Override the apple-docs database path (legacy flag name)
 
 ## Synopsis
 
@@ -10,11 +10,11 @@ cupertino doctor --search-db <path>
 
 ## Description
 
-Specifies the SQLite search database file to check. The doctor command will verify that the database exists, is readable, and has valid FTS5 schema.
+Points the apple-docs health check at a specific database file. Post-#1037 the apple-docs index is the per-source `apple-documentation.db`, resolved through the registry; this legacy flag overrides that path. The doctor command verifies the database exists, is readable, and has a valid FTS5 schema.
 
 ## Default
 
-`~/.cupertino/search.db`
+`~/.cupertino/apple-documentation.db`
 
 ## Examples
 
@@ -25,17 +25,17 @@ cupertino doctor
 
 ### Check Custom Database
 ```bash
-cupertino doctor --search-db ./my-search.db
+cupertino doctor --search-db ./apple-documentation.db
 ```
 
 ### Check Specific Database
 ```bash
-cupertino doctor --search-db ~/.cupertino/apple-search.db
+cupertino doctor --search-db ~/.cupertino/apple-documentation.db
 ```
 
 ### Absolute Path
 ```bash
-cupertino doctor --search-db /Users/username/Documents/search.db
+cupertino doctor --search-db /Users/username/Documents/apple-documentation.db
 ```
 
 ## Health Check Behavior
@@ -51,25 +51,25 @@ The doctor command checks:
 
 Example output:
 ```
-🔍 Search Index
-   ✓ Database: ~/.cupertino/search.db
-   ✓ Size: 2.5 GB
-   ✓ Frameworks: 402
-   ✓ Schema version: 13 (matches binary)
+🔍 Apple Developer Documentation (apple-documentation.db)
+   ✓ Database: ~/.cupertino/apple-documentation.db
+   ✓ Size: 2.82 GB
+   ✓ Frameworks: 398
+   ✓ Schema version: 18 (matches binary)
 ```
 
 If not found:
 ```
-🔍 Search Index
-   ✗ Database: ~/.cupertino/search.db (not found)
-     → Run: cupertino save
+🔍 Apple Developer Documentation (apple-documentation.db)
+   ✗ Database: ~/.cupertino/apple-documentation.db (not found)
+     → Run: cupertino setup  (or `cupertino save --source apple-docs`)
 ```
 
 If corrupted:
 ```
 🔍 Search Index
    ✗ Database error: unable to open database file
-     → Run: cupertino save
+     → Run: cupertino setup  (or `cupertino save --source apple-docs`)
 ```
 
 ## Database Schema
@@ -81,20 +81,20 @@ The search database contains:
 
 ## Database Size Examples
 
-Approximate, snapshot of the v1.0.2 corpus (your local DB will vary):
+Approximate, snapshot of the v1.3.0 corpus (your local DB will vary):
 
 | Documentation Size | Index Size |
 |-------------------|------------|
 | ~277,000 pages (Apple docs + HIG + archive + Swift Book + swift.org), post-#283 dedup | ~2.4 GB |
 | ~500 proposals (Swift Evolution) | ~2-3 MB |
-| Combined `search.db` | ~2.4 GB |
+| Combined `apple-documentation.db` | ~2.8 GB |
 
-(`packages.db` and `apple-sample-code.db` are separate from `search.db` and aren't sized in by `--search-db`.)
+(`packages.db` and `apple-sample-code.db` are separate from `apple-documentation.db` and aren't sized in by `--search-db`.)
 
 ## Notes
 
 - Tilde (`~`) expansion is supported
-- Database must be created by `cupertino save`
+- Database created by `cupertino setup` (or `cupertino save --source apple-docs`)
 - Uses SQLite FTS5 extension
 - Required for search functionality in MCP server
 - Can be queried directly with SQLite tools

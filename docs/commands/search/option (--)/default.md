@@ -17,7 +17,7 @@ Equivalent to:
 ```bash
 cupertino search "your query" \
   --source all \
-  --search-db ~/.cupertino/search.db \
+  --search-db ~/.cupertino/apple-documentation.db \
   --packages-db ~/.cupertino/packages.db \
   --sample-db ~/.cupertino/apple-sample-code.db \
   --limit 20 \
@@ -33,7 +33,7 @@ cupertino search "your query" \
 | `--limit` | `20` | Maximum results returned |
 | `--per-source` | `10` | Per-source candidate cap before RRF (fan-out only) |
 | `--format` | `text` | Output format (text / json / markdown / md) |
-| `--search-db` | `~/.cupertino/search.db` | apple-docs / hig / archive / evolution / swift-org / swift-book |
+| `--search-db` | (registry-resolved) | legacy override for the docs DBs (`apple-documentation.db`, `hig.db`, `apple-archive.db`, `swift-evolution.db`, `swift-org.db`, `swift-book.db`) |
 | `--packages-db` | `~/.cupertino/packages.db` | packages source |
 | `--sample-db` | `~/.cupertino/apple-sample-code.db` | samples source |
 | `--include-archive` | `false` | Apple Archive excluded from fan-out unless on |
@@ -51,7 +51,7 @@ cupertino search "your query" \
 
 In fan-out mode the command will:
 
-1. **Open every available DB**, search.db, packages.db, apple-sample-code.db (skipped per `--skip-*`).
+1. **Open every available DB**, the per-source docs DBs (`apple-documentation.db` and siblings), `packages.db`, `apple-sample-code.db` (skipped per `--skip-*`).
 2. **Detect query intent**, symbol-shaped queries (`Task`, `View`) prune the fan-out to the symbol-bearing sources.
 3. **Per-source query**, each source returns up to `--per-source` candidates with its own ranker (BM25F + heuristics on the docs side, FTS5 on packages / samples).
 4. **RRF fusion**, `weight[source] / (k + rank)` with `k = 60`. apple-docs 3.0, evolution / packages 1.5, swift-book / swift-org 1.0, archive / hig 0.5.
@@ -61,10 +61,10 @@ In single-source mode (`--source <name>` set), step 1 narrows to that DB and ste
 
 ## Database Requirements
 
-At least one of `search.db`, `packages.db`, or `apple-sample-code.db` must exist for the command to produce results. Missing DBs are skipped with an info-level log; missing all three exits with an error message.
+At least one of the per-source docs DBs (e.g. `apple-documentation.db`), `packages.db`, or `apple-sample-code.db` must exist for the command to produce results. Missing DBs are skipped with an info-level log; missing all three exits with an error message.
 
 ```bash
-cupertino save           # populate search.db (apple-docs / evolution / archive / org / book / HIG)
+cupertino save --all     # populate the docs DBs (apple-documentation.db / swift-evolution.db / apple-archive.db / swift-org.db / swift-book.db / hig.db)
 cupertino save --source packages   # populate packages.db
 cupertino save --source samples    # populate apple-sample-code.db
 ```

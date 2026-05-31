@@ -196,7 +196,7 @@ Alternative: drop `code` and use `samples` (GitHub mirror, no auth required) for
 
 2. **Build search index**:
    ```bash
-   cupertino save
+   cupertino save --all
    ```
 
 3. **Future updates** (individual types):

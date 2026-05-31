@@ -24,13 +24,13 @@ The `--remote` flag enables **instant setup** by streaming pre-crawled documenta
 1. Fetches framework list from GitHub API (single call)
 2. For each framework/phase:
    - Streams files via raw GitHub URLs
-   - Parses JSON and indexes directly to search.db
+   - Parses JSON and indexes directly to the per-source docs databases
    - Saves progress state for resume capability
 3. Shows animated progress with ETA
 
 ### Phases
 
-`--remote` only feeds the **docs scope**, the search.db that `cupertino save --source apple-docs` builds. The `--packages` and `--samples` scopes still require local extracted archives (run `cupertino fetch --source packages` / `cupertino fetch --source samples` first).
+`--remote` only feeds the **docs scope**, the per-source docs databases (`apple-documentation.db` and siblings) that `cupertino save --source apple-docs` builds. The `--source packages` and `--source samples` scopes still require local extracted archives (run `cupertino fetch --source packages` / `cupertino fetch --source samples` first).
 
 | Phase | Source | Description |
 |-------|--------|-------------|
@@ -94,9 +94,9 @@ When using `--remote`, these options change behavior:
 
 | Method | What it produces | Notes |
 |--------|------------------|-------|
-| `cupertino setup` | All three databases (search.db + packages.db + apple-sample-code.db) | Fastest, single zip download |
-| `cupertino save --remote` | search.db only (docs scope) | Streams from cupertino-docs repo, no local crawl needed |
-| `cupertino fetch && cupertino save` | Whichever scopes you fetched | Multi-hour fresh crawl + local index build |
+| `cupertino setup` | Every database (`apple-documentation.db` + the per-source siblings + `packages.db` + `apple-sample-code.db`) | Fastest, single zip download |
+| `cupertino save --remote` | docs databases only (docs scope) | Streams from cupertino-docs repo, no local crawl needed |
+| `cupertino fetch && cupertino save --source apple-docs` | Whichever scopes you fetched | Multi-hour fresh crawl + local index build |
 
 ## Related
 

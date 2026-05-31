@@ -68,7 +68,7 @@ swift-book://{chapter_path}
 cupertino fetch --source swift-org
 
 # Build index
-cupertino save
+cupertino save --source swift-book
 ```
 
 ## Notes

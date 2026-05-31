@@ -20,7 +20,7 @@ Specifies the directory containing Swift Evolution proposal Markdown files to in
 
 ### Include Evolution Proposals (Default)
 ```bash
-cupertino save
+cupertino save --all
 ```
 
 ### Custom Evolution Directory

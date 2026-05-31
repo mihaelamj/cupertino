@@ -1,6 +1,6 @@
 # --search-db
 
-Path to the search database file
+Legacy debug knob: override the docs database path
 
 ## Synopsis
 
@@ -10,27 +10,27 @@ cupertino search <query> --search-db <path>
 
 ## Description
 
-Specifies a custom path to the SQLite FTS5 search database. Use this to search a different database than the default location.
+Overrides the docs database path. Post-#1037 each docs source owns its own per-source DB (`apple-documentation.db`, `hig.db`, `apple-archive.db`, `swift-evolution.db`, `swift-org.db`, `swift-book.db`), resolved through the registry under the base directory; this legacy flag overrides that resolution.
 
 ## Default
 
-`~/.cupertino/search.db`
+Resolved per-source via the registry (no single `search.db`).
 
 ## Examples
 
 ### Use Custom Database
 ```bash
-cupertino search "View" --search-db ~/my-docs/search.db
+cupertino search "View" --search-db ~/my-docs/apple-documentation.db
 ```
 
 ### Absolute Path
 ```bash
-cupertino search "SwiftUI" --search-db /Users/username/custom/search.db
+cupertino search "SwiftUI" --search-db /Users/username/custom/apple-documentation.db
 ```
 
 ### Relative Path
 ```bash
-cupertino search "Array" --search-db ./local-search.db
+cupertino search "Array" --search-db ./apple-documentation.db
 ```
 
 ## Use Cases
@@ -47,10 +47,10 @@ cupertino search "Array" --search-db ./local-search.db
 cupertino fetch --source apple-docs --output-dir ~/custom-docs
 
 # Build index with custom database path
-cupertino save --base-dir ~/custom-docs --search-db ~/custom-docs/search.db
+cupertino save --source apple-docs --base-dir ~/custom-docs --search-db ~/custom-docs/apple-documentation.db
 
 # Search using custom database
-cupertino search "View" --search-db ~/custom-docs/search.db
+cupertino search "View" --search-db ~/custom-docs/apple-documentation.db
 ```
 
 ## Notes

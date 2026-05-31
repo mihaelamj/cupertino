@@ -58,13 +58,19 @@ Sample output (database sections elided, same as `cupertino doctor` default):
    ✓ Indexed symbols: 108536
 
 🔍 Search Index
-   ✓ Database: ~/.cupertino/search.db
-   ✓ Size: 2.48 GB
-   ✓ Schema version: 13 (matches installed binary)
-   ✓ Frameworks: 420
+   ⚠  search.db: not found (legacy unified DB; superseded by the per-source DBs in v1.3.0)
+
+🔍 Apple Developer Documentation (apple-documentation.db)
+   ✓ Database: ~/.cupertino/apple-documentation.db
+   ✓ Size: 2.82 GB
+   ✓ Schema version: 18 (matches installed binary)
+   ✓ Frameworks: 398
    📚 Indexed sources:
-     ✓ apple-docs: 284518 entries
-     ✓ swift-evolution: 483 entries
+     ✓ apple-docs: 351505 entries
+
+   … one 🔍 section per source follows (hig.db, apple-archive.db,
+     swift-evolution.db, swift-org.db, swift-book.db), each with size,
+     schema 18, and framework + entry counts
 
 🔧 Providers
    ✓ MCP.Support.DocsResourceProvider: available
@@ -73,9 +79,15 @@ Sample output (database sections elided, same as `cupertino doctor` default):
 
 8. Schema versions (#234)
 
-   ✓ search.db: 13 (sequential), journal=wal
-   ✓ packages.db: 2 (sequential), journal=delete
-   ✓ apple-sample-code.db: 3 (sequential), journal=wal
+   ⚠ search.db: not found (legacy unified DB; superseded by per-source DBs)
+   ✓ apple-documentation.db: 18 (sequential), journal=wal
+   ✓ hig.db: 18 (sequential), journal=wal
+   ✓ apple-archive.db: 18 (sequential), journal=wal
+   ✓ swift-evolution.db: 18 (sequential), journal=wal
+   ✓ swift-org.db: 18 (sequential), journal=wal
+   ✓ swift-book.db: 18 (sequential), journal=wal
+   ✓ packages.db: 5 (sequential), journal=delete (read-only distribution mode)
+   ✓ apple-sample-code.db: 4 (sequential), journal=delete (read-only distribution mode)
 
 📂 Raw corpus directories (input for `cupertino save`)
    ✓ Apple docs: ~/.cupertino/docs (415212 files)
@@ -92,7 +104,7 @@ Sample output (database sections elided, same as `cupertino doctor` default):
 
 🔍 `cupertino save` preflight check
 
-  Docs (search.db)
+  Docs (apple-documentation.db)
     ✓  ~/.cupertino/docs  (415212 entries)
     ✓  Availability annotation present
 

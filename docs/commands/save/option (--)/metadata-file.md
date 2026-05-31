@@ -20,7 +20,7 @@ Specifies the metadata file created during crawling. Contains additional informa
 
 ### Use Default Metadata
 ```bash
-cupertino save
+cupertino save --all
 ```
 
 ### Custom Metadata File

@@ -36,7 +36,7 @@ cupertino search "optional binding" --source swift-org   # also covers swift-boo
 
 ## Notes
 
-- swift-book is a registered `Search.SourceProvider` (`SwiftBookSource`) with `fetchInfo == nil` (no dedicated fetch endpoint) but `destinationDB == .search` (search.db rows post-indexing).
+- swift-book is a registered `Search.SourceProvider` (`SwiftBookSource`) with `fetchInfo == nil` (no dedicated fetch endpoint) but `destinationDB == .swiftBook` (its own `swift-book.db` post-#1038).
 - The `--source` flag is the canonical post-#1031 entry point; pre-#1031 swift-book was implicit in the `--type swift` crawl.
 - Per the pluggability epic (#1007), swift-book exemplifies the "view-source" pattern: a logically distinct source that piggybacks on another source's crawl via URL-prefix tagging.
 

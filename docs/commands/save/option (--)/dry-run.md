@@ -3,7 +3,7 @@
 Run the full `save` import pipeline against a throwaway temp database;
 emit the same final report and per-document import log a real save
 would, then delete the temp DB. Used to verify that a corpus imports
-clean before committing it to the on-disk `search.db`.
+clean before committing it to the on-disk databases.
 
 ## Usage
 

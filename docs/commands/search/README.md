@@ -180,14 +180,14 @@ cupertino search "spatial" --min-visionos 1.0 --framework realitykit
 
 ### --search-db
 
-Path to the search database file.
+Legacy debug knob: override the docs database path. Post-#1037 each docs source owns its own per-source DB (`apple-documentation.db`, `hig.db`, `apple-archive.db`, `swift-evolution.db`, `swift-org.db`, `swift-book.db`), resolved through the registry under the base directory.
 
 **Type:** String
-**Default:** `~/.cupertino/search.db`
+**Default:** resolved per-source via the registry (no single `search.db`)
 
 **Example:**
 ```bash
-cupertino search "View" --search-db ~/custom/search.db
+cupertino search "View" --search-db ~/custom/apple-documentation.db
 ```
 
 ### --packages-db
@@ -309,7 +309,7 @@ Before searching, you need a populated search index:
 
 2. **Build search index:**
    ```bash
-   cupertino save
+   cupertino save --all
    ```
 
 ## Examples
@@ -479,13 +479,13 @@ Formatted markdown output. Best for:
 ### Database Not Found
 
 ```
-Error: Search database not found at /Users/user/.cupertino/search.db
+Error: Search database not found at /Users/user/.cupertino/apple-documentation.db
 Run 'cupertino save' to build the search index first.
 ```
 
 **Solution:** Build the search index:
 ```bash
-cupertino save
+cupertino save --all
 ```
 
 ### No Results

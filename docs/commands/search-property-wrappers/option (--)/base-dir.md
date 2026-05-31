@@ -1,3 +1,26 @@
-# `--base-dir`
+# --base-dir
 
-See [`cupertino search-property-wrappers --help`](../README.md#options) for the canonical description.
+Directory holding the per-source databases.
+
+## Synopsis
+
+```bash
+cupertino search-property-wrappers --wrapper <name> --base-dir <path>
+```
+
+## Description
+
+Points the command at the folder that holds the per-source databases (the same
+folder `cupertino save` / `cupertino setup` operate on, e.g. `apple-documentation.db`,
+`swift-org.db`, `swift-book.db`). Defaults to the configured base directory
+(`baseDirectory` in `cupertino.config.json`, or `~/.cupertino`).
+
+## Default
+
+The configured base directory.
+
+## Example
+
+```bash
+cupertino search-property-wrappers --wrapper State --base-dir ~/.cupertino-dev
+```

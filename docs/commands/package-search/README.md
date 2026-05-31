@@ -54,4 +54,4 @@ cupertino package-search "json codable" --platform iOS --min-version 13.0
 ## See Also
 
 - [search](../search/), unified fan-out across all sources (default mode), or single-source FTS with `--source` filter
-- [setup](../setup/), provisions `packages.db` (bundled in the `cupertino-databases-v<version>.zip` release artifact alongside `search.db` and `apple-sample-code.db`)
+- [setup](../setup/), provisions `packages.db` (bundled in the `cupertino-databases-v<version>.zip` release artifact alongside the per-source docs DBs (`apple-documentation.db` etc.) and `apple-sample-code.db`)

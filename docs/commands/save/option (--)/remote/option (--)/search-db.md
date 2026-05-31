@@ -5,7 +5,7 @@ Output path for the search database when using remote mode.
 ## Usage
 
 ```bash
-cupertino save --remote --search-db ~/custom/search.db
+cupertino save --remote --search-db ~/custom/apple-documentation.db
 ```
 
 ## Behavior in Remote Mode
@@ -27,7 +27,7 @@ The database path must be on a **local filesystem**. SQLite does not work reliab
 
 ```bash
 # Custom database location
-cupertino save --remote --search-db /Volumes/FastSSD/search.db
+cupertino save --remote --search-db /Volumes/FastSSD/apple-documentation.db
 ```
 
 ```bash
@@ -43,8 +43,8 @@ cupertino save --remote --base-dir ~/.cupertino --search-db ~/databases/apple.db
 ## Default
 
 If not specified:
-- Defaults to `{base-dir}/search.db`
-- If `--base-dir` is also not specified, defaults to `~/.cupertino/search.db`
+- Defaults to `{base-dir}/apple-documentation.db`
+- If `--base-dir` is also not specified, defaults to `~/.cupertino/apple-documentation.db`
 
 ## Database Size
 

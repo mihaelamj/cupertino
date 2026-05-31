@@ -11,7 +11,7 @@ cupertino save [--docs|--packages|--samples] --force-replace --yes
 
 ## Description
 
-`cupertino save` writes one or more local databases (`search.db`, `apple-sample-code.db`, `packages.db`). Two concurrent saves targeting the **same** database compete for the SQLite write lock, burn duplicate CPU + memory, and risk corrupting each other's WAL on shutdown. The concurrent-save gate (#253) detects this case and surfaces it via an interactive prompt before any write.
+`cupertino save` writes one or more local databases (`apple-documentation.db` and its per-source siblings, `apple-sample-code.db`, `packages.db`). Two concurrent saves targeting the **same** database compete for the SQLite write lock, burn duplicate CPU + memory, and risk corrupting each other's WAL on shutdown. The concurrent-save gate (#253) detects this case and surfaces it via an interactive prompt before any write.
 
 `--force-replace` is the explicit recovery path. When a sibling save is detected:
 
@@ -48,13 +48,13 @@ Skip none of these, they take 30 seconds total and save you from losing real wor
 
 2. **Who holds the DB lock?**
    ```bash
-   lsof ~/.cupertino/search.db ~/.cupertino/search.db-wal 2>/dev/null
+   lsof ~/.cupertino/apple-documentation.db ~/.cupertino/apple-documentation.db-wal 2>/dev/null
    ```
    Confirms the sibling PID is the one cupertino's gate flagged. If a different process holds the lock, `--force-replace` won't help, investigate that PID first.
 
 3. **Is the WAL actively growing?**
    ```bash
-   ls -lh ~/.cupertino/search.db-wal
+   ls -lh ~/.cupertino/apple-documentation.db-wal
    ```
    Run twice 10s apart. WAL still growing = checkpoint in progress = leave it alone.
 

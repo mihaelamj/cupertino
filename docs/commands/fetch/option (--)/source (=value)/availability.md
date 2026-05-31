@@ -99,14 +99,14 @@ cupertino fetch --source apple-docs
 cupertino fetch --source availability
 
 # Finally, build index with availability
-cupertino save
+cupertino save --all
 ```
 
 ### Update Availability Only
 
 ```bash
 cupertino fetch --source availability --force
-cupertino save
+cupertino save --all
 ```
 
 ### Fast Mode for Large Datasets

@@ -22,7 +22,7 @@ Most users do not have a crawled docs directory, they download the pre-built bun
 
 ### Index Default Documentation
 ```bash
-cupertino save
+cupertino save --all
 ```
 
 ### Index Custom Directory

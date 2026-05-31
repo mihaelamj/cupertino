@@ -68,7 +68,7 @@ Archive docs are indexed with framework synonyms for better discoverability:
 cupertino fetch --source apple-archive
 
 # Build index
-cupertino save
+cupertino save --source apple-archive
 ```
 
 ## Search Ranking

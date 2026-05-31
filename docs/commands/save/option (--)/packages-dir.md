@@ -20,7 +20,7 @@ Specifies the directory containing Swift package README files to include in the 
 
 ### Include Package READMEs (Default)
 ```bash
-cupertino save
+cupertino save --all
 ```
 
 ### Custom Packages Directory

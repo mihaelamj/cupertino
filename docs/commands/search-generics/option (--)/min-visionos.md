@@ -1,3 +1,30 @@
-# `--min-visionos`
+# --min-visionos
 
-See [`cupertino search-generics --help`](../README.md#options) for the canonical description.
+Minimum visionOS version filter.
+
+## Synopsis
+
+```bash
+cupertino search-generics --constraint <type> --min-visionos <version>
+```
+
+## Description
+
+Keeps only symbols available on visionOS `<version>` or later, using the symbol's
+indexed platform-availability metadata. Applies to sources whose data carries an
+availability axis.
+
+## Default
+
+None (no visionOS floor).
+
+## Example
+
+```bash
+cupertino search-generics --constraint Hashable --min-visionos 1.0
+```
+
+## Notes
+
+- The five `--min-*` filters AND-combine: passing `--min-ios 17.0 --min-macos 14.0`
+  keeps only symbols available on both platforms.

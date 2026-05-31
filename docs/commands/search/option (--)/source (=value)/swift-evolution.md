@@ -62,7 +62,7 @@ Examples:
 cupertino fetch --source swift-evolution
 
 # Build index
-cupertino save
+cupertino save --source swift-evolution
 ```
 
 ## Notable Proposals
