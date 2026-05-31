@@ -13,6 +13,7 @@ Cupertino is a CLI for human developers and an MCP server for AI agents. Both su
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![PulseMCP](https://img.shields.io/badge/PulseMCP-listed-blue)](https://www.pulsemcp.com/servers/mihaelamj-cupertino)
 [![LobeHub](https://img.shields.io/badge/LobeHub-listed-purple)](https://lobehub.com/mcp/mihaelamj-cupertino)
+[![X](https://img.shields.io/badge/X-@cupertinomcp-black?logo=x)](https://x.com/cupertinomcp)
 
 ![Cupertino Demo](docs/images/cupertino.gif)
 
