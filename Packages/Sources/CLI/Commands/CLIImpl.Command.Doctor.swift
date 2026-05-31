@@ -37,7 +37,7 @@ extension CLIImpl.Command {
             Default output focuses on what a user needs to know after `cupertino setup`:
             • MCP server initialization
             • Resource and tool providers
-            • Database connectivity + schema versions (search.db, packages.db, samples.db)
+            • Database connectivity + schema versions (every per-source database)
 
             Pass --save to also include the maintenance-side sections used before crawling
             or re-indexing:
@@ -665,7 +665,7 @@ extension CLIImpl.Command {
             Cupertino.Context.composition.logging.recording.output("🧩 Kind distribution audit (#626)")
 
             guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
-                Cupertino.Context.composition.logging.recording.output("   ⚠  search.db not found at \(searchDBURL.path) (skipped)")
+                Cupertino.Context.composition.logging.recording.output("   ⚠  documentation database not found at \(searchDBURL.path) (skipped)")
                 Cupertino.Context.composition.logging.recording.output("")
                 return
             }
@@ -738,7 +738,7 @@ extension CLIImpl.Command {
             Cupertino.Context.composition.logging.recording.output("📅 Freshness / drift signal (#275)")
 
             guard FileManager.default.fileExists(atPath: searchDBURL.path) else {
-                Cupertino.Context.composition.logging.recording.output("   ⚠  search.db not found at \(searchDBURL.path) (skipped)")
+                Cupertino.Context.composition.logging.recording.output("   ⚠  documentation database not found at \(searchDBURL.path) (skipped)")
                 Cupertino.Context.composition.logging.recording.output("")
                 return
             }

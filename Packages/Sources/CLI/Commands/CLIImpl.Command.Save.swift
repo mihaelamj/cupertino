@@ -193,7 +193,7 @@ extension CLIImpl.Command {
             Run the full import pipeline against a throwaway temp database; emit \
             the per-document import log and final report, then delete the temp DB. \
             Used to verify that a corpus imports clean (0 collisions, 0 redundancy, \
-            0 content lost) without touching the on-disk search.db. Honors all \
+            0 content lost) without touching the on-disk databases. Honors all \
             other save flags (--docs-dir etc.).
             """
         )

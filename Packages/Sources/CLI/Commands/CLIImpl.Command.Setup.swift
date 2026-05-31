@@ -18,7 +18,7 @@ extension CLIImpl.Command {
     struct Setup: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "setup",
-            abstract: "Download every cupertino database (search.db, samples.db, packages.db) in one go"
+            abstract: "Download every cupertino database in one go"
         )
 
         @Option(name: .long, help: "Base directory for databases")
