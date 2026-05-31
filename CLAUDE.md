@@ -4,7 +4,7 @@
 
 [#183](https://github.com/mihaelamj/cupertino/issues/183), bugs → recrawl → vector → tutor (canonical roadmap, update on every release/epic/scope change per its built-in protocol).
 
-Latest release: **v1.2.1 (2026-05-23)**, a maintenance release (architectural cleanup + Source Independence Day; zero schema delta, reuses the v1.2.0 bundle). Prior bundle release: **v1.2.0 "ironclad" (2026-05-20)**. Live search-quality dashboard: https://cupertino.aleahim.com/. Live bug list: https://github.com/mihaelamj/cupertino/issues?q=is%3Aopen+is%3Aissue+label%3Abug.
+Latest release: **v1.3.0 (2026-05-31)**, the per-source DB bundle + read-only databases release: the unified `search.db` is split into 8 per-source DBs shipped in rollback journal mode, and every query / read / serve connection opens read-only (so an end user cannot write or delete rows, #1194). `databaseVersion` is `1.3.0` (`cupertino setup` downloads `cupertino-databases-v1.3.0.zip`, 742 MB, 8 rollback-mode DBs). Prior releases: **v1.2.1 (2026-05-23)** (maintenance) and **v1.2.0 "ironclad" (2026-05-20)** (search quality). Live search-quality dashboard: https://cupertino.aleahim.com/. Live bug list: https://github.com/mihaelamj/cupertino/issues?q=is%3Aopen+is%3Aissue+label%3Abug.
 
 Release archive (per-version notes, audits, McNemar diffs, bundle-rebuild details) lives in `CHANGELOG.md` and `docs/audits/`. Do not reproduce it here.
 
