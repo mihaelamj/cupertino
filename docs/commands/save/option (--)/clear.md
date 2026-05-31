@@ -45,11 +45,6 @@ cupertino save --clear
 cupertino save --all
 ```
 
-### Clear targeted at a custom DB path
-```bash
-cupertino save --clear --search-db ./apple-documentation.db
-```
-
 ## Use Cases
 
 ### Use `--clear` when:

@@ -48,14 +48,6 @@ Auto-fills:
 - `--swift-org-dir ./my-cupertino/swift-org`
 - `--packages-dir ./my-cupertino/packages`
 - `--metadata-file ./my-cupertino/metadata.json`
-- `--search-db ./my-cupertino/apple-documentation.db`
-
-### Override Specific Paths
-```bash
-cupertino save --base-dir ~/cupertino-data --search-db ~/databases/apple-documentation.db
-```
-
-Uses `~/cupertino-data` for all directories except the search database.
 
 ### Absolute Path
 ```bash
@@ -99,4 +91,4 @@ base-dir/
 - `--swift-org-dir` - Override Swift.org directory
 - `--packages-dir` - Override packages directory
 - `--metadata-file` - Override metadata file path
-- `--search-db` - Override search database path
+- `--archive-dir` - Override Apple Archive directory

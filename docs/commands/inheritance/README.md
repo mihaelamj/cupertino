@@ -9,7 +9,6 @@ Walks the `inheritance` edge table populated at index time from Apple's DocC `re
 ```
 cupertino inheritance <symbol> [--direction up|down|both] [--depth <n>]
                       [--framework <name>] [--format text|json|markdown]
-                      [--search-db <path>]
 ```
 
 ## Arguments
@@ -26,7 +25,6 @@ cupertino inheritance <symbol> [--direction up|down|both] [--depth <n>]
 | `--depth` | int | 5 | Maximum walk depth. |
 | `--framework` | string | none | Disambiguate to a specific framework when the symbol exists in multiple. |
 | `--format` | enum | `text` | Output format: `text`, `json`, `markdown`. |
-| `--search-db` | path | registry default | Override the apple-docs database path (post-#1037 per-source DB split). |
 
 ## Directions
 

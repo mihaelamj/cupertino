@@ -104,7 +104,7 @@ swift-org/swift-org/packages_logging.html.md
 ### Search This Documentation
 ```bash
 # Build search index
-cupertino save --docs-dir ~/.cupertino/swift-org --search-db ~/.cupertino/swift-search.db
+cupertino save --source swift-org
 ```
 
 ### Read The Swift Book

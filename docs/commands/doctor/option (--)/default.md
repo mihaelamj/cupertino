@@ -15,8 +15,7 @@ When you run `cupertino doctor` without any options, it uses these defaults:
 ```bash
 cupertino doctor \
   --docs-dir ~/.cupertino/docs \
-  --evolution-dir ~/.cupertino/swift-evolution \
-  --search-db ~/.cupertino/apple-documentation.db
+  --evolution-dir ~/.cupertino/swift-evolution
 ```
 
 Default output focuses on **database + MCP health**. Raw corpus directories and Swift-package selection state moved behind [`--save`](save.md) in [#68](https://github.com/mihaelamj/cupertino/issues/68) because a `cupertino setup` user has no raw corpus on disk (the bundle ships pre-built DBs); the previous `0 files` line under "Apple docs" looked like a failure and isn't.
@@ -27,7 +26,6 @@ Default output focuses on **database + MCP health**. Raw corpus directories and 
 |--------|---------------|-------------|
 | `--docs-dir` | `~/.cupertino/docs` | Apple documentation directory (only used when `--save` is also passed) |
 | `--evolution-dir` | `~/.cupertino/swift-evolution` | Swift Evolution proposals directory (only used when `--save` is also passed) |
-| `--search-db` | `~/.cupertino/apple-documentation.db` | apple-docs database path (legacy flag name) |
 
 ## Default Health Check Process
 
@@ -147,11 +145,6 @@ cupertino doctor --save
 ```
 
 See [`--save`](save.md) for the full additive surface.
-
-### Check Custom Search DB
-```bash
-cupertino doctor --search-db /opt/apple-documentation.db
-```
 
 ## Typical Output
 

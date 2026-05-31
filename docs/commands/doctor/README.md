@@ -55,18 +55,6 @@ Directory containing Swift Evolution proposals.
 cupertino doctor --evolution-dir ~/my-evolution
 ```
 
-### --search-db
-
-Override the apple-docs database path (the per-source `apple-documentation.db`, resolved through the production source registry post-#1037). Legacy flag name kept for compatibility.
-
-**Type:** String
-**Default:** `~/.cupertino/apple-documentation.db`
-
-**Example:**
-```bash
-cupertino doctor --search-db ~/my-apple-documentation.db
-```
-
 ### --save
 
 Include the maintenance-side sections in the doctor report (additive on top of the default health suite). See [`option (--)/save.md`](option%20%28--%29/save.md) for the full description.
@@ -100,8 +88,7 @@ cupertino doctor
 ```bash
 cupertino doctor \
   --docs-dir ~/custom/docs \
-  --evolution-dir ~/custom/evolution \
-  --search-db ~/custom/apple-documentation.db
+  --evolution-dir ~/custom/evolution
 ```
 
 ### Verify Before Starting Server
@@ -451,8 +438,7 @@ fi
 # After installing to custom location
 cupertino doctor \
   --docs-dir /opt/cupertino/docs \
-  --evolution-dir /opt/cupertino/evolution \
-  --search-db /opt/cupertino/apple-documentation.db
+  --evolution-dir /opt/cupertino/evolution
 ```
 
 ## Troubleshooting

@@ -48,7 +48,6 @@ Bare `cupertino save` (no `--source` and no `--all`) is a usage error post-#1037
 - [--packages-dir](option%20%28--%29/packages-dir.md) - Directory containing package READMEs
 - `--archive-dir` - Directory containing Apple Archive documentation (legacy programming guides like Core Animation, Quartz 2D, KVO/KVC)
 - [--metadata-file](option%20%28--%29/metadata-file.md) - Path to metadata.json file
-- [--search-db](option%20%28--%29/search-db.md) - Output path for the apple-docs database (legacy flag name; default `apple-documentation.db`)
 - [--clear](option%20%28--%29/clear.md) - Clear existing index before building
 
 ### Samples-build options (consumed only when `--source samples` is in scope; passing them otherwise emits a warning)
@@ -83,7 +82,7 @@ cupertino save --source packages --source samples     # both packages and sample
 
 ### Custom paths
 ```bash
-cupertino save --source apple-docs --docs-dir ./my-docs --search-db ./apple-documentation.db
+cupertino save --source apple-docs --docs-dir ./my-docs
 cupertino save --source samples --samples-dir ~/my-samples --samples-db ~/my-apple-sample-code.db
 ```
 
