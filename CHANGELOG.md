@@ -2,7 +2,7 @@
 
 ### Documentation
 
-- **docs: drop the `--search-db` documentation now that the flag is removed.** Deleted the 7 orphaned `search-db.md` option docs (`save`, `search`, `read`, `list-frameworks`, `doctor`, `inheritance`, and `save --remote`) and scrubbed every `--search-db` reference from the command READMEs, examples, and option tables, plus `docs/symbolgraph-corpus.md` and the `docs/artifacts/` references. The structural drift checker is green again. Dated audit/handoff snapshots that mention the historical flag are left as-is.
+- **docs: drop the `--search-db` documentation now that the flag is removed.** Deleted the 7 orphaned `search-db.md` option docs (`save`, `search`, `read`, `list-frameworks`, `doctor`, `inheritance`, and `save --remote`) and scrubbed every `--search-db` reference from the command READMEs, examples, and option tables, plus `docs/symbolgraph-corpus.md`, the `docs/artifacts/` references, and two stale `search.db` references in the root `README.md` (the build-output size and the eval-harness reproducibility note). The structural drift checker is green again. Dated audit/handoff snapshots that mention the historical flag are left as-is.
 
 ### Breaking
 
