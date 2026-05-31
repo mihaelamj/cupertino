@@ -69,7 +69,7 @@ extension CLIImpl.Command {
 
         @Option(
             name: .long,
-            help: "Path to sample index database (samples.db)"
+            help: "Path to the sample index database (apple-sample-code.db)"
         )
         var sampleDb: String?
 

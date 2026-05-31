@@ -15,14 +15,14 @@ struct Cupertino: AsyncParsableCommand {
         abstract: "MCP Server for Apple Documentation, Swift Evolution, and Swift Packages",
         discussion: """
         SETUP
-          setup            Download pre-built databases (search.db, samples.db, packages.db)
+          setup            Download the pre-built per-source database bundle
 
         DATA COLLECTION
           fetch            Download documentation, packages, and sample code from Apple / GitHub
           cleanup          Remove downloaded sample-code archives after indexing
 
         INDEXING
-          save             Index fetched content into search.db, packages.db, and samples.db
+          save             Index fetched content into the per-source databases
 
         SERVER
           serve            Start the MCP server (default when no subcommand is given)

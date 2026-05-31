@@ -94,6 +94,27 @@ struct CommandRegistrationTests {
         #expect(!config.abstract.isEmpty)
         #expect(config.abstract.contains("MCP"))
     }
+
+    @Test("help text does not enumerate the legacy unified search.db / samples.db (v1.3.0 per-source split)")
+    func helpTextFreeOfLegacyUnifiedDBNames() {
+        // The root command summary, `setup` abstract, and `doctor` discussion
+        // used to enumerate `search.db` / `samples.db`; post-v1.3.0 those are
+        // per-source databases. The help describes them generically so adding
+        // a source needs no edit here. (`search --search-db` legitimately
+        // still mentions the legacy monolithic DB for the migration window,
+        // so it is intentionally not covered by this guard.)
+        let root = Cupertino.configuration.discussion
+        #expect(!root.contains("search.db"), "root help must not name the legacy unified search.db")
+        #expect(!root.contains("samples.db"), "root help must not name samples.db (now apple-sample-code.db)")
+
+        let setup = CLIImpl.Command.Setup.configuration.abstract
+        #expect(!setup.contains("search.db"))
+        #expect(!setup.contains("samples.db"))
+
+        let doctor = CLIImpl.Command.Doctor.configuration.discussion
+        #expect(!doctor.contains("search.db"), "doctor help discussion must not name the legacy unified search.db")
+        #expect(!doctor.contains("samples.db"))
+    }
 }
 
 // MARK: - FetchType Enum Tests (dissolved post-#1031)

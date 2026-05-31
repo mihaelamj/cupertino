@@ -37,7 +37,7 @@ extension CLIImpl.Command {
             Default output focuses on what a user needs to know after `cupertino setup`:
             • MCP server initialization
             • Resource and tool providers
-            • Database connectivity + schema versions (search.db, packages.db, samples.db)
+            • Database connectivity + schema versions (every per-source database)
 
             Pass --save to also include the maintenance-side sections used before crawling
             or re-indexing:
