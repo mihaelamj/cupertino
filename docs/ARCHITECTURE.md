@@ -43,8 +43,8 @@ Infrastructure (wraps a system API; composition-root-only for Logging):
 Producers (each imports only foundation tier + own *Models seam):
   ├─ Core                 # HTML parsing, JSON parsing, package indexing
   ├─ Crawler              # WKWebView BFS crawler, session resume
-  ├─ Search               # search.db schema, IndexBuilder, PackageIndex, PackageQuery, SmartQuery
-  ├─ SampleIndex          # samples.db schema + SampleIndex.Builder
+  ├─ Search               # per-source docs DB schema, IndexBuilder, PackageIndex, PackageQuery, SmartQuery
+  ├─ SampleIndex          # apple-sample-code.db schema + SampleIndex.Builder
   ├─ AppleConstraintsKit  # swift symbolgraph-extract constraint table
   ├─ Availability         # Availability data types
   └─ Cleanup              # Sample-code archive cleanup
@@ -52,7 +52,7 @@ Producers (each imports only foundation tier + own *Models seam):
 Operation packages (per CLI verb — Tuist-style):
   ├─ Distribution         # cupertino setup        (#246) — download + extract DB zips
   ├─ Diagnostics          # cupertino doctor probes (#245) — read-only DB + filesystem inspection
-  ├─ Indexer              # cupertino save         (#244) — build search.db / packages.db / samples.db + preflight
+  ├─ Indexer              # cupertino save         (#244) — build per-source docs DBs / packages.db / apple-sample-code.db + preflight
   └─ Ingest               # cupertino fetch        (#247) — currently just session helpers; pipeline lifts in 4b–4f
 
 Read-side services (cross-CLI + MCP):
@@ -84,7 +84,7 @@ Per-CLI-verb packages contain the substantive logic that drives one user-facing 
 |---|---|---|
 | `Distribution` | `cupertino setup` | `SetupService`, `ArtifactDownloader`, `ArtifactExtractor`, `InstalledVersion` |
 | `Diagnostics` | `cupertino doctor` | `Probes` (DB + filesystem read-only inspection), `SchemaVersion` |
-| `Indexer` | `cupertino save` | `DocsService` (build search.db), `PackagesService` (build packages.db), `SamplesService` (build samples.db), `Preflight` |
+| `Indexer` | `cupertino save` | `DocsService` (build the per-source docs DBs), `PackagesService` (build packages.db), `SamplesService` (build apple-sample-code.db), `Preflight` |
 | `Ingest` | `cupertino fetch` | `Session` (clearSavedSession, requeueErroredURLs, requeueFromBaseline, enqueueURLsFromFile, checkForSession). Pipeline orchestrators (per fetch type) lift in follow-up sub-PRs. |
 
 Each operation package emits progress via callback events (`Distribution.SetupService.Event`, `Indexer.DocsService.Event`, etc.) so consumers (CLI, MCP, future agent shell) can render whatever they want without the package taking on UI dependencies.
@@ -98,9 +98,9 @@ flowchart TD
     SC[ServiceContainer<br/>lifecycle mgmt: with*Service { … }]
 
     R[ReadService<br/>3-DB dispatch]
-    DS[DocsSearchService<br/>search.db]
+    DS[DocsSearchService<br/>per-source docs DBs]
     HS[HIGSearchService<br/>HIG-only, delegates]
-    SS[Sample.Search.Service<br/>samples.db]
+    SS[Sample.Search.Service<br/>apple-sample-code.db]
     US[UnifiedSearchService<br/>multi-DB]
     TS[TeaserService<br/>cross-source teasers]
 
@@ -135,7 +135,7 @@ flowchart TD
 
 ### Search.Index file map
 
-The `Search.Index` actor is the on-disk search engine — one SQLite FTS5 database (`search.db`), one actor that owns it. After the v1.0.2 split, every concern lives in its own file:
+The `Search.Index` actor is the on-disk search engine — a per-source SQLite FTS5 documentation database (e.g. `apple-documentation.db`), one actor per open connection. After the v1.0.2 file split, every concern lives in its own file:
 
 ```mermaid
 flowchart LR
@@ -517,7 +517,7 @@ Cleans up downloaded sample code ZIP archives by removing unnecessary files like
 
 #### 6. Index Sample Code for Search
 
-Indexes sample code projects for full-text search using a separate SQLite FTS5 database (`~/.cupertino/samples.db`). The index includes:
+Indexes sample code projects for full-text search using a separate SQLite FTS5 database (`~/.cupertino/apple-sample-code.db`). The index includes:
 - Project metadata (title, description, frameworks)
 - README content
 - Source files (Swift, Objective-C, Metal, etc.)

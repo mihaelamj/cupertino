@@ -1,17 +1,12 @@
-# samples.db - FTS5 Sample Code Search Database
+# apple-sample-code.db - FTS5 Sample Code Search Database
 
 SQLite database with Full-Text Search (FTS5) index for fast sample code searches.
 
 ## Location
 
-**Default**: `~/.cupertino/samples.db`
+**Default**: `~/.cupertino/apple-sample-code.db`
 
-When `cupertino save --samples` or any reader is connected, two sidecar files appear next to the main file:
-
-- `samples.db-wal` — write-ahead log (#236; lets readers and writers proceed concurrently).
-- `samples.db-shm` — shared-memory index for the WAL.
-
-Copy all three together, or run `PRAGMA wal_checkpoint(TRUNCATE)` first to fold the WAL into the main file before the copy. Release bundles are always checkpoint-truncated before zipping.
+As of v1.3.0 the shipped database is in rollback (`journal=delete`) mode ([#1192](https://github.com/mihaelamj/cupertino/issues/1192)): it opens read-only with no `-wal` / `-shm` sidecar, so the single file is self-contained for copy and distribution. Every read / serve connection opens it read-only ([#1194](https://github.com/mihaelamj/cupertino/issues/1194)).
 
 ## Created By
 
@@ -31,7 +26,7 @@ cupertino save --samples
 
 ## Database Structure
 
-SQLite database with regular `projects` and `files` tables plus paired FTS5 mirrors. Schema version `3` (#228 phase 2 — added per-sample availability columns).
+SQLite database with regular `projects` and `files` tables plus paired FTS5 mirrors. Schema version `4` (`samples_schema_version`).
 
 ### `projects` table
 
@@ -125,7 +120,7 @@ CREATE INDEX idx_file_symbols_name   ON file_symbols(name);
 CREATE INDEX idx_file_symbols_async  ON file_symbols(is_async);
 ```
 
-Populated by SwiftSyntax during `cupertino save --samples`. Schema mirrors `doc_symbols` in `search.db` (same column shapes; different parent FK — `file_id` here vs `doc_uri` there).
+Populated by SwiftSyntax during `cupertino save --samples`. Schema mirrors `doc_symbols` in `apple-documentation.db` (same column shapes; different parent FK — `file_id` here vs `doc_uri` there).
 
 ### `file_symbols_fts` (FTS5)
 
@@ -205,18 +200,18 @@ Varies based on number of sample code projects:
 ### Query with SQL
 ```bash
 # Search projects for "SwiftUI"
-sqlite3 ~/.cupertino/samples.db "SELECT title FROM projects WHERE projects MATCH 'swiftui' LIMIT 10"
+sqlite3 ~/.cupertino/apple-sample-code.db "SELECT title FROM projects WHERE projects MATCH 'swiftui' LIMIT 10"
 
 # Search files for "async await"
-sqlite3 ~/.cupertino/samples.db "SELECT project_id, path FROM files WHERE files MATCH 'async await' LIMIT 10"
+sqlite3 ~/.cupertino/apple-sample-code.db "SELECT project_id, path FROM files WHERE files MATCH 'async await' LIMIT 10"
 
 # Search by framework
-sqlite3 ~/.cupertino/samples.db "SELECT title FROM projects WHERE frameworks LIKE '%combine%'"
+sqlite3 ~/.cupertino/apple-sample-code.db "SELECT title FROM projects WHERE frameworks LIKE '%combine%'"
 ```
 
 ### Use with MCP
 ```bash
-# Start MCP server (uses samples.db automatically)
+# Start MCP server (uses apple-sample-code.db automatically)
 cupertino serve
 ```
 
@@ -280,7 +275,7 @@ cupertino save --samples --samples-dir ~/my-samples
 
 ## Notes
 
-- Separate from `search.db` (documentation index)
+- Separate from the per-source documentation databases (`apple-documentation.db` etc.)
 - Run `cupertino cleanup` first to reduce archive size and improve index quality
 - Incremental indexing: only new projects indexed by default
 - Thread-safe for concurrent reads

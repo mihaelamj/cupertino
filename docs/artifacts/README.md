@@ -24,9 +24,16 @@ All Cupertino artifacts are stored under:
 | [hig/](folders/hig/) | Human Interface Guidelines | [README](folders/hig/) |
 | [sample-code/](folders/sample-code/) | Apple sample code ZIP files | [README](folders/sample-code/) + [.auth-cookies.json](folders/sample-code/.auth-cookies.json.md) |
 | [packages/](folders/packages/) | Swift package metadata + extracted source archives | [README](folders/packages/) + [swift-packages-with-stars.json](folders/packages/swift-packages-with-stars.json.md) + [checkpoint.json](folders/packages/checkpoint.json.md) + per-package `<owner>/<repo>/` source trees |
-| [search.db](folders/search.db.md) | FTS5 search index for documentation | File documentation |
-| [samples.db](folders/samples.db.md) | FTS5 search index for sample code | File documentation |
+| [apple-documentation.db](folders/apple-documentation.db.md) | FTS5 search index for Apple Developer Documentation | File documentation |
+| [hig.db](folders/hig.db.md) | FTS5 search index for the Human Interface Guidelines | File documentation |
+| [apple-archive.db](folders/apple-archive.db.md) | FTS5 search index for Apple Archive guides | File documentation |
+| [swift-evolution.db](folders/swift-evolution.db.md) | FTS5 search index for Swift Evolution proposals | File documentation |
+| [swift-org.db](folders/swift-org.db.md) | FTS5 search index for Swift.org documentation | File documentation |
+| [swift-book.db](folders/swift-book.db.md) | FTS5 search index for The Swift Programming Language | File documentation |
+| [apple-sample-code.db](folders/apple-sample-code.db.md) | FTS5 search index for Apple sample code | File documentation |
 | [packages.db](folders/packages.db.md) | FTS5 search index for Swift packages | File documentation |
+
+The eight databases above are the v1.3.0 per-source split of the former unified `search.db` ([#1036](https://github.com/mihaelamj/cupertino/issues/1036)); all ship in rollback (read-only) mode.
 | [config.json](folders/config.json.md) | Application configuration | File documentation |
 
 ## Quick Reference
@@ -63,8 +70,14 @@ All Cupertino artifacts are stored under:
 ### Index Artifacts
 ```
 ~/.cupertino/
-├── search.db              # FTS5 Search Database (documentation)
-└── samples.db             # FTS5 Search Database (sample code)
+├── apple-documentation.db # Apple Developer Documentation (per-source split, v1.3.0)
+├── hig.db                 # Human Interface Guidelines
+├── apple-archive.db       # Apple Archive guides
+├── swift-evolution.db     # Swift Evolution proposals
+├── swift-org.db           # Swift.org documentation
+├── swift-book.db          # The Swift Programming Language
+├── apple-sample-code.db   # Apple sample code
+└── packages.db            # Swift packages
 ```
 
 ## Finding Artifacts
@@ -82,8 +95,8 @@ All Cupertino artifacts are stored under:
 | `cupertino fetch --source samples` | Git clone (619 projects) | `~/.cupertino/sample-code/cupertino-sample-code/` |
 | `cupertino fetch --source packages` | Package data + checkpoint | `~/.cupertino/packages/` |
 | `cupertino fetch --source availability` | Updates JSON with availability | `~/.cupertino/docs/*.json` |
-| `cupertino save` | Documentation search database | `~/.cupertino/search.db` |
-| `cupertino save --samples` | Sample code search database | `~/.cupertino/samples.db` |
+| `cupertino save` | Per-source documentation databases | `~/.cupertino/apple-documentation.db` (+ per-source siblings) |
+| `cupertino save --samples` | Sample code search database | `~/.cupertino/apple-sample-code.db` |
 
 ## Customizing Locations
 
