@@ -24,36 +24,42 @@ The database is **off-the-shelf SQLite 3.x as bundled with the Apple operating s
 
 Database files are opened via `sqlite3_open` and accessed through the C API directly from Swift code in `Packages/Sources/SearchSQLite/Search.Index.swift`. Concurrent access is mediated by a `Swift.Actor` (`Search.Index`) wrapping the connection handle; multiple readers concurrent with a single writer are supported via SQLite's write-ahead-log journaling mode (see Section 5.2).
 
-### 2.2 Three-database split
+### 2.2 Per-source database split (v1.3.0)
 
-The bundle distributed to end users comprises three SQLite files, each with its own schema:
+The bundle distributed to end users comprises **eight** SQLite files: six per-source documentation databases (which share one schema), one Apple sample-code database, and one Swift-package database:
 
-| File | Domain | Size (v1.2.0 bundle) |
+| File | Domain | Approx. size |
 |---|---|---|
-| `search.db` | Documentation pages from all six sources | 2.87 GB |
-| `packages.db` | Swift package metadata, READMEs, dependency edges | varies |
-| `samples.db` | Apple sample-code project metadata and source files | varies |
+| `apple-documentation.db` | Apple Developer Documentation | ~2.8 GB |
+| `hig.db` | Human Interface Guidelines | ~12 MB |
+| `apple-archive.db` | Apple Archive legacy guides | ~25 MB |
+| `swift-evolution.db` | Swift Evolution proposals | ~25 MB |
+| `swift-org.db` | Swift.org documentation | ~14 MB |
+| `swift-book.db` | The Swift Programming Language | ~2 MB |
+| `apple-sample-code.db` | Apple sample-code project metadata and source files | ~192 MB |
+| `packages.db` | Swift package metadata, READMEs, dependency edges | ~1.09 GB |
 
-The split is functional, not normalisation-driven: each file is built by a separate `cupertino save` subcommand (`--docs`, `--packages`, `--samples`), can be shipped or skipped independently, and is queried by largely disjoint code paths. The remainder of this document concerns `search.db`. The other two follow analogous design patterns at smaller scale.
+Through v1.2.x the six documentation sources shared a single unified `search.db` (~2.87 GB). v1.3.0 split it into the six per-source documentation databases above ([#1036](https://github.com/mihaelamj/cupertino/issues/1036)), shipped in rollback (`journal=delete`) journal mode and opened read-only on every query / read / serve path ([#1194](https://github.com/mihaelamj/cupertino/issues/1194)). The split is physical packaging only: the six documentation databases share an **identical** schema, BM25F weighting, and enrichment pipeline (the `docs_fts` / `docs_metadata` / … family described below), so every statement in the remainder of this document about "the documentation database" applies per-DB to each of the six files. `packages.db` and `apple-sample-code.db` follow analogous designs at smaller scale.
 
 ```mermaid
 flowchart TB
-    subgraph Bundle["cupertino bundle · v1.2.0"]
+    subgraph Bundle["cupertino bundle · v1.3.0 (8 per-source DBs, read-only)"]
         direction LR
-        SDB["<b>search.db</b><br/>2.87 GB · docs across 6 sources"]
+        SDB["<b>apple-documentation.db</b><br/>~2.8 GB · Apple docs"]
+        ODB["<b>hig · apple-archive · swift-evolution<br/>swift-org · swift-book .db</b><br/>5 more per-source docs DBs"]
         PDB["<b>packages.db</b><br/>Swift packages, READMEs, deps"]
-        XDB["<b>samples.db</b><br/>Apple sample-code projects"]
+        XDB["<b>apple-sample-code.db</b><br/>Apple sample-code projects"]
     end
 
-    subgraph SearchDB["search.db · layered storage"]
+    subgraph SearchDB["a documentation DB · layered storage (schema shared by all 6 docs DBs)"]
         direction TB
         subgraph Relational["B-tree (relational) tables"]
-            DM["docs_metadata · 352,712 rows<br/>authoritative per-doc record"]
+            DM["docs_metadata · 351,505 rows<br/>authoritative per-doc record"]
             DS["docs_structured<br/>parsed DocC fields"]
             FA["framework_aliases · 340<br/>canonicalisation"]
             IN["inheritance · 8,560<br/>class graph"]
-            CE["doc_code_examples · 15,760"]
-            SY["doc_symbols · 240,794"]
+            CE["doc_code_examples · 15,758"]
+            SY["doc_symbols · 240,543"]
         end
         subgraph FTS["FTS5 virtual tables (full-text-search surface)"]
             DF["docs_fts<br/>porter unicode61<br/>prose + AST symbol cols"]
@@ -74,7 +80,7 @@ flowchart TB
     SDB --> SearchDB
 ```
 
-The diagram above zooms from the three-database bundle down into `search.db`'s three storage layers: relational B-tree tables (the authoritative per-row data), FTS5 virtual tables (the queryable text surface paired with selected B-tree columns), and the SQLite-managed shadow tables that hold the inverted-index artefacts of each FTS5 table.
+The diagram above zooms from the eight-database bundle down into a documentation database's three storage layers (identical across all six per-source docs DBs): relational B-tree tables (the authoritative per-row data), FTS5 virtual tables (the queryable text surface paired with selected B-tree columns), and the SQLite-managed shadow tables that hold the inverted-index artefacts of each FTS5 table.
 
 ## 3. Schema
 
@@ -82,14 +88,16 @@ The live schema definition is in `Packages/Sources/SearchSQLite/Search.Index.Sch
 
 ### 3.1 Relational (B-tree) tables
 
-| Table | Cardinality at v1.2.0 | Function |
+Cardinalities below are for `apple-documentation.db` (the largest per-source docs DB); the other five per-source documentation databases share this schema with much smaller row counts (e.g. `hig.db` ~173 docs, `swift-book.db` ~43).
+
+| Table | Cardinality (`apple-documentation.db`, v1.3.0) | Function |
 |---|---|---|
-| `docs_metadata` | 352,712 | Authoritative per-document record. Primary key is the cupertino URI (`apple-docs://swiftui/view`). Holds source, framework, language, kind, content hash, last-crawl timestamp, word count, and the six availability columns (`min_ios`, `min_macos`, `min_tvos`, `min_watchos`, `min_visionos`, plus `implementation_swift_version` for evolution rows). All filter predicates on `cupertino search` resolve to constraints on this table. |
+| `docs_metadata` | 351,505 | Authoritative per-document record. Primary key is the cupertino URI (`apple-docs://swiftui/view`). Holds source, framework, language, kind, content hash, last-crawl timestamp, word count, and the six availability columns (`min_ios`, `min_macos`, `min_tvos`, `min_watchos`, `min_visionos`, plus `implementation_swift_version` for evolution rows). All filter predicates on `cupertino search` resolve to constraints on this table. |
 | `docs_structured` | parity with `docs_metadata` | Parsed DocC fields: title, abstract, declaration, overview, module, platforms, conformances, attributes. Decoupled from `docs_metadata` so the JSON-parse output can evolve without altering the primary index. |
 | `framework_aliases` | 340 | Maps framework identifier (`appintents`), import name (`AppIntents`), display name (`App Intents`), and a comma-separated synonyms list (`nfc → corenfc`). Consulted at query time to canonicalise `--framework` arguments and to expand abbreviated user input. |
 | `inheritance` | 8,560 | Class inheritance edges, one row per `(parent_uri, child_uri)` pair. Both `parent_uri` and `child_uri` are indexed so walks in either direction are equally efficient. Populated by reading Apple's DocC `relationshipsSections.inheritsFrom` / `inheritedBy` arrays from the corpus JSON (#274). |
-| `doc_code_examples` | 15,760 | Code snippets extracted from doc pages. One row per snippet, with parent `doc_uri`, language, and intra-page position. |
-| `doc_symbols` | 240,794 | One row per Swift symbol extracted from snippets. Columns: `name`, `kind`, source position (line, column), full signature, async/throws/public/static flags, `attributes` (e.g. `@MainActor`), `conformances`, `generic_params`, `generic_constraints`. Used both for symbol-targeted searches and as the substrate for the constraint-enrichment pipeline of Section 4.3. |
+| `doc_code_examples` | 15,758 | Code snippets extracted from doc pages. One row per snippet, with parent `doc_uri`, language, and intra-page position. |
+| `doc_symbols` | 240,543 | One row per Swift symbol extracted from snippets. Columns: `name`, `kind`, source position (line, column), full signature, async/throws/public/static flags, `attributes` (e.g. `@MainActor`), `conformances`, `generic_params`, `generic_constraints`. Used both for symbol-targeted searches and as the substrate for the constraint-enrichment pipeline of Section 4.3. |
 | `doc_imports` | small | Per-snippet import declarations, used for module-graph queries. |
 
 A small number of FOREIGN KEY declarations exist on the secondary tables (`doc_symbols.doc_uri → docs_metadata.uri`) for documentation purposes. `PRAGMA foreign_keys` is not enabled at runtime: deletion is rare, and the supported recovery path for inconsistency is a full rebuild rather than referential repair.
@@ -103,7 +111,7 @@ Four FTS5 virtual tables provide the full-text-search substrate. Each was chosen
 | `docs_fts` | uri, source, framework, language, title, content, summary, symbols, symbol_components | `porter unicode61` | Primary user-facing FTS, holding both prose and AST-derived symbol columns. |
 | `doc_symbols_fts` | name, signature, attributes, conformances | `unicode61` | Symbol-name FTS used by `cupertino search --source samples` and by the candidate-fetcher protocol when intent routing detects an identifier query. Porter stemming is omitted because Swift identifiers should not be stemmed. |
 | `doc_code_fts` | code | `unicode61` | Full-text over raw code snippets (#81) for cross-page snippet search. |
-| `sample_code_fts` | url, framework, title, description | `porter unicode61` | Sample-code metadata FTS, queried from `samples.db`-aware paths. |
+| `sample_code_fts` | url, framework, title, description | `porter unicode61` | Apple sample-code listing metadata FTS (the landing pages, distinct from the rich `apple-sample-code.db`). |
 
 The tokenizer choice is `porter unicode61` on prose-bearing tables (English-language stemming with Unicode case folding) and plain `unicode61` on identifier-bearing tables. This split is intentional: stemming `URLSession` to `urlsess` would destroy the high-weight ranking signal that motivates the `symbols` column.
 
@@ -128,7 +136,7 @@ This two-column design separates precision-of-name from recall-of-fragment as in
 
 ## 4. Indexer pipeline
 
-The transition from on-disk raw corpus to a populated `search.db` is a multi-stage pipeline executed by `cupertino save --docs`. The stages are described in execution order.
+The transition from on-disk raw corpus to a populated documentation database is a multi-stage pipeline executed by `cupertino save --docs`. The stages are described in execution order.
 
 ### 4.1 Raw corpus and source-specific strategies
 
@@ -183,7 +191,7 @@ After per-document parsing concludes, a second pass walks the cached DocC JSON f
 
 ### 4.7 Sidecar writes and atomic rename
 
-The entire save operation writes to `search.db.in-flight` rather than `search.db` directly (#673 Phase G). On successful completion, the in-flight file is atomically renamed over the prior `search.db`; on crash or kill, the prior file remains intact and queryable. The version of the indexer binary shipped via Homebrew supports this mode; older binaries do not, in which case the database is written in-place and a mid-save kill produces an incomplete file.
+The entire save operation writes to a `<db>.in-flight` file (e.g. `apple-documentation.db.in-flight`) rather than the destination database directly (#673 Phase G). On successful completion, the in-flight file is atomically renamed over the prior database file; on crash or kill, the prior file remains intact and queryable. The version of the indexer binary shipped via Homebrew supports this mode; older binaries do not, in which case the database is written in-place and a mid-save kill produces an incomplete file.
 
 ## 5. Query layer
 
@@ -319,7 +327,7 @@ The rate-decay measurements and the FTS5 segment-merge mechanism are documented 
 
 Several alternatives were considered and rejected. The first invariant in particular is not a preference but a hard constraint on the system: **cupertino remains a file-based, embedded database**. No server, no SaaS, no remote query path. The remaining items are negative design choices made within that constraint.
 
-- **Embedded, file-based deployment is an architectural invariant.** The entire system is delivered as one SQLite file per database (`search.db`, `packages.db`, `samples.db`) shipped via GitHub Releases and queried in-process. No server is deployed, no network call is made on the query path, no SaaS dependency exists. This constraint follows from the project's offline-first goal: the system must be fully functional on a developer machine with no network. Migrations to a hosted backend, a client-server architecture, or a vector-database backend are out of scope, not future work.
+- **Embedded, file-based deployment is an architectural invariant.** The entire system is delivered as a set of SQLite files (the six per-source documentation databases, `packages.db`, `apple-sample-code.db`) shipped via GitHub Releases and queried in-process. No server is deployed, no network call is made on the query path, no SaaS dependency exists. This constraint follows from the project's offline-first goal: the system must be fully functional on a developer machine with no network. Migrations to a hosted backend, a client-server architecture, or a vector-database backend are out of scope, not future work.
 
 - **No vector embeddings.** The system performs only lexical search. No HNSW, IVF, or embedding columns are present. The semantic-search affordances offered by the system (RRF, intent routing, symbol-component recall) are all classical IR mechanisms. The motivating concerns are cost, latency, reproducibility, and the absence of a clear quality win on the canonical-lookup workload that dominates cupertino's queries. The position is documented in `docs/PRINCIPLES.md`.
 

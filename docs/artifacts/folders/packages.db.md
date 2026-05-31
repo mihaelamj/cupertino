@@ -1,6 +1,6 @@
 # packages.db - FTS5 Swift Package Search Database
 
-SQLite database with Full-Text Search (FTS5) index for fast Swift package code searches. Bundled with `search.db` and `samples.db` in the `cupertino-databases-vX.zip` release artifact (since #246 / #259 — the v1.0 release simplification).
+SQLite database with Full-Text Search (FTS5) index for fast Swift package code searches. Bundled with the per-source documentation databases (`apple-documentation.db` and siblings) and `apple-sample-code.db` in the `cupertino-databases-vX.zip` release artifact (since #246 / #259 — the v1.0 release simplification).
 
 ## Location
 
@@ -58,7 +58,7 @@ CREATE TABLE package_metadata (
     cupertino_version TEXT,                 -- cupertino binary version that did the fetch
     hosted_doc_url TEXT,                    -- canonical hosted DocC URL if available
     parents_json TEXT,                      -- transitive package dependency tree (JSON)
-    -- Availability columns (#219, mirrors docs_metadata pattern in search.db)
+    -- Availability columns (#219, mirrors docs_metadata pattern in apple-documentation.db)
     min_ios TEXT,
     min_macos TEXT,
     min_tvos TEXT,
@@ -77,7 +77,7 @@ CREATE INDEX idx_pkg_min_watchos    ON package_metadata(min_watchos);
 CREATE INDEX idx_pkg_min_visionos   ON package_metadata(min_visionos);
 ```
 
-> **Naming note**: `package_metadata` here in `packages.db` is the **per-package source-tree metadata**. The `packages` table in `search.db` is a different, smaller cross-reference table used by `docs_metadata.package_id` to link docs pages to package identity. Both exist; they are not duplicates.
+> **Naming note**: `package_metadata` here in `packages.db` is the **per-package source-tree metadata**. (The pre-v1.3.0 unified `search.db` also carried a separate, smaller cross-reference `packages` table linking docs pages to package identity via `docs_metadata.package_id`; the per-source split removed that docs-side cross-reference table, so it no longer exists in `apple-documentation.db`.)
 
 ### `package_files`
 
@@ -152,7 +152,7 @@ cupertino save --packages --packages-dir ~/my-packages
 - **Tokenizer**: Porter stemming + Unicode61
 - **Format**: Standard SQLite database file
 - **Compatibility**: Any SQLite 3.9.0+ client
-- **Size**: ~940 MB at v1.0.2 corpus state (183 Apple-official packages with full source files; the 9,700 figure that appeared in earlier drafts counted the embedded Swift packages catalog indexed INTO search.db, not packages.db rows)
+- **Size**: ~940 MB at v1.0.2 corpus state (183 Apple-official packages with full source files; the 9,700 figure that appeared in earlier drafts counted the embedded Swift packages catalog indexed INTO the docs databases, not packages.db rows)
 
 ## Used By
 
@@ -163,7 +163,7 @@ cupertino save --packages --packages-dir ~/my-packages
 
 ## Notes
 
-- Separate from `search.db` (documentation FTS) and `samples.db` (sample-code FTS)
+- Separate from the per-source documentation databases (`apple-documentation.db` etc.) and `apple-sample-code.db` (sample-code FTS)
 - Index reads `~/.cupertino/packages/` source trees written by `cupertino fetch --source packages`
 - Pre-#246 / pre-v1.0 the package metadata lived in a separate `cupertino-packages` GitHub repo with its own release zip; that companion repo was folded into `cupertino-docs` and the bundle is now single-zip
 - Thread-safe for concurrent reads

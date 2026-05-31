@@ -135,7 +135,7 @@ cupertino save --samples
 cupertino save --samples --force
 ```
 
-This creates `samples.db` with 18,000+ indexed source files.
+This creates `apple-sample-code.db` with 18,000+ indexed source files.
 
 ## MCP Tools
 

@@ -1,6 +1,6 @@
 # How to add a new content source
 
-**State**: living doc. Reflects the post-#1055 layer-2 close-out as of 2026-05-26. Adding a new source within the search.db FTS family is genuinely a **2-file PR**: one new `Packages/Sources/<X>Source/` target + one `.register(<X>Source())` line in `Cupertino.CompositionRoot.swift`.
+**State**: living doc. Reflects the post-#1055 layer-2 close-out as of 2026-05-26. Adding a new source within the per-source documentation FTS family is genuinely a **2-file PR**: one new `Packages/Sources/<X>Source/` target + one `.register(<X>Source())` line in `Cupertino.CompositionRoot.swift`.
 
 The 2-file claim is empirically proven by `Issue1042PluggabilityContractTests`, the registry-aware iterations across Doctor / Setup / SaveSiblingGate / Services.ReadService / CLI Search dispatch / MCP CompositeToolProvider, and the layer-2 deepenings (`makeReadStrategy`, `SearchRoute` open struct, `isSearchTier`) closed on 2026-05-26.
 
@@ -13,7 +13,7 @@ A new source's minimum surface area is:
    - The indexer concrete (`Search.SourceIndexer`)
    - The strategy concrete (`Search.SourceIndexingStrategy`)
    - The fetch strategy concrete (`Search.SourceFetchStrategy`) if the source is fetchable
-   - The read strategy concrete (`Search.SourceReadStrategy`) — the shared `Search.DocsReadStrategy` works for any source whose data lives in the search.db FTS family
+   - The read strategy concrete (`Search.SourceReadStrategy`) — the shared `Search.DocsReadStrategy` works for any source whose data lives in the per-source documentation FTS family
 
 2. **One `.register(<X>Source())` line** in `Packages/Sources/CupertinoComposition/Cupertino.CompositionRoot.swift`.
 
