@@ -6,6 +6,8 @@
 
 - **docs: declutter the README top.** Removed the two-paragraph release-notes blockquote from above the project description (it pushed the badges and tagline below the fold). The first thing a visitor now sees is the tagline, description, badges, and demo, followed by a single one-line `Latest:` pointer. The full v1.3.0 release detail moved down into a refreshed `## Project Status` section (which was stale at v1.2.0), with prior-release history collapsed to a one-line summary pointing at `CHANGELOG.md`.
 
+- **docs: split the 425-line Quick Start, extracting per-client setup into `docs/`.** The README's Quick Start was half the file, mostly 13 per-client MCP setup guides. The full per-client reference moved to a new `docs/mcp-clients.md` (Claude Desktop, Claude Code, OpenAI Codex, Cursor, VS Code, GitHub Copilot for Xcode, Zed, Windsurf, opencode), and the Agent-Skill instructions moved to a new `docs/agent-skill.md`. The README keeps Claude Desktop + Claude Code inline as the canonical examples and links out for the rest; both new docs are listed in the README `## Documentation` section, and the Installation note now points at `docs/mcp-clients.md` instead of "the sections below". README dropped from ~873 to ~667 lines.
+
 ## v1.3.0 (2026-05-31)
 
 ### Breaking
