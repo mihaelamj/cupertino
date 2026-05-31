@@ -57,7 +57,7 @@ The packages catalog is **bundled** with Cupertino and indexed automatically:
 
 ```bash
 # Just build the index (packages included automatically)
-cupertino save
+cupertino save --source packages
 ```
 
 To fetch package source archives (optional):
@@ -68,7 +68,7 @@ To fetch package source archives (optional):
 cupertino fetch --source packages
 
 # Rebuild index
-cupertino save
+cupertino save --source packages
 ```
 
 ## Priority Packages

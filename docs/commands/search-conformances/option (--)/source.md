@@ -1,3 +1,26 @@
-# `--source`
+# --source
 
-See [`cupertino search-conformances --help`](../README.md#options) for the canonical description.
+Restrict the search to a single source id.
+
+## Synopsis
+
+```bash
+cupertino search-conformances --protocol <name> --source <id>
+```
+
+## Description
+
+By default the command searches every source whose database carries indexed
+symbols. Pass `--source` to restrict to one: `apple-docs`, `swift-org`, or
+`swift-book`. Post-#1037 each source owns its own per-source database under the
+base directory.
+
+## Default
+
+None (every symbol-bearing source).
+
+## Example
+
+```bash
+cupertino search-conformances --protocol Codable --source apple-docs
+```

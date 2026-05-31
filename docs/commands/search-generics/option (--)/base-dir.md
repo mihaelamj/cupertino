@@ -1,3 +1,26 @@
-# `--base-dir`
+# --base-dir
 
-See [`cupertino search-generics --help`](../README.md#options) for the canonical description.
+Directory holding the per-source databases.
+
+## Synopsis
+
+```bash
+cupertino search-generics --constraint <type> --base-dir <path>
+```
+
+## Description
+
+Points the command at the folder that holds the per-source databases (the same
+folder `cupertino save` / `cupertino setup` operate on, e.g. `apple-documentation.db`,
+`swift-org.db`, `swift-book.db`). Defaults to the configured base directory
+(`baseDirectory` in `cupertino.config.json`, or `~/.cupertino`).
+
+## Default
+
+The configured base directory.
+
+## Example
+
+```bash
+cupertino search-generics --constraint Hashable --base-dir ~/.cupertino-dev
+```

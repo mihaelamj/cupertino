@@ -203,7 +203,7 @@ Each backend has its own missing-DB error pointing at `cupertino setup` or the r
 - [list-samples](../list-samples/), enumerate sample projectIds
 - [list-frameworks](../list-frameworks/), enumerate docs frameworks
 - [serve](../serve/), start MCP server (mirror tool: `read_document`, `read_sample`, `read_sample_file`)
-- [save](../save/), build the three databases
+- [save](../save/), build the per-source databases
 
 ## History
 

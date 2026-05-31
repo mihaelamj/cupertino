@@ -21,7 +21,7 @@ cupertino search-symbols [--query <substring>] [--kind <kind>]
 | `--kind` | string | none | Restrict to a single kind: `class`, `struct`, `enum`, `protocol`, `actor`, `typealias`, `macro`, `method`, `function`, `property`, `initializer`, `subscript`, `case`, `operator`. |
 | `--is-async` | flag | false | Only match symbols marked `async`. |
 | `--framework` | string | none | Restrict to a single framework (e.g. `swiftui`, `uikit`, `foundation`). |
-| `--limit` | int | 10 | Maximum results. |
+| `--limit` | int | 20 | Maximum results. |
 | `--format` | enum | `text` | Output format: `text`, `json`, `markdown`, `md`. |
 | `--base-dir` | string | base directory | Directory holding the per-source DBs (the folder `save` / `setup` operate on; defaults to the configured base directory). |
 | `--source` | string | all symbol-bearing sources | Restrict to one source id (`apple-docs`, `swift-org`, `swift-book`). |

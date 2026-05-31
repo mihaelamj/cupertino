@@ -1,6 +1,6 @@
 # --kind-coverage
 
-Print a per-source kind distribution audit for `search.db`.
+Print a per-source kind distribution audit across the per-source documentation databases.
 
 ## Synopsis
 
@@ -59,7 +59,7 @@ For each source (sorted alphabetically):
 
 - Read-only; no DB writes.
 - Doesn't gate the doctor verdict, purely informational signal.
-- Skipped silently when `search.db` is missing or schema-mismatched (the regular `checkSearchDatabase` already surfaced that).
+- Skipped silently when the apple-docs database is missing or schema-mismatched (the regular per-source health check already surfaced that).
 - `(missing)` rows come from sources that don't write a `docs_structured` entry at all (separate problem from `kind=unknown`).
 
 ## See also

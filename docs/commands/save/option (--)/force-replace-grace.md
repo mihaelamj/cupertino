@@ -19,7 +19,7 @@ The `--force-replace` termination ladder is:
 
 The grace window matters because SIGKILL mid-INSERT leaves the DB in a `database is locked` / `database disk image is malformed` state, exactly the corruption class this gate exists to prevent. SIGTERM-then-wait gives SQLite time to flush its WAL + checkpoint cleanly.
 
-**Default: 30 seconds.** That's a practical floor for a moderately-sized WAL (the `apple-sample-code.db` checkpoint case observed during #513 took ~5s; `search.db` near-end-of-day-builds with multi-GB WAL can need 60+).
+**Default: 30 seconds.** That's a practical floor for a moderately-sized WAL (the `apple-sample-code.db` checkpoint case observed during #513 took ~5s; `apple-documentation.db` near-end-of-day-builds with multi-GB WAL can need 60+).
 
 ## Values
 
@@ -34,7 +34,7 @@ cupertino save --force-replace --yes
 # grace defaults to 30 seconds
 ```
 
-### Generous grace for a near-completed search.db build
+### Generous grace for a near-completed apple-documentation.db build
 
 ```bash
 cupertino save --force-replace --yes --force-replace-grace 120

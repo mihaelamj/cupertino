@@ -19,7 +19,7 @@ Off (`--clear` not set → incremental). The flag is a plain `@Flag` without an 
 ## Behavior
 
 ### With `--clear`
-- Drops or wipes the rows for the in-scope database (search.db / packages.db / apple-sample-code.db depending on which scope flags are set).
+- Drops or wipes the rows for the in-scope databases (the per-source docs DBs such as `apple-documentation.db`, plus `packages.db` / `apple-sample-code.db`, depending on which sources are in scope).
 - Recreates schema from the current SchemaVersion.
 - Rebuilds the entire index.
 - Previous index data is lost.
@@ -31,23 +31,23 @@ Off (`--clear` not set → incremental). The flag is a plain `@Flag` without an 
 - Drops rows for files that no longer exist on disk.
 - Faster for partial recrawls.
 
-Note: `--samples` always wipes-and-rebuilds inside its scope independent of `--clear` (the samples-side schema doesn't yet support partial updates). `--clear` is meaningful for `--docs` (search.db) and `--packages` (packages.db).
+Note: `--source samples` always wipes-and-rebuilds inside its scope independent of `--clear` (the samples-side schema doesn't yet support partial updates). `--clear` is meaningful for the docs sources (e.g. `--source apple-docs` → `apple-documentation.db`) and `--source packages` (`packages.db`).
 
 ## Examples
 
-### Rebuild from scratch (force full re-index of search.db)
+### Rebuild from scratch (force full re-index of apple-documentation.db)
 ```bash
 cupertino save --clear
 ```
 
 ### Default incremental update
 ```bash
-cupertino save
+cupertino save --all
 ```
 
 ### Clear targeted at a custom DB path
 ```bash
-cupertino save --clear --search-db ./my-search.db
+cupertino save --clear --search-db ./apple-documentation.db
 ```
 
 ## Use Cases
@@ -67,5 +67,5 @@ cupertino save --clear --search-db ./my-search.db
 ## Notes
 
 - Default is incremental (no clear). `--no-clear` is not a valid flag, there's no inversion pair.
-- Clearing scope depends on which scope flags are passed (`--docs` / `--packages` / `--samples`); when none are passed, `--clear` applies to whichever scopes the default run touches.
-- For `--samples` the scope is always wiped-and-rebuilt regardless of `--clear`.
+- Clearing scope depends on which sources are in scope (`--source <id>`, repeatable, or `--all`).
+- For `--source samples` the scope is always wiped-and-rebuilt regardless of `--clear`.

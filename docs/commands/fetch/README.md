@@ -250,7 +250,7 @@ Typical crawl times:
 After fetching documentation, build the search index:
 
 ```bash
-cupertino save
+cupertino save --all
 ```
 
 Then start the MCP server:

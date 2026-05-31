@@ -20,7 +20,7 @@ Specifies the directory containing Swift.org documentation to include in the sea
 
 ### Include Swift.org Documentation (Default)
 ```bash
-cupertino save
+cupertino save --all
 ```
 
 ### Custom Swift.org Directory

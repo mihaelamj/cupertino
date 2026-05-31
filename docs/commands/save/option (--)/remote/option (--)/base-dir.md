@@ -13,7 +13,7 @@ cupertino save --remote --base-dir ~/custom-cupertino
 When combined with `--remote`, the `--base-dir` option controls:
 
 1. **State file location**: `{base-dir}/remote-save-state.json`
-2. **Default search database path**: `{base-dir}/search.db` (unless `--search-db` is specified)
+2. **Default apple-docs database path**: `{base-dir}/apple-documentation.db` (unless `--search-db` is specified)
 
 ### Important Difference
 
@@ -31,16 +31,16 @@ cupertino save --remote --base-dir ~/my-docs
 
 # Creates:
 #   ~/my-docs/remote-save-state.json
-#   ~/my-docs/search.db
+#   ~/my-docs/apple-documentation.db
 ```
 
 ```bash
 # Combine with custom search-db
-cupertino save --remote --base-dir ~/my-docs --search-db ~/databases/search.db
+cupertino save --remote --base-dir ~/my-docs --search-db ~/databases/apple-documentation.db
 
 # Creates:
 #   ~/my-docs/remote-save-state.json
-#   ~/databases/search.db
+#   ~/databases/apple-documentation.db
 ```
 
 ## Default

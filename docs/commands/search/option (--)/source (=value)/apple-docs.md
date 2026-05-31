@@ -67,7 +67,7 @@ cupertino fetch --source apple-docs \
   --max-pages 500
 
 # Build index
-cupertino save
+cupertino save --source apple-docs
 ```
 
 ## Notes

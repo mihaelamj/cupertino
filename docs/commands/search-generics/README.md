@@ -20,7 +20,7 @@ cupertino search-generics --constraint <name>
 |---|---|---|---|
 | `--constraint` | string | required | Generic-constraint type (e.g. `View`, `Hashable`, `Sendable`, `Codable`). |
 | `--framework` | string | none | Restrict to a single framework. |
-| `--limit` | int | 10 | Maximum results. |
+| `--limit` | int | 20 | Maximum results. |
 | `--format` | enum | `text` | Output format: `text`, `json`, `markdown`, `md`. |
 | `--base-dir` | string | base directory | Directory holding the per-source DBs (the folder `save` / `setup` operate on; defaults to the configured base directory). |
 | `--source` | string | all symbol-bearing sources | Restrict to one source id (`apple-docs`, `swift-org`, `swift-book`). |

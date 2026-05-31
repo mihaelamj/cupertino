@@ -43,7 +43,7 @@ Before starting the MCP server, you need:
 
 2. **Search index** (recommended):
    ```bash
-   cupertino save
+   cupertino save --all
    ```
 
 Without documentation, the server will display a getting started guide and exit.
@@ -56,7 +56,7 @@ Without documentation, the server will display a getting started guide and exit.
 cupertino
 ```
 
-The server resolves its databases under the base directory (`~/.cupertino` by default, or `--base-dir <path>`). Post per-source-DB-split (#1036) the apple-docs primary search index is the per-source `apple-documentation.db`, resolved through the source registry — **not** the legacy monolithic `search.db`:
+The server resolves its databases under the base directory (`~/.cupertino` by default, or `--base-dir <path>`). Post per-source-DB-split (#1036) the apple-docs primary search index is the per-source `apple-documentation.db`, resolved through the source registry, **not** the legacy monolithic `search.db`:
 - Apple-docs search index: `~/.cupertino/apple-documentation.db`
 - Samples DB: `~/.cupertino/apple-sample-code.db`
 - Packages DB: `~/.cupertino/packages.db`
@@ -299,6 +299,72 @@ Read a specific source file from a sample project.
 - `project_id` (required): Sample project ID
 - `file_path` (required): Path to file within the project
 
+## AST Symbol Tools
+
+If a search index is available, the server also provides these AST-derived symbol tools (added in [#948](https://github.com/mihaelamj/cupertino/issues/948)). Each mirrors a `cupertino search-*` / `cupertino inheritance` CLI command. The five `min_*` platform filters AND-combine and apply to sources whose data carries availability metadata.
+
+### search_symbols
+
+Search the AST symbol index by name, kind, async, and framework.
+
+**Parameters:**
+- `query` (optional): Symbol name pattern (partial, case-insensitive match)
+- `kind` (optional): Symbol kind (`struct`, `class`, `actor`, `enum`, `protocol`, `function`, `property`, ...)
+- `is_async` (optional): Match only `async` symbols
+- `framework` (optional): Framework filter (e.g. `swiftui`, `foundation`)
+- `limit` (optional): Max results (default: 20)
+- `min_ios` / `min_macos` / `min_tvos` / `min_watchos` / `min_visionos` (optional): Minimum platform-version filters
+
+### search_property_wrappers
+
+Find symbols whose declaration uses a given property wrapper.
+
+**Parameters:**
+- `wrapper` (required): Property wrapper name (with or without `@`)
+- `framework` (optional): Framework filter
+- `limit` (optional): Max results (default: 20)
+- `min_ios` / `min_macos` / `min_tvos` / `min_watchos` / `min_visionos` (optional): Minimum platform-version filters
+
+### search_concurrency
+
+Find symbols using a Swift concurrency pattern.
+
+**Parameters:**
+- `pattern` (required): One of `async`, `actor`, `sendable`, `mainactor`, `task`, `asyncsequence`
+- `framework` (optional): Framework filter
+- `limit` (optional): Max results (default: 20)
+- `min_ios` / `min_macos` / `min_tvos` / `min_watchos` / `min_visionos` (optional): Minimum platform-version filters
+
+### search_conformances
+
+Find symbols that conform to a given protocol.
+
+**Parameters:**
+- `protocol` (required): Protocol name (e.g. `View`, `Codable`, `Hashable`, `Sendable`)
+- `framework` (optional): Framework filter
+- `limit` (optional): Max results (default: 20)
+- `min_ios` / `min_macos` / `min_tvos` / `min_watchos` / `min_visionos` (optional): Minimum platform-version filters
+
+### search_generics
+
+Find symbols with a generic-parameter constraint.
+
+**Parameters:**
+- `constraint` (required): Constraint type (e.g. `View`, `Hashable`, `Sendable`, `Codable`)
+- `framework` (optional): Framework filter
+- `limit` (optional): Max results (default: 20)
+- `min_ios` / `min_macos` / `min_tvos` / `min_watchos` / `min_visionos` (optional): Minimum platform-version filters
+
+### get_inheritance
+
+Walk class-inheritance chains (UIKit / AppKit / Foundation class hierarchies). Returns ancestors, descendants, or both; an empty walk carries a kind-aware `No inheritance data` marker (root class, value type, or a pointer to `search_conformances` for protocols).
+
+**Parameters:**
+- `symbol` (required): Symbol name to walk from (e.g. `UIButton`, `NSView`)
+- `direction` (optional): `up` (ancestors, default), `down` (descendants), or `both`
+- `depth` (optional): Maximum walk depth (default: 5)
+- `framework` (optional): Disambiguate when the symbol exists in multiple frameworks
+
 ## Stopping the Server
 
 Press `Ctrl+C` to stop the server gracefully.
@@ -328,7 +394,7 @@ ls -la ~/.cupertino/apple-documentation.db
 
 **Solution:** Build the search index:
 ```bash
-cupertino save
+cupertino save --all
 ```
 
 ## See Also

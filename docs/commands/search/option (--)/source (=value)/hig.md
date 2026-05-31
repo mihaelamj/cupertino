@@ -70,7 +70,7 @@ Examples:
 cupertino fetch --source hig
 
 # Build index
-cupertino save
+cupertino save --source hig
 ```
 
 ## Categories

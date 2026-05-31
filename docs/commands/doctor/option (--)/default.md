@@ -16,7 +16,7 @@ When you run `cupertino doctor` without any options, it uses these defaults:
 cupertino doctor \
   --docs-dir ~/.cupertino/docs \
   --evolution-dir ~/.cupertino/swift-evolution \
-  --search-db ~/.cupertino/search.db
+  --search-db ~/.cupertino/apple-documentation.db
 ```
 
 Default output focuses on **database + MCP health**. Raw corpus directories and Swift-package selection state moved behind [`--save`](save.md) in [#68](https://github.com/mihaelamj/cupertino/issues/68) because a `cupertino setup` user has no raw corpus on disk (the bundle ships pre-built DBs); the previous `0 files` line under "Apple docs" looked like a failure and isn't.
@@ -27,7 +27,7 @@ Default output focuses on **database + MCP health**. Raw corpus directories and 
 |--------|---------------|-------------|
 | `--docs-dir` | `~/.cupertino/docs` | Apple documentation directory (only used when `--save` is also passed) |
 | `--evolution-dir` | `~/.cupertino/swift-evolution` | Swift Evolution proposals directory (only used when `--save` is also passed) |
-| `--search-db` | `~/.cupertino/search.db` | Search database path |
+| `--search-db` | `~/.cupertino/apple-documentation.db` | apple-docs database path (legacy flag name) |
 
 ## Default Health Check Process
 
@@ -69,23 +69,29 @@ or
    ✓ Indexed symbols: 108536
 ```
 
-### 4. Search Index (`search.db`) 🔍
+### 4. Per-source documentation indexes 🔍
 ```
 🔍 Search Index
-   ✓ Database: ~/.cupertino/search.db
-   ✓ Size: 2.48 GB
-   ✓ Schema version: 13 (matches installed binary)
-   ✓ Frameworks: 420
+   ⚠  search.db: not found (legacy unified DB; superseded by the per-source DBs in v1.3.0)
+
+🔍 Apple Developer Documentation (apple-documentation.db)
+   ✓ Database: ~/.cupertino/apple-documentation.db
+   ✓ Size: 2.82 GB
+   ✓ Schema version: 18 (matches installed binary)
+   ✓ Frameworks: 398
    📚 Indexed sources:
-     ✓ apple-docs: 284518 entries
-     ✓ swift-evolution: 483 entries
+     ✓ apple-docs: 351505 entries
+
+   … one 🔍 section per source follows (hig.db, apple-archive.db,
+     swift-evolution.db, swift-org.db, swift-book.db), each with size,
+     schema 18, and framework + entry counts
 ```
 
 or
 
 ```
-✗ Database: ~/.cupertino/search.db (not found)
-   → Run: cupertino setup  (or `cupertino save` if building locally)
+✗ Database: ~/.cupertino/apple-documentation.db (not found)
+   → Run: cupertino setup  (or `cupertino save --source apple-docs` if building locally)
 ```
 
 ### 5. Providers 🔧
@@ -99,9 +105,15 @@ or
 ```
 8. Schema versions (#234)
 
-   ✓ search.db: 13 (sequential), journal=wal
-   ✓ packages.db: 2 (sequential), journal=delete
-   ✓ apple-sample-code.db: 3 (sequential), journal=wal
+   ⚠ search.db: not found (legacy unified DB; superseded by per-source DBs)
+   ✓ apple-documentation.db: 18 (sequential), journal=wal
+   ✓ hig.db: 18 (sequential), journal=wal
+   ✓ apple-archive.db: 18 (sequential), journal=wal
+   ✓ swift-evolution.db: 18 (sequential), journal=wal
+   ✓ swift-org.db: 18 (sequential), journal=wal
+   ✓ swift-book.db: 18 (sequential), journal=wal
+   ✓ packages.db: 5 (sequential), journal=delete (read-only distribution mode)
+   ✓ apple-sample-code.db: 4 (sequential), journal=delete (read-only distribution mode)
 ```
 
 Anything other than `journal=wal` is flagged (the schema-version probe doubles as a WAL sanity check per [#236](https://github.com/mihaelamj/cupertino/issues/236)).
@@ -138,7 +150,7 @@ See [`--save`](save.md) for the full additive surface.
 
 ### Check Custom Search DB
 ```bash
-cupertino doctor --search-db /opt/search.db
+cupertino doctor --search-db /opt/apple-documentation.db
 ```
 
 ## Typical Output
@@ -166,17 +178,19 @@ cupertino doctor --search-db /opt/search.db
    ✓ Indexed symbols: 108536
 
 🔍 Search Index
-   ✓ Database: ~/.cupertino/search.db
-   ✓ Size: 2.48 GB
-   ✓ Schema version: 13 (matches installed binary)
-   ✓ Frameworks: 420
+   ⚠  search.db: not found (legacy unified DB; superseded by the per-source DBs in v1.3.0)
+
+🔍 Apple Developer Documentation (apple-documentation.db)
+   ✓ Database: ~/.cupertino/apple-documentation.db
+   ✓ Size: 2.82 GB
+   ✓ Schema version: 18 (matches installed binary)
+   ✓ Frameworks: 398
    📚 Indexed sources:
-     ✓ apple-docs: 284518 entries
-     ✓ swift-evolution: 483 entries
-     ✓ apple-archive: 368 entries
-     ✓ hig: 173 entries
-     ✓ swift-org: 115 entries
-     ✓ swift-book: 78 entries
+     ✓ apple-docs: 351505 entries
+
+   … one 🔍 section per source follows (hig.db, apple-archive.db,
+     swift-evolution.db, swift-org.db, swift-book.db), each with size,
+     schema 18, and framework + entry counts
 
 🔧 Providers
    ✓ MCP.Support.DocsResourceProvider: available
@@ -185,14 +199,20 @@ cupertino doctor --search-db /opt/search.db
 
 8. Schema versions (#234)
 
-   ✓ search.db: 13 (sequential), journal=wal
-   ✓ packages.db: 2 (sequential), journal=delete
-   ✓ apple-sample-code.db: 3 (sequential), journal=wal
+   ⚠ search.db: not found (legacy unified DB; superseded by per-source DBs)
+   ✓ apple-documentation.db: 18 (sequential), journal=wal
+   ✓ hig.db: 18 (sequential), journal=wal
+   ✓ apple-archive.db: 18 (sequential), journal=wal
+   ✓ swift-evolution.db: 18 (sequential), journal=wal
+   ✓ swift-org.db: 18 (sequential), journal=wal
+   ✓ swift-book.db: 18 (sequential), journal=wal
+   ✓ packages.db: 5 (sequential), journal=delete (read-only distribution mode)
+   ✓ apple-sample-code.db: 4 (sequential), journal=delete (read-only distribution mode)
 
 ✅ All checks passed - MCP server ready
 ```
 
-(Output snapshots a v1.1.0 install; sizes / counts vary with your local DB. To also see corpus / packages / save-preflight state, run `cupertino doctor --save`.)
+(Output snapshots a v1.3.0 install; sizes / counts vary with your local DB. To also see corpus / packages / save-preflight state, run `cupertino doctor --save`.)
 
 ### Fresh Installation (no databases yet)
 ```
@@ -212,7 +232,7 @@ cupertino doctor --search-db /opt/search.db
      → Run: cupertino fetch --source samples && cupertino cleanup && cupertino save --source samples
 
 🔍 Search Index
-   ✗ Database: ~/.cupertino/search.db (not found)
+   ✗ Database: ~/.cupertino/apple-documentation.db (not found)
      → Run: cupertino setup  (or `cupertino save` if building locally)
 
 🔧 Providers
@@ -248,7 +268,7 @@ For maintainers rebuilding locally, see [`--save`](save.md) and the `cupertino f
 
 ## Notes
 
-- Default focus is the runtime surface: MCP server health + the three databases. Corpus + package-selection state is opt-in via [`--save`](save.md).
+- Default focus is the runtime surface: MCP server health + the bundled databases (the per-source docs DBs, `packages.db`, `apple-sample-code.db`). Corpus + package-selection state is opt-in via [`--save`](save.md).
 - Defaults match `cupertino fetch`, `cupertino save`, and `cupertino serve`.
 - All paths support tilde (`~`) expansion.
 - Use before starting server to verify setup.
