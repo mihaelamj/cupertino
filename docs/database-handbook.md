@@ -4,6 +4,8 @@ The single entry point for every question about cupertino's database design, sch
 
 This file is the canonical index. If a database-related doc or rule exists and is not linked from here, treat it as undiscoverable; the fix is to add it to this index in the same PR that introduces it.
 
+> **Physical layout as of v1.3.0 (2026-05-31):** the unified `search.db` this handbook and `docs/architecture/database.md` describe is now shipped as 8 per-source databases (`apple-documentation.db`, `hig.db`, `apple-archive.db`, `swift-evolution.db`, `swift-org.db`, `swift-book.db`, `apple-sample-code.db`, `packages.db`), each in rollback journal mode so it opens read-only without an `-shm` sidecar. Every query / read / serve connection opens the databases read-only ([#1194](https://github.com/mihaelamj/cupertino/issues/1194)), so an end user cannot write or delete rows. The split is physical packaging only: the per-database schema, BM25F weights, enrichment passes, and ranking are unchanged, so the `search.db` schema reference in `docs/architecture/database.md` and the v1.2.0 search-quality baselines in §5 still apply per database. `cupertino setup` downloads `cupertino-databases-v1.3.0.zip` (742 MB).
+
 ---
 
 ## 1. Cold-start bootstrap order
@@ -37,7 +39,7 @@ After this sequence, every database question has a named home to point at.
 
 ---
 
-## 3. Designing a new database (packages.db, samples.db, or a future one)
+## 3. Designing a new database (packages.db, apple-sample-code.db, or a future one)
 
 | File | Gives you |
 |---|---|
@@ -58,7 +60,7 @@ After this sequence, every database question has a named home to point at.
 | `docs/audits/release-readiness-v1.2.0.md` | Worked example of schema-shape + count-shape validation. Pattern to copy. |
 | Memory `feedback_never_touch_brew_db.md` | **Read-only probing is fine; never write to the brew DB at `~/.cupertino/`**. SELECT and PRAGMA only. |
 
-The brew DB at `~/.cupertino/search.db` is user-production state. Use a SQLite reader-only connection (`file:...?mode=ro`) or accept the small cache-resident-page risk of the default mode; never issue UPDATE / INSERT / DELETE / DDL against it. The dev DB at `~/.cupertino-dev/search.db` is the experimentation target.
+The brew DBs in `~/.cupertino/` (`apple-documentation.db`, `packages.db`, `apple-sample-code.db`, and the smaller per-source files) are user-production state. As of v1.3.0 they ship in rollback journal mode and cupertino opens them read-only on every query / read / serve path (#1194), so a normal `cupertino` invocation cannot write to them. For ad-hoc probing use a SQLite read-only connection (`file:...?mode=ro`) and never issue UPDATE / INSERT / DELETE / DDL against them. The dev copies in `~/.cupertino-dev/` are the experimentation target.
 
 ---
 
@@ -70,7 +72,7 @@ The brew DB at `~/.cupertino/search.db` is user-production state. Use a SQLite r
 | `docs/design/search-quality-eval.md` | The cupertino-specific specialisation. Eight-class query taxonomy (canonical lookup, framework root, acronym, CamelCase fragment, deprecation-aware, cross-source canonical, prose, symbol-attribute), each with the appropriate metric. **Both success criteria** (good search C1 + anti-hallucination C2). Phased plan including Phase 1.7 agent-end-to-end eval. |
 | Memory `feedback_code_changes_as_ideas_for_future.md` | During research / audit / documentation work, frame code direction as ideas for future releases, not patches to land now. |
 
-**Concrete baselines on the v1.2.0 candidate DB (2026-05-20):**
+**Concrete baselines on the v1.2.0 candidate DB (2026-05-20)** (still the reference under v1.3.0: the per-source split changed packaging, not the per-database schema or ranking, so these paired-comparison baselines carry forward):
 - `docs/audits/search-quality-baseline-v1.2.0.md` — classes A + B (canonical lookup, framework root): **MRR 0.9467, P@1 perfect on 46/50**. The reference for paired ranking-change comparisons.
 - `docs/audits/search-quality-deprecation-baseline-v1.2.0.md` — class E (deprecation-aware): **Swift form wins 30/30 (100%) over NS-prefixed Obj-C form, sign-test p = 0.0078**. Cupertino reliably promotes modern Swift over legacy NS-class for the most user-visible anti-hallucination concern.
 - `docs/audits/search-quality-crosssource-baseline-v1.2.0.md` — class F (cross-source canonical): **19/19 OK when the expected source is in top-10, p = 1.9 × 10⁻⁶**. Reveals that HIG and apple-archive content is systematically out-competed by apple-docs at top-1 due to the 6:1 source-weight ratio. This is the intended bias for AI-agent code-generation grounding but has a cost for design-vocabulary queries.

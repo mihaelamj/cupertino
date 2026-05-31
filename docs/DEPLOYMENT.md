@@ -1,9 +1,9 @@
 # Cupertino Deployment Guide
 
-**Last tagged release:** v1.1.0 on 2026-05-13.
-**Last updated:** 2026-05-15.
+**Last tagged release:** v1.2.1 on 2026-05-23.
+**Last updated:** 2026-05-31.
 
-`main` carries the v1.2.0-staged changes (Logging Singleton kill, foundation-only producer epic, in-progress closure-purge) but no `v1.2.0` tag has been cut yet. The release process below describes how each tagged release is shipped.
+`main` carries the v1.3.0-staged changes (per-source DB bundle: the unified `search.db` split into 8 per-source DBs shipped in rollback journal mode, plus read-only query/read/serve connections) but no `v1.3.0` tag has been cut yet. The release process below describes how each tagged release is shipped.
 
 This guide covers the complete release process for Cupertino.
 
