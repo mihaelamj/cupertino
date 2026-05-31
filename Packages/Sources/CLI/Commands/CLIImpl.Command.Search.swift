@@ -146,12 +146,11 @@ extension CLIImpl.Command {
         @Option(
             name: .long,
             help: """
-            Override the path used for every docs source's database. Legacy debug \
-            knob: post-#1037 each docs source resolves to its own per-source DB \
-            (apple-documentation.db / hig.db / apple-archive.db / swift-evolution.db / \
-            swift-org.db / swift-book.db); passing this opens the single file for \
-            every source-prefix the fan-out queries. Mostly useful for tests + the \
-            migration window from a legacy monolithic search.db.
+            Override the path used for every docs source's database (a single \
+            shared file). Legacy debug knob: post-#1037 each docs source normally \
+            resolves to its own per-source database through the registry; passing \
+            this points all the docs sources at the given file instead. Mostly \
+            useful for tests.
             """
         )
         var searchDb: String?
