@@ -16,6 +16,12 @@ Every open issue was read (title, `## Status` block, problem statement) and judg
 
 Counts at audit time: 97 open issues after closing #1184 (fixed in PR #1183) and #1071 (resolved by the v1.3.0 release) during this audit.
 
+### Limitations (read before trusting a verdict)
+
+This is **triage from each issue's own `## Status` block + problem statement, not a code-verified audit.** A `KEEP` here means "the issue still reads as valid," not "independently confirmed against the codebase." Verdicts marked `CLOSEABLE` were checked against concrete evidence (#1184 against PR #1183, #1071 against `databaseVersion`, #748 against the shipped README's acceptance criteria); the rest were not re-verified against code. Treat the table as a routing map, not a correctness guarantee. Per-issue code verification is a separate, heavier pass.
+
+The epic grouping is **prose membership** recorded in epic bodies + this doc; GitHub has no machine-readable parent/child link here, so a newly filed issue is an orphan until manually claimed. Several epics are deliberately thin (2 to 4 members) and exist as routing buckets, not large bodies of work. Cross-references noted as "(cross-ref X)" mean a second epic touches the issue; the bolded epic in the membership list is the single owner.
+
 ## Epic taxonomy
 
 ### Existing epics (kept; orphans claimed below)
