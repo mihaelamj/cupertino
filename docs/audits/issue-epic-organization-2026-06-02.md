@@ -183,6 +183,27 @@ Closed during this audit: **#1184** (fixed in PR #1183), **#1071** (resolved by 
 
 ## Quick wins (closeable or near-trivial)
 
-- **#748**: verify against the 2026-06-01 README restructure (dual-consumer framing shipped), then close.
+- **#748**: dual-consumer README shipped 2026-06-01; verified against 5/6 acceptance criteria and closed.
 - **#1200**, **#1201**: one-file fixes from the docs/commands audit.
 - **#1175**: README install-ordering one-liner.
+
+## Revision (2026-06-02, post-critique): epic vs label
+
+A harsh self-review of the first cut of this organization found the load-bearing error: **I created nine epic *issues* to represent categories.** The correct primitive for "what area does this issue belong to" is a queryable **label**, not an issue. Prose membership in epic bodies is not queryable and does not travel with a newly filed issue, so it rots immediately. The repo's own `github-discipline.md` already defines a topical label axis (with a 3-carrier threshold); it had simply never been built (only `bug` / `enhancement` / `epic` / `good first issue` / `priority: high` existed).
+
+The corrected model:
+
+- **An epic is justified only when there is a real dependency graph to coordinate** (multiple issues with ordering / blocking). A bare category is not an epic.
+- **Categories are topical labels**, applied to every issue, queryable, self-maintaining.
+
+Actions taken:
+
+- Created the topical axis and applied one primary label to all 93 routable open issues: `topical: search` (17), `arch` (21), `mcp` (15), `source` (9), `availability` (8), `cli` (7), `docs` (6), `diagnostics` (5), `perf` (5). Query e.g. `is:open label:"topical: search"`.
+- **Closed 5 category-epics** created earlier the same day, demoting each to a label: #1220 (bug sweep, use `bug`), #1224 (`topical: cli`), #1225 (`topical: diagnostics`), #1226 (`topical: docs`), #1227 (distribution: 2 standalone issues, below threshold for a label). The Epic-column entries in the table above for those five are superseded by the labels named here.
+- Removed the `epic` label from #742 (it is the keystone *under* #268, not a peer epic).
+
+**Surviving epics (11)**, reserved for coordinated multi-step work: #189 (TUI, dormant), #190 (source expansion), #191 (search quality), #266 (availability v2), #268 (MCP capability), #769 (layer separation), #1036 (per-source DB split), #1221 (recrawl), #1222 (Linux), #1223 (declarative pluggability), #1228 (semantic + vector).
+
+### Verification policy
+
+This audit is triage, not a code-verified pass (see Limitations). A full speculative code-verification of all ~95 issues is the wrong investment: most will not be touched soon. The policy is **verify at pickup**: when an issue is about to be worked, build/grep/read it against the current code to confirm its `KEEP` verdict still holds, and only then. The verdicts here route work; they do not certify it.
