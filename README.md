@@ -659,7 +659,9 @@ The docs and sample-code repositories will be used by the planned `make install 
 
 ## Roadmap
 
-North-star: **bugs to recrawl to vector to tutor**. Fix correctness first, get a clean resumable re-crawl + re-index, add a vector / semantic layer alongside FTS5, then build the agent-facing tutor surface on top. The canonical living roadmap is [#183](https://github.com/mihaelamj/cupertino/issues/183); the diagram below tracks epic progress at a glance. Colors follow the status palette: green = shipped, blue = in progress, orange = next up, yellow = partial / blocked, grey = planned.
+The canonical living roadmap is [#183](https://github.com/mihaelamj/cupertino/issues/183); the diagram below tracks epic progress at a glance.
+
+Status colors:
 
 ```mermaid
 flowchart TB
@@ -669,10 +671,21 @@ flowchart TB
   classDef partial fill:#FFD60A,stroke:#B59B00,color:#000000;
   classDef todo    fill:#8E8E93,stroke:#636366,color:#ffffff;
 
-  subgraph Path["North-star release path"]
+  subgraph Legend["Status colors"]
     direction TB
-    P1["bugs"]:::active --> P2["recrawl"]:::next --> P3["vector"]:::todo --> P4["tutor"]:::todo
+    L1["Shipped"]:::done ~~~ L2["In progress"]:::active ~~~ L3["Next up"]:::next ~~~ L4["Partial or blocked"]:::partial ~~~ L5["Planned"]:::todo
   end
+```
+
+Epic progress:
+
+```mermaid
+flowchart TB
+  classDef done    fill:#34C759,stroke:#248A3D,color:#ffffff;
+  classDef active  fill:#0A84FF,stroke:#0060DF,color:#ffffff;
+  classDef next    fill:#FF9F0A,stroke:#C77700,color:#000000;
+  classDef partial fill:#FFD60A,stroke:#B59B00,color:#000000;
+  classDef todo    fill:#8E8E93,stroke:#636366,color:#ffffff;
 
   subgraph InFlight["Epics in flight"]
     direction TB
@@ -689,7 +702,7 @@ flowchart TB
     E943["#943 comprehensive query batteries"]:::done ~~~ E251["#251 unify sources + databases"]:::done
   end
 
-  Path ~~~ InFlight ~~~ Planned ~~~ Shipped
+  InFlight ~~~ Planned ~~~ Shipped
 ```
 
 ## Support
