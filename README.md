@@ -659,46 +659,37 @@ The docs and sample-code repositories will be used by the planned `make install 
 
 ## Roadmap
 
-North-star: **bugs to recrawl to vector to tutor**. Fix correctness first, get a clean resumable re-crawl + re-index, add a vector / semantic layer alongside FTS5, then build the agent-facing tutor surface on top. The canonical living roadmap is [#183](https://github.com/mihaelamj/cupertino/issues/183); the diagram below tracks epic progress at a glance. Colors follow the status palette: green = shipped, blue = in progress, indigo = in review, orange = next up, yellow = partial / blocked, grey = planned.
+North-star: **bugs to recrawl to vector to tutor**. Fix correctness first, get a clean resumable re-crawl + re-index, add a vector / semantic layer alongside FTS5, then build the agent-facing tutor surface on top. The canonical living roadmap is [#183](https://github.com/mihaelamj/cupertino/issues/183); the diagram below tracks epic progress at a glance. Colors follow the status palette: green = shipped, blue = in progress, orange = next up, yellow = partial / blocked, grey = planned.
 
 ```mermaid
 flowchart TB
   classDef done    fill:#34C759,stroke:#248A3D,color:#ffffff;
   classDef active  fill:#0A84FF,stroke:#0060DF,color:#ffffff;
-  classDef review  fill:#5E5CE6,stroke:#3634A3,color:#ffffff;
   classDef next    fill:#FF9F0A,stroke:#C77700,color:#000000;
   classDef partial fill:#FFD60A,stroke:#B59B00,color:#000000;
   classDef todo    fill:#8E8E93,stroke:#636366,color:#ffffff;
 
   subgraph Path["North-star release path"]
-    direction LR
+    direction TB
     P1["bugs"]:::active --> P2["recrawl"]:::next --> P3["vector"]:::todo --> P4["tutor"]:::todo
   end
 
   subgraph InFlight["Epics in flight"]
-    E1036["#1036 per-source DB split"]:::partial
-    E191["#191 search quality + FTS"]:::partial
-    E769["#769 layer separation"]:::next
-    E742["#742 MCP diagnostic keystone"]:::next
+    direction TB
+    E1036["#1036 per-source DB split"]:::partial ~~~ E191["#191 search quality + FTS"]:::partial ~~~ E769["#769 layer separation"]:::next ~~~ E742["#742 MCP diagnostic keystone"]:::next
   end
 
   subgraph Planned["Epics planned"]
-    E268["#268 MCP capability expansion"]:::todo
-    E266["#266 availability annotation v2"]:::todo
-    E190["#190 source expansion"]:::todo
-    E189["#189 TUI internal tracker"]:::todo
+    direction TB
+    E268["#268 MCP capability expansion"]:::todo ~~~ E266["#266 availability annotation v2"]:::todo ~~~ E190["#190 source expansion"]:::todo ~~~ E189["#189 TUI internal tracker"]:::todo
   end
 
   subgraph Shipped["Epics shipped"]
-    E943["#943 comprehensive query batteries"]:::done
-    E251["#251 unify sources + databases"]:::done
+    direction TB
+    E943["#943 comprehensive query batteries"]:::done ~~~ E251["#251 unify sources + databases"]:::done
   end
 
-  Path --> InFlight
-  P1 --> E1036
-  P2 --> E191
-  P3 --> E268
-  E742 --> E268
+  Path ~~~ InFlight ~~~ Planned ~~~ Shipped
 ```
 
 ## Support
