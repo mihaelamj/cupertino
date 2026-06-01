@@ -1,6 +1,6 @@
 # 🍎📚 Cupertino
 
-**Apple documentation CLI for humans and MCP server for AI agents**
+**Apple documentation CLI for humans and MCP server for AI agents.**
 
 Cupertino is a CLI for human developers and an MCP server for AI agents. Both surfaces use the same local index of Apple documentation, Swift packages, sample code, Human Interface Guidelines, Swift Evolution proposals, and Swift.org pages.
 
@@ -11,11 +11,9 @@ Cupertino is a CLI for human developers and an MCP server for AI agents. Both su
 [![LobeHub](https://img.shields.io/badge/LobeHub-listed-purple)](https://lobehub.com/mcp/mihaelamj-cupertino)
 [![X](https://img.shields.io/badge/X-@cupertinomcp-black?logo=x)](https://x.com/cupertinomcp)
 
-Follow updates on X: [@cupertinomcp](https://x.com/cupertinomcp)
-
 ![Cupertino Demo](docs/images/cupertino.gif)
 
-> **Latest:** v1.3.0 (2026-05-31) — per-source database bundle, read-only databases. [Release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.3.0) · [Project Status](#project-status) · [CHANGELOG](CHANGELOG.md)
+> **Latest: v1.3.0** (2026-05-31): per-source database bundle, read-only databases. The shipped bundle carries **351,505 documents / 240,543 symbols across 420+ frameworks**. [Release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.3.0) · [CHANGELOG](CHANGELOG.md) · [Roadmap](#roadmap) · live dashboard at <https://cupertino.aleahim.com/>. Follow updates on X: [@cupertinomcp](https://x.com/cupertinomcp).
 
 ## What is Cupertino?
 
@@ -25,66 +23,61 @@ Cupertino is a local, structured documentation system for Apple platforms. It:
 - **Indexes** everything into a fast, searchable SQLite FTS5 database with field-weighted BM25 (BM25F) ranking and AST-extracted symbol columns
 - **Runs** as a terminal CLI for developers who want fast local `search`, `read`, `doctor`, and `setup` commands
 - **Serves** the same corpus to AI agents like Claude, ChatGPT, Codex, Cursor, and Copilot via the Model Context Protocol
-- **Provides** offline access to 351,505+ documentation pages / 240,543 symbols across 420+ frameworks (v1.3.0 bundle)
+- **Provides** offline access to 351,505 documentation pages / 240,543 symbols across 420+ frameworks (v1.3.0 bundle)
 
-### Why Build This?
+Why build this:
 
 - **No more hallucinations**: AI agents get accurate, up-to-date Apple API documentation
-- **Offline development**: Work with full documentation without internet access
-- **Deterministic search**: Same query always returns same results
-- **Local control**: Own your documentation, inspect the database, script workflows
-- **Dual-consumer design**: Use it directly at the terminal or wire it into an MCP-capable AI client
+- **Offline development**: work with full documentation without internet access
+- **Deterministic search**: the same query always returns the same results
+- **Local control**: own your documentation, inspect the database, script workflows
+- **Dual-consumer design**: use it directly at the terminal or wire it into an MCP-capable AI client
 
-## Quick Start
+## Installation
 
-> **Note:** When building from source, commands must be run from the `Packages` directory. The one-command install works from anywhere.
+Requires **macOS 15+ (Sequoia)** and ~4.2 GB free disk for the full v1.3.0 bundle (compressed download ~742 MB). Building from source additionally needs Swift 6.3+ and Xcode 26+ (use `xcrun swift build`, not bare `swift`).
 
-### Requirements
-
-- macOS 15+ (Sequoia)
-- ~4.2 GB disk space for the full v1.3.0 per-source bundle (apple-documentation.db ~2.8 GB, packages.db ~1.09 GB, apple-sample-code.db ~192 MB, plus the smaller hig / apple-archive / swift-evolution / swift-org / swift-book databases; compressed download is ~742 MB)
-
-*Building from source additionally requires Swift 6.3+ and Xcode 26+ (use `xcrun swift build`, not bare `swift`)*
-
-### Installation
-
-**One-command install (recommended):**
+**One-command install (recommended)**: downloads a signed, notarized universal binary to `/usr/local/bin` and fetches the databases:
 
 ```bash
 bash <(curl -sSL https://raw.githubusercontent.com/mihaelamj/cupertino/main/install.sh)
 ```
 
-This downloads a pre-built, signed, and notarized universal binary, installs it to `/usr/local/bin`, and downloads the documentation databases.
-
-**Or with Homebrew:**
+**Homebrew:**
 
 ```bash
 brew tap mihaelamj/tap
 brew install cupertino
-cupertino setup
+cupertino setup            # download the pre-built databases
 ```
 
-After `brew install`, you can run `cupertino search "<query>"` at the terminal, or add `cupertino serve` as an MCP server in your AI client config. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for distribution notes and [docs/mcp-clients.md](docs/mcp-clients.md) for per-client setup (Claude, Codex, Cursor, VS Code, Zed, Windsurf, opencode, and more).
-
-**Or build from source:**
+**Build from source:**
 
 ```bash
 git clone https://github.com/mihaelamj/cupertino.git
 cd cupertino
-
-# Using Makefile (recommended)
-make build                       # Build release binary
-sudo make install                # Install to /usr/local/bin
-
-# Or using Swift Package Manager directly
-cd Packages
-swift build -c release
-sudo ln -sf "$(pwd)/.build/release/cupertino" /usr/local/bin/cupertino
+make build                 # release binary (or: cd Packages && swift build -c release)
+sudo make install          # install to /usr/local/bin
+cupertino setup            # download the pre-built databases
 ```
 
-### Two Ways to Use the Same Index
+> The Homebrew path on Apple Silicon installs to `/opt/homebrew/bin/cupertino`; Intel and manual installs use `/usr/local/bin/cupertino`. Run `which cupertino` to confirm your path. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for distribution and CI/CD notes.
 
-**Human CLI example:**
+## Quick start
+
+```bash
+cupertino setup                                  # download pre-built databases (~30s)
+cupertino search "NavigationStack" --limit 5     # search from the terminal
+cupertino read "apple-docs://swiftui/documentation_swiftui_navigationstack" --source apple-docs
+cupertino doctor                                 # check local database health
+cupertino serve                                  # start the MCP server (also the default command)
+```
+
+Prefer to build the index yourself instead of downloading it? `cupertino save --remote` streams the corpus from GitHub and rebuilds locally, and `cupertino fetch --source <name>` crawls a single source from the original site. See [docs/commands/](docs/commands/) for every command, flag, and the slower self-hosted paths.
+
+### Two surfaces, one index
+
+A terminal search prints a human-friendly result with scores and follow-up commands:
 
 ```text
 $ cupertino search "NavigationStack" --format text --limit 2
@@ -99,175 +92,33 @@ A view that displays a root view and enables navigation to additional views.
 
 ▶ Read full: cupertino read "apple-docs://swiftui/documentation_swiftui_navigationstack" --source apple-docs
 
-----------------------------------------------------------------------
-See also -- drill into one source:
-  cupertino search "NavigationStack" --source apple-docs
-  cupertino search "NavigationStack" --source samples
-
 💡 Narrow with --source <name>: apple-docs, samples, hig, apple-archive, swift-evolution, swift-org, swift-book, packages
 💡 Filter by platform: --platform iOS --min-version 16.0  (or macOS / tvOS / watchOS / visionOS)
 ```
 
-**MCP tool-call example:**
+The same query over MCP returns a structured tool result an AI client can read, cite, and follow with `read_document`:
 
 ```json
 {
   "name": "search",
-  "arguments": {
-    "query": "NavigationStack",
-    "source": "apple-docs",
-    "limit": 2
-  }
+  "arguments": { "query": "NavigationStack", "source": "apple-docs", "limit": 2 }
 }
 ```
 
-Both examples query the same local databases. The CLI prints a terminal-friendly result with scores and follow-up commands; the MCP server returns structured tool results that an AI client can read, cite, and follow with `read_document`.
+**Demo:** [Watch on YouTube](https://youtu.be/B-mRdainTMA).
 
-**Demo Video:** [Watch on YouTube](https://youtu.be/B-mRdainTMA)
+### Use with AI agents
 
-### Quick Reference
-
-```bash
-# Quick Setup (Recommended) - download pre-built databases (~30 seconds)
-cupertino setup                      # Download databases from GitHub
-cupertino search "NavigationStack" --format text --limit 5
-cupertino read "apple-docs://swiftui/documentation_swiftui_navigationstack" --source apple-docs --format markdown
-cupertino doctor                     # Check local database health
-cupertino serve                      # Start MCP server
-
-# Alternative: Build from GitHub (~45 minutes)
-cupertino save --remote              # Stream and build locally
-
-# Or fetch documentation yourself
-cupertino fetch --source apple-docs          # Apple Developer Documentation
-cupertino fetch --source swift-org         # Swift.org documentation
-cupertino fetch --source swift-evolution     # Swift Evolution proposals
-cupertino fetch --source packages      # Swift package metadata + GitHub archives
-cupertino fetch --source apple-sample-code          # Sample code from Apple (Apple CDN, no auth)
-cupertino fetch --source samples       # Sample code from GitHub (recommended)
-cupertino fetch --source apple-archive       # Apple Archive programming guides
-cupertino fetch --source hig           # Human Interface Guidelines
-cupertino fetch --source availability  # Platform availability data
-cupertino fetch --source all           # All types in parallel
-
-# Build indexes
-cupertino save --all                  # Build every source DB (from local files)
-cupertino save --remote              # Build from GitHub (no local files needed)
-cupertino save --source samples                      # Index sample code for search
-
-# Start server
-cupertino                            # Start MCP server (default command)
-cupertino serve                      # Start MCP server (explicit)
-```
-
-### Instant Setup (Recommended)
-
-```bash
-# Download pre-built databases from GitHub (~30 seconds)
-cupertino setup
-
-# Start MCP server
-cupertino serve
-```
-
-> **Note:** `cupertino setup --force` is no longer valid (the flag was removed in v1.2.0). `cupertino setup` overwrites by default; pass `--keep-existing` to skip the download when databases are already installed.
-
-### Alternative: Build from GitHub
-
-```bash
-# Stream and build locally (~45 minutes)
-# Use this if you want to build the database yourself
-cupertino save --remote
-
-# Start MCP server
-cupertino serve
-```
-
-### Manual Setup (Advanced)
-
-```bash
-# Download Apple documentation (~12+ days for ~404,000+ raw pages, indexed down to ~351,505)
-# Takes time due to 0.05s default delay between requests
-cupertino fetch --source apple-docs --max-pages 15000
-
-# Download Swift Evolution proposals (~2-5 minutes)
-cupertino fetch --source swift-evolution
-
-# Download sample code from GitHub (~4 minutes, 619 projects)
-cupertino fetch --source samples
-
-# Build search index (~2-5 minutes)
-cupertino save --all
-```
-
-### Use with Claude Desktop
-
-1. **Configure Claude Desktop** - Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "cupertino": {
-      "command": "/usr/local/bin/cupertino",
-      "args": ["serve"]
-    }
-  }
-}
-```
-
-> **Note:** Use `/opt/homebrew/bin/cupertino` for Homebrew on Apple Silicon, `/usr/local/bin/cupertino` for Intel or manual install. Run `which cupertino` to find your path.
-
-2. **Restart Claude Desktop**
-
-3. **Ask Claude about Apple APIs:**
-   - "Search for SwiftUI documentation"
-   - "What does Swift Evolution proposal SE-0001 propose?"
-   - "List available frameworks"
-
-### Use with Claude Code
-
-If you're using [Claude Code](https://code.claude.com/docs/en/overview), you can add Cupertino as an MCP server with a single command:
+[Claude Code](https://code.claude.com/docs/en/overview) registers Cupertino globally with one command:
 
 ```bash
 claude mcp add cupertino --scope user -- $(which cupertino)
 ```
 
-This registers Cupertino globally for all your projects. Claude Code will automatically have access to Apple documentation search.
+Claude Desktop, OpenAI Codex, Cursor, VS Code (Copilot), GitHub Copilot for Xcode, Zed, Windsurf, and opencode are all covered with copy-paste config in **[docs/mcp-clients.md](docs/mcp-clients.md)**. Cupertino can also run as a stateless CLI **Agent Skill** with no server: see **[docs/agent-skill.md](docs/agent-skill.md)**.
 
-### Use with other MCP clients
+### What you get
 
-Cupertino works with any MCP-capable client. Setup snippets for **OpenAI Codex, Cursor, VS Code (Copilot), GitHub Copilot for Xcode, Zed, Windsurf, and opencode** live in **[docs/mcp-clients.md](docs/mcp-clients.md)** (the Claude Desktop and Claude Code configs above are repeated there too, so it is a complete reference).
-
-### Use as an Agent Skill (no server required)
-
-Cupertino can also run as a stateless CLI skill without an MCP server, for agents that support the [Agent Skills](https://agentskills.io) specification (install via OpenSkills, as a Claude Code plugin, or manually). Full instructions: **[docs/agent-skill.md](docs/agent-skill.md)**.
-
-### What You Get
-
-Once configured, Claude Desktop can search your local documentation:
-
-**Search Results Example:**
-```
-# Search Results for "SwiftUI"
-
-Found **20** results:
-
-## 1. NSHostingView | Apple Developer Documentation
-- **Framework:** `swiftui`
-- **URI:** `apple-docs://swiftui/documentation_swiftui_nshostingview`
-- **Score:** 1.82
-
-An AppKit view that hosts a SwiftUI view hierarchy.
-
-## 2. UIHostingController | Apple Developer Documentation
-- **Framework:** `swiftui`
-- **URI:** `apple-docs://swiftui/documentation_swiftui_uihostingcontroller`
-
-A UIKit view controller that manages a SwiftUI view hierarchy.
-...
-```
-
-**Framework Statistics:**
 | Framework | Documents |
 |-----------|----------:|
 | Kernel | 39,396 |
@@ -279,134 +130,42 @@ A UIKit view controller that manages a SwiftUI view hierarchy.
 | Accelerate | 9,114 |
 | SwiftUI | 7,062 |
 | ... | ... |
-| **420+ Frameworks** | **351,505** |
+| **420+ frameworks** | **351,505** |
 
-## Core Features
+## Core features
 
-### 1. Multi-Source Documentation Fetching
+### Multi-source documentation
 
-- **Apple Developer Documentation** (~351,505 indexed pages in the v1.3.0 bundle)
-  - JavaScript-aware rendering via WKWebView
-  - HTML to Markdown conversion
-  - Smart change detection
+- **Apple Developer Documentation** (~351,505 indexed pages): JavaScript-aware rendering via WKWebView, HTML-to-Markdown conversion, smart change detection
+- **Swift Evolution** (~429 proposals) and **Swift.org** (~501 pages): GitHub- and site-based fetching in Markdown
+- **Swift package metadata**: `packages.db` ships 185 packages with full source, stars, licenses, deployment-target platforms, and authored `swift-tools-version`
+- **Apple Sample Code** (619 projects, 18,000+ indexed Swift files): fetched from Apple's CDN or the GitHub mirror, full-text searchable
+- **Apple Archive legacy guides** (~75 pages): pre-2016 conceptual docs (Core Animation, Quartz 2D, Core Text); excluded from search by default (`--include-archive`)
+- **Human Interface Guidelines**: Apple's design guidelines across iOS, macOS, watchOS, visionOS, and tvOS
 
-- **Swift Evolution Proposals** (~400 proposals)
-  - GitHub-based fetching
-  - Markdown format
-  - Fast downloads
+### Full-text search engine
 
-- **Swift.org Documentation**
-  - Official Swift language docs
-  - Clean HTML structure
+- **BM25F ranking**: SQLite FTS5 with field-weighted BM25 (Robertson/Zaragoza/Taylor 2004) over a 9-column index (`uri`, `source`, `framework`, `language`, `title`, `content`, `summary`, `symbols`, `symbol_components`). Title 10×, AST-extracted symbols 5×, summary 3×, framework 2×, CamelCase-split components 1.5×.
+- **AST-aware**: a Swift extractor pulls identifiers from every embedded code block and the page declaration into a `symbols` column, so a query like `Task` ranks the Swift `Task` struct above prose mentions of "task".
+- **smart-query**: `cupertino search` (and the `Search.SmartQuery` API) fans the question across every source in parallel and fuses per-source rankings via reciprocal rank fusion (RRF, k=60, Cormack/Clarke/Büttcher 2009); one dead source never takes the whole query down.
+- Porter stemming, framework + platform-availability filtering, snippet generation, sub-100 ms queries.
+- Databases must live on a local filesystem (SQLite is unreliable on NFS/SMB).
 
-- **Swift Package Metadata**
-  - Priority package catalogs
-  - README files
+### Model Context Protocol server
 
-- **Apple Sample Code** (619 projects)
-  - Two fetch methods: GitHub (recommended) or Apple website
-  - Full-text search across all source files
-  - 18,000+ indexed Swift files
+- **Resources**: direct page access via `apple-docs://{framework}/{page}`, `swift-evolution://{proposal-id}`, `hig://{category}/{page}`
+- **`search`**: unified full-text search across every indexed source. Parameters: `query` (required), `source`, `framework`, `language`, `include_archive`, `limit`, and the `min_ios`/`min_macos`/`min_tvos`/`min_watchos`/`min_visionos`/`min_swift` platform filters (AND-combined; malformed values are rejected at the boundary with a clear error frame). Replaces the pre-[#239](https://github.com/mihaelamj/cupertino/issues/239) per-source tools.
+- **`list_frameworks`**, **`read_document`** (`format`: `json` for agents, `markdown` for humans)
+- **Sample-code tools**: `list_samples`, `read_sample`, `read_sample_file`
+- **AST-powered symbol tools** ([#81](https://github.com/mihaelamj/cupertino/issues/81)): `search_symbols`, `search_property_wrappers`, `search_concurrency`, `search_conformances`, `search_generics`, `get_inheritance`
 
-- **Apple Archive Legacy Guides** (~75 pages)
-  - Pre-2016 programming guides (Core Animation, Quartz 2D, Core Text, etc.)
-  - Deep conceptual knowledge not in modern docs
-  - Excluded from search by default (use `--include-archive`)
+See **[docs/tools/](docs/tools/)** for per-tool documentation.
 
-- **Human Interface Guidelines**
-  - Apple's official design guidelines for all platforms
-  - Covers iOS, macOS, watchOS, visionOS, and tvOS
-  - Design patterns, components, foundations, and best practices
+### Intelligent crawling
 
-### 2. Bundled Resources
+Resumable from saved state, change-detection to skip unchanged pages, a respectful 0.05 s default delay (configurable), automatic URL-queue deduplication, and priority queues so important content is fetched first.
 
-Cupertino includes pre-indexed catalog data bundled directly into the application:
-
-- **Swift Packages Catalog** (183 Apple-official packages with full source + metadata in `packages.db`; the previous 9,699-entry embedded URL list was removed in #194; `packages.db` is now the canonical corpus, shipped via `cupertino setup`)
-  - Curated from Swift Package Index + GitHub API
-  - Includes package metadata, stars, licenses, descriptions, deployment-target platforms, **and** authored `swift-tools-version` (#225)
-  - Updated by re-running `cupertino fetch --source packages` then `cupertino save --source packages`
-
-- **Sample Code Catalog** (619 entries)
-  - Apple's official sample code projects
-  - Includes titles, descriptions, frameworks, download URLs
-  - Bundled because Apple's catalog doesn't change frequently
-
-- **Priority Packages** (36 curated packages)
-  - Apple official packages (31) + essential ecosystem packages (5)
-  - High-priority Swift packages for quick access
-
-These catalogs are indexed during `cupertino save --all` and enable instant search without requiring multi-hour downloads. You can still fetch package READMEs and sample code separately via `cupertino fetch` if needed.
-
-### 3. Full-Text Search Engine
-
-- **Technology**: SQLite FTS5 with field-weighted BM25 (BM25F, Robertson/Zaragoza/Taylor 2004) over a 9-column index (`uri`, `source`, `framework`, `language`, `title`, `content`, `summary`, `symbols`, `symbol_components`). Title 10×, AST-extracted symbols 5×, summary 3×, framework 2×, CamelCase-split symbol components 1.5×.
-- **AST-aware**: a Swift source extractor pulls identifiers out of every embedded code block and the page declaration, denormalizes them into a `symbols` column, and feeds them into BM25F so a query like `Task` ranks the Swift `Task` struct above prose mentions of the word "task".
-- **smart-query**: `cupertino search` (and the underlying `Search.SmartQuery` API) fans the question across every source in parallel and fuses per-source rankings via reciprocal rank fusion (RRF, k=60, Cormack/Clarke/Büttcher 2009). One dead source never takes the whole query down.
-- **Features**:
-  - Porter stemming (e.g., "running" matches "run")
-  - Framework filtering
-  - Platform availability filtering (iOS/macOS version)
-  - Snippet generation
-  - Sub-100ms query performance
-- **Size**: ~2.8 GB apple-documentation.db + ~1.09 GB packages.db + ~192 MB apple-sample-code.db + the smaller hig / apple-archive / swift-evolution / swift-org / swift-book databases for full documentation (351,505 documents / 240,543 symbols across 420+ frameworks, v1.3.0 per-source bundle)
-- **Storage**: Database must be on local filesystem - SQLite does not work reliably on network drives (NFS/SMB)
-
-### 4. Model Context Protocol Server
-
-- **Resources**: Direct access to documentation pages
-  - `apple-docs://{framework}/{page}`
-  - `swift-evolution://{proposal-id}`
-  - `hig://{category}/{page}`
-- **Tools**: Search and read capabilities for AI agents
-  - **Documentation Tools** (requires `cupertino save --all`):
-    - `search` - **Unified full-text search** across every indexed source: Apple Developer Documentation, sample code, Human Interface Guidelines, Apple Archive, Swift Evolution, swift.org, the Swift Book, and Swift package metadata. Replaces the pre-[#239](https://github.com/mihaelamj/cupertino/issues/239) per-source tools (`search_docs`, `search_hig`, `search_samples`, `search_all`).
-      - Parameters: `query` (required), `source` (optional: `all`, `apple-docs`, `samples`, `hig`, `apple-archive`, `swift-evolution`, `swift-org`, `swift-book`, `packages`), `framework`, `language`, `include_archive`, `limit`, `min_ios`, `min_macos`, `min_tvos`, `min_watchos`, `min_visionos`, `min_swift`, `apple_imports` (all optional)
-      - Platform filtering (#226, #732): the 5 `min_*` parameters apply on every source whose data carries platform-availability metadata (apple-docs, apple-archive, packages, swift-evolution, swift-org, swift-book, samples). Multi-platform values AND-combine (e.g. `min_ios=18.0` + `min_macos=14.0` keeps only results that satisfy both). HIG content has no version axis and the filter doesn't apply there; the response prefixes a `platform_filter_partial` notice when HIG contributes to the result set so AI clients know the filter was non-uniform. Malformed `min_*` values (`"v18.0"`, `""`, `"18..0"`) are rejected at the MCP boundary with a clear `invalidArgument` error frame instead of silently no-oping.
-    - `list_frameworks` - List indexed frameworks with document counts
-    - `read_document` - Read document by URI with format option
-      - Parameters: `uri` (required), `format` (optional: `json` or `markdown`, default: `json`)
-      - JSON format returns the full structured document data (recommended for AI)
-      - Markdown format returns rendered content for human reading
-  - **Sample Code Tools** (requires `cupertino save --source samples`):
-    - `list_samples` - List indexed sample projects
-    - `read_sample` - Read sample project README and metadata
-    - `read_sample_file` - Read source file from a sample project
-    - (For sample-code search, use the unified `search` tool above with `source: samples`.)
-  - **Semantic Search Tools** (AST-powered, [#81](https://github.com/mihaelamj/cupertino/issues/81)):
-    - `search_symbols` - Search by symbol kind (class, struct, actor, function) and name
-    - `search_property_wrappers` - Find `@State`, `@Observable`, `@MainActor` usage patterns
-    - `search_concurrency` - Find `async`/`await`, actor, `Sendable` patterns
-    - `search_conformances` - Find types by protocol conformance (`View`, `Codable`, etc.)
-    - `search_generics` - Find symbols by generic constraint (`Sendable`, `Hashable`, `View`)
-    - `get_inheritance` - Walk class inheritance chains (ancestors / descendants)
-
-### 5. Intelligent Crawling
-
-- **Resumable**: Continue interrupted crawls from saved state
-- **Change Detection**: Skip unchanged pages on updates
-- **Respectful**: 0.05s default delay between requests (configurable)
-- **Deduplication**: Automatic URL queue management
-- **Priority Queues**: Important content fetched first
-
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `cupertino` | Start MCP server (default) |
-| `cupertino setup` | Download pre-built databases from GitHub |
-| `cupertino serve` | Start MCP server |
-| `cupertino fetch` | Download documentation |
-| `cupertino save --all` | Build search index |
-| `cupertino search` | Search documentation from CLI |
-| `cupertino read` | Read full document by URI |
-| `cupertino doctor` | Check server health |
-| `cupertino save --source samples` | Index sample code for search |
-| `cupertino cleanup` | Clean up sample code archives |
-
-See [docs/commands/](docs/commands/) for detailed usage and options.
-
-## Architecture
+## How it works
 
 Cupertino uses an **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** architecture: 49 strict-producer SPM targets across 63 source packages. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full breakdown and [`docs/package-import-contract.md`](docs/package-import-contract.md) for the strict per-target import rules.
 
@@ -419,36 +178,24 @@ Operation packs:   Distribution (setup), Diagnostics (doctor),
                    Indexer (save), Ingest (fetch)
 MCP layer:         MCPSupport, MCPClient, SearchToolProvider
 Front doors:       CLI (cupertino), TUI (cupertino-tui)
-Auxiliary:         MockAIAgent, ReleaseTool, RemoteSync, TestSupport
 ```
 
-### Data Flow
+Data flows through three distinct phases:
 
 ```
-1. Fetch:  cupertino fetch --source apple-docs
-   ↓
-   WKWebView → Apple JSON API response → JSON files → disk (~/.cupertino/docs/)
-
-2. Save:   cupertino save --all
-   ↓
-   JSON files → parse + AST extract → per-source SQLite FTS5 indexes (~/.cupertino/apple-documentation.db, hig.db, …)
-
-3. Serve:  cupertino serve
-   ↓
-   MCP Server (stdio) ← JSON-RPC ← Claude Desktop
-   ↓
-   DocsResourceProvider + CupertinoSearchToolProvider
+1. Fetch   cupertino fetch --source apple-docs
+           WKWebView → Apple JSON API → JSON files on disk (~/.cupertino/docs/)
+2. Save    cupertino save --all
+           JSON → parse + AST extract → per-source SQLite FTS5 indexes
+           (~/.cupertino/apple-documentation.db, hig.db, …)
+3. Serve   cupertino serve
+           MCP server (stdio) ← JSON-RPC ← AI client
+           DocsResourceProvider + CupertinoSearchToolProvider
 ```
 
-### Key Design Principles
+Key design principles: Swift 6.3 with 100% strict concurrency checking, value semantics and `Sendable` by default, actor isolation (`@MainActor` for WKWebView), explicit dependency injection with no singletons, and a hard separation of Crawling → Indexing → Serving.
 
-- **Swift 6.3 Concurrency**: 100% strict concurrency checking with actors and async/await
-- **Value Semantics**: Immutable structs by default, Sendable conformance
-- **Actor Isolation**: @MainActor for WKWebView, actors for shared state
-- **Explicit Dependencies**: No singletons, clear dependency injection
-- **Separation of Concerns**: Crawling → Indexing → Serving as distinct phases
-
-### Published Packages
+### Published packages
 
 Cupertino factors three reusable, independently-versioned Swift packages out of the monorepo. Each is its own public repository, depended on by tag (`from: "0.1.0"`), Foundation-only, and built so an external consumer can adopt it without pulling in cupertino's engine:
 
@@ -456,206 +203,7 @@ Cupertino factors three reusable, independently-versioned Swift packages out of 
 |---|---|---|
 | **SwiftMCPCore** | [mihaelamj/SwiftMCPCore](https://github.com/mihaelamj/SwiftMCPCore) | Neutral MCP wire types (the JSON-RPC + protocol value types). Not cupertino-specific; a general MCP building block. |
 | **SwiftMCPClient** | [mihaelamj/SwiftMCPClient](https://github.com/mihaelamj/SwiftMCPClient) | Neutral, transport-injectable MCP client (`Client.MCP` seam, `MCPClient` actor, subprocess transport). Depends on SwiftMCPCore. |
-| **CupertinoDataKit** | [mihaelamj/CupertinoDataKit](https://github.com/mihaelamj/CupertinoDataKit) | Cupertino's public **read contract**: the documentation + sample-code read protocols (`Search.DocumentReading` core, `Search.SymbolReading` refinement, `Search.Database` composition, `Sample.Index.Reader`) plus every value type they return (`Search.Result`, `MatchedSymbol`, `PlatformAvailability`, `DocumentFormat`, `SymbolSearchResult`, inheritance types, `URIResource`, `FrameworkAvailability`, `PlatformMinima`/`PlatformFilter`, `Sample.Index.Project`/`File`/`FileSearchResult`, `Sample.Search.Query`/`Result`). Protocols + value types only, zero implementation. Cupertino's engine conforms to it server-side; an embedded/in-process reader (e.g. an iOS app) conforms a different implementation. It is the single source of truth for these types: cupertino's foundation tier re-exports it (`@_exported import CupertinoDataKit`), so in-repo code uses the `Search.*` / `Sample.*` namespaces unchanged. |
-
-## Development
-
-### Build System
-
-```bash
-# Show all available commands
-make help
-
-# Common tasks
-make build                  # Build release binaries
-sudo make install           # Install to /usr/local/bin
-sudo make update            # Rebuild and reinstall
-make test                   # Run all tests
-make clean                  # Clean build artifacts
-
-# Development workflow
-make test-unit              # Fast unit tests only
-make test-integration       # All tests (includes network calls)
-make format                 # Format code with SwiftFormat
-make lint                   # Lint with SwiftLint
-```
-
-### Testing
-
-**Test Suite:**
-- 2,989 test functions across 327 test files (457 `@Suite`s); parameterized `@Test(arguments:)` cases expand further at runtime
-- Swift Testing framework (`@Test`, `@Suite`, `#expect`) with `withDependencies` for injection
-- Includes unit tests, integration tests (real WKWebView + real Apple docs), and formatter tests
-
-**Test Categories:**
-- Web Crawl Tests - Real Apple documentation fetching
-- Fetch Command Tests - Package/code downloading
-- Save Command Tests - Search index building
-- MCP Tests - Server health, tool/resource providers
-- Core Tests - Search, logging, state management
-
-### Logging
-
-Cupertino uses **os.log** for structured logging:
-
-```bash
-# View all logs
-log show --predicate 'subsystem == "com.cupertino.cli"' --last 1h
-
-# View specific category
-log show --predicate 'subsystem == "com.cupertino.cli" AND category == "crawler"' --last 1h
-
-# Stream live logs
-log stream --predicate 'subsystem == "com.cupertino.cli"'
-```
-
-**Categories**: crawler, mcp, search, cli, transport, evolution, samples, package-downloader, archive, hig
-
-> **MCP JSON-RPC wire traffic is on stderr, not os.log.** The stdio transport writes each request and response message (the `→`/`←` wire traffic) to **stderr**, because stdout carries the protocol itself. To watch the wire traffic, capture the server's stderr (`cupertino serve 2>/tmp/cupertino-mcp.log`) or open your MCP client's server-output panel. MCP server lifecycle and diagnostic messages (index availability, load failures) are logged to os.log under the `mcp` category, so the `com.cupertino.cli` predicate above still surfaces them.
-
-## Performance
-
-| Operation | Time | Size |
-|-----------|------|------|
-| Build CLI | 10-15s | 4.3MB |
-| Crawl ~414,000+ raw pages (post-dedup 351,505 indexed, v1.3.0) | 12+ days | 2-3GB |
-| Swift Evolution | 2-5 min | 429 proposals |
-| Swift.org docs | 5-10 min | 501 pages |
-| Build search index (full Apple docs corpus) | ~12h | ~2.8 GB apple-documentation.db (+ per-source siblings) |
-| Search query | <100ms | - |
-
-### Why Crawling Takes 12+ Days
-
-The crawler uses a **0.05 second default delay between each request** (configurable):
-- 412,000 raw pages × 0.05s = ~5.7 hours for delay alone; WKWebView rendering time per page makes real wall-clock significantly longer
-- Plus page rendering, parsing, and saving time
-- Crawl must reach depth 21+ to get all documentation
-- **Total: ~12+ days for initial full crawl**
-
-Use `cupertino setup` to download pre-built databases instead (~30 seconds).
-
-This is a **one-time operation**. Incremental updates use change detection to skip unchanged pages and complete much faster.
-
-## Example Use Cases
-
-### 1. Offline Documentation Archive
-
-```bash
-# Download everything for offline access
-cupertino fetch --source apple-docs --max-pages 15000
-cupertino fetch --source swift-evolution
-cupertino save --all
-```
-
-### 2. Framework-Specific Research
-
-```bash
-# Just SwiftUI documentation
-cupertino fetch --source apple-docs \
-  --start-url "https://developer.apple.com/documentation/swiftui" \
-  --max-pages 500
-```
-
-### 3. AI-Assisted Development
-
-```bash
-# Serve documentation to Claude
-cupertino serve
-
-# Then ask Claude: "How do I use @Observable in SwiftUI?"
-```
-
-### 4. Custom Documentation Workflows
-
-```bash
-# Multiple sources with custom paths
-cupertino fetch --source apple-docs --output-dir ~/docs/apple
-cupertino fetch --source swift-evolution --output-dir ~/docs/evolution
-cupertino save --base-dir ~/docs
-cupertino serve --base-dir ~/docs
-```
-
-`cupertino save --all` emits diagnostic lines at startup so long-running re-index jobs surface their state upfront in any captured log:
-
-```
-💾 Output: <resolved-search-db-path>
-🗑️  Removing existing database for clean re-index...   (only if one was present)
-🗄️  Initializing search database...
-✅ Swift Evolution directory found at <path>          (per detected optional source)
-✅ Apple Archive directory found at <path>
-ℹ️  HIG directory not found at <path>, skipping       (per missing optional source)
-...
-```
-
-Optional sources (Swift Evolution / Swift.org / Apple Archive / HIG) are auto-detected under `--base-dir` using the standard layout (`<base>/swift-evolution`, `<base>/swift-org`, `<base>/archive`, `<base>/hig`) or symlinks at those paths; explicit `--<source>-dir` flags override the auto-detection.
-
-## Documentation
-
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Build, test, contribute, and release workflow
-- **[docs/PRINCIPLES.md](docs/PRINCIPLES.md)** - Engineering principles (lossless URIs, no content lost at the door, 10x scale headroom)
-- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Technical deep-dives (Concurrency, MCP, WKWebView testing)
-- **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Homebrew distribution and CI/CD setup
-- **[docs/mcp-clients.md](docs/mcp-clients.md)** - Per-client MCP setup (Claude, Codex, Cursor, VS Code, Zed, Windsurf, opencode, and more)
-- **[docs/agent-skill.md](docs/agent-skill.md)** - Use Cupertino as a stateless CLI Agent Skill (no server)
-- **[docs/commands/](docs/commands/)** - Command-specific documentation
-- **[docs/tools/](docs/tools/)** - MCP-tool-specific documentation
-- **[docs/roadmap-maintenance-protocol.md](docs/roadmap-maintenance-protocol.md)** - Maintainer roadmap update protocol
-
-### Command Documentation
-
-Each command has detailed documentation:
-- [docs/commands/fetch/](docs/commands/fetch/) - Download documentation
-- [docs/commands/save/](docs/commands/save/) - Build search indexes
-- [docs/commands/serve/](docs/commands/serve/) - Start MCP server
-- [docs/commands/search/](docs/commands/search/) - Search documentation from CLI
-- [docs/commands/doctor/](docs/commands/doctor/) - Check server health
-
-## Contributing
-
-Issues and pull requests are welcome! I'd love to hear how you're using Cupertino with your AI workflow.
-
-For questions and discussion, use [GitHub Discussions](https://github.com/mihaelamj/cupertino/discussions).
-
-I prefer collaboration over competition. If you're working on something similar, let's find ways to work together.
-
-Don't hesitate to submit a PR because of code style. I'd rather have your contribution than perfect formatting.
-
-By participating in this project you agree to abide by the [Contributor Covenant Code of Conduct](https://www.contributor-covenant.org/).
-
-For development setup, see [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Project Status
-
-**Released:** v1.3.0 on 2026-05-31. Per-source database bundle + read-only databases: the unified `search.db` is split into 8 per-source databases, each shipped in rollback journal mode so it opens read-only without an `-shm` sidecar, and every query / read / serve connection opens read-only ([#1194](https://github.com/mihaelamj/cupertino/issues/1194)) so an end user cannot write or delete rows. `databaseVersion` is `1.3.0`; `cupertino setup` downloads `cupertino-databases-v1.3.0.zip` (742 MB) carrying 351,505 documents / 240,543 symbols in `apple-documentation.db` (2.8 GB, `user_version` 18), plus `packages.db` (1.09 GB, 185 packages), `apple-sample-code.db` (192 MB), and the HIG / archive / evolution / org / book databases. Live dashboard at <https://cupertino.aleahim.com/>; full notes in the [v1.3.0 release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.3.0) and [CHANGELOG.md](CHANGELOG.md).
-
-**Previously released:** v1.2.1 (2026-05-23, maintenance + [Source Independence Day](https://github.com/mihaelamj/cupertino/issues/919)) and v1.2.0 "ironclad" (2026-05-20, search-quality release: rank-1 accuracy on canonical-lookup queries 52% → 92%). Earlier: v1.1.0 (2026-05-14), v1.0.2 (2026-05-11). See [CHANGELOG.md](CHANGELOG.md) for the full history.
-
-- ✅ All core functionality working
-- ✅ 350+ test functions across 230+ test files (2,408 / 347 suites green at v1.2.0 ship)
-- ✅ 0 lint violations
-- ✅ Swift 6.3 compliant with 100% strict concurrency checking
-- ✅ All production bugs resolved at ship time
-- ✅ Search quality measured end-to-end (Phase 1 of `docs/design/search-quality-eval.md`): single-system baselines on 7 query classes + 3 paired v1.1.0 → v1.2.0 version-diff audits, all checked into `docs/audits/`
-
-## License
-
-MIT License - see [LICENSE](LICENSE) for details
-
-## Acknowledgments
-
-- Built with Swift 6.3 and Swift Package Manager
-- Uses [swift-argument-parser](https://github.com/apple/swift-argument-parser) for CLI
-- Implements [Model Context Protocol](https://modelcontextprotocol.io) specification
-- Inspired by the need for offline Apple documentation access
-
-## Related Repositories
-
-- **[cupertino-docs](https://github.com/mihaelamj/cupertino-docs)** - Pre-built documentation archive for quick installation
-- **[cupertino-sample-code](https://github.com/mihaelamj/cupertino-sample-code)** - Apple sample code repository mirror
-- **[cupertino-packages](https://github.com/mihaelamj/cupertino-packages)** - Swift package source corpus indexed into `packages.db`
-- **[cupertino-symbolgraphs](https://github.com/mihaelamj/cupertino-symbolgraphs)** - Apple SDK symbol-graph corpus, the source for the `apple-constraints.json` and `apple-conformances.json` enrichment tables
-
-The docs and sample-code repositories will be used by the planned `make install (full)` command (see [#52](https://github.com/mihaelamj/cupertino/issues/52)), providing pre-built documentation and sample code to avoid the initial 20+ hour crawl.
+| **CupertinoDataKit** | [mihaelamj/CupertinoDataKit](https://github.com/mihaelamj/CupertinoDataKit) | Cupertino's public **read contract**: the documentation + sample-code read protocols (`Search.DocumentReading`, `Search.SymbolReading`, `Search.Database`, `Sample.Index.Reader`) plus every value type they return. Protocols + value types only, zero implementation; cupertino's engine conforms server-side, and an embedded/in-process reader (e.g. an iOS app) conforms a different implementation. Cupertino's foundation tier re-exports it (`@_exported import CupertinoDataKit`). |
 
 ## Roadmap
 
@@ -704,6 +252,86 @@ flowchart TB
 
   InFlight ~~~ Planned ~~~ Shipped
 ```
+
+## Performance
+
+| Operation | Time | Size |
+|---|---|---|
+| `cupertino setup` (download pre-built bundle) | ~30 s | ~742 MB download, ~4.2 GB on disk |
+| Build CLI | 10–15 s | 4.3 MB |
+| Search query | <100 ms | n/a |
+| Swift Evolution fetch | 2–5 min | 429 proposals |
+| Swift.org fetch | 5–10 min | 501 pages |
+| Build the full index from local JSON (`cupertino save --all`) | ~12 h | ~2.8 GB `apple-documentation.db` + per-source siblings |
+| Full crawl of Apple docs from source (`cupertino fetch`) | ~12 days | ~404,000 raw pages → 351,505 indexed |
+
+The full crawl is slow by design: with the 0.05 s default delay, ~404,000 pages cost ~5.6 hours in delay *alone*, and WKWebView rendering, parsing, and saving per page dominate the rest, pushing wall-clock to ~12 days at depth 21+. This is a one-time operation, and incremental updates skip unchanged pages. Almost everyone should run `cupertino setup` instead and get the same corpus in seconds.
+
+## Development
+
+```bash
+make help                   # all available commands
+make build                  # build release binaries
+sudo make install           # install to /usr/local/bin
+make test                   # run all tests
+make test-unit              # fast unit tests only
+make test-integration       # all tests (includes network calls)
+make format                 # SwiftFormat
+make lint                   # SwiftLint
+```
+
+**Tests:** 3,095 `@Test` functions across 344 test files (493 `@Suite`s); parameterized `@Test(arguments:)` cases expand further at runtime. Built on Swift Testing (`@Test`, `@Suite`, `#expect`) with `withDependencies` for injection, spanning unit tests, integration tests (real WKWebView against real Apple docs), and formatter tests.
+
+**Logging:** structured `os.log` under the `com.cupertino.cli` subsystem (categories: crawler, mcp, search, cli, transport, evolution, samples, package-downloader, archive, hig).
+
+```bash
+log show --predicate 'subsystem == "com.cupertino.cli"' --last 1h
+log stream --predicate 'subsystem == "com.cupertino.cli"'
+```
+
+> MCP JSON-RPC wire traffic goes to **stderr**, not `os.log`, because stdout carries the protocol itself. Capture it with `cupertino serve 2>/tmp/cupertino-mcp.log` or your client's server-output panel. MCP lifecycle and diagnostic messages still log to `os.log` under the `mcp` category.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full build, test, and release workflow.
+
+## Documentation
+
+- **[CONTRIBUTING.md](CONTRIBUTING.md)**: build, test, contribute, and release workflow
+- **[docs/PRINCIPLES.md](docs/PRINCIPLES.md)**: engineering principles (lossless URIs, no content lost at the door, 10x scale headroom)
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**: technical deep-dives (concurrency, MCP, WKWebView testing)
+- **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**: Homebrew distribution and CI/CD setup
+- **[docs/mcp-clients.md](docs/mcp-clients.md)**: per-client MCP setup (Claude, Codex, Cursor, VS Code, Zed, Windsurf, opencode, and more)
+- **[docs/agent-skill.md](docs/agent-skill.md)**: use Cupertino as a stateless CLI Agent Skill (no server)
+- **[docs/commands/](docs/commands/)**: command-specific documentation (fetch, save, serve, search, doctor, and more)
+- **[docs/tools/](docs/tools/)**: MCP-tool-specific documentation
+- **[docs/roadmap-maintenance-protocol.md](docs/roadmap-maintenance-protocol.md)**: maintainer roadmap update protocol
+
+## Project status
+
+**Released: v1.3.0** (2026-05-31): the per-source database bundle + read-only databases release. The unified `search.db` is split into 8 per-source databases shipped in rollback journal mode, so each opens read-only without an `-shm` sidecar and no query / read / serve connection can write or delete rows ([#1194](https://github.com/mihaelamj/cupertino/issues/1194)). `databaseVersion` is `1.3.0`; `cupertino setup` downloads `cupertino-databases-v1.3.0.zip` (742 MB) carrying 351,505 documents / 240,543 symbols in `apple-documentation.db` (2.8 GB, `user_version` 18), plus `packages.db` (1.09 GB, 185 packages), `apple-sample-code.db` (192 MB), and the HIG / archive / evolution / org / book databases.
+
+**Previously:** v1.2.1 (2026-05-23, maintenance + [Source Independence Day](https://github.com/mihaelamj/cupertino/issues/919)), v1.2.0 "ironclad" (2026-05-20, search-quality release: rank-1 accuracy on canonical-lookup queries 52% → 92%), v1.1.0 (2026-05-14), v1.0.2 (2026-05-11). Full history in [CHANGELOG.md](CHANGELOG.md).
+
+- ✅ All core functionality working, all production bugs resolved at ship time
+- ✅ 3,095 test functions across 344 files (493 suites)
+- ✅ 0 lint violations, Swift 6.3 with 100% strict concurrency checking
+- ✅ Search quality measured end-to-end (Phase 1 of `docs/design/search-quality-eval.md`): single-system baselines on 7 query classes + 3 paired v1.1.0 → v1.2.0 version-diff audits, all checked into `docs/audits/`
+
+## Contributing
+
+Issues and pull requests are welcome, and I'd love to hear how you're using Cupertino with your AI workflow. For questions and discussion, use [GitHub Discussions](https://github.com/mihaelamj/cupertino/discussions).
+
+I prefer collaboration over competition: if you're working on something similar, let's find ways to work together. Don't hesitate to submit a PR because of code style; I'd rather have your contribution than perfect formatting. By participating you agree to abide by the [Contributor Covenant Code of Conduct](https://www.contributor-covenant.org/). For development setup, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Related repositories
+
+- **[cupertino-docs](https://github.com/mihaelamj/cupertino-docs)**: pre-built documentation archive for quick installation
+- **[cupertino-sample-code](https://github.com/mihaelamj/cupertino-sample-code)**: Apple sample-code repository mirror
+- **[cupertino-packages](https://github.com/mihaelamj/cupertino-packages)**: Swift package source corpus indexed into `packages.db`
+- **[cupertino-symbolgraphs](https://github.com/mihaelamj/cupertino-symbolgraphs)**: Apple SDK symbol-graph corpus, the source for the `apple-constraints.json` and `apple-conformances.json` enrichment tables
+
+## License
+
+MIT License, see [LICENSE](LICENSE) for details.
 
 ## Support
 
