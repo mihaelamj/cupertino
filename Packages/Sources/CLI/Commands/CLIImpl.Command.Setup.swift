@@ -27,6 +27,9 @@ extension CLIImpl.Command {
         @Flag(name: .long, help: "Skip the download and keep whatever databases are already installed")
         var keepExisting: Bool = false
 
+
+        /// Hidden flag to intercept the removed --force option with a helpful migration hint
+        @Flag(name: [.long, .hidden], help: "...") var force: Bool = false
         /// Closure-free observer that forwards every
         /// `Distribution.SetupService.Event` to the `SetupRenderer`'s
         /// `handle(_:)` dispatcher. Replaces the previous trailing-closure
@@ -39,13 +42,15 @@ extension CLIImpl.Command {
             }
         }
 
-        mutating func validate() throws {
-        if force {
-            throw ValidationError("--force was removed in v1.2.0. cupertino setup overwrites by default; pass --keep-existing if you want to preserve already-installed databases.")
-        }
-    }
 
- func run() async throws {
+
+        mutating func validate() throws {
+            if force {
+                throw ValidationError("--force was removed in v1.2.0. cupertino setup overwrites by default; pass --keep-existing if you want to preserve already-installed databases.")
+            }
+        }
+
+        func run() async throws {
             // #781: invocation banner before any other work.
             Cupertino.Context.composition.logging.logInvocation()
 
