@@ -40,7 +40,7 @@ Closed during the prior session as complete/superseded: **#943** (query batterie
 
 ### New epics (created 2026-06-02, then corrected)
 
-> The first cut created nine new epic issues. The same-day first-principles review (see the Revision section at the end) found that five of them were *categories*, not coordinated initiatives, and closed them, demoting each to a `topical:` label. Only the four below survive as epics. The membership lists for the five closed ones are retained below for the record, but their work is now tracked by label, not by an epic issue.
+> The first cut created nine new epic issues. The same-day first-principles review (see the Revision section at the end) found that five of them were *categories*, not coordinated initiatives, and closed them. Only the four below survive as epics. (A `topical:` label axis briefly introduced to replace the categories was itself reverted the same day; see the Revision section.) The membership lists for the five closed ones are retained below for the record.
 
 | New epic | Title | North-star phase |
 |---|---|---|
@@ -49,7 +49,7 @@ Closed during the prior session as complete/superseded: **#943** (query batterie
 | **#1223** | Declarative pluggability (Source Independence Day cont.) | (parallel) |
 | **#1228** | Semantic & vector search | vector |
 
-Closed and demoted to labels: **#1220** (bug sweep, use `bug`), **#1224** (`topical: cli`), **#1225** (`topical: diagnostics`), **#1226** (`topical: docs`), **#1227** (distribution: two standalone issues, below the label threshold).
+Closed as categories: **#1220** (bug sweep; bugs use the `bug` label), **#1224** (CLI), **#1225** (diagnostics), **#1226** (docs), **#1227** (distribution: two standalone issues). None warranted an epic.
 
 ## Epic membership
 
@@ -63,9 +63,9 @@ Closed and demoted to labels: **#1220** (bug sweep, use `bug`), **#1224** (`topi
 - **#1222 Linux port** (epic): #1151 (indexing + `linux` axis), #1152 (runtime read/serve)
 - **#1223 Declarative pluggability** (epic): #248 (DB registry), #962 (CLI from MCP registry), #965 (AST tools DB-pluggable), #1075 (enrichment seam), #730 (delete neutered accessor), #909 (audit-script consistency)
 - **`bug` label** (was #1220, closed): #1041, #1132 (recrawl-gated), #1200, #1201
-- **`topical: cli`** (was #1224, closed): #16 (verbosity), #17 (search progress), #78 (stats), #240 (raw SQL query), #801 (build number), #885 (setup --force hint)
-- **`topical: diagnostics`** (was #1225, closed): #724 (path-provenance), #1161 (os.log subsystem docs), #1162 (serve warning to stderr), #1163 (logging cleanup), #1209 (doctor per-source uniform)
-- **`topical: docs`** (was #1226, closed): #449 (DocC catalog), #1048 (code-comment + DocC), #1054 (HOW-TO-ADD-A-SOURCE rewrite), #1175 (recommend Homebrew)
+- **CLI area** (was #1224, closed): #16 (verbosity), #17 (search progress), #78 (stats), #240 (raw SQL query), #801 (build number), #885 (setup --force hint)
+- **Diagnostics area** (was #1225, closed): #724 (path-provenance), #1161 (os.log subsystem docs), #1162 (serve warning to stderr), #1163 (logging cleanup), #1209 (doctor per-source uniform)
+- **Docs area** (was #1226, closed): #449 (DocC catalog), #1048 (code-comment + DocC), #1054 (HOW-TO-ADD-A-SOURCE rewrite), #1175 (recommend Homebrew)
 - **distribution (standalone, was #1227, closed)**: #43 (Homebrew Core), #80 (MCP registries)
 - **#1228 Semantic & vector search**: #8 (sqlite-vec), #195 (AI semantic tags), #196 (GoFundMe for tags pass)
 - **Standalone (no epic)**: #183 (the roadmap itself), #197 (roadmap maintenance protocol)
@@ -78,8 +78,8 @@ Closed and demoted to labels: **#1220** (bug sweep, use `bug`), **#1224** (`topi
 | 9 | KEEP | 191 | FTS5 `highlight()` unused |
 | 10 | GATED | 191 | depends on vocabulary; no impl |
 | 13 | KEEP | 268 | 2/9 templates shipped |
-| 16 | KEEP | topical: cli | no impl |
-| 17 | KEEP | topical: cli | fan-out exists, no reporter |
+| 16 | KEEP | cli | no impl |
+| 17 | KEEP | cli | fan-out exists, no reporter |
 | 21 | KEEP | 191 | Phase A liftable today |
 | 22 | DEFERRED | #1221 | no impl; perf budget |
 | 43 | KEEP | distribution | stability criterion now met |
@@ -88,7 +88,7 @@ Closed and demoted to labels: **#1220** (bug sweep, use `bug`), **#1224** (`topi
 | 70 | KEEP | 268 | data already in schema |
 | 73 | KEEP | 268 | data already in schema |
 | 76 | KEEP | 268 | search_symbols extension |
-| 78 | KEEP | topical: cli | no content-inventory CLI |
+| 78 | KEEP | cli | no content-inventory CLI |
 | 80 | KEEP | distribution | 2/4 registries live |
 | 89 | GATED | 190 | source-expansion child |
 | 103 | GATED | 190 | source-expansion child |
@@ -104,7 +104,7 @@ Closed and demoted to labels: **#1220** (bug sweep, use `bug`), **#1224** (`topi
 | 224 | KEEP | 266 | doctor coverage for packages |
 | 227 | KEEP | 266 | dual-axis split remaining |
 | 235 | KEEP | 266 | fast refresh (cross-ref #1221) |
-| 240 | KEEP | topical: cli | raw SQL surface (post-#239) |
+| 240 | KEEP | cli | raw SQL surface (post-#239) |
 | 247 | KEEP | 769 | partial; 7 pipelines unlifted |
 | 248 | KEEP | #1223 | DatabaseRegistry seam unbuilt |
 | 266 | EPIC | 266 | availability v2 |
@@ -114,14 +114,14 @@ Closed and demoted to labels: **#1220** (bug sweep, use `bug`), **#1224** (`topi
 | 271 | GATED | 268 | needs #742 diagnostic block |
 | 272 | KEEP | 268 | sample cross-links |
 | 273 | GATED | 190 | Tech Talks source |
-| 449 | KEEP | topical: docs | no DocC catalog yet |
+| 449 | KEEP | docs | no DocC catalog yet |
 | 514 | KEEP | #1221 | docs-workload measurement remaining |
 | 517 | GATED | 268 | needs #21 + #742 |
 | 713 | GATED | 190 | tools source |
-| 724 | KEEP | topical: diagnostics | path-provenance safety rail |
+| 724 | KEEP | diagnostics | path-provenance safety rail |
 | 730 | KEEP | #1223 | post-#194 cleanup |
 | 742 | KEEP | 268 | Phase 2.1 keystone (high pri) |
-| 748 | CLOSEABLE | topical: docs | dual-consumer README shipped 2026-06-01 (verify + close) |
+| 748 | CLOSEABLE | docs | dual-consumer README shipped 2026-06-01 (verify + close) |
 | 769 | EPIC | 769 | layer separation |
 | 770 | KEEP | 769 | handoff contract |
 | 771 | GATED | 769 | blocked on #770 |
@@ -134,7 +134,7 @@ Closed and demoted to labels: **#1220** (bug sweep, use `bug`), **#1224** (`topi
 | 778 | KEEP | 769 | post-processor CLI |
 | 792 | KEEP | 191 | regression comparator |
 | 800 | DEFERRED | #1221 | deferred per maintainer 2026-05-19 |
-| 801 | KEEP | topical: cli | build-number in --version |
+| 801 | KEEP | cli | build-number in --version |
 | 816 | KEEP | 191 | the actual release-blocker eval |
 | 817 | CLOSED | 191 | done: harnesses now in `scripts/eval/` (phase1-5 + lib + smokes) |
 | 818 | KEEP | 191 | worst class baseline (18%) |
@@ -142,7 +142,7 @@ Closed and demoted to labels: **#1220** (bug sweep, use `bug`), **#1224** (`topi
 | 820 | KEEP | 191 | HIG/archive routing |
 | 821 | KEEP | 191 | prose weight profile |
 | 822 | KEEP | 191 | human qrels research |
-| 885 | KEEP | topical: cli | setup --force hint |
+| 885 | KEEP | cli | setup --force hint |
 | 892 | GATED | 190 | xcodebuild source |
 | 909 | KEEP | #1223 | audit-script consistency |
 | 957 | KEEP | 190 | community packages corpus |
@@ -150,23 +150,23 @@ Closed and demoted to labels: **#1220** (bug sweep, use `bug`), **#1224** (`topi
 | 965 | KEEP | #1223 | AST tools DB-pluggable |
 | 1036 | EPIC | 1036 | per-source DB split |
 | 1041 | KEEP | bug | unblocked by shipped bundle |
-| 1048 | KEEP | topical: docs | comment cleanup + DocC |
-| 1054 | KEEP | topical: docs | unblocked (gating issues closed) |
+| 1048 | KEEP | docs | comment cleanup + DocC |
+| 1054 | KEEP | docs | unblocked (gating issues closed) |
 | 1061 | KEEP | 1036 | drop source column |
 | 1075 | CLOSED | #1223 | premature placeholder (N/A until a second source joins); refile then |
 | 1132 | GATED | bug | code merged; recrawl-gated |
 | 1146 | KEEP | #1221 | in progress on a branch |
 | 1151 | GATED | #1222 | Linux indexing + `linux` axis |
 | 1152 | KEEP | #1222 | Linux runtime read/serve |
-| 1161 | KEEP | topical: diagnostics | wrong os.log subsystem in docs |
-| 1162 | KEEP | topical: diagnostics | serve warning to stderr |
-| 1163 | KEEP | topical: diagnostics | logging hygiene |
-| 1175 | KEEP | topical: docs | recommend Homebrew first |
+| 1161 | KEEP | diagnostics | wrong os.log subsystem in docs |
+| 1162 | KEEP | diagnostics | serve warning to stderr |
+| 1163 | KEEP | diagnostics | logging hygiene |
+| 1175 | KEEP | docs | recommend Homebrew first |
 | 1178 | GATED | 268 | needs serve --base-dir (#1168) |
 | 1200 | KEEP | bug | list_samples schema mismatch |
 | 1201 | KEEP | bug | save --help stale text |
 | 1208 | KEEP | 268 | list-documents tool |
-| 1209 | KEEP | topical: diagnostics | doctor per-source uniform |
+| 1209 | KEEP | diagnostics | doctor per-source uniform |
 | 1210 | KEEP | 268 | document children tree |
 | 1212 | KEEP | 268 | initialize.instructions |
 
@@ -178,7 +178,7 @@ Closed during this audit: **#1184** (fixed in PR #1183), **#1071** (resolved by 
 2. **#1221 recrawl** (north-star: recrawl). #1146 (`--resume`) is the enabler and already in progress.
 3. **#742** keystone, then the **#268** MCP-capability fan-out it unblocks.
 4. **#1228 semantic & vector** (north-star: vector) follows the diagnostic surface.
-5. Parallel tracks: epics **#1222** Linux, **#1223** pluggability; label areas `topical: cli`, `topical: diagnostics`, `topical: docs`, and distribution (#43 / #80). Pick up opportunistically.
+5. Parallel tracks: epics **#1222** Linux, **#1223** pluggability; the cli, diagnostics, docs, and distribution issues (no epic; e.g. #43 / #80). Pick up opportunistically.
 
 ## Quick wins (closeable or near-trivial)
 
@@ -186,20 +186,21 @@ Closed during this audit: **#1184** (fixed in PR #1183), **#1071** (resolved by 
 - **#1200**, **#1201**: one-file fixes from the docs/commands audit.
 - **#1175**: README install-ordering one-liner.
 
-## Revision (2026-06-02, post-critique): epic vs label
+## Revision (2026-06-02, post-critique): epic vs label, then the label axis reverted
 
-A harsh self-review of the first cut of this organization found the load-bearing error: **I created nine epic *issues* to represent categories.** The correct primitive for "what area does this issue belong to" is a queryable **label**, not an issue. Prose membership in epic bodies is not queryable and does not travel with a newly filed issue, so it rots immediately. The repo's own `github-discipline.md` already defines a topical label axis (with a 3-carrier threshold); it had simply never been built (only `bug` / `enhancement` / `epic` / `good first issue` / `priority: high` existed).
+This organization went through three honest steps in one day.
 
-The corrected model:
+**Step 1, first cut (wrong primitive):** nine epic *issues* were created to represent categories. A bare category is not a coordinated initiative, so it should not be an epic.
 
-- **An epic is justified only when there is a real dependency graph to coordinate** (multiple issues with ordering / blocking). A bare category is not an epic.
-- **Categories are topical labels**, applied to every issue, queryable, self-maintaining.
+**Step 2, the "use labels" correction:** categories were moved to a `topical:` label axis (the axis `github-discipline.md` defines but had never built), applied to 93 issues. Reasoning: a label is queryable and travels with the issue, where prose membership in an epic body rots.
 
-Actions taken:
+**Step 3, resolution of the open question (the label axis reverted):** Step 2 assumed area-routing is a consumed need. It is not. Evidence gathered 2026-06-02: no workflow, script, or doc routes issues by area; the decision surfaces that pre-date the experiment are this audit's parent roadmap #183 (phase-sequenced) plus the `bug` / `priority: high` / `epic` labels; the GH project board is phase-organized. With no consumer and no auto-labeler, the axis would decay into an inconsistent half-state, which is worse than none. So the 9 topical labels were **deleted**. The principle that justified them ("structure only where it changes a decision") is the same principle that removes them once the decision-relevance is shown absent. Plain area words in the Epic column above are descriptive, not labels.
 
-- Created the topical axis and applied one primary label to all 93 routable open issues: `topical: search` (17), `arch` (21), `mcp` (15), `source` (9), `availability` (8), `cli` (7), `docs` (6), `diagnostics` (5), `perf` (5). Query e.g. `is:open label:"topical: search"`.
-- **Closed 5 category-epics** created earlier the same day, demoting each to a label: #1220 (bug sweep, use `bug`), #1224 (`topical: cli`), #1225 (`topical: diagnostics`), #1226 (`topical: docs`), #1227 (distribution: 2 standalone issues, below threshold for a label). The Epic-column entries in the table above for those five are superseded by the labels named here.
-- Removed the `epic` label from #742 (it is the keystone *under* #268, not a peer epic).
+Net actions that stand:
+
+- **Closed 5 category-epics** (#1220 bug sweep, #1224 CLI, #1225 diagnostics, #1226 docs, #1227 distribution): categories, not coordinated work. Bugs are tracked by the `bug` label; the rest are plain enhancements.
+- Removed the `epic` label from #742 (the keystone *under* #268, not a peer epic).
+- **Decision surfaces:** #183 phases + `bug` / `priority: high` / `epic`. No topical axis.
 
 **Surviving epics (11)**, reserved for coordinated multi-step work: #189 (TUI, dormant), #190 (source expansion), #191 (search quality), #266 (availability v2), #268 (MCP capability), #769 (layer separation), #1036 (per-source DB split), #1221 (recrawl), #1222 (Linux), #1223 (declarative pluggability), #1228 (semantic + vector).
 
