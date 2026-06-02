@@ -237,12 +237,17 @@ flowchart TB
 
   subgraph InFlight["Epics in flight"]
     direction TB
-    E1036["#1036 per-source DB split"]:::partial ~~~ E191["#191 search quality + FTS"]:::partial ~~~ E769["#769 layer separation"]:::next ~~~ E742["#742 MCP diagnostic keystone"]:::next
+    E1221["#1221 recrawl (--resume in progress)"]:::active ~~~ E1036["#1036 per-source DB split"]:::partial ~~~ E191["#191 search quality + FTS"]:::partial
+  end
+
+  subgraph Next["Epics next"]
+    direction TB
+    E769["#769 layer separation"]:::next
   end
 
   subgraph Planned["Epics planned"]
     direction TB
-    E268["#268 MCP capability expansion"]:::todo ~~~ E266["#266 availability annotation v2"]:::todo ~~~ E190["#190 source expansion"]:::todo ~~~ E189["#189 TUI internal tracker"]:::todo
+    E268["#268 MCP capability (keystone #742)"]:::todo ~~~ E266["#266 availability annotation v2"]:::todo ~~~ E190["#190 source expansion"]:::todo ~~~ E1223["#1223 declarative pluggability"]:::todo ~~~ E1222["#1222 Linux port"]:::todo ~~~ E1228["#1228 semantic + vector"]:::todo ~~~ E189["#189 TUI (dormant)"]:::todo
   end
 
   subgraph Shipped["Epics shipped"]
@@ -250,7 +255,7 @@ flowchart TB
     E943["#943 comprehensive query batteries"]:::done ~~~ E251["#251 unify sources + databases"]:::done
   end
 
-  InFlight ~~~ Planned ~~~ Shipped
+  InFlight ~~~ Next ~~~ Planned ~~~ Shipped
 ```
 
 ## Performance
