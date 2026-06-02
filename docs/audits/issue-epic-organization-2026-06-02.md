@@ -163,8 +163,8 @@ Closed as categories: **#1220** (bug sweep; bugs use the `bug` label), **#1224**
 | 1163 | KEEP | diagnostics | logging hygiene |
 | 1175 | KEEP | docs | recommend Homebrew first |
 | 1178 | GATED | 268 | needs serve --base-dir (#1168) |
-| 1200 | KEEP | bug | list_samples schema mismatch |
-| 1201 | KEEP | bug | save --help stale text |
+| 1200 | CLOSED | bug | ALREADY FIXED by PR #1202 (`c721cf79`); audit-1 verdict was wrong |
+| 1201 | CLOSED | bug | ALREADY FIXED by PR #1203 (`eb587a28`); audit-1 verdict was wrong |
 | 1208 | KEEP | 268 | list-documents tool |
 | 1209 | KEEP | diagnostics | doctor per-source uniform |
 | 1210 | KEEP | 268 | document children tree |
@@ -207,3 +207,22 @@ Net actions that stand:
 ### Verification policy
 
 This audit is triage, not a code-verified pass (see Limitations). A full speculative code-verification of all ~95 issues is the wrong investment: most will not be touched soon. The policy is **verify at pickup**: when an issue is about to be worked, build/grep/read it against the current code to confirm its `KEEP` verdict still holds, and only then. The verdicts here route work; they do not certify it.
+
+## Re-audit (2026-06-02, code-verified)
+
+The first pass (above) was triage from issue status blocks. This pass verified central claims against `origin/develop` with grep / file / schema checks and a commit-history scan, not self-reports. Method and findings:
+
+**Biggest finding: two issues were already fixed but never closed.** The status-block pass (and several later references in this session) wrongly treated them as open, actionable bugs:
+
+- **#1200** (list_samples empty input schema): fixed by PR #1202, commit `c721cf79`. `toolListSamples` advertises `listSamplesProperties` (framework + limit); the empty `[:]` at the adjacent line belongs to `list_frameworks`. **Closed.**
+- **#1201** (save --help stale swift-documentation.db text): fixed by PR #1203, commit `eb587a28`. The save --help lists are registry-generated; the stale sentence is gone (remaining matches are code comments). **Closed.**
+
+**Completeness check (the high-value part):** scanned the last 300 `origin/develop` commit subjects for references to any currently-open issue. After closing #1200/#1201, the only hit is **#962**, and it is **partial** (commit `20b792d0` shipped MCP/CLI option parity; the issue's core ask, auto-generating CLI subcommands from the MCP tool registry, is not done: `CLI/Cupertino.swift` still hardcodes `SearchSymbols.self` etc.). Conclusion: **no other currently-open issue has a merged fix on develop.**
+
+**Spot-verified as genuinely not-implemented (premise holds, valid):** #8 (no sqlite-vec), #10 (no BKTree), #21 (no cupertino-bench), #195 (no doc_semantic_tags), #70 / #73 (token-efficient tools are comments only, not registered), #76 (no GLOB in searchSymbols), #175 (no restart tool; the word appears only in a comment), #742 (no structured-uncertainty surface), #1208 / #1210 (no list_documents / children tools), #1212 (server does not set initialize.instructions; the match was the mock client), #16 / #78 / #240 / #801 / #885 (CLI features absent), #248 (no DatabaseRegistry), #730 (neutered accessor still present), #449 (no cupertino DocC catalog).
+
+**Honest scope + caveats:**
+
+- This pass code-verified the actionable / likely-already-done subset plus the commit-scan completeness check. It did **not** individually grep all ~75 not-started planning issues; the commit scan rules out the main risk (fixed-but-open) across all of them, but a "still valid" verdict on an unscanned planning issue remains triage, not proof.
+- **#1146** (`--resume`) has no implementation on `origin/develop`; its "in progress" status is true only on an unmerged feature branch. The README/#1221 progress diagram labels it "in progress", which is accurate for the branch but not the trunk.
+- Naive keyword greps produced false positives (e.g. "stats" inside a JSON parser, "restart" inside a comment); every PRESENT verdict here was re-checked with exact tokens and line context.
