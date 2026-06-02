@@ -34,15 +34,16 @@ cupertino list-frameworks --format markdown
 ## Sample Output
 
 ```
-Available Frameworks (402 total, 277640 documents):
+Available Frameworks (412 total, 351873 documents):
+(counts cover the framework-scoped sources: apple-docs + apple-archive)
 
-  swiftui: 6500 documents
-  foundation: 4200 documents
-  uikit: 3800 documents
+  kernel: 39396 documents
+  matter: 24320 documents
+  swift: 17466 documents
   ...
 ```
 
-Counts depend on which corpora have been saved to `apple-documentation.db` (apple-docs) and `apple-archive.db` (apple-archive); other per-source DBs do not carry framework partitioning. Numbers above snapshot the v1.0 bundle; your local DB will vary.
+Post per-source-DB split (#1036/#1037), `list-frameworks` sums only the sources whose `capabilities.operations` declare `.listFrameworks`: today apple-docs (`apple-documentation.db`) and apple-archive (`apple-archive.db`). The other per-source DBs (HIG / swift-evolution / swift-org / swift-book) do not carry framework partitioning, so their rows are not in this total. The numbers above are from the v1.3.0 bundle (351,505 apple-docs + 368 apple-archive); your local DB will vary, and the scope line lists whichever framework-scoped sources are present.
 
 ## See Also
 

@@ -93,11 +93,16 @@ extension CLIImpl.Command {
             let frameworksRegisteredSources = CLIImpl.makeFormatterAvailableSources(
                 registry: CLIImpl.makeProductionSourceRegistry()
             )
+            // #1041: the source IDs that actually contributed to totalDocs,
+            // so the formatter can caveat the count's scope without
+            // hardcoding which sources expose frameworks.
+            let scopedSourceIDs = frameworkSources.map(\.definition.id)
             switch format {
             case .text:
                 let formatter = Services.Formatter.Frameworks.Text(
                     totalDocs: totalDocs,
-                    availableSources: frameworksRegisteredSources
+                    availableSources: frameworksRegisteredSources,
+                    frameworkScopedSources: scopedSourceIDs
                 )
                 Cupertino.Context.composition.logging.recording.output(formatter.format(frameworks))
             case .json:
@@ -106,7 +111,8 @@ extension CLIImpl.Command {
             case .markdown:
                 let formatter = Services.Formatter.Frameworks.Markdown(
                     totalDocs: totalDocs,
-                    availableSources: frameworksRegisteredSources
+                    availableSources: frameworksRegisteredSources,
+                    frameworkScopedSources: scopedSourceIDs
                 )
                 Cupertino.Context.composition.logging.recording.output(formatter.format(frameworks))
             }

@@ -469,3 +469,42 @@ struct ServicesProtocolWitnessTests {
         #expect(results.isEmpty)
     }
 }
+
+// MARK: - #1041 Frameworks formatter scope caveat
+
+@Suite("#1041 list-frameworks scope caveat")
+struct Issue1041FrameworkScopeCaveatTests {
+    private let frameworks = ["SwiftUI": 100, "Foundation": 50]
+
+    @Test("Text formatter prints the framework-scoped source caveat with joined IDs")
+    func textShowsCaveat() {
+        let out = Services.Formatter.Frameworks.Text(
+            totalDocs: 150,
+            availableSources: ["apple-docs"],
+            frameworkScopedSources: ["apple-docs", "apple-archive"]
+        ).format(frameworks)
+        #expect(out.contains("150 documents"))
+        #expect(out.contains("framework-scoped sources: apple-docs + apple-archive"))
+    }
+
+    @Test("Text formatter omits the caveat when no scoped sources are passed")
+    func textOmitsCaveatWhenEmpty() {
+        let out = Services.Formatter.Frameworks.Text(
+            totalDocs: 150,
+            availableSources: ["apple-docs"]
+        ).format(frameworks)
+        #expect(out.contains("150 documents"))
+        #expect(!out.contains("framework-scoped"))
+    }
+
+    @Test("Markdown formatter prints the framework-scoped source caveat")
+    func markdownShowsCaveat() {
+        let out = Services.Formatter.Frameworks.Markdown(
+            totalDocs: 150,
+            availableSources: ["apple-docs"],
+            frameworkScopedSources: ["apple-docs", "apple-archive"]
+        ).format(frameworks)
+        #expect(out.contains("**150**"))
+        #expect(out.contains("framework-scoped sources (apple-docs + apple-archive)"))
+    }
+}
