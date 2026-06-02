@@ -48,10 +48,14 @@ echo
 # Probe 2: doctor reports all 3 DBs healthy.
 DOCTOR_OUT="$("$BINARY" doctor 2>&1)"
 echo "Probe 2: doctor"
-grep -q "MCP Server" <<< "$DOCTOR_OUT"; assert $? "doctor reports MCP Server section"
-grep -q "search.db" <<< "$DOCTOR_OUT"; assert $? "doctor reports search.db"
-grep -q "samples.db" <<< "$DOCTOR_OUT"; assert $? "doctor reports samples.db"
-grep -q "packages.db" <<< "$DOCTOR_OUT"; assert $? "doctor reports packages.db"
+# Each check uses `&& assert 0 || assert 1` (not `grep; assert $?`) so a miss
+# is reported by `assert` instead of aborting the whole script under `set -e`.
+# DB names are the per-source set doctor prints post-#1036/#1037 (the old
+# unified search.db / samples.db names are gone). #1255.
+grep -q "MCP Server" <<< "$DOCTOR_OUT" && assert 0 "doctor reports MCP Server section" || assert 1 "doctor reports MCP Server section"
+grep -q "apple-documentation.db" <<< "$DOCTOR_OUT" && assert 0 "doctor reports apple-documentation.db" || assert 1 "doctor reports apple-documentation.db"
+grep -q "apple-sample-code.db" <<< "$DOCTOR_OUT" && assert 0 "doctor reports apple-sample-code.db" || assert 1 "doctor reports apple-sample-code.db"
+grep -q "packages.db" <<< "$DOCTOR_OUT" && assert 0 "doctor reports packages.db" || assert 1 "doctor reports packages.db"
 echo
 
 # Probe 3: search returns hits for a canonical query.

@@ -14,6 +14,8 @@
 
 - **docs(#1146): document the incremental / resumable behavior of `save`.** The incremental skip (a non-`--clear` save skips docs whose content hash is unchanged, before AST extraction) shipped in #1148 but was undocumented in `save --help`. Added an INCREMENTAL section to the command discussion and clarified the `--clear` flag help, including the guidance to use `--clear` after a binary upgrade since an unchanged content hash does not prove the stored AST extraction is from the current extractor. The capability is always-on for non-`--clear` saves (accepted as-built rather than the originally-proposed opt-in `--resume` flag); `docs/commands/save/option (--)/clear.md` gained the extractor-upgrade caveat.
 
+- **fix(#1255): un-stale the CLI smoke harness + fix stale doc URIs.** `scripts/eval/cli-smoke.sh` asserted the pre-#1036 unified DB names (`search.db` / `samples.db`) and aborted under `set -e` at the first miss, so probes 3-6 (search / read / list-frameworks / inheritance) never ran. It now asserts the per-source names `doctor` actually prints (`apple-documentation.db`, `apple-sample-code.db`, `packages.db`) using a non-aborting `&& assert 0 || assert 1` pattern; the full smoke passes end-to-end again. Also corrected stale example URIs in `README.md` and `docs/agent-skill.md` (`apple-docs://swiftui/documentation_swiftui_navigationstack` -> `apple-docs://swiftui/navigationstack`); the tool emits the short form, so the old examples 404 in `read`.
+
 ## v1.3.0 (2026-05-31)
 
 ### Breaking
