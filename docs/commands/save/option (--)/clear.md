@@ -50,6 +50,7 @@ cupertino save --all
 ### Use `--clear` when:
 - Schema has changed (post-migration cleanup)
 - Documentation structure changed significantly
+- **The binary was upgraded to a newer AST extractor.** An incremental save matches on content hash, and an unchanged content hash does not prove the stored symbol extraction came from the current extractor. `--clear` re-extracts every document.
 - Index is suspected corrupted
 - You want a known-clean baseline
 

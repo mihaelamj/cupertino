@@ -76,6 +76,14 @@ extension CLIImpl.Command {
         to skip the confirmation prompt. Run 'cupertino doctor --save' to preview the
         preflight output without writing any database.
 
+        INCREMENTAL (resumable): a save WITHOUT --clear is incremental. A document
+        already in the database with an unchanged content hash is skipped before the
+        expensive AST extraction, so an interrupted reindex resumes where it stopped
+        and an unchanged re-save is a near no-op. A changed document (new content hash)
+        is re-indexed. Use --clear to force a full rebuild: after upgrading the binary
+        to a newer AST extractor, run with --clear, since an unchanged content hash does
+        not prove the stored extraction is from the current extractor.
+
         DISPATCH:
           `--source <id>` builds only that source's destination database. This
           source-to-database mapping is generated from the production source
@@ -126,7 +134,10 @@ extension CLIImpl.Command {
         @Option(name: .long, help: "Metadata file path")
         var metadataFile: String?
 
-        @Flag(name: .long, help: "Clear existing index before building")
+        @Flag(
+            name: .long,
+            help: "Clear the existing index and force a full rebuild. Without it, save is incremental: docs with an unchanged content hash are skipped before AST extraction."
+        )
         var clear: Bool = false
 
         @Flag(
