@@ -149,12 +149,12 @@ Closed as categories: **#1220** (bug sweep; bugs use the `bug` label), **#1224**
 | 962 | KEEP | #1223 | derive CLI from MCP registry |
 | 965 | KEEP | #1223 | AST tools DB-pluggable |
 | 1036 | EPIC | 1036 | per-source DB split |
-| 1041 | KEEP | bug | unblocked by shipped bundle |
+| 1041 | KEEP | bug | VERIFIED valid: Frameworks.Text formatter still emits plain "(N total, M documents)" |
 | 1048 | KEEP | docs | comment cleanup + DocC |
 | 1054 | CLOSED | docs | ALREADY DONE: doc rewritten in #1056; stale framing gone |
 | 1061 | KEEP | 1036 | drop source column |
 | 1075 | CLOSED | #1223 | premature placeholder (N/A until a second source joins); refile then |
-| 1132 | GATED | bug | code merged; recrawl-gated |
+| 1132 | GATED | bug | code+data done (snapshot: 340 aliases, 22 synonyms >=20); only test re-enable remains |
 | 1146 | KEEP | #1221 | in progress on a branch |
 | 1151 | GATED | #1222 | Linux indexing + `linux` axis |
 | 1152 | KEEP | #1222 | Linux runtime read/serve |
@@ -162,7 +162,7 @@ Closed as categories: **#1220** (bug sweep; bugs use the `bug` label), **#1224**
 | 1162 | KEEP | diagnostics | serve warning to stderr |
 | 1163 | PARTIAL | diagnostics | item 1 (SampleIndex subsystem) fixed; items 2,3 remain |
 | 1175 | KEEP | docs | recommend Homebrew first |
-| 1178 | GATED | 268 | needs serve --base-dir (#1168) |
+| 1178 | KEEP | 268 | UNBLOCKED: #1168 closed, serve --base-dir exists; actionable now |
 | 1200 | CLOSED | bug | ALREADY FIXED by PR #1202 (`c721cf79`); audit-1 verdict was wrong |
 | 1201 | CLOSED | bug | ALREADY FIXED by PR #1203 (`eb587a28`); audit-1 verdict was wrong |
 | 1208 | KEEP | 268 | list-documents tool |
@@ -233,6 +233,7 @@ The first pass (above) was triage from issue status blocks. This pass verified c
 
 **Honest scope + caveats:**
 
-- Not greppable, left as TRIAGE: #43 / #80 (external submissions; #80's two live badges are in the README), #196 (funding), #517 (a framing decision), #822 (research), #800 (deferred perf), #1132 (code fixed by #1143 but synonyms populate only on re-enrichment; needs a DB to verify), #1178 (gated on #1168), #1041 (formatter file path not located this pass; maintainer re-verified 2026-05-29).
+- Not greppable, left as TRIAGE: #43 / #80 (external submissions; #80 partial, no `server.json` so the GitHub MCP Registry submission is absent, the two live badges are in the README), #196 (funding), #517 (a framing decision), #822 (research), #800 (deferred perf).
+- **Second sweep (2026-06-02) corrected three earlier punts**: (a) **#1178** is UNBLOCKED, not gated, its blocker #1168 is CLOSED so `serve --base-dir` exists; (b) **#1132** was claimed "needs a DB" then punted, but a read-only SELECT on the snapshot `apple-documentation.db` shows `framework_aliases` has 340 rows with 22 non-empty synonyms (the "7 rows / 0 synonyms" body is stale; only the test re-enable remains); (c) **#1041** was "file path not located" but the formatter is `ServicesModels/Formatters/Services.Formatter.Frameworks.Text.swift` and still emits the plain label, so VERIFIED valid. Lesson: "not greppable" and "file not found" were laziness, not real limits.
 - **#1146** (`--resume`) has no implementation on `origin/develop`; its "in progress" status is true only on an unmerged feature branch. The README/#1221 diagram labels it "in progress", accurate for the branch, not the trunk.
 - Naive keyword greps produced false positives ("stats" in a JSON parser, "restart" in a comment, #1212's match being the mock client, #17's reporter being RemoteSync's); every PRESENT was re-checked with exact tokens + line context.
