@@ -97,7 +97,7 @@ Closed and demoted to labels: **#1220** (bug sweep, use `bug`), **#1224** (`topi
 | 189 | DORMANT | 189 | internal TUI tracker |
 | 195 | GATED | #1228 | gated on #196 funding |
 | 196 | DEFERRED | #1228 | funding holding-pattern; re-cost vs Haiku 4.5 |
-| 197 | KEEP | standalone | meta (roadmap protocol) |
+| 197 | CLOSED | standalone | protocol documented in `docs/roadmap-maintenance-protocol.md`; body was stale |
 | 216 | GATED | 190 | tutorials source |
 | 222 | KEEP | 266 | AST decl association |
 | 223 | KEEP | 266 | Apple SDK availability for symbols |
@@ -136,7 +136,7 @@ Closed and demoted to labels: **#1220** (bug sweep, use `bug`), **#1224** (`topi
 | 800 | DEFERRED | #1221 | deferred per maintainer 2026-05-19 |
 | 801 | KEEP | topical: cli | build-number in --version |
 | 816 | KEEP | 191 | the actual release-blocker eval |
-| 817 | KEEP | 191 | partially done; relocate harnesses |
+| 817 | CLOSED | 191 | done: harnesses now in `scripts/eval/` (phase1-5 + lib + smokes) |
 | 818 | KEEP | 191 | worst class baseline (18%) |
 | 819 | KEEP | 191 | symbol-attribute filters |
 | 820 | KEEP | 191 | HIG/archive routing |
@@ -153,7 +153,7 @@ Closed and demoted to labels: **#1220** (bug sweep, use `bug`), **#1224** (`topi
 | 1048 | KEEP | topical: docs | comment cleanup + DocC |
 | 1054 | KEEP | topical: docs | unblocked (gating issues closed) |
 | 1061 | KEEP | 1036 | drop source column |
-| 1075 | DEFERRED | #1223 | until a second source joins |
+| 1075 | CLOSED | #1223 | premature placeholder (N/A until a second source joins); refile then |
 | 1132 | GATED | bug | code merged; recrawl-gated |
 | 1146 | KEEP | #1221 | in progress on a branch |
 | 1151 | GATED | #1222 | Linux indexing + `linux` axis |
@@ -170,7 +170,7 @@ Closed and demoted to labels: **#1220** (bug sweep, use `bug`), **#1224** (`topi
 | 1210 | KEEP | 268 | document children tree |
 | 1212 | KEEP | 268 | initialize.instructions |
 
-Closed during this audit: **#1184** (fixed in PR #1183), **#1071** (resolved by v1.3.0).
+Closed during this audit: **#1184** (fixed in PR #1183), **#1071** (resolved by v1.3.0), **#748** (dual-consumer README shipped), and during the first-principles cleanup pass: **#197** (protocol documented + body stale), **#817** (harnesses relocated), **#1075** (premature placeholder). Plus the 5 category-epics demoted to labels (see Revision).
 
 ## Recommended execution order
 
