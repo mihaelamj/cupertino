@@ -59,7 +59,7 @@ Closed as categories: **#1220** (bug sweep; bugs use the `bug` label), **#1224**
 - **#268 MCP capability expansion**: #13 (resource templates), #50 (conditional registration), #70 (summary), #73 (framework overview), #76 (wildcard symbols), #175 (server restart), #271 (token-budget), #272 (sample cross-links), #517 (AI-agent consumer), #742 (diagnostic keystone), #1178 (desktop E2E), #1208 (list-documents), #1210 (document children), #1212 (initialize.instructions)
 - **#769 Layer separation**: #247, #770, #771, #772, #773, #774, #775, #776, #777, #778
 - **#1036 Per-source DB split**: #1061 (drop `docs_metadata.source`)
-- **#1221 Recrawl** (epic): #1146 (`--resume`, in progress), #514 (WAL measurement), #800 (quadratic throughput), #22 (memory budgets)
+- **#1221 Recrawl** (epic): #1146 (`--resume`, DONE #1148), #514 (WAL measurement), #800 (quadratic throughput), #22 (memory budgets)
 - **#1222 Linux port** (epic): #1151 (indexing + `linux` axis), #1152 (runtime read/serve)
 - **#1223 Declarative pluggability** (epic): #248 (DB registry), #962 (CLI from MCP registry), #965 (AST tools DB-pluggable), #1075 (enrichment seam), #730 (delete neutered accessor), #909 (audit-script consistency)
 - **`bug` label** (was #1220, closed): empty. All closed: #1041 (#1243), #1132 (#1240), #1200 (#1202), #1201 (#1203)
@@ -155,7 +155,7 @@ Closed as categories: **#1220** (bug sweep; bugs use the `bug` label), **#1224**
 | 1061 | KEEP | 1036 | drop source column |
 | 1075 | CLOSED | #1223 | premature placeholder (N/A until a second source joins); refile then |
 | 1132 | CLOSED | bug | synonyms attach (22 >=20); synonymsAttached test re-enabled + green (#1240) |
-| 1146 | KEEP | #1221 | in progress on a branch |
+| 1146 | CLOSED | #1221 | done (#1148); documented + closed as-built (#1245) |
 | 1151 | GATED | #1222 | Linux indexing + `linux` axis |
 | 1152 | KEEP | #1222 | Linux runtime read/serve |
 | 1161 | CLOSED | diagnostics | ALREADY FIXED by #1164 (docs commit my fix-scan regex missed) |
