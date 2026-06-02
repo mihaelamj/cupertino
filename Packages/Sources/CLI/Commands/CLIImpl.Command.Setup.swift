@@ -39,7 +39,13 @@ extension CLIImpl.Command {
             }
         }
 
-        mutating func run() async throws {
+        mutating func validate() throws {
+        if force {
+            throw ValidationError("--force was removed in v1.2.0. cupertino setup overwrites by default; pass --keep-existing if you want to preserve already-installed databases.")
+        }
+    }
+
+ func run() async throws {
             // #781: invocation banner before any other work.
             Cupertino.Context.composition.logging.logInvocation()
 
