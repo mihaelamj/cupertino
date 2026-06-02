@@ -8,15 +8,14 @@ import Testing
 // ...). The 22 hand-curated aliases are attached by SynonymsPass via an
 // UPDATE keyed on the `framework` column.
 //
-// SNAPSHOT STATUS (2026-05-28): the framework='docs' misbuild is FIXED.
-// apple-documentation.db is rebuilt with `framework` derived from the
-// document URL, so real identifiers dominate (framework='docs' is 1 of
-// ~355k rows). Search-level aliasing works on this snapshot (a bare
-// 'bluetooth' query routes to CoreBluetooth), so that behaviour test is
-// re-enabled. Remaining caveat: `framework_aliases.synonyms` is still
-// empty (SynonymsPass attaches nothing even though the framework column
-// is now correct), so the DB-column `synonymsAttached` test stays
-// disabled pending that separate enrichment fix.
+// SNAPSHOT STATUS (2026-06-02): the framework='docs' misbuild is FIXED, and
+// SynonymsPass now attaches synonyms. apple-documentation.db is rebuilt with
+// `framework` derived from the document URL, so real identifiers dominate.
+// Search-level aliasing works (a bare 'bluetooth' query routes to
+// CoreBluetooth). The #1143 upsert fix plus re-enrichment populated
+// `framework_aliases.synonyms`: the snapshot now has 340 alias rows with 22
+// non-empty synonyms (e.g. corewlan -> wifi,wlan), so the `synonymsAttached`
+// DB-column test is re-enabled (#1132).
 
 @Suite("Enrichment #11: Framework Aliasing (real DBs)", .enabled(if: LocalDBs.available(LocalDBs.appleDocumentation)))
 struct Enrichment11FrameworkAliasingTests {
@@ -51,16 +50,7 @@ struct Enrichment11FrameworkAliasingTests {
         )
     }
 
-    @Test(
-        "The 22 framework synonyms are attached",
-        .disabled(
-            """
-            framework_aliases.synonyms is empty on this snapshot: SynonymsPass attaches \
-            nothing even though the framework column is now correct (UPDATE-only write over \
-            a near-empty alias table). Tracked in #1132.
-            """
-        )
-    )
+    @Test("The 22 framework synonyms are attached")
     func synonymsAttached() {
         guard let probe = docs() else { return }
         let sql = "SELECT count(*) FROM framework_aliases WHERE synonyms IS NOT NULL AND synonyms<>''"
