@@ -68,7 +68,7 @@ cupertino setup            # download the pre-built databases
 ```bash
 cupertino setup                                  # download pre-built databases (~30s)
 cupertino search "NavigationStack" --limit 5     # search from the terminal
-cupertino read "apple-docs://swiftui/documentation_swiftui_navigationstack" --source apple-docs
+cupertino read "apple-docs://swiftui/navigationstack" --source apple-docs
 cupertino doctor                                 # check local database health
 cupertino serve                                  # start the MCP server (also the default command)
 ```
@@ -86,11 +86,11 @@ Searched: apple-docs, samples, swift-evolution, swift-org, swift-book, packages
 
 ======================================================================
 [1] NavigationStack  •  source: apple-docs  •  score: 0.0324
-    apple-docs://swiftui/documentation_swiftui_navigationstack
+    apple-docs://swiftui/navigationstack
 ----------------------------------------------------------------------
 A view that displays a root view and enables navigation to additional views.
 
-▶ Read full: cupertino read "apple-docs://swiftui/documentation_swiftui_navigationstack" --source apple-docs
+▶ Read full: cupertino read "apple-docs://swiftui/navigationstack" --source apple-docs
 
 💡 Narrow with --source <name>: apple-docs, samples, hig, apple-archive, swift-evolution, swift-org, swift-book, packages
 💡 Filter by platform: --platform iOS --min-version 16.0  (or macOS / tvOS / watchOS / visionOS)

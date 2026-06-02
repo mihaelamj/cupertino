@@ -77,7 +77,7 @@ cupertino search "NavigationStack" --source apple-docs --format json
 cupertino search "button styles" --source samples --format json
 
 # Read a document
-cupertino read "apple-docs://swiftui/documentation_swiftui_view" --format json
+cupertino read "apple-docs://swiftui/view" --format json
 
 # List frameworks
 cupertino list-frameworks --format json
