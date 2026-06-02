@@ -9,15 +9,24 @@ extension Services.Formatter.Frameworks {
         private let totalDocs: Int
         /// #1045 Gap 2: registry-derived source-id list for footer tips.
         private let availableSources: [String]
+        /// #1041: source IDs that contributed to `totalDocs` (the registry's
+        /// `.listFrameworks` fan-out). Passed in, never hardcoded.
+        private let frameworkScopedSources: [String]
 
-        public init(totalDocs: Int, availableSources: [String]) {
+        public init(totalDocs: Int, availableSources: [String], frameworkScopedSources: [String] = []) {
             self.totalDocs = totalDocs
             self.availableSources = availableSources
+            self.frameworkScopedSources = frameworkScopedSources
         }
 
         public func format(_ frameworks: [String: Int]) -> String {
             var output = "# Available Frameworks\n\n"
-            output += "Total documents: **\(totalDocs)**\n\n"
+            if frameworkScopedSources.isEmpty {
+                output += "Total documents: **\(totalDocs)**\n\n"
+            } else {
+                output += "Total documents: **\(totalDocs)** across the framework-scoped sources "
+                output += "(\(frameworkScopedSources.joined(separator: " + ")))\n\n"
+            }
 
             if frameworks.isEmpty {
                 let cmd = "\(Shared.Constants.App.commandName) \(Shared.Constants.Command.buildIndex)"

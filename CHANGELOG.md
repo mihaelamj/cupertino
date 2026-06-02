@@ -8,6 +8,10 @@
 
 - **docs: split the 425-line Quick Start, extracting per-client setup into `docs/`.** The README's Quick Start was half the file, mostly 13 per-client MCP setup guides. The full per-client reference moved to a new `docs/mcp-clients.md` (Claude Desktop, Claude Code, OpenAI Codex, Cursor, VS Code, GitHub Copilot for Xcode, Zed, Windsurf, opencode), and the Agent-Skill instructions moved to a new `docs/agent-skill.md`. The README keeps Claude Desktop + Claude Code inline as the canonical examples and links out for the rest; both new docs are listed in the README `## Documentation` section, and the Installation note now points at `docs/mcp-clients.md` instead of "the sections below". README dropped from ~873 to ~667 lines.
 
+### Changed
+
+- **fix(#1041): `list-frameworks` clarifies that its document count is framework-scoped.** Post per-source-DB split, the command sums only the sources that declare `.listFrameworks` (apple-docs + apple-archive); HIG / swift-evolution / swift-org / swift-book are excluded because their framework column is empty. The text and markdown formatters now print the contributing source IDs under the total (e.g. `(counts cover the framework-scoped sources: apple-docs + apple-archive)`), derived from the registry fan-out rather than hardcoded, so a new framework-scoped source appears in the caveat with zero formatter edits. `docs/commands/list-frameworks/README.md` example numbers refreshed to the v1.3.0 bundle ground truth (412 frameworks, 351,873 documents).
+
 ## v1.3.0 (2026-05-31)
 
 ### Breaking
