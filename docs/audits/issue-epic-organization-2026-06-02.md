@@ -62,7 +62,7 @@ Closed as categories: **#1220** (bug sweep; bugs use the `bug` label), **#1224**
 - **#1221 Recrawl** (epic): #1146 (`--resume`, in progress), #514 (WAL measurement), #800 (quadratic throughput), #22 (memory budgets)
 - **#1222 Linux port** (epic): #1151 (indexing + `linux` axis), #1152 (runtime read/serve)
 - **#1223 Declarative pluggability** (epic): #248 (DB registry), #962 (CLI from MCP registry), #965 (AST tools DB-pluggable), #1075 (enrichment seam), #730 (delete neutered accessor), #909 (audit-script consistency)
-- **`bug` label** (was #1220, closed): #1041 (the only open bug, list-frameworks label); #1132 + #1200 + #1201 now closed
+- **`bug` label** (was #1220, closed): empty. All closed: #1041 (#1243), #1132 (#1240), #1200 (#1202), #1201 (#1203)
 - **CLI area** (was #1224, closed): #16 (verbosity), #17 (search progress), #78 (stats), #240 (raw SQL query), #801 (build number), #885 (setup --force hint)
 - **Diagnostics area** (was #1225, closed): #724 (path-provenance), #1161 (os.log subsystem docs), #1162 (serve warning to stderr), #1163 (logging cleanup), #1209 (doctor per-source uniform)
 - **Docs area** (was #1226, closed): #449 (DocC catalog), #1048 (code-comment + DocC), #1054 (HOW-TO-ADD-A-SOURCE rewrite), #1175 (recommend Homebrew)
@@ -149,7 +149,7 @@ Closed as categories: **#1220** (bug sweep; bugs use the `bug` label), **#1224**
 | 962 | KEEP | #1223 | derive CLI from MCP registry |
 | 965 | KEEP | #1223 | AST tools DB-pluggable |
 | 1036 | EPIC | 1036 | per-source DB split |
-| 1041 | KEEP | bug | VERIFIED valid: Frameworks.Text formatter still emits plain "(N total, M documents)" |
+| 1041 | CLOSED | bug | fixed by #1243: framework-scoped caveat + README numbers refreshed |
 | 1048 | KEEP | docs | comment cleanup + DocC |
 | 1054 | CLOSED | docs | ALREADY DONE: doc rewritten in #1056; stale framing gone |
 | 1061 | KEEP | 1036 | drop source column |
@@ -174,7 +174,7 @@ Closed during this audit: **#1184** (fixed in PR #1183), **#1071** (resolved by 
 
 ## Recommended execution order
 
-1. **Bugs** (north-star: bugs; `bug` label). #1041 (list-frameworks label refresh) is the only open bug; #1200 / #1201 were already fixed (#1202 / #1203) and #1132 is now done (#1240), all closed.
+1. **Bugs** (north-star: bugs; `bug` label). The bug list is now empty: #1041 (#1243), #1132 (#1240), #1200 (#1202), #1201 (#1203) all closed.
 2. **#1221 recrawl** (north-star: recrawl). #1146 (`--resume`) is the enabler and already in progress.
 3. **#742** keystone, then the **#268** MCP-capability fan-out it unblocks.
 4. **#1228 semantic & vector** (north-star: vector) follows the diagnostic surface.
