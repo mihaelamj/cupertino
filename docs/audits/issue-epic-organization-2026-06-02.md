@@ -151,16 +151,16 @@ Closed as categories: **#1220** (bug sweep; bugs use the `bug` label), **#1224**
 | 1036 | EPIC | 1036 | per-source DB split |
 | 1041 | KEEP | bug | unblocked by shipped bundle |
 | 1048 | KEEP | docs | comment cleanup + DocC |
-| 1054 | KEEP | docs | unblocked (gating issues closed) |
+| 1054 | CLOSED | docs | ALREADY DONE: doc rewritten in #1056; stale framing gone |
 | 1061 | KEEP | 1036 | drop source column |
 | 1075 | CLOSED | #1223 | premature placeholder (N/A until a second source joins); refile then |
 | 1132 | GATED | bug | code merged; recrawl-gated |
 | 1146 | KEEP | #1221 | in progress on a branch |
 | 1151 | GATED | #1222 | Linux indexing + `linux` axis |
 | 1152 | KEEP | #1222 | Linux runtime read/serve |
-| 1161 | KEEP | diagnostics | wrong os.log subsystem in docs |
+| 1161 | CLOSED | diagnostics | ALREADY FIXED by #1164 (docs commit my fix-scan regex missed) |
 | 1162 | KEEP | diagnostics | serve warning to stderr |
-| 1163 | KEEP | diagnostics | logging hygiene |
+| 1163 | PARTIAL | diagnostics | item 1 (SampleIndex subsystem) fixed; items 2,3 remain |
 | 1175 | KEEP | docs | recommend Homebrew first |
 | 1178 | GATED | 268 | needs serve --base-dir (#1168) |
 | 1200 | CLOSED | bug | ALREADY FIXED by PR #1202 (`c721cf79`); audit-1 verdict was wrong |
@@ -212,17 +212,27 @@ This audit is triage, not a code-verified pass (see Limitations). A full specula
 
 The first pass (above) was triage from issue status blocks. This pass verified central claims against `origin/develop` with grep / file / schema checks and a commit-history scan, not self-reports. Method and findings:
 
-**Biggest finding: two issues were already fixed but never closed.** The status-block pass (and several later references in this session) wrongly treated them as open, actionable bugs:
+**Biggest finding: FOUR issues were already fixed/done but never closed.** The status-block pass (and several later references in this session) wrongly treated them as open:
 
-- **#1200** (list_samples empty input schema): fixed by PR #1202, commit `c721cf79`. `toolListSamples` advertises `listSamplesProperties` (framework + limit); the empty `[:]` at the adjacent line belongs to `list_frameworks`. **Closed.**
-- **#1201** (save --help stale swift-documentation.db text): fixed by PR #1203, commit `eb587a28`. The save --help lists are registry-generated; the stale sentence is gone (remaining matches are code comments). **Closed.**
+- **#1200** (list_samples empty input schema): fixed by PR #1202, commit `c721cf79`. `toolListSamples` advertises `listSamplesProperties`; the empty `[:]` at the adjacent line belongs to `list_frameworks`. **Closed.**
+- **#1201** (save --help stale text): fixed by PR #1203, commit `eb587a28`. The lists are registry-generated; the stale sentence is gone. **Closed.**
+- **#1161** (wrong os.log subsystem in docs): fixed by PR #1164, commit `4d23c370`. README + design doc now use `com.cupertino.cli`. **Closed.**
+- **#1054** (HOW-TO-ADD-A-SOURCE rewrite): done in #1056; the doc opens with "Required: the two files" (not the stale "four lines"), no #1045-open framing remains. **Closed.**
+- Plus **#1163** is **partial**: item 1 (SampleIndex stray subsystem) is fixed; items 2 (dead `transport` category) and 3 (untested subsystem) remain, so it stays open.
 
-**Completeness check (the high-value part):** scanned the last 300 `origin/develop` commit subjects for references to any currently-open issue. After closing #1200/#1201, the only hit is **#962**, and it is **partial** (commit `20b792d0` shipped MCP/CLI option parity; the issue's core ask, auto-generating CLI subcommands from the MCP tool registry, is not done: `CLI/Cupertino.swift` still hardcodes `SearchSymbols.self` etc.). Conclusion: **no other currently-open issue has a merged fix on develop.**
+**Correction to my own completeness claim.** I first scanned commit subjects for `fix/feat/close/resolve(#N)` and concluded "no other open issue has a merged fix." That was **wrong**, with two blind spots: (1) the regex missed other conventional prefixes, so it missed #1161's `docs(#1161)` fix; (2) a commit-subject scan cannot catch a fix that does not cite the issue number at all (#1054 was fixed by #1056; #1163 item 1 by an uncited change) -- only reading the code finds those. The reliable method is the per-issue code grep, not the commit scan. The commit scan's one residual hit is **#962** (partial: option parity shipped, auto-generated subcommands not).
 
-**Spot-verified as genuinely not-implemented (premise holds, valid):** #8 (no sqlite-vec), #10 (no BKTree), #21 (no cupertino-bench), #195 (no doc_semantic_tags), #70 / #73 (token-efficient tools are comments only, not registered), #76 (no GLOB in searchSymbols), #175 (no restart tool; the word appears only in a comment), #742 (no structured-uncertainty surface), #1208 / #1210 (no list_documents / children tools), #1212 (server does not set initialize.instructions; the match was the mock client), #16 / #78 / #240 / #801 / #885 (CLI features absent), #248 (no DatabaseRegistry), #730 (neutered accessor still present), #449 (no cupertino DocC catalog).
+**Then I did grep all the remaining planning issues** (2026-06-02). Confirmed genuinely not-implemented (premise holds, valid), by area:
+- Sources: #58 / #89 / #216 / #273 / #713 / #892 (no `<X>Source` target).
+- Layer separation: #770-#778 (no `cupertino-crawler` / `-indexer` / `-postprocessor` targets, no `CoreCrawler` / `CoreIndexer` split, no CI standalone-binary job, no handoff-contract doc).
+- Availability: #222 / #235 / #269 (no `.linux`/`.iPadOS` case) / #270.
+- Search / eval: #8 / #10 / #21 / #195 / #70 / #73 / #76 / #271 / #272 / #742 / #816 / #818 / #819 / #821; #17 (the `ProgressReporter` that exists is RemoteSync download progress, not a search-fan-out reporter).
+- MCP: #1208 / #1210 / #1212 / #13 (no `variables` field); #50 + #965 (single `searchIndex`, not a registry).
+- CLI / diagnostics: #16 / #78 / #240 / #801 / #885 / #248 / #730 / #449 / #724 / #1209 (`--docs-dir`/`--evolution-dir` still present).
+- Linux: #1151 / #1152 (only a linuxbrew PATH string exists; no `#if os(Linux)` support).
 
 **Honest scope + caveats:**
 
-- This pass code-verified the actionable / likely-already-done subset plus the commit-scan completeness check. It did **not** individually grep all ~75 not-started planning issues; the commit scan rules out the main risk (fixed-but-open) across all of them, but a "still valid" verdict on an unscanned planning issue remains triage, not proof.
-- **#1146** (`--resume`) has no implementation on `origin/develop`; its "in progress" status is true only on an unmerged feature branch. The README/#1221 progress diagram labels it "in progress", which is accurate for the branch but not the trunk.
-- Naive keyword greps produced false positives (e.g. "stats" inside a JSON parser, "restart" inside a comment); every PRESENT verdict here was re-checked with exact tokens and line context.
+- Not greppable, left as TRIAGE: #43 / #80 (external submissions; #80's two live badges are in the README), #196 (funding), #517 (a framing decision), #822 (research), #800 (deferred perf), #1132 (code fixed by #1143 but synonyms populate only on re-enrichment; needs a DB to verify), #1178 (gated on #1168), #1041 (formatter file path not located this pass; maintainer re-verified 2026-05-29).
+- **#1146** (`--resume`) has no implementation on `origin/develop`; its "in progress" status is true only on an unmerged feature branch. The README/#1221 diagram labels it "in progress", accurate for the branch, not the trunk.
+- Naive keyword greps produced false positives ("stats" in a JSON parser, "restart" in a comment, #1212's match being the mock client, #17's reporter being RemoteSync's); every PRESENT was re-checked with exact tokens + line context.
