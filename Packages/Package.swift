@@ -123,6 +123,13 @@ let deps: [Package.Dependency] = [
     // External (#1167): the extracted, neutral MCP wire core (the SwiftMCPCore module).
     // URL dep pinned to the SwiftMCPCore v0.1.0 tag (repo renamed from swift-mcp-core; old URL redirects).
     .package(url: "https://github.com/mihaelamj/SwiftMCPCore.git", from: "0.1.0"),
+    // External: the extracted MCP server runtime (Server actor, Transport, provider
+    // seams), lifted out of Sources/MCP. Re-exports SwiftMCPCore, so consumers that
+    // import MCPCore still see MCP.Core.Protocols.* and the runtime through one edge.
+    // Pinned .exact so this extraction is byte-identical to the prior in-tree code:
+    // 0.2.0 is additive but changes `ping` (methodNotFound -> empty result). Adopt it
+    // deliberately in a follow-up, not implicitly via a `from:` float.
+    .package(url: "https://github.com/mihaelamj/SwiftMCPServer.git", exact: "0.1.0"),
     // External (#1172): the neutral, transport-injectable MCP client. MockAIAgent
     // consumes its `Client.MCP` seam over a subprocess channel. Depends on
     // SwiftMCPCore (resolves the same 0.1.0 pin, one node in the graph).
@@ -149,7 +156,14 @@ let targets: [Target] = {
     // are excluded because they are their own SPM targets.
     let mcpCoreTarget = Target.target(
         name: "MCPCore",
-        dependencies: [.product(name: "SwiftMCPCore", package: "SwiftMCPCore")],
+        dependencies: [
+            // SwiftMCPCore stays a direct edge: the cupertino-specific wire-layer
+            // files kept in this target (CupertinoIcon, MCPShared) import it by name.
+            .product(name: "SwiftMCPCore", package: "SwiftMCPCore"),
+            // SwiftMCPServer owns the Server + Transport + provider seams formerly in
+            // Core/Server + Core/Transport. MCP.swift @_exported-imports it.
+            .product(name: "SwiftMCPServer", package: "SwiftMCPServer"),
+        ],
         path: "Sources/MCP",
         exclude: ["Client", "SharedTools", "Support"]
     )
