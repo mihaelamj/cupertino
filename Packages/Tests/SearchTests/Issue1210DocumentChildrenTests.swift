@@ -88,6 +88,70 @@ struct Issue1210DocumentChildrenTests {
         ])
     }
 
+    @Test("listChildren returns canonical parent URI for matched topic-group fragments")
+    func listChildrenCanonicalizesMatchedTopicGroupParentURI() async throws {
+        let (index, cleanup) = try await makeIndex()
+        defer { try? cleanup() }
+        defer { Task { await index.disconnect() } }
+
+        try await seedSwiftUITree(index)
+
+        let page = try await index.listChildren(
+            source: Shared.Constants.SourcePrefix.appleDocs,
+            uri: "apple-docs://swiftui#essentials"
+        )
+
+        #expect(page.parentURI == "apple-docs://swiftui#Essentials")
+        #expect(page.children.map(\.uri) == [
+            "apple-docs://swiftui/view",
+            "apple-docs://swiftui/view/modifier(_:)",
+        ])
+    }
+
+    @Test("listChildren topic-group hasChildren reflects readable DB rows")
+    func listChildrenTopicGroupHasChildrenIgnoresMissingRows() async throws {
+        let (index, cleanup) = try await makeIndex()
+        defer { try? cleanup() }
+        defer { Task { await index.disconnect() } }
+
+        let rootMarkdown = """
+        # SwiftUI
+
+        ## [Topics](/documentation/swiftui#topics)
+
+        ### [Unavailable](/documentation/swiftui#Unavailable)
+
+        [Missing](/documentation/swiftui/missing)
+        """
+        try await indexDocument(
+            index,
+            uri: "apple-docs://swiftui",
+            title: "SwiftUI",
+            kind: "framework",
+            rawMarkdown: rootMarkdown
+        )
+
+        let page = try await index.listChildren(
+            source: Shared.Constants.SourcePrefix.appleDocs,
+            uri: "apple-docs://swiftui"
+        )
+        #expect(page.children == [
+            Search.DocumentChild(
+                uri: "apple-docs://swiftui#Unavailable",
+                title: "Unavailable",
+                kind: "topic-group",
+                hasChildren: false
+            ),
+        ])
+
+        let emptyGroupPage = try await index.listChildren(
+            source: Shared.Constants.SourcePrefix.appleDocs,
+            uri: "apple-docs://swiftui#Unavailable"
+        )
+        #expect(emptyGroupPage.parentURI == "apple-docs://swiftui#Unavailable")
+        #expect(emptyGroupPage.children.isEmpty)
+    }
+
     private func makeIndex() async throws -> (Search.Index, () throws -> Void) {
         let dbPath = FileManager.default.temporaryDirectory
             .appendingPathComponent("list-children-\(UUID().uuidString).db")

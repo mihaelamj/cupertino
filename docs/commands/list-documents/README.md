@@ -47,7 +47,7 @@ Output format: `json` (default), `text`, or `markdown` / `md`.
   "total": 6500,
   "documents": [
     {
-      "uri": "apple-docs://swiftui/documentation_swiftui_view",
+      "uri": "apple-docs://swiftui/view",
       "title": "View",
       "kind": "protocol"
     }

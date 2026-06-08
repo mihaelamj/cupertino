@@ -1,6 +1,6 @@
 disabled_rules: # rule identifiers to exclude from running
   - opening_brace
-  - function_name_whitespace
+  - operator_whitespace
   - orphaned_doc_comment
 
 opt_in_rules:

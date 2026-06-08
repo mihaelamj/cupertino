@@ -28,6 +28,7 @@ extension Search.Index: Search.DocumentChildrenListing {
 
         let topics = Self.parseTopics(markdown: parent.rawMarkdown, parentURI: normalized.baseURI)
         let children: [Search.DocumentChild]
+        let parentURI: String
         if let fragment = normalized.fragment {
             guard let group = topics.group(matching: fragment, parentURI: normalized.baseURI) else {
                 children = []
@@ -37,21 +38,29 @@ extension Search.Index: Search.DocumentChildrenListing {
                     children: children
                 )
             }
+            parentURI = group.uri
             children = try documentChildren(
                 database: database,
                 parentURI: normalized.baseURI,
                 links: Self.extractDocumentLinks(from: group.segment)
             )
         } else if !topics.groups.isEmpty {
-            children = topics.groups.map { group in
-                Search.DocumentChild(
+            parentURI = normalized.fullURI
+            children = try topics.groups.map { group in
+                let readableChildren = try documentChildren(
+                    database: database,
+                    parentURI: normalized.baseURI,
+                    links: Self.extractDocumentLinks(from: group.segment)
+                )
+                return Search.DocumentChild(
                     uri: group.uri,
                     title: group.title,
                     kind: "topic-group",
-                    hasChildren: !Self.extractDocumentLinks(from: group.segment).isEmpty
+                    hasChildren: !readableChildren.isEmpty
                 )
             }
         } else {
+            parentURI = normalized.fullURI
             children = try documentChildren(
                 database: database,
                 parentURI: normalized.baseURI,
@@ -61,7 +70,7 @@ extension Search.Index: Search.DocumentChildrenListing {
 
         return Search.DocumentChildrenPage(
             source: effectiveSource,
-            parentURI: normalized.fullURI,
+            parentURI: parentURI,
             children: children
         )
     }
@@ -103,7 +112,12 @@ extension Search.Index: Search.DocumentChildrenListing {
         SELECT
             m.uri,
             COALESCE(NULLIF(s.title, ''), NULLIF(json_extract(m.json_data, '$.title'), ''), m.uri) AS title,
-            COALESCE(NULLIF(s.kind, ''), NULLIF(json_extract(m.json_data, '$.kind'), ''), NULLIF(m.kind, ''), 'unknown') AS kind,
+            COALESCE(
+                NULLIF(s.kind, ''),
+                NULLIF(json_extract(m.json_data, '$.kind'), ''),
+                NULLIF(m.kind, ''),
+                'unknown'
+            ) AS kind,
             COALESCE(NULLIF(json_extract(m.json_data, '$.rawMarkdown'), ''), '') AS raw_markdown
         FROM docs_metadata m
         LEFT JOIN docs_structured s ON s.uri = m.uri
