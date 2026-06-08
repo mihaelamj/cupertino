@@ -76,10 +76,10 @@ extension CupertinoComposition {
     }
 }
 
-private struct DataEngineSourceReaderFactory: Search.DatabaseFactory {
+private struct DataEngineSourceReaderFactory: CupertinoDataEngine.SourceReaderFactory {
     let logger: any Logging.Recording
 
-    func openDatabase(at url: URL) async throws -> any Search.Database {
+    func openSourceReader(at url: URL) async throws -> any Search.Database {
         try await Search.Index(
             dbPath: url,
             logger: logger,
@@ -90,10 +90,10 @@ private struct DataEngineSourceReaderFactory: Search.DatabaseFactory {
     }
 }
 
-private struct DataEngineSampleReaderFactory: Sample.Index.DatabaseFactory {
+private struct DataEngineSampleReaderFactory: CupertinoDataEngine.SampleReaderFactory {
     let logger: any Logging.Recording
 
-    func openDatabase(at url: URL) async throws -> any Sample.Index.Reader {
+    func openSampleReader(at url: URL) async throws -> any Sample.Index.Reader {
         try await Sample.Index.Database(
             dbPath: url,
             logger: logger,

@@ -2,11 +2,11 @@
 
 | Field | Value |
 |---|---|
-| **Status** | accepted, first implementation slice in progress |
+| **Status** | accepted, external facade package published |
 | **Created** | 2026-05-30 |
 | **Last revised** | 2026-06-08 |
 | **Tracking issue** | #1261 |
-| **Implementation note** | The first #1261 slice adds an in-repo `CupertinoDataEngine` backend facade whose normal public surface is source, sample, and package readers. Corpus file layout, schema validation, and concrete SQLite wiring are Cupertino-internal SPI handled by `CupertinoComposition`; UI code sees only the backend facade and must not know storage files exist. The larger §13 extraction of `Search.Connection` plus the read/write type split remains the next refactor step toward a standalone lean engine package. |
+| **Implementation note** | The first #1261 slice extracts the external `CupertinoDataEngine` backend facade whose normal public surface is source, sample, and package readers. Corpus file layout, schema validation, and concrete SQLite wiring are Cupertino-internal SPI handled by `CupertinoComposition`; UI code sees only the backend facade and must not know storage files exist. The larger §13 extraction of `Search.Connection` plus the read/write type split remains the next refactor step toward a standalone lean engine package. |
 | **Companion docs** | [`per-source-db-split.md`](per-source-db-split.md), [`536-standalone-portability-and-linux-port.md`](536-standalone-portability-and-linux-port.md) |
 
 ---
@@ -15,7 +15,7 @@
 
 Extract cupertino's real read engine into a new cupertino-owned public package, CupertinoDataEngine, that builds for iOS and exposes source, sample, and package reader capabilities. cupertino-desktop's iOS variants cannot spawn `cupertino serve` (no subprocess), so the iOS app must embed a real read engine in-process; this package is that engine, consumed by version tag like the other owned packages. The public contract must never expose storage files, database handles, or SQLite vocabulary to app UI code. The headline decision: the engine ships the read path, while the write/index/crawl machinery that lives in the same concrete target today is excluded or kept behind Cupertino-internal composition seams so the iOS product carries no crawl code. This is a larger, riskier carve-out than CupertinoDataKit (pure value types) because the current concrete reader implementation interleaves read and write across many files.
 
-2026-06-08 implementation slice: `CupertinoDataEngine` now exists as an app-facing backend boundary in this repo. It is not yet the final standalone lean package described above because `CupertinoComposition` still supplies factories that wrap the existing concrete readers, but the engine target itself imports only foundation/model seams plus Cupertino-internal schema probing and enforces the product rule that UI code consumes backend interfaces instead of knowing storage files exist.
+2026-06-08 implementation slice: `CupertinoDataEngine` now exists as an app-facing backend boundary in an external package consumed by this repo through a SwiftPM URL dependency. It is not yet the final standalone lean package described above because `CupertinoComposition` still supplies factories that wrap the existing concrete readers, but the engine package itself owns the public facade plus schema probing and enforces the product rule that UI code consumes backend interfaces instead of knowing storage files exist.
 
 ---
 
@@ -99,7 +99,7 @@ cupertino-desktop iOS app (MobileBackend.live(dataSource:))
 
 Target-state design: CupertinoDataEngine holds Cupertino's read-required helpers, depends on CupertinoDataKit (the contract) plus the minimal foundation-tier seams the read path needs, and owns the concrete storage integration internally. The monorepo depends on the engine and re-exports it, retaining only the write/index concretes. The iOS app embeds the engine behind `MobileBackend.live(dataSource:)`; only that Cupertino backend implementation opens a prebuilt corpus, while UI code talks to the backend interface.
 
-First implementation slice: CupertinoDataEngine is a strict backend facade, not yet the final extracted reader. Normal clients see source, sample, and package readers. File presence, schema validation, and reader factories are Cupertino-internal SPI. `CupertinoComposition` supplies the production factories that import `SearchSQLite` / `SampleIndexSQLite`; app UI packages should depend on the facade or app-specific backend protocols, not on those concrete storage targets.
+First implementation slice: CupertinoDataEngine is an external backend facade, not yet the final extracted reader. Normal clients see source, sample, and package readers. File presence, schema validation, and reader factories are Cupertino-internal SPI. `CupertinoComposition` supplies the production factories that import `SearchSQLite` / `SampleIndexSQLite`; app UI packages should depend on the facade or app-specific backend protocols, not on those concrete storage targets.
 
 ### 5.1 Single-source vs multi-source fan-out (verified, scope-critical)
 
@@ -164,7 +164,7 @@ Either way the `@_exported` re-export pattern from #1183 keeps every existing co
 
 ### 6.5 Ownership / distribution
 
-Public repo `mihaelamj/CupertinoDataEngine`, cupertino-owned; owner publishes + tags v0.1.0; consumers pin the tag. During development the monorepo uses a local `path:` dep, swapped to the URL after the first tag (the #1183 playbook). The owner publishes; this session never pushes to GitHub.
+Public repo `mihaelamj/CupertinoDataEngine`, cupertino-owned; v0.1.0 is the first facade tag. Consumers pin the tag range, and the monorepo consumes the URL dependency using the same #1183 playbook as CupertinoDataKit.
 
 ### 6.6 Decoupling via the GoF Bridge pattern (decided)
 

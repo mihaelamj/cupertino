@@ -292,7 +292,6 @@ STRICT_PRODUCERS=(
     CrawlerWebKit
     SearchToolProvider
     Services
-    CupertinoDataEngine
 )
 
 # WebKit-companion siblings that legitimately import their parent
