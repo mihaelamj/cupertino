@@ -24,6 +24,9 @@ scripts/eval/release-corpus-smoke.sh ~/.cupertino
 The corpus argument defaults to `$CUPERTINO_RELEASE_CORPUS`, then
 `~/.cupertino`.
 
+Script syntax, argument, and option docs live under
+[`docs/scripts/eval/release-corpus-smoke/`](../scripts/eval/release-corpus-smoke/).
+
 ## What It Checks
 
 The smoke fails when:
