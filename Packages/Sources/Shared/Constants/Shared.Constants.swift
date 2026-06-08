@@ -755,6 +755,12 @@ extension Shared.Constants {
         /// Read document tool name
         public static let toolReadDocument = "read_document"
 
+        /// List framework documents tool name
+        public static let toolListDocuments = "list_documents"
+
+        /// List document children tool name
+        public static let toolListChildren = "list_children"
+
         // MARK: Sample Code Tool Names
 
         /// List samples tool name
@@ -833,6 +839,9 @@ extension Shared.Constants {
 
         /// JSON Schema parameter: limit
         public static let schemaParamLimit = "limit"
+
+        /// JSON Schema parameter: offset
+        public static let schemaParamOffset = "offset"
 
         /// JSON Schema parameter: uri
         public static let schemaParamURI = "uri"
@@ -1355,8 +1364,14 @@ extension Shared.Constants {
         /// Default list result limit (for listing samples, etc.)
         public static let defaultListLimit = 50
 
+        /// Default document browser page size
+        public static let defaultDocumentListLimit = 100
+
         /// Maximum search result limit
         public static let maxSearchLimit = 100
+
+        /// Maximum document browser page size
+        public static let maxDocumentListLimit = 500
 
         /// Teaser result limit (for showing hints from alternate sources)
         public static let teaserLimit = 2

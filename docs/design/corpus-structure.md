@@ -256,6 +256,8 @@ capabilities:
   operations:                       # which non-search ops this DB answers
     - read-by-uri                   # `cupertino read <uri>`
     - list-frameworks               # `cupertino list-frameworks`
+    - list-documents                # `cupertino list-documents`
+    - list-children                 # `cupertino list-children`
     - resolve-refs                  # `cupertino resolve-refs`
   metadata:                         # typed feature flags about the rows
     hasMinPlatformVersion: true     # iOS/macOS/tvOS/watchOS/visionOS gating
@@ -330,6 +332,8 @@ a structured query:
 |-------|---------|--------------|
 | `read-by-uri` | `cupertino read <uri>` | Fetch one row by its URI. Every source has this. |
 | `list-frameworks` | `cupertino list-frameworks` | Enumerate distinct framework values. apple-documentation only. |
+| `list-documents` | `cupertino list-documents` / MCP `list_documents` | Page lightweight `{uri,title,kind}` rows within a framework. apple-documentation only. |
+| `list-children` | `cupertino list-children` / MCP `list_children` | List direct `{uri,title,kind,hasChildren}` child nodes from Apple documentation topic sections. apple-documentation only. |
 | `list-samples` | `cupertino list-samples` | Enumerate sample-code projects. apple-sample-code only. |
 | `resolve-refs` | `cupertino resolve-refs` | Resolve cross-doc references (relative URIs, `doc:` links). apple-documentation only. |
 
@@ -395,7 +399,7 @@ dispatcher's fan-out:
 
 | Source | searchers | operations | metadata flags (true) |
 |--------|-----------|------------|------------------------|
-| `apple-documentation` | text, symbols, property-wrappers, concurrency, conformances, generics | read-by-uri, list-frameworks, resolve-refs | hasMinPlatformVersion, hasGenerics, hasDeprecationAttrs, hasAvailabilityAttrs, hasFrameworkColumn |
+| `apple-documentation` | text, symbols, property-wrappers, concurrency, conformances, generics | read-by-uri, list-frameworks, list-documents, list-children, resolve-refs | hasMinPlatformVersion, hasGenerics, hasDeprecationAttrs, hasAvailabilityAttrs, hasFrameworkColumn |
 | `hig` | text | read-by-uri | hasMinPlatformVersion, hasDeprecationAttrs, hasAvailabilityAttrs |
 | `apple-archive` | text | read-by-uri, list-frameworks | hasMinPlatformVersion, hasFrameworkColumn |
 | `swift-evolution` | text | read-by-uri | hasMinSwiftVersion, hasProposalNumber |

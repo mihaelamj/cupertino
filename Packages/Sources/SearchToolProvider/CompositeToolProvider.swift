@@ -224,6 +224,32 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             ),
         ]
 
+        let listDocumentsProperties: [String: MCP.Core.Protocols.AnyCodable] = [
+            Shared.Constants.Search.schemaParamFramework: stringSchema(
+                description: "Framework identifier, import name, or display name (e.g. swiftui, SwiftUI)."
+            ),
+            Shared.Constants.Search.schemaParamSource: stringSchema(
+                description: "Source to browse. Default: apple-docs.",
+                enumValues: [Shared.Constants.SourcePrefix.appleDocs]
+            ),
+            Shared.Constants.Search.schemaParamOffset: intSchema(
+                description: "Zero-based result offset (default 0)."
+            ),
+            Shared.Constants.Search.schemaParamLimit: intSchema(
+                description: "Maximum documents to return (default 100, maximum 500)."
+            ),
+        ]
+
+        let listChildrenProperties: [String: MCP.Core.Protocols.AnyCodable] = [
+            Shared.Constants.Search.schemaParamURI: stringSchema(
+                description: "Apple documentation URI or topic-group fragment URI (e.g. apple-docs://swiftui#Essentials)."
+            ),
+            Shared.Constants.Search.schemaParamSource: stringSchema(
+                description: "Source to browse. Default: apple-docs.",
+                enumValues: [Shared.Constants.SourcePrefix.appleDocs]
+            ),
+        ]
+
         let readSampleProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamProjectId: stringSchema(
                 description: "Sample project identifier."
@@ -384,6 +410,24 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             ))
 
             allTools.append(MCP.Core.Protocols.Tool(
+                name: Shared.Constants.Search.toolListDocuments,
+                description: MCP.SharedTools.Copy.toolListDocumentsDescription,
+                inputSchema: objectSchema(
+                    properties: listDocumentsProperties,
+                    required: [Shared.Constants.Search.schemaParamFramework]
+                )
+            ))
+
+            allTools.append(MCP.Core.Protocols.Tool(
+                name: Shared.Constants.Search.toolListChildren,
+                description: MCP.SharedTools.Copy.toolListChildrenDescription,
+                inputSchema: objectSchema(
+                    properties: listChildrenProperties,
+                    required: [Shared.Constants.Search.schemaParamURI]
+                )
+            ))
+
+            allTools.append(MCP.Core.Protocols.Tool(
                 name: Shared.Constants.Search.toolReadDocument,
                 description: MCP.SharedTools.Copy.toolReadDocumentDescription,
                 inputSchema: objectSchema(
@@ -493,6 +537,10 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             return try await handleSearch(args: args)
         case Shared.Constants.Search.toolListFrameworks:
             return try await handleListFrameworks()
+        case Shared.Constants.Search.toolListDocuments:
+            return try await handleListDocuments(args: args)
+        case Shared.Constants.Search.toolListChildren:
+            return try await handleListChildren(args: args)
         case Shared.Constants.Search.toolReadDocument:
             return try await handleReadDocument(args: args)
         case Shared.Constants.Search.toolListSamples:
@@ -1248,6 +1296,79 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let markdown = formatter.format(frameworks)
 
         return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
+    }
+
+    // MARK: - List Documents
+
+    private func handleListDocuments(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
+        guard let searchIndex else {
+            throw searchIndexUnavailableError("index")
+        }
+        guard let listing = searchIndex as? any Search.DocumentListing else {
+            throw Shared.Core.ToolError.invalidArgument(
+                "index",
+                "Documentation index does not support document listing"
+            )
+        }
+
+        let framework: String = try args.require(Shared.Constants.Search.schemaParamFramework)
+        let source = args.optional(
+            Shared.Constants.Search.schemaParamSource,
+            default: Shared.Constants.SourcePrefix.appleDocs
+        )
+        guard source == Shared.Constants.SourcePrefix.appleDocs else {
+            throw Shared.Core.ToolError.invalidArgument(
+                Shared.Constants.Search.schemaParamSource,
+                "list_documents currently supports only apple-docs"
+            )
+        }
+
+        let offset = max(args.optional(Shared.Constants.Search.schemaParamOffset, default: 0), 0)
+        let requestedLimit = args.optional(
+            Shared.Constants.Search.schemaParamLimit,
+            default: Shared.Constants.Limit.defaultDocumentListLimit
+        )
+        let limit = min(max(requestedLimit, 0), Shared.Constants.Limit.maxDocumentListLimit)
+        let page = try await listing.listDocuments(
+            source: source,
+            framework: framework,
+            offset: offset,
+            limit: limit
+        )
+        let json = Services.Formatter.Documents.JSON().format(page)
+
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: json))])
+    }
+
+    // MARK: - List Children
+
+    private func handleListChildren(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
+        guard let searchIndex else {
+            throw searchIndexUnavailableError("index")
+        }
+        guard let listing = searchIndex as? any Search.DocumentChildrenListing else {
+            throw Shared.Core.ToolError.invalidArgument(
+                "index",
+                "Documentation index does not support document children listing"
+            )
+        }
+
+        let uri: String = try args.require(Shared.Constants.Search.schemaParamURI)
+        let source = args.optional(
+            Shared.Constants.Search.schemaParamSource,
+            default: Shared.Constants.SourcePrefix.appleDocs
+        )
+        guard source == Shared.Constants.SourcePrefix.appleDocs else {
+            throw Shared.Core.ToolError.invalidArgument(
+                Shared.Constants.Search.schemaParamSource,
+                "list_children currently supports only apple-docs"
+            )
+        }
+
+        let page = try await listing.listChildren(source: source, uri: uri)
+        let json = Services.Formatter.DocumentChildren.JSON().format(page)
+
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: json))])
     }
 
     // MARK: - Read Document

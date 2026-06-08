@@ -2,6 +2,10 @@
 
 ### Added
 
+- **feat(#1210): add document child listing for desktop outline browsers.** New CLI command `cupertino list-children <uri> [--source apple-docs] [--format json|text|markdown]` and MCP tool `list_children` return direct child nodes (`source`, `parentURI`, `children[{uri,title,kind,hasChildren}]`) from existing apple-docs rawMarkdown topic sections. Non-document topic headings are represented as `topic-group` fragment URIs, so desktop clients can drill from `apple-docs://swiftui` to `apple-docs://swiftui#Essentials` and then to readable document URIs.
+
+- **feat(#1208): add framework document listing for desktop clients.** New CLI command `cupertino list-documents --framework <name> [--source apple-docs] [--offset 0] [--limit 100] [--format json|text|markdown]` and MCP tool `list_documents` return a paged JSON contract (`source`, `framework`, `offset`, `limit`, `total`, `documents[{uri,title,kind}]`) from the existing apple-docs database. The source capability matrix gains `list-documents`, docs/help/tool descriptions are wired through `docs/commands/list-documents/` and `docs/tools/list_documents/`, and focused SQLite/CLI/MCP tests pin pagination and output shape for cupertino-desktop.
+
 - **docs: README links the project's X account.** Added an X badge ([@cupertinomcp](https://x.com/cupertinomcp)) to the badge row alongside the existing PulseMCP and LobeHub listings, plus a plain-text "Follow updates on X" line under the badges.
 
 - **docs: declutter the README top.** Removed the two-paragraph release-notes blockquote from above the project description (it pushed the badges and tagline below the fold). The first thing a visitor now sees is the tagline, description, badges, and demo, followed by a single one-line `Latest:` pointer. The full v1.3.0 release detail moved down into a refreshed `## Project Status` section (which was stale at v1.2.0), with prior-release history collapsed to a one-line summary pointing at `CHANGELOG.md`.

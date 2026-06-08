@@ -51,7 +51,7 @@ ALLOWED_SEARCHERS=(
 )
 
 ALLOWED_OPERATIONS=(
-    read-by-uri list-frameworks list-samples resolve-refs
+    read-by-uri list-frameworks list-documents list-children list-samples resolve-refs
 )
 
 errors=()

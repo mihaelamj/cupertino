@@ -185,7 +185,7 @@ extension Shared.Models {
             public let searchers: [String]
 
             /// Which non-search operations this DB answers (e.g.
-            /// `read-by-uri`, `list-frameworks`, `list-samples`,
+            /// `read-by-uri`, `list-frameworks`, `list-documents`, `list-samples`,
             /// `resolve-refs`).
             public let operations: [String]
 

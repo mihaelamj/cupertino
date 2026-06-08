@@ -17,7 +17,8 @@ struct CommandRegistrationTests {
         let config = Cupertino.configuration
 
         // 13 visible + 1 hidden (package-search) + `inheritance` (#274)
-        // + `search-symbols` (#948 phase 1). `setup` now owns every
+        // + `search-symbols` (#948 phase 1) + list browse commands (#1208/#1210).
+        // `setup` now owns every
         // database (packages-setup was collapsed into it). `resolve-refs`
         // post-processes saved pages against #208. `index` removed in
         // #231 (samples now build via `save --samples`). `ask` absorbed
@@ -28,7 +29,7 @@ struct CommandRegistrationTests {
         // wrappers` (#948 phase 2) + `search-concurrency` /
         // `search-conformances` / `search-generics` (#948 phases 3-5)
         // complete the 5-AST-tool CLI surface mirroring the MCP tools.
-        #expect(config.subcommands.count == 20)
+        #expect(config.subcommands.count == 22)
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.Setup.self })
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.Fetch.self })
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.Save.self })
@@ -36,6 +37,8 @@ struct CommandRegistrationTests {
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.Search.self })
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.Read.self })
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.ListFrameworks.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.ListDocuments.self })
+        #expect(config.subcommands.contains { $0 == CLIImpl.Command.ListChildren.self })
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.ListSamples.self })
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.ReadSample.self })
         #expect(config.subcommands.contains { $0 == CLIImpl.Command.ReadSampleFile.self })
@@ -126,6 +129,8 @@ struct CommandRegistrationTests {
         #expect(rejects { _ = try CLIImpl.Command.Save.parse(["--source", "apple-docs", "--search-db", "/tmp/x"]) })
         #expect(rejects { _ = try CLIImpl.Command.Doctor.parse(["--search-db", "/tmp/x"]) })
         #expect(rejects { _ = try CLIImpl.Command.ListFrameworks.parse(["--search-db", "/tmp/x"]) })
+        #expect(rejects { _ = try CLIImpl.Command.ListDocuments.parse(["--framework", "swiftui", "--search-db", "/tmp/x"]) })
+        #expect(rejects { _ = try CLIImpl.Command.ListChildren.parse(["apple-docs://swiftui", "--search-db", "/tmp/x"]) })
         #expect(rejects { _ = try CLIImpl.Command.Inheritance.parse(["UIButton", "--search-db", "/tmp/x"]) })
     }
 }

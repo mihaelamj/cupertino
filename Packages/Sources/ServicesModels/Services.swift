@@ -58,6 +58,10 @@ public enum Services {
         public enum HIG {}
         /// Frameworks-list formatter variants.
         public enum Frameworks {}
+        /// Framework-scoped document-list formatter variants.
+        public enum Documents {}
+        /// Document-outline child-list formatter variants.
+        public enum DocumentChildren {}
         /// Unified-search formatter variants.
         public enum Unified {}
         /// Footer-rendering family (kind / item / provider / formatter pair).

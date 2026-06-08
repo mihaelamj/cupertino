@@ -52,6 +52,33 @@ extension Services {
             try await index.listFrameworks()
         }
 
+        public func listDocuments(
+            source: String,
+            framework: String,
+            offset: Int,
+            limit: Int
+        ) async throws -> Search.DocumentListPage {
+            guard let listing = index as? any Search.DocumentListing else {
+                throw Search.Error.searchFailed("Document listing is not supported by this search database")
+            }
+            return try await listing.listDocuments(
+                source: source,
+                framework: framework,
+                offset: offset,
+                limit: limit
+            )
+        }
+
+        public func listChildren(
+            source: String,
+            uri: String
+        ) async throws -> Search.DocumentChildrenPage {
+            guard let listing = index as? any Search.DocumentChildrenListing else {
+                throw Search.Error.searchFailed("Document children listing is not supported by this search database")
+            }
+            return try await listing.listChildren(source: source, uri: uri)
+        }
+
         public func documentCount() async throws -> Int {
             try await index.documentCount()
         }

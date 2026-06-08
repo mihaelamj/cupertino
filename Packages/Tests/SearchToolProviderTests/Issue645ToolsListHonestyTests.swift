@@ -14,8 +14,8 @@ import TestSupport
 // Pre-#645, the CLI composition root passed `nil` for `searchIndex`
 // whenever `search.db` failed to open — including the diagnosable
 // "file exists but schema mismatch / unopenable" case. The provider
-// then silently hid the 7 search.db-dependent tools (list_frameworks,
-// read_document, search_symbols, search_property_wrappers,
+// then silently hid the search.db-dependent tools (list_frameworks,
+// list_documents, list_children, read_document, search_symbols, search_property_wrappers,
 // search_concurrency, get_inheritance, search_conformances) and
 // `tools/list` returned 4 tools (samples-only) or 0. The error never
 // reached the AI client; the only signal was "the tool isn't there
@@ -47,7 +47,7 @@ struct Issue645ToolsListHonestyTests {
         #expect(result.tools.isEmpty)
     }
 
-    @Test("tools/list advertises 9 search.db-dependent tools when reason is set even though searchIndex is nil")
+    @Test("tools/list advertises 11 search.db-dependent tools when reason is set even though searchIndex is nil")
     func reasonOnlyExposesFullSearchSurface() async throws {
         let provider = CompositeToolProvider(
             searchIndex: nil,
@@ -56,12 +56,14 @@ struct Issue645ToolsListHonestyTests {
         )
         let result = try await provider.listTools(cursor: nil)
 
-        // 1 unified `search` + 2 list/read + 6 semantic (#665 added
+        // 1 unified `search` + 4 list/read + 6 semantic (#665 added
         // `search_generics`) — same set the server would advertise with
         // a healthy index.
         let names = Set(result.tools.map(\.name))
         #expect(names.contains(Shared.Constants.Search.toolSearch))
         #expect(names.contains(Shared.Constants.Search.toolListFrameworks))
+        #expect(names.contains(Shared.Constants.Search.toolListDocuments))
+        #expect(names.contains(Shared.Constants.Search.toolListChildren))
         #expect(names.contains(Shared.Constants.Search.toolReadDocument))
         #expect(names.contains(Shared.Constants.Search.toolSearchSymbols))
         #expect(names.contains(Shared.Constants.Search.toolSearchPropertyWrappers))
@@ -69,10 +71,10 @@ struct Issue645ToolsListHonestyTests {
         #expect(names.contains(Shared.Constants.Search.toolGetInheritance))
         #expect(names.contains(Shared.Constants.Search.toolSearchConformances))
         #expect(names.contains(Shared.Constants.Search.toolSearchGenerics))
-        #expect(result.tools.count == 9)
+        #expect(result.tools.count == 11)
     }
 
-    @Test("tools/list returns full 12 tools when both searchIndex (via reason) and samples are advertised")
+    @Test("tools/list returns full 14 tools when both searchIndex (via reason) and samples are advertised")
     func reasonPlusSamplesExposesEverything() async throws {
         let (database, cleanup) = try await createTestSampleDatabase()
         defer { cleanup() }
@@ -85,9 +87,11 @@ struct Issue645ToolsListHonestyTests {
         let result = try await provider.listTools(cursor: nil)
 
         let names = Set(result.tools.map(\.name))
-        // 9 search-side (#665 bumped from 8) + 3 sample-side
+        // 11 search-side (#1208/#1210 added browse tools) + 3 sample-side
         #expect(names.contains(Shared.Constants.Search.toolSearch))
         #expect(names.contains(Shared.Constants.Search.toolListFrameworks))
+        #expect(names.contains(Shared.Constants.Search.toolListDocuments))
+        #expect(names.contains(Shared.Constants.Search.toolListChildren))
         #expect(names.contains(Shared.Constants.Search.toolReadDocument))
         #expect(names.contains(Shared.Constants.Search.toolListSamples))
         #expect(names.contains(Shared.Constants.Search.toolReadSample))
@@ -98,7 +102,7 @@ struct Issue645ToolsListHonestyTests {
         #expect(names.contains(Shared.Constants.Search.toolGetInheritance))
         #expect(names.contains(Shared.Constants.Search.toolSearchConformances))
         #expect(names.contains(Shared.Constants.Search.toolSearchGenerics))
-        #expect(result.tools.count == 12)
+        #expect(result.tools.count == 14)
     }
 
     @Test("tools/list returns 4 tools (samples-only) when only samples are configured AND no reason")
@@ -120,13 +124,15 @@ struct Issue645ToolsListHonestyTests {
 
     // MARK: - Handler error frames
 
-    /// All 7 search.db-dependent handlers that funnel through
+    /// All search.db-dependent handlers that funnel through
     /// `searchIndexUnavailableError(_:)`. Parameterised so a regression in
     /// any one site fails as a discrete row.
     @Test(
         "search.db handlers throw an error whose message contains the disabled reason",
         arguments: [
             Shared.Constants.Search.toolListFrameworks,
+            Shared.Constants.Search.toolListDocuments,
+            Shared.Constants.Search.toolListChildren,
             Shared.Constants.Search.toolReadDocument,
             Shared.Constants.Search.toolSearchSymbols,
             Shared.Constants.Search.toolSearchPropertyWrappers,

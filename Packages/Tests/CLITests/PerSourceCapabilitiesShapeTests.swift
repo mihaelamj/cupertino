@@ -33,7 +33,7 @@ struct PerSourceCapabilitiesShapeTests {
     func appleDocsCapabilities() {
         let capabilities = provider(forSourceId: Shared.Constants.SourcePrefix.appleDocs).capabilities
         #expect(capabilities.searchers == [.text, .symbols, .propertyWrappers, .concurrency, .conformances, .generics])
-        #expect(capabilities.operations == [.readByURI, .listFrameworks, .resolveRefs])
+        #expect(capabilities.operations == [.readByURI, .listFrameworks, .listDocuments, .listChildren, .resolveRefs])
         #expect(capabilities.metadata[.hasMinPlatformVersion] == true)
         #expect(capabilities.metadata[.hasGenerics] == true)
         #expect(capabilities.metadata[.hasDeprecationAttrs] == true)
