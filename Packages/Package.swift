@@ -141,11 +141,11 @@ let deps: [Package.Dependency] = [
     // SwiftMCPCore (resolves the same 0.1.0 pin, one node in the graph).
     .package(url: "https://github.com/mihaelamj/SwiftMCPClient.git", from: "0.1.0"),
     // CupertinoDataKit — cupertino's public read contract (protocols + value
-    // types, Foundation-only, zero-dep). v0.2.0 adds the document-browser
-    // refinements used by native UI clients. Owned + published by cupertino;
+    // types, Foundation-only, zero-dep). v0.3.0 adds the package-search reader
+    // slice used by native UI clients. Owned + published by cupertino;
     // SharedConstants re-exports it so every target sees the Search + Sample
     // namespaces with no per-target import edit.
-    .package(url: "https://github.com/mihaelamj/CupertinoDataKit.git", from: "0.2.0"),
+    .package(url: "https://github.com/mihaelamj/CupertinoDataKit.git", from: "0.3.0"),
 ]
 
 // -------------------------------------------------------------

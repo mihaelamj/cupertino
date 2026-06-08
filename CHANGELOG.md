@@ -18,6 +18,8 @@
 
 ### Changed
 
+- **refactor(contract): adopt `CupertinoDataKit` 0.3.0 for package search.** The package-search reader seam now lives in the external `CupertinoDataKit` contract as `Search.PackagesSearcher`, with its availability and Swift-tools filters alongside it. `SearchModels` re-exports the shared contract instead of carrying duplicate local definitions, so embedded/native clients can depend on the same package-search surface without importing Cupertino storage internals.
+
 - **fix(#1261): harden the `CupertinoDataEngine` facade ownership rules.** The new data-engine product is exposed only when its target declarations are present in the manifest, preserving the existing non-macOS package shape, and returned source/sample reader wrappers are borrowed views: calling `disconnect()` on them no longer closes the engine-owned cached connection. `CupertinoDataEngine.disconnect()` remains the single lifecycle owner.
 
 - **refactor(contract): adopt `CupertinoDataKit` 0.2.0 for document browsing.** The `list-documents` / `list-children` DTOs and optional read-side protocols now live in the external `CupertinoDataKit` contract as `Search.DocumentListing`, `Search.DocumentChildrenListing`, and composed `Search.DocumentBrowsing`, so embedded/native UI clients can implement the same browser surface without importing cupertino internals. `SearchModels` now only re-exports that surface, the duplicate in-repo contract files were removed, document-browser limit constants forward to DataKit, and the portability recipe resolves `CupertinoDataKit` from `0.2.0`. The source contract stays open-ended: current built-in IDs are convenience constants, not a closed source registry.
