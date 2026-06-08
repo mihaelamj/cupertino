@@ -15,7 +15,7 @@ import Testing
 // returned text -- regenerated on every run, by this Swift code. Path:
 // `$CUPERTINO_READ_REPORT`, else `<repo>/Packages/.build/read-battery-report.html`.
 //
-// Coverage (no shortcuts -- all 8 databases):
+// Coverage (no shortcuts -- every built-in database):
 //  - ~10 search queries per docs source (6) + samples + packages
 //  - >= 20 document reads from EVERY database
 //  - the AST search commands

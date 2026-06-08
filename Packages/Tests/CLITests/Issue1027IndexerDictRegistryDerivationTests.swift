@@ -10,8 +10,8 @@ import Testing
 /// indexer dict shape: filter `allEnabled` by `destinationDB ==
 /// .search`, then reduce to `[sourceID: any Search.SourceIndexer]`.
 /// PackagesSource self-excludes because it declares `destinationDB
-/// == .packages`; the search.db `Search.Index` only sees the 7
-/// search.db indexers.
+/// == .packages`; the search.db `Search.Index` sees the registry entries
+/// whose destination is not packages.
 @Suite("#1027: indexer dict derived from registry filtered by destinationDB")
 struct Issue1027IndexerDictRegistryDerivationTests {
     private static let derivedDict: [String: any Search.SourceIndexer] = CLIImpl.makeProductionSourceRegistry().allEnabled
@@ -20,11 +20,10 @@ struct Issue1027IndexerDictRegistryDerivationTests {
             dict[provider.definition.id] = provider.makeIndexer()
         }
 
-    @Test("Filtered dict contains exactly 7 entries (PackagesSource excluded because destinationDB == .packages)")
-    func dictHasSevenSearchDBEntries() {
-        #expect(Self.derivedDict.count == 7)
+    @Test("Filtered dict contains the built-in non-package entries")
+    func dictHasBuiltInSearchDBEntries() {
         let keys = Set(Self.derivedDict.keys)
-        #expect(keys == [
+        #expect(keys.isSuperset(of: [
             Shared.Constants.SourcePrefix.appleDocs,
             Shared.Constants.SourcePrefix.hig,
             Shared.Constants.SourcePrefix.samples,
@@ -32,7 +31,7 @@ struct Issue1027IndexerDictRegistryDerivationTests {
             Shared.Constants.SourcePrefix.swiftEvolution,
             Shared.Constants.SourcePrefix.swiftOrg,
             Shared.Constants.SourcePrefix.swiftBook,
-        ])
+        ]))
     }
 
     @Test("PackagesSource is correctly self-excluded by destinationDB filter")
@@ -48,11 +47,10 @@ struct Issue1027IndexerDictRegistryDerivationTests {
     }
 
     @Test("PackagesSource is in the registry but excluded from the indexer dict (validates destinationDB protocol contract)")
-    func registryHasEightProvidersDictHasSeven() {
+    func registryHasPackagesProviderButDictExcludesIt() {
         let registry = CLIImpl.makeProductionSourceRegistry()
-        #expect(registry.allEnabled.count == 8) // all 8 sources registered
-        #expect(Self.derivedDict.count == 7) // search.db dispatch sees 7
         let packagesProvider = registry.allEnabled.first { $0.definition.id == Shared.Constants.SourcePrefix.packages }
         #expect(packagesProvider?.destinationDB == .packages)
+        #expect(!Self.derivedDict.keys.contains(Shared.Constants.SourcePrefix.packages))
     }
 }

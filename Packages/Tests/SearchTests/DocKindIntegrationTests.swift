@@ -17,9 +17,9 @@ import Testing
 /// classifier's behavioural contract stays pinned.
 ///
 /// Mirrors the production providers' `defaultDocKindRawValue`
-/// declarations (5 of 8 sources declare it; apple-docs, packages,
-/// samples intentionally absent — apple-docs has a bespoke
-/// classifier, the other 2 don't write to docs_metadata).
+/// declarations for the built-in sources that declare it; apple-docs,
+/// packages, and samples are intentionally absent — apple-docs has a
+/// bespoke classifier, the other 2 don't write to docs_metadata.
 private let canonicalDocKindSourceLookup: Search.SourceLookup = {
     func make(id: String, docKind: String?) -> Search.SourceDefinition {
         Search.SourceDefinition(

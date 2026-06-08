@@ -14,7 +14,7 @@
 
 ### Changed
 
-- **refactor(contract): adopt `CupertinoDataKit` 0.2.0 for document browsing.** The `list-documents` / `list-children` DTOs and optional read-side protocols now live in the external `CupertinoDataKit` contract as `Search.DocumentListing`, `Search.DocumentChildrenListing`, and composed `Search.DocumentBrowsing`, so embedded/native UI clients can implement the same browser surface without importing cupertino internals. `SearchModels` now only re-exports that surface, the duplicate in-repo contract files were removed, document-browser limit constants forward to DataKit, and the portability recipe resolves `CupertinoDataKit` from `0.2.0`.
+- **refactor(contract): adopt `CupertinoDataKit` 0.2.0 for document browsing.** The `list-documents` / `list-children` DTOs and optional read-side protocols now live in the external `CupertinoDataKit` contract as `Search.DocumentListing`, `Search.DocumentChildrenListing`, and composed `Search.DocumentBrowsing`, so embedded/native UI clients can implement the same browser surface without importing cupertino internals. `SearchModels` now only re-exports that surface, the duplicate in-repo contract files were removed, document-browser limit constants forward to DataKit, and the portability recipe resolves `CupertinoDataKit` from `0.2.0`. The source contract stays open-ended: current built-in IDs are convenience constants, not a closed source registry.
 
 - **chore(hooks): make `pre-commit run --all-files` usable again.** The SwiftLint pre-commit hook now uses the root repository config explicitly with forced excludes, avoiding accidental nested package-config drift, and the SwiftFormat all-files drift has been applied so the full hook suite can pass cleanly.
 

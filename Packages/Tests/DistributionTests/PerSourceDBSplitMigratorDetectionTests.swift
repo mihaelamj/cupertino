@@ -16,7 +16,8 @@ import Testing
 // Test fixture: a fake registry holding a single FakeProvider that
 // declares destinationDB = .appleDocumentation (a non-search,
 // non-packages descriptor). That's enough to exercise the detection
-// rule; production registries with all 8 sources work the same way.
+// rule; production registries with the full built-in source set work the
+// same way.
 
 @Suite("Distribution.PerSourceDBSplitMigrator.detect (registry-derived; filesystem-only step 6a check)")
 struct PerSourceDBSplitMigratorDetectionTests {

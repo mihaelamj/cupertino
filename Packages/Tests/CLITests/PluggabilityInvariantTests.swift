@@ -190,7 +190,13 @@ struct PluggabilityInvariantTests {
                 dict[provider.definition.id] = provider.makeIndexer()
             }
         #expect(derivedDict["audit-fixture"] != nil, "fake's indexer must appear in the dispatch dict")
-        #expect(derivedDict.count == 8, "8 production sources - 1 (packages filtered) + 1 fake = 8 keys")
+        let productionNonPackageCount = CLIImpl.makeProductionSourceRegistry().allEnabled
+            .filter { $0.destinationDB != .packages }
+            .count
+        #expect(
+            derivedDict.count == productionNonPackageCount + 1,
+            "production non-package sources + 1 fake must all be keyed"
+        )
     }
 
     @Test("Seam 6: step-5 future dispatcher (Dictionary(grouping: by: destinationDB)) routes the fake to its OWN DB group")
@@ -268,18 +274,15 @@ struct PluggabilityInvariantTests {
         // epic, tracked at github.com/mihaelamj/cupertino issues
         // #932/#933/#934/#935; NOT closed by this branch):
         //
-        //   c. Shared.Constants.SourcePrefix.allPrefixes array
-        //      (Shared.Constants.swift): one append; consumed by
-        //      Search.Index URI-prefix query parsing
-        //   d. Search.FetchInfo.DefaultOutputDirKey closed enum +
+        //   c. Search.FetchInfo.DefaultOutputDirKey closed enum +
         //      CLIImpl.Command.Fetch.swift resolveDirectory exhaustive
         //      switch + Shared.Paths accessor (3 edits, if the new
         //      source needs its own output directory)
-        //   e. Search.CandidateFetcher swiftVersionSources /
+        //   d. Search.CandidateFetcher swiftVersionSources /
         //      frameworkScopedSources static Set<String> policy
         //      literals (1-2 edits, depending on the new source's
         //      semantics)
-        //   f. Logging.Category closed enum
+        //   e. Logging.Category closed enum
         //      (Logging.LiveRecording.swift exhaustive switch) = 1 edit
         //
         // **For a new DB descriptor (declared by the new source via
@@ -302,7 +305,7 @@ struct PluggabilityInvariantTests {
         //  shipped):**
         //
         //   - New source: 5 new files + 1 manifest + 2 single-line
-        //     edits + up to 5 closed-set edits (a-f above) = up to 13
+        //     edits + up to 4 closed-set edits (c-e above) = up to 12
         //     PR touches.
         //   - New DB: 2 single-line edits (g-h) + 3 closed-list
         //     edits (i-k) = 5 PR touches.
@@ -320,20 +323,18 @@ struct PluggabilityInvariantTests {
         #expect(true)
     }
 
-    // MARK: - Drift detectors: foundation-tier static lists must match the production registry
+    // MARK: - Drift detectors: foundation-tier built-in lists must stay honest
 
-    @Test("Drift detector: Shared.Constants.SourcePrefix.allPrefixes matches every registered source's id (post-2026-05-26 audit Finding 9.2)")
-    func sourcePrefixAllPrefixesMatchesRegistry() {
+    @Test("Drift detector: Shared.Constants.SourcePrefix.allPrefixes carries built-ins and no stale real-source entries")
+    func sourcePrefixAllPrefixesCarriesBuiltIns() {
         // Pre-audit this static was a closed-set anti-pattern (every
         // new source had to be appended here in parallel with the
         // composition root). Post-audit production callers all derive
         // the prefix list from `Search.SourceLookup.allIDs` (via the
         // CupertinoComposition registry); the foundation-tier static
-        // remains as a documentation/sanity list. This test pins the
-        // invariant: if you register a new source in
-        // `Cupertino.CompositionRoot.swift` but forget to append to
-        // `Shared.Constants.SourcePrefix.allPrefixes`, the test fails
-        // and CI catches the drift.
+        // remains as a built-in convenience/sanity list. A new source
+        // does NOT have to append here unless it is intentionally
+        // promoted into the built-in constants.
         let registeredIDs = Set(
             CupertinoComposition
                 .makeProductionSourceRegistry()
@@ -341,11 +342,24 @@ struct PluggabilityInvariantTests {
                 .map(\.definition.id)
         )
         let allPrefixes = Set(Shared.Constants.SourcePrefix.allPrefixes)
-        let missingFromStatic = registeredIDs.subtracting(allPrefixes)
+        let builtInIDs: Set<String> = [
+            Shared.Constants.SourcePrefix.appleDocs,
+            Shared.Constants.SourcePrefix.samples,
+            Shared.Constants.SourcePrefix.hig,
+            Shared.Constants.SourcePrefix.appleArchive,
+            Shared.Constants.SourcePrefix.swiftEvolution,
+            Shared.Constants.SourcePrefix.swiftOrg,
+            Shared.Constants.SourcePrefix.swiftBook,
+            Shared.Constants.SourcePrefix.packages,
+        ]
         let extraInStatic = allPrefixes.subtracting(registeredIDs)
         #expect(
-            missingFromStatic.isEmpty,
-            "Shared.Constants.SourcePrefix.allPrefixes is missing registered source(s): \(missingFromStatic.sorted()). Append them to allPrefixes (Shared.Constants.swift) or remove them from CupertinoComposition."
+            allPrefixes.isSuperset(of: builtInIDs),
+            "Shared.Constants.SourcePrefix.allPrefixes is missing built-in source(s): \(builtInIDs.subtracting(allPrefixes).sorted())."
+        )
+        #expect(
+            registeredIDs.isSuperset(of: builtInIDs),
+            "CupertinoComposition is missing built-in source(s): \(builtInIDs.subtracting(registeredIDs).sorted())."
         )
         // `extraInStatic` allowed for special tokens + aliases:
         //   - `"all"` is the fan-out alias (not a real source)

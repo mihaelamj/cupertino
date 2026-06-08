@@ -431,7 +431,8 @@ extension Shared.Constants {
         /// Search all sources at once
         public static let all = "all"
 
-        /// All known source prefixes for query detection
+        /// Current built-in source prefixes and aliases for query detection.
+        /// The production source registry is the open-ended source list.
         public static let allPrefixes: [String] = [
             appleDocs,
             swiftBook,
