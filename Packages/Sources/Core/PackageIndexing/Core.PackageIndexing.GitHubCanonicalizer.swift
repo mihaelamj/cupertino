@@ -1,7 +1,8 @@
-import Foundation
 import CorePackageIndexingModels
 import CoreProtocols
+import Foundation
 import SharedConstants
+
 extension Core.PackageIndexing {
     /// Canonicalizes `(owner, repo)` pairs using `api.github.com/repos/<owner>/<repo>`,
     /// resolving GitHub's silent redirects (e.g. `apple/swift-docc` → `swiftlang/swift-docc`)

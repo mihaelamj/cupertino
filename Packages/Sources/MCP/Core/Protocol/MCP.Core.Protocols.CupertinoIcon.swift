@@ -12,8 +12,8 @@
 // Swift-literal embed approach already used for the JSON catalogs (#161) —
 // no bundle, no symlink resolution at runtime.
 
-import SwiftMCPCore
 import Foundation
+import SwiftMCPCore
 
 extension MCP.Core.Protocols {
     public enum CupertinoIcon {

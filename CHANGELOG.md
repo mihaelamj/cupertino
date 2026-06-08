@@ -14,6 +14,8 @@
 
 ### Changed
 
+- **chore(hooks): make `pre-commit run --all-files` usable again.** The SwiftLint pre-commit hook now uses the root repository config explicitly with forced excludes, avoiding accidental nested package-config drift, and the SwiftFormat all-files drift has been applied so the full hook suite can pass cleanly.
+
 - **fix(#1210): harden `list-children` tree metadata for desktop clients.** Topic-group `hasChildren` now reflects readable DB-backed child rows instead of raw markdown links that may point at missing documents, and fragment calls return the matched canonical topic-group URI in `parentURI` so tree cache keys and breadcrumbs stay stable across case-normalized input. Added regression coverage for both cases and refreshed stale `list-documents` example URIs.
 
 - **fix(#1041): `list-frameworks` clarifies that its document count is framework-scoped.** Post per-source-DB split, the command sums only the sources that declare `.listFrameworks` (apple-docs + apple-archive); HIG / swift-evolution / swift-org / swift-book are excluded because their framework column is empty. The text and markdown formatters now print the contributing source IDs under the total (e.g. `(counts cover the framework-scoped sources: apple-docs + apple-archive)`), derived from the registry fan-out rather than hardcoded, so a new framework-scoped source appears in the caveat with zero formatter edits. `docs/commands/list-frameworks/README.md` example numbers refreshed to the v1.3.0 bundle ground truth (412 frameworks, 351,873 documents).

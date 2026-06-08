@@ -4,7 +4,6 @@ import Testing
 
 @Suite("Shared.Utils.FileSystem")
 struct FileSystemTests {
-
     // MARK: - contentsOfDirectory
 
     @Test("contentsOfDirectory follows leaf symlink to directory")

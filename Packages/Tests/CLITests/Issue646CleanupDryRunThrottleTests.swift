@@ -4,6 +4,7 @@ import SharedConstants
 import Testing
 
 // MARK: - #646 — `cleanup --dry-run` no longer floods stdout per file
+
 //
 // Pre-fix, `CleanupProgressObserver.observe(progress:)` printed one line
 // through `recording.output` per archive across every cleanup run, dry
@@ -35,7 +36,7 @@ struct Issue646CleanupDryRunThrottleTests {
 
     @Test("Real cleanup (dryRun = false) emits every entry, even at 619 files")
     func realCleanupKeepsFullVerbosity() {
-        for current in 1 ... 619 {
+        for current in 1...619 {
             let prog = progress(current: current, total: 619)
             #expect(CLIImpl.Command.Cleanup.shouldEmitProgress(prog, dryRun: false))
         }
@@ -45,7 +46,7 @@ struct Issue646CleanupDryRunThrottleTests {
 
     @Test("Dry-run keeps full verbosity for batches ≤ 50 (per-file output is fast)")
     func dryRunVerboseForSmallBatch() {
-        for current in 1 ... 50 {
+        for current in 1...50 {
             let prog = progress(current: current, total: 50)
             #expect(CLIImpl.Command.Cleanup.shouldEmitProgress(prog, dryRun: true))
         }
@@ -80,7 +81,7 @@ struct Issue646CleanupDryRunThrottleTests {
     @Test("Dry-run collapses 619 entries to ~22 emissions (first + last + 20 buckets)")
     func dryRunCollapsesLargeBatch() {
         var emissions = 0
-        for current in 1 ... 619 {
+        for current in 1...619 {
             let prog = progress(current: current, total: 619)
             if CLIImpl.Command.Cleanup.shouldEmitProgress(prog, dryRun: true) {
                 emissions += 1
@@ -96,7 +97,7 @@ struct Issue646CleanupDryRunThrottleTests {
     @Test("Dry-run with 1000 archives emits between 18 and 25 lines (4–6% sample density)")
     func dryRunStableRangeFor1000() {
         var emissions = 0
-        for current in 1 ... 1000 {
+        for current in 1...1000 {
             let prog = progress(current: current, total: 1000)
             if CLIImpl.Command.Cleanup.shouldEmitProgress(prog, dryRun: true) {
                 emissions += 1
