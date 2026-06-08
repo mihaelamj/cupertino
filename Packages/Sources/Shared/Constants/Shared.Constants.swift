@@ -1,3 +1,4 @@
+import CupertinoDataKit
 import Foundation
 
 // MARK: - Cupertino Constants
@@ -1359,19 +1360,19 @@ extension Shared.Constants {
         // MARK: Search Limits
 
         /// Default search result limit
-        public static let defaultSearchLimit = 20
+        public static let defaultSearchLimit = CupertinoDataKit.Limits.defaultSearchLimit
 
         /// Default list result limit (for listing samples, etc.)
         public static let defaultListLimit = 50
 
         /// Default document browser page size
-        public static let defaultDocumentListLimit = 100
+        public static let defaultDocumentListLimit = CupertinoDataKit.Limits.defaultDocumentListLimit
 
         /// Maximum search result limit
-        public static let maxSearchLimit = 100
+        public static let maxSearchLimit = CupertinoDataKit.Limits.maxSearchLimit
 
         /// Maximum document browser page size
-        public static let maxDocumentListLimit = 500
+        public static let maxDocumentListLimit = CupertinoDataKit.Limits.maxDocumentListLimit
 
         /// Teaser result limit (for showing hints from alternate sources)
         public static let teaserLimit = 2
