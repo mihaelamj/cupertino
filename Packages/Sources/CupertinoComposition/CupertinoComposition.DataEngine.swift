@@ -1,4 +1,4 @@
-@_spi(CupertinoInternal) import CupertinoDataEngine
+import CupertinoDataEngine
 import Foundation
 import LoggingModels
 import SampleIndexModels
@@ -43,14 +43,9 @@ extension CupertinoComposition {
     @_spi(CupertinoInternal)
     public static func makeReadOnlyDataEngine(
         configuration: CupertinoDataEngine.Configuration,
-        logger: any Logging.Recording
+        logger _: any Logging.Recording
     ) async throws -> CupertinoDataEngine {
-        try await CupertinoDataEngine(
-            configuration: configuration,
-            sourceReaderFactory: DataEngineSourceReaderFactory(logger: logger),
-            sampleReaderFactory: DataEngineSampleReaderFactory(logger: logger),
-            packageReaderFactory: DataEnginePackageReaderFactory()
-        )
+        try await CupertinoDataEngine(configuration: configuration)
     }
 
     /// Convenience for the current per-source bundle layout.
@@ -73,74 +68,5 @@ extension CupertinoComposition {
             configuration: makeLegacyDataEngineConfiguration(corpusDirectory: corpusDirectory),
             logger: logger
         )
-    }
-}
-
-private struct DataEngineSourceReaderFactory: CupertinoDataEngine.SourceReaderFactory {
-    let logger: any Logging.Recording
-
-    func openSourceReader(at url: URL) async throws -> any Search.Database {
-        try await Search.Index(
-            dbPath: url,
-            logger: logger,
-            indexers: [:],
-            sourceLookup: .empty,
-            readOnly: true
-        )
-    }
-}
-
-private struct DataEngineSampleReaderFactory: CupertinoDataEngine.SampleReaderFactory {
-    let logger: any Logging.Recording
-
-    func openSampleReader(at url: URL) async throws -> any Sample.Index.Reader {
-        try await Sample.Index.Database(
-            dbPath: url,
-            logger: logger,
-            readOnly: true
-        )
-    }
-}
-
-private struct DataEnginePackageReaderFactory: CupertinoDataEngine.PackageReaderFactory {
-    func openPackageReader(at url: URL) async throws -> any CupertinoDataEngine.PackageReader {
-        let query = try await Search.PackageQuery(dbPath: url)
-        return DataEnginePackageReader(query: query)
-    }
-}
-
-private struct DataEnginePackageReader: CupertinoDataEngine.PackageReader {
-    let query: Search.PackageQuery
-
-    func searchPackages(
-        query: String,
-        limit: Int,
-        availability: Search.AvailabilityFilter?,
-        swiftTools: Search.SwiftToolsFilter?,
-        appleImport: String?
-    ) async throws -> [Search.Result] {
-        try await self.query.searchPackages(
-            query: query,
-            limit: limit,
-            availability: availability,
-            swiftTools: swiftTools,
-            appleImport: appleImport
-        )
-    }
-
-    func searchPackageSymbolsByGenericConstraint(
-        constraint: String,
-        framework: String?,
-        limit: Int
-    ) async throws -> [Search.Result] {
-        try await query.searchPackageSymbolsByGenericConstraint(
-            constraint: constraint,
-            framework: framework,
-            limit: limit
-        )
-    }
-
-    func disconnect() async {
-        await query.disconnect()
     }
 }

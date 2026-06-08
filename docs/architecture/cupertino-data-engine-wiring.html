@@ -81,11 +81,12 @@
     <h1>Cupertino Data Engine Wiring</h1>
     <p>
       Current state: CupertinoDataEngine is an external package. CupertinoComposition is
-      still inside the cupertino repo and adapts the current production readers into that
-      external facade. Desktop and mobile UI code should only see backend contracts or the
-      engine facade, never storage paths or concrete reader types. Mobile clients may
-      download or bundle an opaque Cupertino corpus, but Cupertino-owned engine code owns
-      how that corpus is opened.
+      still inside the cupertino repo and supplies the schema-versioned corpus
+      configuration, but the engine owns the read-only source, sample, and package readers.
+      Desktop and mobile UI code should only see backend contracts or the engine facade,
+      never storage paths or concrete reader types. Mobile clients may download or bundle
+      an opaque Cupertino corpus, but Cupertino-owned engine code owns how that corpus is
+      opened.
     </p>
 
     <div class="diagram">
@@ -95,16 +96,18 @@ flowchart LR
         CLI["CLI / MCP / serve"]
         CC["CupertinoComposition<br/>in-tree composition root"]
 
-        subgraph ConcreteReaders["current concrete readers"]
-            SearchSQLite["SearchSQLite<br/>Search.Index"]
-            SampleSQLite["SampleIndexSQLite<br/>Sample.Index.Database"]
-            PackageQuery["SearchSQLite<br/>Search.PackageQuery"]
+        subgraph SchemaConstants["schema-version constants"]
+            SearchSQLite["SearchSQLite<br/>Search.Index.schemaVersion"]
+            SampleSQLite["SampleIndexSQLite<br/>Sample.Index.Database.schemaVersion"]
+            PackageIndex["SearchSQLite<br/>Search.PackageIndex.schemaVersion"]
         end
     end
 
     subgraph External["external package"]
         CDE["CupertinoDataEngine<br/>facade + composite read engine"]
-        SourceReader["v0.2.2 source-corpus reader<br/>first extracted slice"]
+        SourceReader["source SQLite reader<br/>docs / HIG / archive / Swift"]
+        SampleReader["sample SQLite reader<br/>Apple sample projects + files"]
+        PackageReader["package SQLite reader<br/>Swift package search + symbols"]
     end
 
     subgraph Desktop["cupertino-desktop"]
@@ -120,15 +123,13 @@ flowchart LR
 
     CLI --> CC
     CC --> CDE
-    CC --> SearchSQLite
-    CC --> SampleSQLite
-    CC --> PackageQuery
-
-    SearchSQLite -.factory injection.-> CDE
-    SampleSQLite -.factory injection.-> CDE
-    PackageQuery -.factory injection.-> CDE
+    CC -.schema versions.-> SearchSQLite
+    CC -.schema versions.-> SampleSQLite
+    CC -.schema versions.-> PackageIndex
 
     CDE --> SourceReader
+    CDE --> SampleReader
+    CDE --> PackageReader
 
     UI --> Backend
     Backend --> MobileBackend
@@ -140,10 +141,10 @@ flowchart LR
     </div>
 
     <p class="note">
-      Target direction: move source, sample, and package read-storage into
-      CupertinoDataEngine so CupertinoComposition becomes thinner. Mobile apps can
-      download or bundle a Cupertino corpus, but only the Cupertino-owned engine opens
-      the resources inside it; app clients still never know that storage exists.
+      Next direction: replace file-list configuration with a public opaque corpus/bundle
+      concept and prove the complete closure on iOS. Mobile apps can download or bundle a
+      Cupertino corpus, but only the Cupertino-owned engine opens the resources inside it;
+      app clients still never know that storage exists.
     </p>
   </main>
 </body>
