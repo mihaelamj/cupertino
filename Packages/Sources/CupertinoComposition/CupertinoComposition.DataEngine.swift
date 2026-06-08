@@ -1,4 +1,4 @@
-import CupertinoDataEngine
+@_spi(CupertinoInternal) import CupertinoDataEngine
 import Foundation
 import LoggingModels
 import SampleIndexModels
@@ -9,71 +9,74 @@ import SearchSQLite
 // MARK: - CupertinoComposition.DataEngine
 
 extension CupertinoComposition {
-    /// Per-source database bundle configuration with schema versions supplied
-    /// from the concrete database producers at the composition root.
+    /// Per-source corpus bundle configuration with schema versions supplied
+    /// from Cupertino's concrete storage producers at the composition root.
+    @_spi(CupertinoInternal)
     public static func makePerSourceDataEngineConfiguration(
-        baseDirectory: URL
+        corpusDirectory: URL
     ) -> CupertinoDataEngine.Configuration {
         CupertinoDataEngine.Configuration.perSourceBundle(
-            baseDirectory: baseDirectory,
+            baseDirectory: corpusDirectory,
             searchSchemaVersion: Search.Index.schemaVersion,
             sampleSchemaVersion: Sample.Index.Database.schemaVersion,
             packagesSchemaVersion: Search.PackageIndex.schemaVersion
         )
     }
 
-    /// Legacy three-database bundle configuration with schema versions supplied
-    /// from the concrete database producers at the composition root.
+    /// Legacy corpus bundle configuration with schema versions supplied from
+    /// Cupertino's concrete storage producers at the composition root.
+    @_spi(CupertinoInternal)
     public static func makeLegacyDataEngineConfiguration(
-        baseDirectory: URL
+        corpusDirectory: URL
     ) -> CupertinoDataEngine.Configuration {
         CupertinoDataEngine.Configuration.legacyBundle(
-            baseDirectory: baseDirectory,
+            baseDirectory: corpusDirectory,
             searchSchemaVersion: Search.Index.schemaVersion,
             sampleSchemaVersion: Sample.Index.Database.schemaVersion,
             packagesSchemaVersion: Search.PackageIndex.schemaVersion
         )
     }
 
-    /// Build the read-only embedded data engine using production SQLite-backed
-    /// readers. App UI layers should receive the returned engine or its
-    /// protocol-typed readers; they should not depend on these factory structs.
+    /// Build the read-only embedded data engine using Cupertino's production
+    /// storage readers. App UI layers receive the returned engine or its
+    /// protocol-typed readers; they do not depend on storage factories.
+    @_spi(CupertinoInternal)
     public static func makeReadOnlyDataEngine(
         configuration: CupertinoDataEngine.Configuration,
         logger: any Logging.Recording
     ) async throws -> CupertinoDataEngine {
         try await CupertinoDataEngine(
             configuration: configuration,
-            searchDatabaseFactory: DataEngineSearchDatabaseFactory(logger: logger),
-            sampleDatabaseFactory: DataEngineSampleDatabaseFactory(logger: logger),
-            packageDatabaseFactory: DataEnginePackageDatabaseFactory()
+            sourceReaderFactory: DataEngineSourceReaderFactory(logger: logger),
+            sampleReaderFactory: DataEngineSampleReaderFactory(logger: logger),
+            packageReaderFactory: DataEnginePackageReaderFactory()
         )
     }
 
     /// Convenience for the current per-source bundle layout.
     public static func makePerSourceReadOnlyDataEngine(
-        baseDirectory: URL,
+        corpusDirectory: URL,
         logger: any Logging.Recording
     ) async throws -> CupertinoDataEngine {
         try await makeReadOnlyDataEngine(
-            configuration: makePerSourceDataEngineConfiguration(baseDirectory: baseDirectory),
+            configuration: makePerSourceDataEngineConfiguration(corpusDirectory: corpusDirectory),
             logger: logger
         )
     }
 
-    /// Convenience for the legacy three-file layout used by some local bundles.
+    /// Convenience for the legacy corpus layout used by some local bundles.
     public static func makeLegacyReadOnlyDataEngine(
-        baseDirectory: URL,
+        corpusDirectory: URL,
         logger: any Logging.Recording
     ) async throws -> CupertinoDataEngine {
         try await makeReadOnlyDataEngine(
-            configuration: makeLegacyDataEngineConfiguration(baseDirectory: baseDirectory),
+            configuration: makeLegacyDataEngineConfiguration(corpusDirectory: corpusDirectory),
             logger: logger
         )
     }
 }
 
-private struct DataEngineSearchDatabaseFactory: Search.DatabaseFactory {
+private struct DataEngineSourceReaderFactory: Search.DatabaseFactory {
     let logger: any Logging.Recording
 
     func openDatabase(at url: URL) async throws -> any Search.Database {
@@ -87,7 +90,7 @@ private struct DataEngineSearchDatabaseFactory: Search.DatabaseFactory {
     }
 }
 
-private struct DataEngineSampleDatabaseFactory: Sample.Index.DatabaseFactory {
+private struct DataEngineSampleReaderFactory: Sample.Index.DatabaseFactory {
     let logger: any Logging.Recording
 
     func openDatabase(at url: URL) async throws -> any Sample.Index.Reader {
@@ -99,14 +102,14 @@ private struct DataEngineSampleDatabaseFactory: Sample.Index.DatabaseFactory {
     }
 }
 
-private struct DataEnginePackageDatabaseFactory: CupertinoDataEngine.PackageDatabaseFactory {
-    func openDatabase(at url: URL) async throws -> any CupertinoDataEngine.PackageConnection {
+private struct DataEnginePackageReaderFactory: CupertinoDataEngine.PackageReaderFactory {
+    func openPackageReader(at url: URL) async throws -> any CupertinoDataEngine.PackageReader {
         let query = try await Search.PackageQuery(dbPath: url)
-        return DataEnginePackageDatabase(query: query)
+        return DataEnginePackageReader(query: query)
     }
 }
 
-private struct DataEnginePackageDatabase: CupertinoDataEngine.PackageConnection {
+private struct DataEnginePackageReader: CupertinoDataEngine.PackageReader {
     let query: Search.PackageQuery
 
     func searchPackages(

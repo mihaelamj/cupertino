@@ -7,143 +7,146 @@ import SearchModels
 /// Read-only backend facade for embedded Cupertino clients.
 ///
 /// UI layers should consume the protocol-typed readers this actor returns and
-/// must not open database files directly. Concrete database actors are supplied
-/// by a composition root through factory protocols, keeping this package free
-/// of concrete SQLite producer imports.
+/// must not know about Cupertino's storage files. Concrete readers are supplied
+/// by a Cupertino composition root through internal factory protocols, keeping
+/// this package free of concrete SQLite producer imports.
 public actor CupertinoDataEngine {
-    public nonisolated let configuration: Configuration
+    nonisolated let configuration: Configuration
 
-    private let searchDatabaseFactory: (any Search.DatabaseFactory)?
-    private let sampleDatabaseFactory: (any Sample.Index.DatabaseFactory)?
-    private let packageDatabaseFactory: (any PackageDatabaseFactory)?
-    private var searchDatabases: [String: any Search.Database] = [:]
-    private var sampleDatabase: (any Sample.Index.Reader)?
-    private var packageDatabase: (any PackageConnection)?
+    private let sourceReaderFactory: (any Search.DatabaseFactory)?
+    private let sampleReaderFactory: (any Sample.Index.DatabaseFactory)?
+    private let packageReaderFactory: (any PackageReaderFactory)?
+    private var sourceReaders: [String: any Search.Database] = [:]
+    private var sampleReader: (any Sample.Index.Reader)?
+    private var packageReader: (any PackageReader)?
 
+    @_spi(CupertinoInternal)
     public init(
         configuration: Configuration,
-        searchDatabaseFactory: (any Search.DatabaseFactory)? = nil,
-        sampleDatabaseFactory: (any Sample.Index.DatabaseFactory)? = nil,
-        packageDatabaseFactory: (any PackageDatabaseFactory)? = nil
+        sourceReaderFactory: (any Search.DatabaseFactory)? = nil,
+        sampleReaderFactory: (any Sample.Index.DatabaseFactory)? = nil,
+        packageReaderFactory: (any PackageReaderFactory)? = nil
     ) async throws {
         self.configuration = configuration
-        self.searchDatabaseFactory = searchDatabaseFactory
-        self.sampleDatabaseFactory = sampleDatabaseFactory
-        self.packageDatabaseFactory = packageDatabaseFactory
+        self.sourceReaderFactory = sourceReaderFactory
+        self.sampleReaderFactory = sampleReaderFactory
+        self.packageReaderFactory = packageReaderFactory
 
-        let duplicateIDs = Dictionary(grouping: configuration.searchDatabases, by: \.id)
+        let duplicateIDs = Dictionary(grouping: configuration.sourceCorpusResources, by: \.id)
             .filter { $0.value.count > 1 }
             .keys
         guard duplicateIDs.isEmpty else {
-            throw Error.duplicateSearchDatabaseID(duplicateIDs.sorted().joined(separator: ", "))
+            throw Error.duplicateSourceID(duplicateIDs.sorted().joined(separator: ", "))
         }
 
-        try await openSearchDatabases(configuration.searchDatabases)
-        try await openSampleDatabase(configuration.sampleDatabase)
-        try await openPackageDatabase(configuration.packagesDatabase)
+        try await openSourceCorpusResources(configuration.sourceCorpusResources)
+        try await openSampleResource(configuration.sampleResource)
+        try await openPackageResource(configuration.packagesResource)
     }
 
-    /// Stable list of configured search DB identifiers in configuration order.
-    public nonisolated var searchDatabaseIDs: [String] {
-        configuration.searchDatabases.map(\.id)
+    /// Stable list of configured source identifiers in corpus order.
+    public nonisolated var sourceIDs: [String] {
+        configuration.sourceCorpusResources.map(\.id)
     }
 
-    /// Return a search/document/code-intelligence reader by configured ID.
-    public func searchDatabase(id: String) throws -> any Search.Database {
-        guard let database = searchDatabases[id] else {
-            throw Error.searchDatabaseNotConfigured(id)
+    /// Return a search/document/code-intelligence reader by source ID.
+    public func sourceReader(id: String) throws -> any SourceReader {
+        guard let reader = sourceReaders[id] else {
+            throw Error.sourceNotConfigured(id)
         }
-        return database
+        return SourceReaderBox(base: reader)
     }
 
-    /// Return the document-browser refinement for a configured search DB.
-    public func documentBrowser(id: String) throws -> any Search.Database & Search.DocumentBrowsing {
-        let database = try searchDatabase(id: id)
-        guard let browser = database as? any Search.Database & Search.DocumentBrowsing else {
+    /// Return the document-browser refinement for a configured source.
+    public func documentBrowser(id: String) throws -> any SourceBrowser {
+        guard let reader = sourceReaders[id] else {
+            throw Error.sourceNotConfigured(id)
+        }
+        guard let browser = reader as? any Search.Database & Search.DocumentBrowsing else {
             throw Error.documentBrowserUnavailable(id)
         }
-        return browser
+        return SourceBrowserBox(base: browser)
     }
 
     /// Return the sample-code reader, when configured.
     public func samples() throws -> any Sample.Index.Reader {
-        guard let sampleDatabase else {
-            throw Error.sampleDatabaseNotConfigured
+        guard let sampleReader else {
+            throw Error.samplesNotConfigured
         }
-        return sampleDatabase
+        return sampleReader
     }
 
     /// Return the packages reader, when configured.
     public func packages() throws -> any Search.PackagesSearcher {
-        guard let packageDatabase else {
-            throw Error.packagesDatabaseNotConfigured
+        guard let packageReader else {
+            throw Error.packagesNotConfigured
         }
-        return packageDatabase
+        return packageReader
     }
 
     /// Close every opened reader. Idempotent.
     public func disconnect() async {
-        for database in searchDatabases.values {
-            await database.disconnect()
+        for reader in sourceReaders.values {
+            await reader.disconnect()
         }
-        searchDatabases.removeAll()
+        sourceReaders.removeAll()
 
-        if let sampleDatabase {
-            await sampleDatabase.disconnect()
-            self.sampleDatabase = nil
+        if let sampleReader {
+            await sampleReader.disconnect()
+            self.sampleReader = nil
         }
 
-        if let packageDatabase {
-            await packageDatabase.disconnect()
-            self.packageDatabase = nil
+        if let packageReader {
+            await packageReader.disconnect()
+            self.packageReader = nil
         }
     }
 
-    private func openSearchDatabases(_ configurations: [SearchDatabase]) async throws {
+    private func openSourceCorpusResources(_ configurations: [SourceCorpusResource]) async throws {
         guard !configurations.isEmpty else { return }
-        guard let searchDatabaseFactory else {
-            throw Error.searchDatabaseFactoryNotConfigured
+        guard let sourceReaderFactory else {
+            throw Error.sourceReaderFactoryNotConfigured
         }
         for configuration in configurations {
-            try Self.requireDatabaseFile(configuration.url, role: configuration.role)
+            try Self.requireCorpusResource(configuration.url, role: configuration.role)
             try SchemaProbe.assertPragmaUserVersion(
                 at: configuration.url,
                 expected: configuration.expectedSchemaVersion,
                 role: configuration.role
             )
-            searchDatabases[configuration.id] = try await searchDatabaseFactory.openDatabase(at: configuration.url)
+            sourceReaders[configuration.id] = try await sourceReaderFactory.openDatabase(at: configuration.url)
         }
     }
 
-    private func openSampleDatabase(_ configuration: SampleDatabase?) async throws {
+    private func openSampleResource(_ configuration: SampleResource?) async throws {
         guard let configuration else { return }
-        guard let sampleDatabaseFactory else {
-            throw Error.sampleDatabaseFactoryNotConfigured
+        guard let sampleReaderFactory else {
+            throw Error.sampleReaderFactoryNotConfigured
         }
-        try Self.requireDatabaseFile(configuration.url, role: configuration.role)
+        try Self.requireCorpusResource(configuration.url, role: configuration.role)
         try SchemaProbe.assertSamplesSchemaVersion(
             at: configuration.url,
             expected: configuration.expectedSchemaVersion,
             role: configuration.role
         )
-        sampleDatabase = try await sampleDatabaseFactory.openDatabase(at: configuration.url)
+        sampleReader = try await sampleReaderFactory.openDatabase(at: configuration.url)
     }
 
-    private func openPackageDatabase(_ configuration: PackageDatabase?) async throws {
+    private func openPackageResource(_ configuration: PackageResource?) async throws {
         guard let configuration else { return }
-        guard let packageDatabaseFactory else {
-            throw Error.packageDatabaseFactoryNotConfigured
+        guard let packageReaderFactory else {
+            throw Error.packageReaderFactoryNotConfigured
         }
-        try Self.requireDatabaseFile(configuration.url, role: configuration.role)
+        try Self.requireCorpusResource(configuration.url, role: configuration.role)
         try SchemaProbe.assertPragmaUserVersion(
             at: configuration.url,
             expected: configuration.expectedSchemaVersion,
             role: configuration.role
         )
-        packageDatabase = try await packageDatabaseFactory.openDatabase(at: configuration.url)
+        packageReader = try await packageReaderFactory.openPackageReader(at: configuration.url)
     }
 
-    private static func requireDatabaseFile(
+    private static func requireCorpusResource(
         _ url: URL,
         role: String
     ) throws {
@@ -151,7 +154,7 @@ public actor CupertinoDataEngine {
         guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
               !isDirectory.boolValue
         else {
-            throw Error.missingDatabase(role: role, path: url.path)
+            throw Error.missingCorpusResource(role: role, path: url.path)
         }
     }
 }

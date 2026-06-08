@@ -1,4 +1,4 @@
-@testable import CupertinoDataEngine
+@_spi(CupertinoInternal) import CupertinoDataEngine
 import Foundation
 import LoggingModels
 import SampleIndexModels
@@ -10,24 +10,24 @@ import Testing
 
 @Suite("#1261 CupertinoDataEngine")
 struct CupertinoDataEngineTests {
-    @Test("opens a search database read-only from a read-only directory")
-    func opensSearchDatabaseReadOnlyFromReadOnlyDirectory() async throws {
+    @Test("opens a source reader read-only from a read-only corpus directory")
+    func opensSourceReaderReadOnlyFromReadOnlyCorpusDirectory() async throws {
         let tempDir = try Self.makeTempDir()
         let searchURL = tempDir.appendingPathComponent("search.db")
         defer { Self.restoreWritablePermissions(tempDir); try? FileManager.default.removeItem(at: tempDir) }
 
-        try await Self.seedSearchDatabase(at: searchURL)
+        try await Self.seedSourceResource(at: searchURL)
         try FileManager.default.setAttributes([.posixPermissions: 0o444], ofItemAtPath: searchURL.path)
         try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: tempDir.path)
 
         let engine = try await Self.makeEngine(
-            configuration: .init(searchDatabases: [
+            configuration: .init(sourceCorpusResources: [
                 .init(id: "docs", url: searchURL, displayName: "Docs", expectedSchemaVersion: Search.Index.schemaVersion),
             ])
         )
-        let database = try await engine.searchDatabase(id: "docs")
-        #expect(try await database.documentCount() == 1)
-        let content = try await database.getDocumentContent(uri: "apple-docs://swiftui/view", format: .markdown)
+        let reader = try await engine.sourceReader(id: "docs")
+        #expect(try await reader.documentCount() == 1)
+        let content = try await reader.getDocumentContent(uri: "apple-docs://swiftui/view", format: .markdown)
         #expect(content?.contains("SwiftUI View documentation") == true)
         await engine.disconnect()
     }
@@ -38,9 +38,9 @@ struct CupertinoDataEngineTests {
         let searchURL = tempDir.appendingPathComponent("search.db")
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        try await Self.seedSearchDatabase(at: searchURL)
+        try await Self.seedSourceResource(at: searchURL)
         let engine = try await Self.makeEngine(
-            configuration: .init(searchDatabases: [
+            configuration: .init(sourceCorpusResources: [
                 .init(id: "docs", url: searchURL, displayName: "Docs", expectedSchemaVersion: Search.Index.schemaVersion),
             ])
         )
@@ -51,22 +51,22 @@ struct CupertinoDataEngineTests {
         await engine.disconnect()
     }
 
-    @Test("missing configured database fails before opening a reader")
-    func missingDatabaseFailsBeforeOpen() async throws {
+    @Test("missing configured corpus resource fails before opening a reader")
+    func missingCorpusResourceFailsBeforeOpen() async throws {
         let tempDir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: tempDir) }
         let missingURL = tempDir.appendingPathComponent("missing.db")
 
         do {
             _ = try await Self.makeEngine(
-                configuration: .init(searchDatabases: [
+                configuration: .init(sourceCorpusResources: [
                     .init(id: "missing", url: missingURL, displayName: "Missing", expectedSchemaVersion: Search.Index.schemaVersion),
                 ])
             )
-            Issue.record("expected missing database error")
+            Issue.record("expected missing corpus resource error")
         } catch let error as CupertinoDataEngine.Error {
-            guard case let .missingDatabase(role, path) = error else {
-                Issue.record("expected missingDatabase, got \(error)")
+            guard case let .missingCorpusResource(role, path) = error else {
+                Issue.record("expected missingCorpusResource, got \(error)")
                 return
             }
             #expect(role.contains("Missing"))
@@ -74,48 +74,48 @@ struct CupertinoDataEngineTests {
         }
     }
 
-    @Test("configured search database requires a search factory")
-    func configuredSearchDatabaseRequiresSearchFactory() async throws {
+    @Test("configured source resource requires a source-reader factory")
+    func configuredSourceResourceRequiresSourceReaderFactory() async throws {
         let tempDir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: tempDir) }
         let searchURL = tempDir.appendingPathComponent("search.db")
 
-        await #expect(throws: CupertinoDataEngine.Error.searchDatabaseFactoryNotConfigured) {
+        await #expect(throws: CupertinoDataEngine.Error.sourceReaderFactoryNotConfigured) {
             _ = try await CupertinoDataEngine(
-                configuration: .init(searchDatabases: [
+                configuration: .init(sourceCorpusResources: [
                     .init(id: "docs", url: searchURL, displayName: "Docs", expectedSchemaVersion: Search.Index.schemaVersion),
                 ])
             )
         }
     }
 
-    @Test("configured sample database requires a sample factory")
-    func configuredSampleDatabaseRequiresSampleFactory() async throws {
+    @Test("configured sample resource requires a sample-reader factory")
+    func configuredSampleResourceRequiresSampleReaderFactory() async throws {
         let tempDir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: tempDir) }
         let sampleURL = tempDir.appendingPathComponent("samples.db")
 
-        await #expect(throws: CupertinoDataEngine.Error.sampleDatabaseFactoryNotConfigured) {
+        await #expect(throws: CupertinoDataEngine.Error.sampleReaderFactoryNotConfigured) {
             _ = try await CupertinoDataEngine(
                 configuration: .init(
-                    searchDatabases: [],
-                    sampleDatabase: .init(url: sampleURL, expectedSchemaVersion: Sample.Index.Database.schemaVersion)
+                    sourceCorpusResources: [],
+                    sampleResource: .init(url: sampleURL, expectedSchemaVersion: Sample.Index.Database.schemaVersion)
                 )
             )
         }
     }
 
-    @Test("configured packages database requires a packages factory")
-    func configuredPackagesDatabaseRequiresPackagesFactory() async throws {
+    @Test("configured packages resource requires a packages-reader factory")
+    func configuredPackagesResourceRequiresPackagesReaderFactory() async throws {
         let tempDir = try Self.makeTempDir()
         defer { try? FileManager.default.removeItem(at: tempDir) }
         let packagesURL = tempDir.appendingPathComponent("packages.db")
 
-        await #expect(throws: CupertinoDataEngine.Error.packageDatabaseFactoryNotConfigured) {
+        await #expect(throws: CupertinoDataEngine.Error.packageReaderFactoryNotConfigured) {
             _ = try await CupertinoDataEngine(
                 configuration: .init(
-                    searchDatabases: [],
-                    packagesDatabase: .init(url: packagesURL, expectedSchemaVersion: Search.PackageIndex.schemaVersion)
+                    sourceCorpusResources: [],
+                    packagesResource: .init(url: packagesURL, expectedSchemaVersion: Search.PackageIndex.schemaVersion)
                 )
             )
         }
@@ -130,7 +130,7 @@ struct CupertinoDataEngineTests {
 
         do {
             _ = try await Self.makeEngine(
-                configuration: .init(searchDatabases: [
+                configuration: .init(sourceCorpusResources: [
                     .init(id: "docs", url: searchURL, displayName: "Docs", expectedSchemaVersion: Search.Index.schemaVersion),
                 ])
             )
@@ -156,8 +156,8 @@ struct CupertinoDataEngineTests {
 
         let engine = try await Self.makeEngine(
             configuration: .init(
-                searchDatabases: [],
-                sampleDatabase: .init(url: sampleURL, displayName: "Samples", expectedSchemaVersion: Sample.Index.Database.schemaVersion)
+                sourceCorpusResources: [],
+                sampleResource: .init(url: sampleURL, displayName: "Samples", expectedSchemaVersion: Sample.Index.Database.schemaVersion)
             )
         )
         let samples = try await engine.samples()
@@ -178,8 +178,8 @@ struct CupertinoDataEngineTests {
 
         let engine = try await Self.makeEngine(
             configuration: .init(
-                searchDatabases: [],
-                packagesDatabase: .init(url: packagesURL, displayName: "Packages", expectedSchemaVersion: Search.PackageIndex.schemaVersion)
+                sourceCorpusResources: [],
+                packagesResource: .init(url: packagesURL, displayName: "Packages", expectedSchemaVersion: Search.PackageIndex.schemaVersion)
             )
         )
         let packages = try await engine.packages()
@@ -194,7 +194,7 @@ struct CupertinoDataEngineTests {
         await engine.disconnect()
     }
 
-    private static func seedSearchDatabase(at url: URL) async throws {
+    private static func seedSourceResource(at url: URL) async throws {
         let index = try await Search.Index(
             dbPath: url,
             logger: Logging.NoopRecording(),
@@ -220,9 +220,9 @@ struct CupertinoDataEngineTests {
     ) async throws -> CupertinoDataEngine {
         try await CupertinoDataEngine(
             configuration: configuration,
-            searchDatabaseFactory: SearchSQLiteFactory(logger: logger),
-            sampleDatabaseFactory: SampleSQLiteFactory(logger: logger),
-            packageDatabaseFactory: PackageSQLiteFactory()
+            sourceReaderFactory: SearchSQLiteFactory(logger: logger),
+            sampleReaderFactory: SampleSQLiteFactory(logger: logger),
+            packageReaderFactory: PackageSQLiteFactory()
         )
     }
 
@@ -295,14 +295,14 @@ struct CupertinoDataEngineTests {
         }
     }
 
-    private struct PackageSQLiteFactory: CupertinoDataEngine.PackageDatabaseFactory {
-        func openDatabase(at url: URL) async throws -> any CupertinoDataEngine.PackageConnection {
+    private struct PackageSQLiteFactory: CupertinoDataEngine.PackageReaderFactory {
+        func openPackageReader(at url: URL) async throws -> any CupertinoDataEngine.PackageReader {
             let query = try await Search.PackageQuery(dbPath: url)
-            return PackageDatabase(query: query)
+            return PackageReader(query: query)
         }
     }
 
-    private struct PackageDatabase: CupertinoDataEngine.PackageConnection {
+    private struct PackageReader: CupertinoDataEngine.PackageReader {
         let query: Search.PackageQuery
 
         func searchPackages(

@@ -4,29 +4,30 @@ import SharedConstants
 // MARK: - CupertinoDataEngine.Configuration
 
 extension CupertinoDataEngine {
+    @_spi(CupertinoInternal)
     public struct Configuration: Sendable {
-        public let searchDatabases: [SearchDatabase]
-        public let sampleDatabase: SampleDatabase?
-        public let packagesDatabase: PackageDatabase?
+        public let sourceCorpusResources: [SourceCorpusResource]
+        public let sampleResource: SampleResource?
+        public let packagesResource: PackageResource?
 
         public init(
-            searchDatabases: [SearchDatabase],
-            sampleDatabase: SampleDatabase? = nil,
-            packagesDatabase: PackageDatabase? = nil
+            sourceCorpusResources: [SourceCorpusResource],
+            sampleResource: SampleResource? = nil,
+            packagesResource: PackageResource? = nil
         ) {
-            self.searchDatabases = searchDatabases
-            self.sampleDatabase = sampleDatabase
-            self.packagesDatabase = packagesDatabase
+            self.sourceCorpusResources = sourceCorpusResources
+            self.sampleResource = sampleResource
+            self.packagesResource = packagesResource
         }
 
-        /// Current per-source bundle layout used by `cupertino setup`.
+        /// Current per-source corpus layout used by `cupertino setup`.
         public static func perSourceBundle(
             baseDirectory: URL,
             searchSchemaVersion: Int32,
             sampleSchemaVersion: Int32,
             packagesSchemaVersion: Int32
         ) -> Configuration {
-            let searchDescriptors: [Shared.Models.DatabaseDescriptor] = [
+            let sourceDescriptors: [Shared.Models.DatabaseDescriptor] = [
                 .appleDocumentation,
                 .hig,
                 .appleArchive,
@@ -36,20 +37,20 @@ extension CupertinoDataEngine {
                 .appleSampleCode,
             ]
             return Configuration(
-                searchDatabases: searchDescriptors.map { descriptor in
-                    SearchDatabase(
+                sourceCorpusResources: sourceDescriptors.map { descriptor in
+                    SourceCorpusResource(
                         id: descriptor.id,
                         url: baseDirectory.appendingPathComponent(descriptor.filename),
                         displayName: descriptor.displayName,
                         expectedSchemaVersion: searchSchemaVersion
                     )
                 },
-                sampleDatabase: SampleDatabase(
+                sampleResource: SampleResource(
                     url: baseDirectory.appendingPathComponent(Shared.Models.DatabaseDescriptor.appleSampleCode.filename),
                     displayName: Shared.Models.DatabaseDescriptor.appleSampleCode.displayName,
                     expectedSchemaVersion: sampleSchemaVersion
                 ),
-                packagesDatabase: PackageDatabase(
+                packagesResource: PackageResource(
                     url: baseDirectory.appendingPathComponent(Shared.Models.DatabaseDescriptor.swiftPackages.filename),
                     displayName: Shared.Models.DatabaseDescriptor.swiftPackages.displayName,
                     expectedSchemaVersion: packagesSchemaVersion
@@ -65,20 +66,20 @@ extension CupertinoDataEngine {
             packagesSchemaVersion: Int32
         ) -> Configuration {
             Configuration(
-                searchDatabases: [
-                    SearchDatabase(
+                sourceCorpusResources: [
+                    SourceCorpusResource(
                         id: Shared.Models.DatabaseDescriptor.search.id,
                         url: baseDirectory.appendingPathComponent(Shared.Models.DatabaseDescriptor.search.filename),
                         displayName: Shared.Models.DatabaseDescriptor.search.displayName,
                         expectedSchemaVersion: searchSchemaVersion
                     ),
                 ],
-                sampleDatabase: SampleDatabase(
+                sampleResource: SampleResource(
                     url: baseDirectory.appendingPathComponent(Shared.Models.DatabaseDescriptor.samples.filename),
                     displayName: Shared.Models.DatabaseDescriptor.samples.displayName,
                     expectedSchemaVersion: sampleSchemaVersion
                 ),
-                packagesDatabase: PackageDatabase(
+                packagesResource: PackageResource(
                     url: baseDirectory.appendingPathComponent(Shared.Models.DatabaseDescriptor.packages.filename),
                     displayName: Shared.Models.DatabaseDescriptor.packages.displayName,
                     expectedSchemaVersion: packagesSchemaVersion
@@ -87,14 +88,15 @@ extension CupertinoDataEngine {
         }
     }
 
-    public struct SearchDatabase: Sendable {
+    @_spi(CupertinoInternal)
+    public struct SourceCorpusResource: Sendable {
         public let id: String
         public let url: URL
         public let displayName: String
         public let expectedSchemaVersion: Int32
 
         var role: String {
-            "search database \(displayName) (\(id))"
+            "source corpus resource \(displayName) (\(id))"
         }
 
         public init(
@@ -110,13 +112,14 @@ extension CupertinoDataEngine {
         }
     }
 
-    public struct SampleDatabase: Sendable {
+    @_spi(CupertinoInternal)
+    public struct SampleResource: Sendable {
         public let url: URL
         public let displayName: String
         public let expectedSchemaVersion: Int32
 
         var role: String {
-            "sample database \(displayName)"
+            "sample corpus resource \(displayName)"
         }
 
         public init(
@@ -130,13 +133,14 @@ extension CupertinoDataEngine {
         }
     }
 
-    public struct PackageDatabase: Sendable {
+    @_spi(CupertinoInternal)
+    public struct PackageResource: Sendable {
         public let url: URL
         public let displayName: String
         public let expectedSchemaVersion: Int32
 
         var role: String {
-            "packages database \(displayName)"
+            "packages corpus resource \(displayName)"
         }
 
         public init(
