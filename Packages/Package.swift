@@ -146,7 +146,8 @@ let deps: [Package.Dependency] = [
     // factories and injects them from CupertinoComposition. v0.2.0 adds the
     // composed Search.Database facade that fans out across configured corpora;
     // v0.2.1 adds a public empty facade initializer for downstream previews/tests.
-    .package(url: "https://github.com/mihaelamj/CupertinoDataEngine.git", from: "0.2.1"),
+    // v0.2.2 adds the first public source-corpus read-only construction slice.
+    .package(url: "https://github.com/mihaelamj/CupertinoDataEngine.git", from: "0.2.2"),
 ]
 
 // -------------------------------------------------------------
