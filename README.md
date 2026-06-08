@@ -207,7 +207,7 @@ Cupertino factors reusable, independently-versioned Swift packages out of the mo
 | **SwiftMCPCore** | [mihaelamj/SwiftMCPCore](https://github.com/mihaelamj/SwiftMCPCore) | Neutral MCP wire types (the JSON-RPC + protocol value types). Not cupertino-specific; a general MCP building block. |
 | **SwiftMCPClient** | [mihaelamj/SwiftMCPClient](https://github.com/mihaelamj/SwiftMCPClient) | Neutral, transport-injectable MCP client (`Client.MCP` seam, `MCPClient` actor, subprocess transport). Depends on SwiftMCPCore. |
 | **CupertinoDataKit** | [mihaelamj/CupertinoDataKit](https://github.com/mihaelamj/CupertinoDataKit) | Cupertino's public **read contract**: documentation/source reading, document browsing, symbol/code-intelligence reading, and sample-code reading protocols plus every value type they return. Protocols + value types only, zero implementation; cupertino's engine conforms server-side, and an embedded/in-process reader (e.g. an iOS app) conforms a different implementation. Cupertino's foundation tier re-exports it (`@_exported import CupertinoDataKit`). |
-| **CupertinoDataEngine** | [mihaelamj/CupertinoDataEngine](https://github.com/mihaelamj/CupertinoDataEngine) | Cupertino's embedded **read-only backend facade** for app clients. The engine itself conforms to the public read/browse contracts and fans out across configured source, sample, and package readers. The current v0.2.3 slice adds public, engine-owned read-only construction for the complete corpus bundle. UI code must not know the storage files exist. |
+| **CupertinoDataEngine** | [mihaelamj/CupertinoDataEngine](https://github.com/mihaelamj/CupertinoDataEngine) | Cupertino's embedded **read-only backend facade** for app clients. The engine itself conforms to the public read/browse contracts and fans out across configured source, sample, and package readers. The current v0.2.4 slice adds an opaque `Corpus` handle so app code provides one downloaded or bundled corpus directory while the engine owns resource filenames, schema validation, and read-only construction. UI code must not know the storage files exist. |
 
 See the current [CupertinoDataEngine wiring diagram](docs/architecture/cupertino-data-engine-wiring.html) for the boundary between `CupertinoDataEngine`, in-tree `CupertinoComposition`, and downstream app clients.
 
@@ -244,7 +244,7 @@ flowchart TB
 
   subgraph Partial["Partial"]
     direction TB
-    E1261["#1261 data engine extraction (read bundle shipped)"]:::partial ~~~ E1036["#1036 per-source DB split (#1061 left)"]:::partial ~~~ E191["#191 search quality and FTS"]:::partial
+    E1261["#1261 data engine extraction (opaque corpus shipped)"]:::partial ~~~ E1036["#1036 per-source DB split (#1061 left)"]:::partial ~~~ E191["#191 search quality and FTS"]:::partial
   end
 
   subgraph Planned["Planned"]
@@ -274,7 +274,7 @@ flowchart TD
   source["CupertinoDataEngine v0.2.2 source-corpus reader"]:::done
   samples["v0.2.3 sample-reader construction"]:::done
   packages["v0.2.3 package-reader construction"]:::done
-  bundle["Opaque corpus/bundle API"]:::next
+  bundle["v0.2.4 opaque corpus/bundle API"]:::done
   ios["iOS build proof for complete closure"]:::next
   catalog["CatalogStore supplies opaque corpus handles"]:::todo
   embedded["Live LocalEmbeddedBackend real-corpus smoke"]:::todo

@@ -81,12 +81,11 @@
     <h1>Cupertino Data Engine Wiring</h1>
     <p>
       Current state: CupertinoDataEngine is an external package. CupertinoComposition is
-      still inside the cupertino repo and supplies the schema-versioned corpus
-      configuration, but the engine owns the read-only source, sample, and package readers.
-      Desktop and mobile UI code should only see backend contracts or the engine facade,
-      never storage paths or concrete reader types. Mobile clients may download or bundle
-      an opaque Cupertino corpus, but Cupertino-owned engine code owns how that corpus is
-      opened.
+      still inside the cupertino repo and supplies schema-version policy, but app-facing
+      construction now passes an opaque CupertinoDataEngine.Corpus handle. The engine owns
+      resource filenames plus read-only source, sample, and package readers. Desktop and
+      mobile UI code should only see backend contracts or the engine facade, never storage
+      paths or concrete reader types.
     </p>
 
     <div class="diagram">
@@ -95,6 +94,7 @@ flowchart LR
     subgraph CupertinoRepo["cupertino repo"]
         CLI["CLI / MCP / serve"]
         CC["CupertinoComposition<br/>in-tree composition root"]
+        Corpus["CupertinoDataEngine.Corpus<br/>opaque directory + layout"]
 
         subgraph SchemaConstants["schema-version constants"]
             SearchSQLite["SearchSQLite<br/>Search.Index.schemaVersion"]
@@ -122,10 +122,12 @@ flowchart LR
     end
 
     CLI --> CC
+    CC --> Corpus
     CC --> CDE
     CC -.schema versions.-> SearchSQLite
     CC -.schema versions.-> SampleSQLite
     CC -.schema versions.-> PackageIndex
+    Corpus --> CDE
 
     CDE --> SourceReader
     CDE --> SampleReader
@@ -141,10 +143,10 @@ flowchart LR
     </div>
 
     <p class="note">
-      Next direction: replace file-list configuration with a public opaque corpus/bundle
-      concept and prove the complete closure on iOS. Mobile apps can download or bundle a
-      Cupertino corpus, but only the Cupertino-owned engine opens the resources inside it;
-      app clients still never know that storage exists.
+      Next direction: prove the complete engine closure on an iOS destination and wire
+      desktop/mobile catalog state to provide opaque corpus handles. Mobile apps can
+      download or bundle a Cupertino corpus, but only the Cupertino-owned engine opens the
+      resources inside it; app clients still never know that storage exists.
     </p>
   </main>
 </body>

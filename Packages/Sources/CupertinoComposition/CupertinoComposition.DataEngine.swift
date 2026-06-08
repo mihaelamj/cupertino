@@ -9,6 +9,38 @@ import SearchSQLite
 // MARK: - CupertinoComposition.DataEngine
 
 extension CupertinoComposition {
+    private static var dataEngineSchemaVersions: CupertinoDataEngine.SchemaVersions {
+        CupertinoDataEngine.SchemaVersions(
+            search: Search.Index.schemaVersion,
+            sample: Sample.Index.Database.schemaVersion,
+            packages: Search.PackageIndex.schemaVersion
+        )
+    }
+
+    /// Opaque current per-source corpus handle with schema versions supplied
+    /// from Cupertino's concrete storage producers at the composition root.
+    @_spi(CupertinoInternal)
+    public static func makePerSourceDataEngineCorpus(
+        corpusDirectory: URL
+    ) -> CupertinoDataEngine.Corpus {
+        CupertinoDataEngine.Corpus.current(
+            at: corpusDirectory,
+            schemaVersions: dataEngineSchemaVersions
+        )
+    }
+
+    /// Opaque legacy corpus handle with schema versions supplied from
+    /// Cupertino's concrete storage producers at the composition root.
+    @_spi(CupertinoInternal)
+    public static func makeLegacyDataEngineCorpus(
+        corpusDirectory: URL
+    ) -> CupertinoDataEngine.Corpus {
+        CupertinoDataEngine.Corpus.legacy(
+            at: corpusDirectory,
+            schemaVersions: dataEngineSchemaVersions
+        )
+    }
+
     /// Per-source corpus bundle configuration with schema versions supplied
     /// from Cupertino's concrete storage producers at the composition root.
     @_spi(CupertinoInternal)
@@ -17,9 +49,9 @@ extension CupertinoComposition {
     ) -> CupertinoDataEngine.Configuration {
         CupertinoDataEngine.Configuration.perSourceBundle(
             baseDirectory: corpusDirectory,
-            searchSchemaVersion: Search.Index.schemaVersion,
-            sampleSchemaVersion: Sample.Index.Database.schemaVersion,
-            packagesSchemaVersion: Search.PackageIndex.schemaVersion
+            searchSchemaVersion: dataEngineSchemaVersions.search,
+            sampleSchemaVersion: dataEngineSchemaVersions.sample,
+            packagesSchemaVersion: dataEngineSchemaVersions.packages
         )
     }
 
@@ -31,9 +63,9 @@ extension CupertinoComposition {
     ) -> CupertinoDataEngine.Configuration {
         CupertinoDataEngine.Configuration.legacyBundle(
             baseDirectory: corpusDirectory,
-            searchSchemaVersion: Search.Index.schemaVersion,
-            sampleSchemaVersion: Sample.Index.Database.schemaVersion,
-            packagesSchemaVersion: Search.PackageIndex.schemaVersion
+            searchSchemaVersion: dataEngineSchemaVersions.search,
+            sampleSchemaVersion: dataEngineSchemaVersions.sample,
+            packagesSchemaVersion: dataEngineSchemaVersions.packages
         )
     }
 
@@ -48,13 +80,24 @@ extension CupertinoComposition {
         try await CupertinoDataEngine(configuration: configuration)
     }
 
+    /// Build the read-only embedded data engine from an opaque corpus handle.
+    /// This is the app-facing path: callers supply a bundle/directory handle,
+    /// not individual storage resources.
+    @_spi(CupertinoInternal)
+    public static func makeReadOnlyDataEngine(
+        corpus: CupertinoDataEngine.Corpus,
+        logger _: any Logging.Recording
+    ) async throws -> CupertinoDataEngine {
+        try await CupertinoDataEngine(corpus: corpus)
+    }
+
     /// Convenience for the current per-source bundle layout.
     public static func makePerSourceReadOnlyDataEngine(
         corpusDirectory: URL,
         logger: any Logging.Recording
     ) async throws -> CupertinoDataEngine {
         try await makeReadOnlyDataEngine(
-            configuration: makePerSourceDataEngineConfiguration(corpusDirectory: corpusDirectory),
+            corpus: makePerSourceDataEngineCorpus(corpusDirectory: corpusDirectory),
             logger: logger
         )
     }
@@ -65,7 +108,7 @@ extension CupertinoComposition {
         logger: any Logging.Recording
     ) async throws -> CupertinoDataEngine {
         try await makeReadOnlyDataEngine(
-            configuration: makeLegacyDataEngineConfiguration(corpusDirectory: corpusDirectory),
+            corpus: makeLegacyDataEngineCorpus(corpusDirectory: corpusDirectory),
             logger: logger
         )
     }

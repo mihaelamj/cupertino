@@ -17,6 +17,23 @@ struct CupertinoCompositionDataEngineTests {
         #expect(configuration.packagesResource?.url.lastPathComponent == "swift-packages.db")
     }
 
+    @Test("corpus helpers expose opaque bundle handles")
+    func corpusHelpersExposeOpaqueBundleHandles() {
+        let base = URL(fileURLWithPath: "/tmp/cupertino-corpus", isDirectory: true)
+
+        let current = CupertinoComposition.makePerSourceDataEngineCorpus(corpusDirectory: base)
+        #expect(current.directory == base)
+        #expect(current.layout == .currentPerSource)
+        #expect(current.schemaVersions.search > 0)
+        #expect(current.schemaVersions.sample > 0)
+        #expect(current.schemaVersions.packages > 0)
+
+        let legacy = CupertinoComposition.makeLegacyDataEngineCorpus(corpusDirectory: base)
+        #expect(legacy.directory == base)
+        #expect(legacy.layout == .legacyThreeFile)
+        #expect(legacy.schemaVersions == current.schemaVersions)
+    }
+
     @Test("read-only data-engine composition delegates to external engine")
     func readOnlyDataEngineCompositionDelegatesToExternalEngine() async throws {
         let engine = try await CupertinoComposition.makeReadOnlyDataEngine(

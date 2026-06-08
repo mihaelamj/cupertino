@@ -2,6 +2,8 @@
 
 ### Added
 
+- **feat(#1261): adopt `CupertinoDataEngine` 0.2.4 opaque corpus handles.** App-facing embedded engine construction can now use `CupertinoDataEngine.Corpus` plus `CupertinoDataEngine(corpus:)`, so callers hand Cupertino one downloaded or bundled corpus directory while the engine owns resource filenames, schema validation, and read-only SQLite construction. `CupertinoComposition` now exposes per-source and legacy corpus-handle helpers and its normal read-only engine conveniences route through the opaque corpus initializer; the lower-level `Configuration` helper remains available for focused composition tests.
+
 - **feat(#1261): adopt `CupertinoDataEngine` 0.2.3 for complete read-only bundle construction.** The external engine now owns read-only SQLite construction for source, sample, and package corpora through the public `CupertinoDataEngine(configuration:)` initializer. `CupertinoComposition` still supplies Cupertino's schema-versioned bundle configuration, but no longer injects local `Search.Index`, `Sample.Index.Database`, or `Search.PackageQuery` factories. Engine-package tests now cover real fixture reads across source, sample, package, sample-symbol, and package generic-symbol paths; Cupertino adds a composition-seam test and bumps the dependency minimum to `from: "0.2.3"`.
 
 - **docs(#1270): add the pre-UI readiness Mermaid roadmap.** The README roadmap now shows #1270 as the active gate before native UI work and adds a dedicated Mermaid chain from the merged #1268 read-surface baseline through the remaining embedded-engine, opaque-corpus, iOS-build, `CatalogStore`, `LocalEmbeddedBackend`, and release-corpus-smoke gates before UI showcase work starts.
