@@ -1,4 +1,4 @@
-@_spi(CupertinoInternal) import CupertinoDataEngine
+import CupertinoDataEngine
 import Foundation
 import LoggingModels
 import SampleIndexModels
@@ -9,6 +9,38 @@ import SearchSQLite
 // MARK: - CupertinoComposition.DataEngine
 
 extension CupertinoComposition {
+    private static var dataEngineSchemaVersions: CupertinoDataEngine.SchemaVersions {
+        CupertinoDataEngine.SchemaVersions(
+            search: Search.Index.schemaVersion,
+            sample: Sample.Index.Database.schemaVersion,
+            packages: Search.PackageIndex.schemaVersion
+        )
+    }
+
+    /// Opaque current per-source corpus handle with schema versions supplied
+    /// from Cupertino's concrete storage producers at the composition root.
+    @_spi(CupertinoInternal)
+    public static func makePerSourceDataEngineCorpus(
+        corpusDirectory: URL
+    ) -> CupertinoDataEngine.Corpus {
+        CupertinoDataEngine.Corpus.current(
+            at: corpusDirectory,
+            schemaVersions: dataEngineSchemaVersions
+        )
+    }
+
+    /// Opaque legacy corpus handle with schema versions supplied from
+    /// Cupertino's concrete storage producers at the composition root.
+    @_spi(CupertinoInternal)
+    public static func makeLegacyDataEngineCorpus(
+        corpusDirectory: URL
+    ) -> CupertinoDataEngine.Corpus {
+        CupertinoDataEngine.Corpus.legacy(
+            at: corpusDirectory,
+            schemaVersions: dataEngineSchemaVersions
+        )
+    }
+
     /// Per-source corpus bundle configuration with schema versions supplied
     /// from Cupertino's concrete storage producers at the composition root.
     @_spi(CupertinoInternal)
@@ -17,9 +49,9 @@ extension CupertinoComposition {
     ) -> CupertinoDataEngine.Configuration {
         CupertinoDataEngine.Configuration.perSourceBundle(
             baseDirectory: corpusDirectory,
-            searchSchemaVersion: Search.Index.schemaVersion,
-            sampleSchemaVersion: Sample.Index.Database.schemaVersion,
-            packagesSchemaVersion: Search.PackageIndex.schemaVersion
+            searchSchemaVersion: dataEngineSchemaVersions.search,
+            sampleSchemaVersion: dataEngineSchemaVersions.sample,
+            packagesSchemaVersion: dataEngineSchemaVersions.packages
         )
     }
 
@@ -31,9 +63,9 @@ extension CupertinoComposition {
     ) -> CupertinoDataEngine.Configuration {
         CupertinoDataEngine.Configuration.legacyBundle(
             baseDirectory: corpusDirectory,
-            searchSchemaVersion: Search.Index.schemaVersion,
-            sampleSchemaVersion: Sample.Index.Database.schemaVersion,
-            packagesSchemaVersion: Search.PackageIndex.schemaVersion
+            searchSchemaVersion: dataEngineSchemaVersions.search,
+            sampleSchemaVersion: dataEngineSchemaVersions.sample,
+            packagesSchemaVersion: dataEngineSchemaVersions.packages
         )
     }
 
@@ -43,14 +75,20 @@ extension CupertinoComposition {
     @_spi(CupertinoInternal)
     public static func makeReadOnlyDataEngine(
         configuration: CupertinoDataEngine.Configuration,
-        logger: any Logging.Recording
+        logger _: any Logging.Recording
     ) async throws -> CupertinoDataEngine {
-        try await CupertinoDataEngine(
-            configuration: configuration,
-            sourceReaderFactory: DataEngineSourceReaderFactory(logger: logger),
-            sampleReaderFactory: DataEngineSampleReaderFactory(logger: logger),
-            packageReaderFactory: DataEnginePackageReaderFactory()
-        )
+        try await CupertinoDataEngine(configuration: configuration)
+    }
+
+    /// Build the read-only embedded data engine from an opaque corpus handle.
+    /// This is the app-facing path: callers supply a bundle/directory handle,
+    /// not individual storage resources.
+    @_spi(CupertinoInternal)
+    public static func makeReadOnlyDataEngine(
+        corpus: CupertinoDataEngine.Corpus,
+        logger _: any Logging.Recording
+    ) async throws -> CupertinoDataEngine {
+        try await CupertinoDataEngine(corpus: corpus)
     }
 
     /// Convenience for the current per-source bundle layout.
@@ -59,7 +97,7 @@ extension CupertinoComposition {
         logger: any Logging.Recording
     ) async throws -> CupertinoDataEngine {
         try await makeReadOnlyDataEngine(
-            configuration: makePerSourceDataEngineConfiguration(corpusDirectory: corpusDirectory),
+            corpus: makePerSourceDataEngineCorpus(corpusDirectory: corpusDirectory),
             logger: logger
         )
     }
@@ -70,77 +108,8 @@ extension CupertinoComposition {
         logger: any Logging.Recording
     ) async throws -> CupertinoDataEngine {
         try await makeReadOnlyDataEngine(
-            configuration: makeLegacyDataEngineConfiguration(corpusDirectory: corpusDirectory),
+            corpus: makeLegacyDataEngineCorpus(corpusDirectory: corpusDirectory),
             logger: logger
         )
-    }
-}
-
-private struct DataEngineSourceReaderFactory: CupertinoDataEngine.SourceReaderFactory {
-    let logger: any Logging.Recording
-
-    func openSourceReader(at url: URL) async throws -> any Search.Database {
-        try await Search.Index(
-            dbPath: url,
-            logger: logger,
-            indexers: [:],
-            sourceLookup: .empty,
-            readOnly: true
-        )
-    }
-}
-
-private struct DataEngineSampleReaderFactory: CupertinoDataEngine.SampleReaderFactory {
-    let logger: any Logging.Recording
-
-    func openSampleReader(at url: URL) async throws -> any Sample.Index.Reader {
-        try await Sample.Index.Database(
-            dbPath: url,
-            logger: logger,
-            readOnly: true
-        )
-    }
-}
-
-private struct DataEnginePackageReaderFactory: CupertinoDataEngine.PackageReaderFactory {
-    func openPackageReader(at url: URL) async throws -> any CupertinoDataEngine.PackageReader {
-        let query = try await Search.PackageQuery(dbPath: url)
-        return DataEnginePackageReader(query: query)
-    }
-}
-
-private struct DataEnginePackageReader: CupertinoDataEngine.PackageReader {
-    let query: Search.PackageQuery
-
-    func searchPackages(
-        query: String,
-        limit: Int,
-        availability: Search.AvailabilityFilter?,
-        swiftTools: Search.SwiftToolsFilter?,
-        appleImport: String?
-    ) async throws -> [Search.Result] {
-        try await self.query.searchPackages(
-            query: query,
-            limit: limit,
-            availability: availability,
-            swiftTools: swiftTools,
-            appleImport: appleImport
-        )
-    }
-
-    func searchPackageSymbolsByGenericConstraint(
-        constraint: String,
-        framework: String?,
-        limit: Int
-    ) async throws -> [Search.Result] {
-        try await query.searchPackageSymbolsByGenericConstraint(
-            constraint: constraint,
-            framework: framework,
-            limit: limit
-        )
-    }
-
-    func disconnect() async {
-        await query.disconnect()
     }
 }

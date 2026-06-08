@@ -142,12 +142,16 @@ let deps: [Package.Dependency] = [
     // SharedConstants re-exports it so every target sees the Search + Sample
     // namespaces with no per-target import edit.
     .package(url: "https://github.com/mihaelamj/CupertinoDataKit.git", from: "0.3.0"),
-    // External embedded engine facade. Cupertino owns the concrete storage
-    // factories and injects them from CupertinoComposition. v0.2.0 adds the
+    // External embedded engine facade. v0.2.0 adds the
     // composed Search.Database facade that fans out across configured corpora;
     // v0.2.1 adds a public empty facade initializer for downstream previews/tests.
     // v0.2.2 adds the first public source-corpus read-only construction slice.
-    .package(url: "https://github.com/mihaelamj/CupertinoDataEngine.git", from: "0.2.2"),
+    // v0.2.3 adds engine-owned sample/package read-only construction.
+    // v0.2.4 adds the opaque corpus handle for app-facing bundle opening.
+    // v0.2.5 aligns the current corpus layout with release bundles: sample code
+    // is opened through the sample reader, not as a source-search database.
+    // v0.2.6 keeps the package corpus on the release `packages.db` filename.
+    .package(url: "https://github.com/mihaelamj/CupertinoDataEngine.git", from: "0.2.6"),
 ]
 
 // -------------------------------------------------------------

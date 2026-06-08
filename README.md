@@ -207,7 +207,7 @@ Cupertino factors reusable, independently-versioned Swift packages out of the mo
 | **SwiftMCPCore** | [mihaelamj/SwiftMCPCore](https://github.com/mihaelamj/SwiftMCPCore) | Neutral MCP wire types (the JSON-RPC + protocol value types). Not cupertino-specific; a general MCP building block. |
 | **SwiftMCPClient** | [mihaelamj/SwiftMCPClient](https://github.com/mihaelamj/SwiftMCPClient) | Neutral, transport-injectable MCP client (`Client.MCP` seam, `MCPClient` actor, subprocess transport). Depends on SwiftMCPCore. |
 | **CupertinoDataKit** | [mihaelamj/CupertinoDataKit](https://github.com/mihaelamj/CupertinoDataKit) | Cupertino's public **read contract**: documentation/source reading, document browsing, symbol/code-intelligence reading, and sample-code reading protocols plus every value type they return. Protocols + value types only, zero implementation; cupertino's engine conforms server-side, and an embedded/in-process reader (e.g. an iOS app) conforms a different implementation. Cupertino's foundation tier re-exports it (`@_exported import CupertinoDataKit`). |
-| **CupertinoDataEngine** | [mihaelamj/CupertinoDataEngine](https://github.com/mihaelamj/CupertinoDataEngine) | Cupertino's embedded **read-only backend facade** for app clients. The engine itself conforms to the public read/browse contracts and fans out across configured source readers plus packages. The current v0.2.2 slice adds public, engine-owned source-corpus construction; samples, packages, and the full production parity path still remain #1261 follow-up work. UI code must not know the storage files exist. |
+| **CupertinoDataEngine** | [mihaelamj/CupertinoDataEngine](https://github.com/mihaelamj/CupertinoDataEngine) | Cupertino's embedded **read-only backend facade** for app clients. The engine itself conforms to the public read/browse contracts and fans out across configured source, sample, and package readers. The current v0.2.6 slice keeps the opaque `Corpus` handle and aligns current-corpus opening with release bundles: sample code is opened through the sample reader, and packages stay on `packages.db`. UI code must not know the storage files exist. |
 
 See the current [CupertinoDataEngine wiring diagram](docs/architecture/cupertino-data-engine-wiring.html) for the boundary between `CupertinoDataEngine`, in-tree `CupertinoComposition`, and downstream app clients.
 
@@ -239,12 +239,12 @@ Epic progress:
 flowchart TB
   subgraph Active["Active"]
     direction TB
-    E1242["#1242 critical path"]:::active ~~~ E1262["#1262 desktop backend surface"]:::active ~~~ E1221["#1221 recrawl and resume"]:::active
+    E1242["#1242 critical path"]:::active ~~~ E1262["#1262 desktop backend surface"]:::active ~~~ E1270["#1270 pre-UI readiness gate"]:::active ~~~ E1221["#1221 recrawl and resume"]:::active
   end
 
   subgraph Partial["Partial"]
     direction TB
-    E1261["#1261 data engine extraction (source slice shipped)"]:::partial ~~~ E1036["#1036 per-source DB split (#1061 left)"]:::partial ~~~ E191["#191 search quality and FTS"]:::partial
+    E1261["#1261 data engine extraction (opaque corpus shipped)"]:::partial ~~~ E1036["#1036 per-source DB split (#1061 left)"]:::partial ~~~ E191["#191 search quality and FTS"]:::partial
   end
 
   subgraph Planned["Planned"]
@@ -263,6 +263,28 @@ flowchart TB
   classDef active  fill:#007AFF,color:#FFFFFF
   classDef next    fill:#5856D6,color:#FFFFFF
   classDef partial fill:#FF9500,color:#FFFFFF
+  classDef todo    fill:#8E8E93,color:#FFFFFF
+```
+
+Pre-UI readiness gate:
+
+```mermaid
+flowchart TD
+  release["#1268 current read surfaces green on main"]:::done
+  source["CupertinoDataEngine v0.2.2 source-corpus reader"]:::done
+  samples["v0.2.3 sample-reader construction"]:::done
+  packages["v0.2.3 package-reader construction"]:::done
+  bundle["v0.2.6 opaque release-corpus layout"]:::done
+  ios["iOS build proof for complete closure"]:::done
+  catalog["CatalogStoreAPI supplies opaque corpus handles"]:::done
+  embedded["Live LocalEmbeddedBackend real-corpus smoke"]:::done
+  smoke["#1269 repeatable release-corpus smoke"]:::done
+  stores["Bundled/downloadable CatalogStore + app packaging"]:::next
+  ui["Begin native UI showcase work"]:::todo
+
+  release --> source --> samples --> packages --> bundle --> ios --> catalog --> embedded --> smoke --> stores --> ui
+  classDef done    fill:#34C759,color:#FFFFFF
+  classDef next    fill:#5856D6,color:#FFFFFF
   classDef todo    fill:#8E8E93,color:#FFFFFF
 ```
 
@@ -312,6 +334,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full build, test, and release wor
 - **[docs/PRINCIPLES.md](docs/PRINCIPLES.md)**: engineering principles (lossless URIs, no content lost at the door, 10x scale headroom)
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**: technical deep-dives (concurrency, MCP, WKWebView testing)
 - **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**: Homebrew distribution and CI/CD setup
+- **[docs/release/release-corpus-smoke.md](docs/release/release-corpus-smoke.md)**: on-demand release-corpus smoke gate for repo-built binaries
 - **[docs/mcp-clients.md](docs/mcp-clients.md)**: per-client MCP setup (Claude, Codex, Cursor, VS Code, Zed, Windsurf, opencode, and more)
 - **[docs/agent-skill.md](docs/agent-skill.md)**: use Cupertino as a stateless CLI Agent Skill (no server)
 - **[docs/commands/](docs/commands/)**: command-specific documentation (fetch, save, serve, search, doctor, and more)
