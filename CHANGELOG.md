@@ -2,6 +2,8 @@
 
 ### Added
 
+- **test(#1261): record repeatable iOS build proof for `CupertinoDataEngine`.** The external engine now carries `scripts/check-ios-build.sh`, which builds the complete embedded engine closure for both generic iOS Simulator and generic iOS device destinations through Xcode. The proof passed locally after the v0.2.4 opaque corpus adoption, so the pre-UI readiness roadmap advances to desktop/mobile `CatalogStore` opaque-handle integration.
+
 - **feat(#1261): adopt `CupertinoDataEngine` 0.2.4 opaque corpus handles.** App-facing embedded engine construction can now use `CupertinoDataEngine.Corpus` plus `CupertinoDataEngine(corpus:)`, so callers hand Cupertino one downloaded or bundled corpus directory while the engine owns resource filenames, schema validation, and read-only SQLite construction. `CupertinoComposition` now exposes per-source and legacy corpus-handle helpers and its normal read-only engine conveniences route through the opaque corpus initializer; the lower-level `Configuration` helper remains available for focused composition tests.
 
 - **feat(#1261): adopt `CupertinoDataEngine` 0.2.3 for complete read-only bundle construction.** The external engine now owns read-only SQLite construction for source, sample, and package corpora through the public `CupertinoDataEngine(configuration:)` initializer. `CupertinoComposition` still supplies Cupertino's schema-versioned bundle configuration, but no longer injects local `Search.Index`, `Sample.Index.Database`, or `Search.PackageQuery` factories. Engine-package tests now cover real fixture reads across source, sample, package, sample-symbol, and package generic-symbol paths; Cupertino adds a composition-seam test and bumps the dependency minimum to `from: "0.2.3"`.

@@ -275,8 +275,8 @@ flowchart TD
   samples["v0.2.3 sample-reader construction"]:::done
   packages["v0.2.3 package-reader construction"]:::done
   bundle["v0.2.4 opaque corpus/bundle API"]:::done
-  ios["iOS build proof for complete closure"]:::next
-  catalog["CatalogStore supplies opaque corpus handles"]:::todo
+  ios["iOS build proof for complete closure"]:::done
+  catalog["CatalogStore supplies opaque corpus handles"]:::next
   embedded["Live LocalEmbeddedBackend real-corpus smoke"]:::todo
   smoke["#1269 repeatable release-corpus smoke"]:::todo
   ui["Begin native UI showcase work"]:::todo
