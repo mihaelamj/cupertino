@@ -38,12 +38,12 @@ choice are identical.
 
 ---
 
-## 1. The eight sources cupertino can answer from
+## 1. The registered sources cupertino can answer from
 
 cupertino's bundle is three SQLite files (search.db, samples.db,
 packages.db). Inside `search.db`, rows are tagged with a `source`
 column so a single DB can hold logically distinct corpora. The
-eight enumerated sources are:
+current built-in source identifiers are:
 
 | Source identifier | What it contains | Which DB physically holds it |
 |---|---|---|
@@ -61,7 +61,9 @@ their own DB because their schemas don't fit `search.db`'s
 docs-shaped tables.
 
 The `--source` parameter (CLI) or the equivalent MCP tool choice
-selects which of these the query reaches.
+selects which registered source the query reaches. The built-in set
+can grow; source IDs are treated as registry data, not a closed
+compile-time enum.
 
 ---
 

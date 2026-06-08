@@ -4,9 +4,9 @@
 |---|---|
 | **Status** | accepted, deferred to a future release |
 | **Created** | 2026-05-30 |
-| **Last revised** | 2026-05-30 |
+| **Last revised** | 2026-06-08 |
 | **Tracking issue** | none yet (follow-on to CupertinoDataKit #1183) |
-| **Deferral** | Design accepted (Q3/Q4/Q5/Q6 resolved; GoF Bridge + Composite). Implementation (the §13 phased extraction of `Search.Connection` + the read/write type split) is NOT scheduled for the current release; it lands in a later release. The contract is already consumed today: cupertino types against `any Search.Database` from CupertinoDataKit v0.1.0 (`Search.Index` conforms it at `Search.Index.Database.swift:14`), so no consumer changes when the iOS engine ships, only a second implementation of the same protocol is added. |
+| **Deferral** | Design accepted (Q3/Q4/Q5/Q6 resolved; GoF Bridge + Composite). Implementation (the §13 phased extraction of `Search.Connection` + the read/write type split) is NOT scheduled for the current release; it lands in a later release. The contract is already consumed today: cupertino types against `Search.Database` plus optional document-browser refinements from CupertinoDataKit v0.2.0 (`Search.Index` conforms the live read surfaces), so no consumer changes when the iOS engine ships, only a second implementation of the same protocols is added. |
 | **Companion docs** | [`per-source-db-split.md`](per-source-db-split.md), [`536-standalone-portability-and-linux-port.md`](536-standalone-portability-and-linux-port.md) |
 
 ---
@@ -20,7 +20,7 @@ Extract cupertino's real FTS-SQLite read engine (`Search.Index`, today in the `S
 ## 1. Context
 
 ### 1.1 Problem
-CupertinoDataKit (#1183, shipped) gave us the read contract (`Search.Database` = `DocumentReading` + `SymbolReading`, plus all read value types, Foundation-only, v0.1.0). It is protocols only: it has no implementation a third party can run. cupertino-desktop's macOS app reaches the engine over MCP (`cupertino serve` subprocess); the iOS app cannot, because iOS has no subprocess. The iOS app therefore needs the actual FTS-SQLite read engine compiled into the app.
+CupertinoDataKit (#1183, shipped; v0.2.0 for the document-browser refinements) gives us the read contract (`Search.Database` = `DocumentReading` + `SymbolReading`, plus optional `Search.DocumentBrowsing`, all read value types, and open-ended source IDs). It is protocols only: it has no implementation a third party can run. cupertino-desktop's macOS app reaches the engine over MCP (`cupertino serve` subprocess); the iOS app cannot, because iOS has no subprocess. The iOS app therefore needs the actual FTS-SQLite read engine compiled into the app.
 
 ### 1.2 Why the obvious approaches do not work
 - Reimplement a minimal SQLite reader on the app side: produces a second engine implementation, the exact drift the contract extraction exists to kill.
@@ -36,7 +36,7 @@ CupertinoDataKit (#1183, shipped) gave us the read contract (`Search.Database` =
 
 ### P0
 - **G1**: A public package CupertinoDataEngine that builds standalone for iOS (acceptance: `xcrun swift build` for an iOS destination is green).
-- **G2**: It conforms `Search.Database` from CupertinoDataKit (full read surface).
+- **G2**: It conforms `Search.Database` plus `Search.DocumentBrowsing` from CupertinoDataKit (full read + UI browser surface).
 - **G3**: cupertino owns/publishes/tags it; consumers depend by version tag (same sole-control rule as SwiftMCPCore / SwiftMCPClient / CupertinoDataKit).
 - **G4**: Single source of truth preserved: the monorepo consumes the engine package and re-exports; no duplicated engine code; full `xcrun swift build` + `xcrun swift test` stay green.
 
@@ -52,7 +52,7 @@ CupertinoDataKit (#1183, shipped) gave us the read contract (`Search.Database` =
 
 - **NG1**: Crawl / fetch / index-write capability on iOS. The iOS engine is read-only at runtime; the corpus is built on macOS/server and shipped as a prebuilt SQLite DB the app opens.
 - **NG2**: Reimplementing or forking the engine for iOS. Desktop does not want a second impl.
-- **NG3**: Changing the `Search.Database` contract or the CupertinoDataKit v0.1.0 tag.
+- **NG3**: Making a breaking `Search.Database` contract change or retagging an existing CupertinoDataKit release.
 - **NG4**: Corpus delivery to the device (bundled vs downloadable DB). That is the app's `CatalogStore` concern.
 
 ---
@@ -99,9 +99,9 @@ CupertinoDataEngine holds the `Search.Index` actor and the read-required helpers
 
 ### 5.1 Single-DB vs multi-source fan-out (verified, scope-critical)
 
-One `Search.Index` wraps exactly ONE SQLite file: the CLI/serve composition root builds one `Search.Index` per source descriptor (`CLIImpl.Command.Save.Indexers.swift` loops `orderedGroups`, one `Search.Index(dbPath:...)` per DB). Post per-source-DB-split (#1036) the corpus is 8 DBs (apple-documentation, hig, swift-org, swift-book, swift-evolution, apple-archive, apple-sample-code, packages).
+One `Search.Index` wraps exactly ONE SQLite file: the CLI/serve composition root builds one `Search.Index` per source descriptor (`CLIImpl.Command.Save.Indexers.swift` loops `orderedGroups`, one `Search.Index(dbPath:...)` per DB). Post per-source-DB-split (#1036) the current corpus ships 8 DBs (apple-documentation, hig, swift-org, swift-book, swift-evolution, apple-archive, apple-sample-code, packages), but the source set is open-ended and future sources must not require a contract redesign.
 
-The cross-source UNIFIED search (RRF fusion across those 8 DBs) does NOT live in `Search.Index`; it lives ABOVE it, in `ServicesModels.UnifiedSearcher` + `SearchAPI.SmartQuery` + `SearchToolProvider.CompositeToolProvider` (verified). So embedding a single `Search.Database` on iOS yields ONE source's results, not the unified search a user expects.
+The cross-source UNIFIED search (RRF fusion across the opened per-source DBs) does NOT live in `Search.Index`; it lives ABOVE it, in `ServicesModels.UnifiedSearcher` + `SearchAPI.SmartQuery` + `SearchToolProvider.CompositeToolProvider` (verified). So embedding a single `Search.Database` on iOS yields ONE source's results, not the unified search a user expects.
 
 Therefore "embed the engine" is under-specified. Two sub-options (Q6):
 - **(A) Engine ships per-DB only.** iOS opens N `Search.Index` instances (one per shipped DB) and the app does its own fusion. Smallest engine, but pushes the fusion algorithm onto the consumer, which re-introduces the drift the extraction exists to kill (desktop would reimplement RRF).

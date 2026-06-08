@@ -216,19 +216,34 @@ struct ConstantsAuditTests {
 
     // MARK: - SourceProvider.definition.id ↔ SourcePrefix consistency
 
-    @Test("Every production SourceProvider's definition.id has a matching SourcePrefix constant")
-    func definitionIDsAreInSourcePrefix() {
+    @Test("Built-in SourceProvider definition.ids have matching SourcePrefix constants")
+    func builtInDefinitionIDsAreInSourcePrefix() {
         let registry = CLIImpl.makeProductionSourceRegistry()
+        let registryIDs = Set(registry.allEnabled.map(\.definition.id))
         let prefixes = Set(Shared.Constants.SourcePrefix.allPrefixes)
-        for provider in registry.allEnabled {
+        let builtInIDs: Set<String> = [
+            Shared.Constants.SourcePrefix.appleDocs,
+            Shared.Constants.SourcePrefix.samples,
+            Shared.Constants.SourcePrefix.hig,
+            Shared.Constants.SourcePrefix.appleArchive,
+            Shared.Constants.SourcePrefix.swiftEvolution,
+            Shared.Constants.SourcePrefix.swiftOrg,
+            Shared.Constants.SourcePrefix.swiftBook,
+            Shared.Constants.SourcePrefix.packages,
+        ]
+        for id in builtInIDs {
             #expect(
-                prefixes.contains(provider.definition.id),
-                "source '\(provider.definition.id)' is not in Shared.Constants.SourcePrefix.allPrefixes; pluggability gap (#932 candidate)"
+                registryIDs.contains(id),
+                "built-in source '\(id)' is not registered in the production registry"
+            )
+            #expect(
+                prefixes.contains(id),
+                "built-in source '\(id)' is not in Shared.Constants.SourcePrefix.allPrefixes"
             )
         }
     }
 
-    @Test("Production registry's 8 SourceProviders have unique definition.ids (no aliasing)")
+    @Test("Production registry SourceProviders have unique definition.ids (no aliasing)")
     func registryDefinitionIDsUnique() {
         let registry = CLIImpl.makeProductionSourceRegistry()
         let ids = registry.allEnabled.map(\.definition.id)

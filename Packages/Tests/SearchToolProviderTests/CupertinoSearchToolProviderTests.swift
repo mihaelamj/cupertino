@@ -420,7 +420,7 @@ struct UnifiedSearchTests {
 
         if case let .text(textContent) = result.content.first {
             let text = textContent.text
-            // Verify results from all 8 sources
+            // Verify results from the built-in sources.
             #expect(text.contains("Apple Documentation"))
             #expect(text.contains("Sample Code"))
             #expect(text.contains("Human Interface Guidelines"))

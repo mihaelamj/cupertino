@@ -46,6 +46,6 @@ Inherits the shared AST `signalRankOrderClause` (#177) plus the `#670` exact-nam
 
 ## See also
 
-- [`cupertino search`](../search/README.md): full-text search across all 8 sources, returns documents (not symbols).
+- [`cupertino search`](../search/README.md): full-text search across all indexed sources, returns documents (not symbols).
 - `search_symbols` MCP tool (same parameter set, MCP-stdio surface).
 - [`docs/audits/eval-harness-standard-v1.0.md`](../../audits/eval-harness-standard-v1.0.md): Phase 2 query battery covering all 5 AST tools.

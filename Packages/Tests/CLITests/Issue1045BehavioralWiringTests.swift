@@ -66,13 +66,22 @@ private struct GapWiringFake: Search.SourceProvider {
         )
     }
 
-    var destinationDB: Shared.Models.DatabaseDescriptor { .swiftOrg }
-    var fetchInfo: Search.FetchInfo? { fetchInfoValue }
+    var destinationDB: Shared.Models.DatabaseDescriptor {
+        .swiftOrg
+    }
+
+    var fetchInfo: Search.FetchInfo? {
+        fetchInfoValue
+    }
+
     var capabilities: Search.Capabilities {
         Search.Capabilities(searchers: [.text], operations: [.readByURI])
     }
 
-    var legacySourceIDAliases: Set<String> { [] }
+    var legacySourceIDAliases: Set<String> {
+        []
+    }
+
     func makeStrategy(env _: Search.IndexEnvironment) -> any Search.SourceIndexingStrategy {
         preconditionFailure("Behavioural wiring tests never invoke makeStrategy")
     }
@@ -269,7 +278,7 @@ struct Issue1045BehavioralWiringTests {
 
     // MARK: - Sanity: production registry is reachable
 
-    @Test("Production registry exists and includes the 8 shipped sources")
+    @Test("Production registry exists and includes the built-in shipped sources")
     func productionRegistrySanity() {
         let registry = CLIImpl.makeProductionSourceRegistry()
         let ids = Set(registry.allEnabled.map(\.definition.id))
@@ -281,6 +290,5 @@ struct Issue1045BehavioralWiringTests {
         #expect(ids.contains(Shared.Constants.SourcePrefix.swiftEvolution))
         #expect(ids.contains(Shared.Constants.SourcePrefix.swiftOrg))
         #expect(ids.contains(Shared.Constants.SourcePrefix.swiftBook))
-        #expect(ids.count == 8)
     }
 }

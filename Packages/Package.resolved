@@ -1,13 +1,13 @@
 {
-  "originHash" : "06c02eb34807d4783426dda69ae045343c46b34d3bf9b7e212d767b1b8b9b7bb",
+  "originHash" : "b32e0511bb68de9f83274e278aac85b94450b9c28d9d2202dcdb3c8df852cdce",
   "pins" : [
     {
       "identity" : "cupertinodatakit",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/mihaelamj/CupertinoDataKit.git",
       "state" : {
-        "revision" : "df4446a435d6daf547d644e52743cd9c1ee97fd6",
-        "version" : "0.1.0"
+        "revision" : "5231cc7fbcedd8722d29c22119f66f4a0ca3a15c",
+        "version" : "0.2.0"
       }
     },
     {

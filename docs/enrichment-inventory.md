@@ -54,9 +54,9 @@ For each enrichment: whether `cupertino save` produces it automatically, the pre
 
 | # | Enrichment | Auto in `save`? | Prep action needed | Generated file | Reads (input file) | Columns / tables it adds |
 |---|---|---|---|---|---|---|
-| 1 | Lexical Index (FTS5) | Yes | none | all 8 `.db` | none | FTS tables `docs_fts`, `doc_code_fts`, `doc_symbols_fts`, `sample_code_fts`, `projects_fts`, `files_fts`, `file_symbols_fts`, `package_files_fts` |
+| 1 | Lexical Index (FTS5) | Yes | none | all generated source `.db` files | none | FTS tables `docs_fts`, `doc_code_fts`, `doc_symbols_fts`, `sample_code_fts`, `projects_fts`, `files_fts`, `file_symbols_fts`, `package_files_fts` |
 | 2 | Symbol Field Boosting | Yes | none | docs `.db`, `apple-sample-code.db`, `packages.db` | none | FTS cols `symbols`, `symbol_components` (BM25F 5.0 / 1.5 applied at query) |
-| 3 | Deployment Floors | docs: yes; packages: only once annotated | packages: `cupertino fetch --source packages --annotate-availability --skip-archives` | all 8 `.db` | packages: `availability.json` | `min_ios` / `min_macos` / `min_tvos` / `min_watchos` / `min_visionos` + `availability_source` on `docs_metadata`, `sample_code_metadata`, `projects`, `package_metadata` |
+| 3 | Deployment Floors | docs: yes; packages: only once annotated | packages: `cupertino fetch --source packages --annotate-availability --skip-archives` | all generated source `.db` files | packages: `availability.json` | `min_ios` / `min_macos` / `min_tvos` / `min_watchos` / `min_visionos` + `availability_source` on `docs_metadata`, `sample_code_metadata`, `projects`, `package_metadata` |
 | 4 | Toolchain Stamping | Yes (`Package.swift` fallback) | packages: `--annotate-availability` for an accurate value | `swift-evolution.db`, `swift-book.db`, `packages.db` | packages: `availability.json` (else `Package.swift` line 1) | `implementation_swift_version` (docs), `swift_tools_version` (packages) |
 | 5 | AST Symbol Extraction | Yes | none | docs `.db`, `apple-sample-code.db`, `packages.db` | none | tables `doc_symbols` / `file_symbols` / `package_symbols`; cols: 16 `kind`s, `is_async`, `is_throws`, `is_public`, `is_static`, `signature`, `attributes`, `conformances`, `generic_params` |
 | 6 | Import Capture | Yes | none | docs `.db`, `apple-sample-code.db`, `packages.db` | none | tables `doc_imports` / `file_imports` / `package_imports` (+ `is_exported`) |
@@ -72,8 +72,8 @@ For each enrichment: whether `cupertino save` produces it automatically, the pre
 | 16 | Code Example Extraction | Yes | none | docs `.db` | none | table `doc_code_examples` + FTS `doc_code_fts` |
 | 17 | Availability Aggregation | Yes | packages / samples: `--annotate-availability` | `availability.json` sidecars (per-sample / per-package), then `apple-sample-code.db`, `packages.db` | per-file `@available` (in-DB) + `Package.swift` floor | MAX-merged `min_<platform>` + `availability_source` tagged `sample-available-aggregated` / `package-available-aggregated` |
 | 18 | Dependency Closure | Yes (needs `Package.resolved` in corpus) | none | `packages.db` | `Package.swift` / `Package.resolved` (corpus) | col `package_metadata.parents_json` |
-| 19 | Acquisition Provenance | Yes | none | all 8 `.db` | none | col `source_type` (`appleJSON` / `appleWebKit` / `custom` / `swiftOrg`) |
-| 20 | Row Bookkeeping | Yes | none | all 8 `.db` | none | cols `content_hash`, `word_count`, `json_data`, `kind`; table `samples_schema_version`; `PRAGMA user_version` stamps |
+| 19 | Acquisition Provenance | Yes | none | all generated source `.db` files | none | col `source_type` (`appleJSON` / `appleWebKit` / `custom` / `swiftOrg`) |
+| 20 | Row Bookkeeping | Yes | none | all generated source `.db` files | none | cols `content_hash`, `word_count`, `json_data`, `kind`; table `samples_schema_version`; `PRAGMA user_version` stamps |
 | 21 | Rank Fusion (RRF) | Yes (query-time) | none | none | none | none, fuses stored per-source ranks |
 | 22 | Intent Routing | Yes (query-time) | none | none | none | none, prunes fetchers, applies authority weights (#254) |
 | 23 | Kind-Aware Reranking | Yes (query-time) | none | none | none | none, post-fusion reranking (#256 / #610) |
