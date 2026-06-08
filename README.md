@@ -207,7 +207,7 @@ Cupertino factors reusable, independently-versioned Swift packages out of the mo
 | **SwiftMCPCore** | [mihaelamj/SwiftMCPCore](https://github.com/mihaelamj/SwiftMCPCore) | Neutral MCP wire types (the JSON-RPC + protocol value types). Not cupertino-specific; a general MCP building block. |
 | **SwiftMCPClient** | [mihaelamj/SwiftMCPClient](https://github.com/mihaelamj/SwiftMCPClient) | Neutral, transport-injectable MCP client (`Client.MCP` seam, `MCPClient` actor, subprocess transport). Depends on SwiftMCPCore. |
 | **CupertinoDataKit** | [mihaelamj/CupertinoDataKit](https://github.com/mihaelamj/CupertinoDataKit) | Cupertino's public **read contract**: documentation/source reading, document browsing, symbol/code-intelligence reading, and sample-code reading protocols plus every value type they return. Protocols + value types only, zero implementation; cupertino's engine conforms server-side, and an embedded/in-process reader (e.g. an iOS app) conforms a different implementation. Cupertino's foundation tier re-exports it (`@_exported import CupertinoDataKit`). |
-| **CupertinoDataEngine** | [mihaelamj/CupertinoDataEngine](https://github.com/mihaelamj/CupertinoDataEngine) | Cupertino's embedded **read-only backend facade** for app clients. The engine itself conforms to the public read/browse contracts and fans out across configured source, sample, and package readers. The current v0.2.4 slice adds an opaque `Corpus` handle so app code provides one downloaded or bundled corpus directory while the engine owns resource filenames, schema validation, and read-only construction. UI code must not know the storage files exist. |
+| **CupertinoDataEngine** | [mihaelamj/CupertinoDataEngine](https://github.com/mihaelamj/CupertinoDataEngine) | Cupertino's embedded **read-only backend facade** for app clients. The engine itself conforms to the public read/browse contracts and fans out across configured source, sample, and package readers. The current v0.2.6 slice keeps the opaque `Corpus` handle and aligns current-corpus opening with release bundles: sample code is opened through the sample reader, and packages stay on `packages.db`. UI code must not know the storage files exist. |
 
 See the current [CupertinoDataEngine wiring diagram](docs/architecture/cupertino-data-engine-wiring.html) for the boundary between `CupertinoDataEngine`, in-tree `CupertinoComposition`, and downstream app clients.
 
@@ -274,11 +274,11 @@ flowchart TD
   source["CupertinoDataEngine v0.2.2 source-corpus reader"]:::done
   samples["v0.2.3 sample-reader construction"]:::done
   packages["v0.2.3 package-reader construction"]:::done
-  bundle["v0.2.4 opaque corpus/bundle API"]:::done
+  bundle["v0.2.6 opaque release-corpus layout"]:::done
   ios["iOS build proof for complete closure"]:::done
-  catalog["CatalogStore supplies opaque corpus handles"]:::next
-  embedded["Live LocalEmbeddedBackend real-corpus smoke"]:::todo
-  smoke["#1269 repeatable release-corpus smoke"]:::todo
+  catalog["CatalogStoreAPI supplies opaque corpus handles"]:::done
+  embedded["Live LocalEmbeddedBackend real-corpus smoke"]:::done
+  smoke["#1269 repeatable release-corpus smoke"]:::next
   ui["Begin native UI showcase work"]:::todo
 
   release --> source --> samples --> packages --> bundle --> ios --> catalog --> embedded --> smoke --> ui

@@ -12,9 +12,9 @@ struct CupertinoCompositionDataEngineTests {
         let sourceFilenames = configuration.sourceCorpusResources.map(\.url.lastPathComponent)
 
         #expect(sourceFilenames.contains("apple-documentation.db"))
-        #expect(sourceFilenames.contains("apple-sample-code.db"))
+        #expect(!sourceFilenames.contains("apple-sample-code.db"))
         #expect(configuration.sampleResource?.url.lastPathComponent == "apple-sample-code.db")
-        #expect(configuration.packagesResource?.url.lastPathComponent == "swift-packages.db")
+        #expect(configuration.packagesResource?.url.lastPathComponent == "packages.db")
     }
 
     @Test("corpus helpers expose opaque bundle handles")

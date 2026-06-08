@@ -148,7 +148,10 @@ let deps: [Package.Dependency] = [
     // v0.2.2 adds the first public source-corpus read-only construction slice.
     // v0.2.3 adds engine-owned sample/package read-only construction.
     // v0.2.4 adds the opaque corpus handle for app-facing bundle opening.
-    .package(url: "https://github.com/mihaelamj/CupertinoDataEngine.git", from: "0.2.4"),
+    // v0.2.5 aligns the current corpus layout with release bundles: sample code
+    // is opened through the sample reader, not as a source-search database.
+    // v0.2.6 keeps the package corpus on the release `packages.db` filename.
+    .package(url: "https://github.com/mihaelamj/CupertinoDataEngine.git", from: "0.2.6"),
 ]
 
 // -------------------------------------------------------------

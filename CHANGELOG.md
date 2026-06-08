@@ -2,6 +2,10 @@
 
 ### Added
 
+- **fix(#1261): adopt `CupertinoDataEngine` 0.2.6 current-corpus layout.** The external engine now matches the release bundle layout: `apple-sample-code.db` is opened through the sample reader only, and the package corpus stays on the release `packages.db` filename. This fixes the first live `LocalEmbeddedBackend` smoke failures against the installed `~/.cupertino` corpus while preserving the opaque corpus boundary.
+
+- **test(#1261): validate `cupertino-desktop` embedded smoke against the installed release corpus.** `scripts/check-local-embedded-corpus.sh` in `cupertino-desktop` now opens `~/.cupertino` through `CatalogStoreAPI` and `CupertinoDataEngine` only, then exercises frameworks, docs search/read, unified search, samples, and package search through `Backend.Documentation`. The smoke passed locally with `CupertinoDataEngine` 0.2.6.
+
 - **test(#1261): record repeatable iOS build proof for `CupertinoDataEngine`.** The external engine now carries `scripts/check-ios-build.sh`, which builds the complete embedded engine closure for both generic iOS Simulator and generic iOS device destinations through Xcode. The proof passed locally after the v0.2.4 opaque corpus adoption, so the pre-UI readiness roadmap advances to desktop/mobile `CatalogStore` opaque-handle integration.
 
 - **feat(#1261): adopt `CupertinoDataEngine` 0.2.4 opaque corpus handles.** App-facing embedded engine construction can now use `CupertinoDataEngine.Corpus` plus `CupertinoDataEngine(corpus:)`, so callers hand Cupertino one downloaded or bundled corpus directory while the engine owns resource filenames, schema validation, and read-only SQLite construction. `CupertinoComposition` now exposes per-source and legacy corpus-handle helpers and its normal read-only engine conveniences route through the opaque corpus initializer; the lower-level `Configuration` helper remains available for focused composition tests.
