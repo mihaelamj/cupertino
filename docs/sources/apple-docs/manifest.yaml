@@ -59,6 +59,8 @@ capabilities:
   operations:
     - read-by-uri
     - list-frameworks
+    - list-documents
+    - list-children
     - resolve-refs
   metadata:
     hasMinPlatformVersion: true

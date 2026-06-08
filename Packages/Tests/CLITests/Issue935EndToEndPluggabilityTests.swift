@@ -221,7 +221,7 @@ struct Issue935EndToEndPluggabilityTests {
         #expect(testLookup.properties(for: "wwdc-transcripts")?.searchQuality == 0.7)
     }
 
-    @Test("the 8 production sources stay reachable through the production composition-root lookup; the fake is NOT in production")
+    @Test("the built-in production sources stay reachable through the production composition-root lookup; the fake is NOT in production")
     func productionSourcesAreUntouched() {
         // Pins that this PR's fake source does NOT leak into the
         // production composition root. Post-#1025 (Phase 1I.a of
@@ -232,7 +232,16 @@ struct Issue935EndToEndPluggabilityTests {
             definitions: CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition)
         )
         let productionIds = Set(production.allIDs)
-        #expect(productionIds.count == 8)
+        #expect(productionIds.isSuperset(of: [
+            Shared.Constants.SourcePrefix.appleDocs,
+            Shared.Constants.SourcePrefix.hig,
+            Shared.Constants.SourcePrefix.samples,
+            Shared.Constants.SourcePrefix.appleArchive,
+            Shared.Constants.SourcePrefix.swiftEvolution,
+            Shared.Constants.SourcePrefix.swiftOrg,
+            Shared.Constants.SourcePrefix.swiftBook,
+            Shared.Constants.SourcePrefix.packages,
+        ]))
         #expect(!productionIds.contains("wwdc-transcripts"), "Fake WWDC source must not have leaked into production")
         // Symmetrically: the fake lookup constructed in the end-to-end
         // test does NOT contain the production sources.

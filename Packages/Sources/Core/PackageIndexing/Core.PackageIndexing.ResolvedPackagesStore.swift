@@ -2,6 +2,7 @@ import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
 import SharedConstants
+
 // `ResolvedPackage` (the per-entry value type) lifted to
 // `CorePackageIndexingModels` so downstream consumers (Search, TUI, CLI)
 // can reference it without depending on the full indexer surface. The

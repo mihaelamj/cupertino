@@ -42,7 +42,7 @@ extension Services {
 
         // MARK: - Unified Search
 
-        /// Search all 8 sources and return combined results.
+        /// Search every currently wired built-in source and return combined results.
         ///
         /// #640 — per-source errors are classified as either
         /// `degradationReason` (configuration: schema mismatch / DB

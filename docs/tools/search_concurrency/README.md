@@ -10,7 +10,8 @@ Find Swift concurrency patterns: async/await, actors, Sendable conformances.
   "arguments": {
     "pattern": "async",
     "framework": "foundation",
-    "limit": 20
+    "limit": 20,
+    "format": "json"
   }
 }
 ```
@@ -56,33 +57,34 @@ Maximum number of results to return.
 
 **Maximum:** 100
 
+### format (optional)
+
+Output format. Default: `markdown`; use `json` for typed GUI-decodable results.
+
 ## Response
 
-Returns markdown-formatted concurrency pattern results:
+Default markdown returns grouped concurrency results. `format=json` returns filters plus typed symbol rows:
 
-```markdown
-# Concurrency Search: async
-
-Found **25** async patterns:
-
-## 1. fetch() async throws -> Data
-
-- **Document:** Updating an App to Use Swift Concurrency
-- **URI:** `samples://swift-updating...`
-- **Type:** function
-- **Line:** 45
-
-```swift
-func fetch() async throws -> Data {
-    let (data, _) = try await URLSession.shared.data(from: url)
-    return data
+```json
+{
+  "filters": {
+    "pattern": "async",
+    "framework": "foundation",
+    "limit": 20
+  },
+  "results": [
+    {
+      "doc_uri": "apple-docs://foundation/urlsession",
+      "doc_title": "URLSession",
+      "framework": "foundation",
+      "symbol_name": "data",
+      "symbol_kind": "method",
+      "signature": "func data(from:) async throws -> (Data, URLResponse)",
+      "is_async": true,
+      "is_public": true
+    }
+  ]
 }
-```
-
----
-
-## 2. loadImages() async
-...
 ```
 
 ## Examples

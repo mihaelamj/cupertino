@@ -1,4 +1,5 @@
 import Foundation
+
 // MARK: - Crawl Metadata
 
 /// Metadata tracking crawl state and statistics

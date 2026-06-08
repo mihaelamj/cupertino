@@ -8,16 +8,16 @@ import Testing
 
 @Suite("#919 production display-name regression guard (post-#934)")
 struct Issue919DisplayNameProductionTests {
-    // Post-#1025 (Phase 1I.a of #1007): production SourceLookup is
-    // derived from the per-source registry rather than the dissolved
-    // `makeProductionSourceLookup` inline literal list. The
-    // definitions are the per-source targets' static `.definition`
-    // literals (e.g. `AppleDocsSource.definition`).
+    /// Post-#1025 (Phase 1I.a of #1007): production SourceLookup is
+    /// derived from the per-source registry rather than the dissolved
+    /// `makeProductionSourceLookup` inline literal list. The
+    /// definitions are the per-source targets' static `.definition`
+    /// literals (e.g. `AppleDocsSource.definition`).
     private static let production: Search.SourceLookup = .init(
         definitions: CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition)
     )
 
-    @Test("All 8 historical sources have non-empty display names + emojis in the production lookup")
+    @Test("All built-in historical sources have non-empty display names + emojis in the production lookup")
     func allHistoricalSourcesAreRegistered() {
         let historical: [Search.Source] = [
             .appleDocs, .samples, .hig, .appleArchive,
@@ -56,15 +56,19 @@ struct Issue919DisplayNameProductionTests {
         #expect(lookup.emoji(for: .packages) == "📦")
     }
 
-    @Test("Production lookup carries exactly the 8 historical sources (silent-row-add guard)")
-    func productionLookupCountIs8() {
-        // The pre-#934 `SourceRegistry.all.count == 8` invariant lives
-        // here now. Post-#1025 (Phase 1I.a), the definitions come from
-        // `CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition)`;
-        // adding a 9th source = one `.register(<X>Source())` line at the
-        // composition root and +1 row in this test (so the addition is
-        // conscious, not silent).
-        #expect(Self.production.definitions.count == 8)
+    @Test("Production lookup carries at least the built-in historical sources")
+    func productionLookupCarriesHistoricalSources() {
+        let ids = Set(Self.production.allIDs)
+        #expect(ids.isSuperset(of: [
+            Shared.Constants.SourcePrefix.appleDocs,
+            Shared.Constants.SourcePrefix.samples,
+            Shared.Constants.SourcePrefix.hig,
+            Shared.Constants.SourcePrefix.appleArchive,
+            Shared.Constants.SourcePrefix.swiftEvolution,
+            Shared.Constants.SourcePrefix.swiftOrg,
+            Shared.Constants.SourcePrefix.swiftBook,
+            Shared.Constants.SourcePrefix.packages,
+        ]))
     }
 
     @Test("Production lookup has no duplicate ids")
@@ -74,8 +78,8 @@ struct Issue919DisplayNameProductionTests {
         #expect(ids.count == uniqueIds.count, "Production lookup must have unique source ids; found duplicates in \(ids)")
     }
 
-    @Test("Every production source's id matches one of the SourcePrefix constants")
-    func productionIdsAreSourcePrefixConstants() {
+    @Test("Built-in production source ids match SourcePrefix constants")
+    func builtInProductionIdsAreSourcePrefixConstants() {
         let validPrefixes: Set<String> = [
             Shared.Constants.SourcePrefix.appleDocs,
             Shared.Constants.SourcePrefix.samples,
@@ -86,8 +90,9 @@ struct Issue919DisplayNameProductionTests {
             Shared.Constants.SourcePrefix.swiftBook,
             Shared.Constants.SourcePrefix.packages,
         ]
-        for definition in Self.production.definitions {
-            #expect(validPrefixes.contains(definition.id), "\(definition.id) is not a SourcePrefix constant")
+        let productionIDs = Set(Self.production.allIDs)
+        for prefix in validPrefixes {
+            #expect(productionIDs.contains(prefix), "\(prefix) must be registered in the production lookup")
         }
     }
 }

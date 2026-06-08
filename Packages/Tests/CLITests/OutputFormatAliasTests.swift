@@ -31,6 +31,18 @@ struct OutputFormatAliasTests {
         let listFrameworks = try CLIImpl.Command.ListFrameworks.parse(["--format", "md"])
         #expect(listFrameworks.format == .markdown)
 
+        let listDocuments = try CLIImpl.Command.ListDocuments.parse([
+            "--framework", "swiftui",
+            "--format", "md",
+        ])
+        #expect(listDocuments.format == .markdown)
+
+        let listChildren = try CLIImpl.Command.ListChildren.parse([
+            "apple-docs://swiftui",
+            "--format", "md",
+        ])
+        #expect(listChildren.format == .markdown)
+
         let listSamples = try CLIImpl.Command.ListSamples.parse(["--format", "md"])
         #expect(listSamples.format == .markdown)
 

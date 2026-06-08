@@ -68,6 +68,8 @@ extension Search {
         public enum Operation: String, Sendable, Hashable, CaseIterable {
             case readByURI = "read-by-uri"
             case listFrameworks = "list-frameworks"
+            case listDocuments = "list-documents"
+            case listChildren = "list-children"
             case listSamples = "list-samples"
             case resolveRefs = "resolve-refs"
         }

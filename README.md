@@ -157,9 +157,10 @@ Claude Desktop, OpenAI Codex, Cursor, VS Code (Copilot), GitHub Copilot for Xcod
 
 - **Resources**: direct page access via `apple-docs://{framework}/{page}`, `swift-evolution://{proposal-id}`, `hig://{category}/{page}`
 - **`search`**: unified full-text search across every indexed source. Parameters: `query` (required), `source`, `framework`, `language`, `include_archive`, `limit`, and the `min_ios`/`min_macos`/`min_tvos`/`min_watchos`/`min_visionos`/`min_swift` platform filters (AND-combined; malformed values are rejected at the boundary with a clear error frame). Replaces the pre-[#239](https://github.com/mihaelamj/cupertino/issues/239) per-source tools.
-- **`list_frameworks`**, **`read_document`** (`format`: `json` for agents, `markdown` for humans)
-- **Sample-code tools**: `list_samples`, `read_sample`, `read_sample_file`
-- **AST-powered symbol tools** ([#81](https://github.com/mihaelamj/cupertino/issues/81)): `search_symbols`, `search_property_wrappers`, `search_concurrency`, `search_conformances`, `search_generics`, `get_inheritance`
+- **`list_frameworks`**, **`list_documents`**, **`list_children`**, **`read_document`** (`format`: `json` for agents, `markdown` for humans)
+- **Sample-code tools**: `list_samples`, `read_sample`, `read_sample_file`; pass `format=json` for typed project/file payloads
+- **AST-powered symbol tools** ([#81](https://github.com/mihaelamj/cupertino/issues/81)): `search_symbols`, `search_property_wrappers`, `search_concurrency`, `search_conformances`, `search_generics`, `get_inheritance`; pass `format=json` for typed symbol rows and title-bearing inheritance trees
+- **Desktop boundary**: desktop UI code consumes these backend/tool contracts. It must not open SQLite databases directly or duplicate Cupertino's read engine.
 
 See **[docs/tools/](docs/tools/)** for per-tool documentation.
 
@@ -169,7 +170,7 @@ Resumable from saved state, change-detection to skip unchanged pages, a respectf
 
 ## How it works
 
-Cupertino uses an **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** architecture: 49 strict-producer SPM targets across 63 source packages. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full breakdown and [`docs/package-import-contract.md`](docs/package-import-contract.md) for the strict per-target import rules.
+Cupertino uses an **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** architecture: 48 in-tree strict-producer SPM targets with explicit import contracts, plus the external `CupertinoDataEngine` package. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full breakdown and [`docs/package-import-contract.md`](docs/package-import-contract.md) for the strict per-target import rules.
 
 ```
 Foundation tier:   SharedConstants, LoggingModels, MCPCore, MCPSharedTools, Resources
@@ -199,65 +200,70 @@ Key design principles: Swift 6.3 with 100% strict concurrency checking, value se
 
 ### Published packages
 
-Cupertino factors three reusable, independently-versioned Swift packages out of the monorepo. Each is its own public repository, depended on by tag (`from: "0.1.0"`), Foundation-only, and built so an external consumer can adopt it without pulling in cupertino's engine:
+Cupertino factors reusable, independently-versioned Swift packages out of the monorepo. Each is its own public repository and is consumed by tag:
 
 | Package | Repo | What it is |
 |---|---|---|
 | **SwiftMCPCore** | [mihaelamj/SwiftMCPCore](https://github.com/mihaelamj/SwiftMCPCore) | Neutral MCP wire types (the JSON-RPC + protocol value types). Not cupertino-specific; a general MCP building block. |
 | **SwiftMCPClient** | [mihaelamj/SwiftMCPClient](https://github.com/mihaelamj/SwiftMCPClient) | Neutral, transport-injectable MCP client (`Client.MCP` seam, `MCPClient` actor, subprocess transport). Depends on SwiftMCPCore. |
-| **CupertinoDataKit** | [mihaelamj/CupertinoDataKit](https://github.com/mihaelamj/CupertinoDataKit) | Cupertino's public **read contract**: the documentation + sample-code read protocols (`Search.DocumentReading`, `Search.SymbolReading`, `Search.Database`, `Sample.Index.Reader`) plus every value type they return. Protocols + value types only, zero implementation; cupertino's engine conforms server-side, and an embedded/in-process reader (e.g. an iOS app) conforms a different implementation. Cupertino's foundation tier re-exports it (`@_exported import CupertinoDataKit`). |
+| **CupertinoDataKit** | [mihaelamj/CupertinoDataKit](https://github.com/mihaelamj/CupertinoDataKit) | Cupertino's public **read contract**: documentation/source reading, document browsing, symbol/code-intelligence reading, and sample-code reading protocols plus every value type they return. Protocols + value types only, zero implementation; cupertino's engine conforms server-side, and an embedded/in-process reader (e.g. an iOS app) conforms a different implementation. Cupertino's foundation tier re-exports it (`@_exported import CupertinoDataKit`). |
+| **CupertinoDataEngine** | [mihaelamj/CupertinoDataEngine](https://github.com/mihaelamj/CupertinoDataEngine) | Cupertino's embedded **read-only backend facade** for app clients. The engine itself conforms to the public read/browse contracts and fans out across configured source readers plus packages. The current v0.2.2 slice adds public, engine-owned source-corpus construction; samples, packages, and the full production parity path still remain #1261 follow-up work. UI code must not know the storage files exist. |
+
+See the current [CupertinoDataEngine wiring diagram](docs/architecture/cupertino-data-engine-wiring.html) for the boundary between `CupertinoDataEngine`, in-tree `CupertinoComposition`, and downstream app clients.
 
 ## Roadmap
 
 The canonical living roadmap is [#183](https://github.com/mihaelamj/cupertino/issues/183); the diagram below tracks epic progress at a glance.
 
-Status colors:
+Status legend:
 
 ```mermaid
-flowchart TB
-  classDef done    fill:#34C759,stroke:#248A3D,color:#ffffff;
-  classDef active  fill:#0A84FF,stroke:#0060DF,color:#ffffff;
-  classDef next    fill:#FF9F0A,stroke:#C77700,color:#000000;
-  classDef partial fill:#FFD60A,stroke:#B59B00,color:#000000;
-  classDef todo    fill:#8E8E93,stroke:#636366,color:#ffffff;
-
-  subgraph Legend["Status colors"]
-    direction TB
-    L1["Shipped"]:::done ~~~ L2["In progress"]:::active ~~~ L3["Next up"]:::next ~~~ L4["Partial or blocked"]:::partial ~~~ L5["Planned"]:::todo
-  end
+flowchart LR
+  done["Done"]:::done
+  review["Review"]:::review
+  active["Active"]:::active
+  next["Next"]:::next
+  partial["Partial"]:::partial
+  todo["Todo"]:::todo
+  classDef done    fill:#34C759,color:#FFFFFF
+  classDef review  fill:#30B0C7,color:#FFFFFF
+  classDef active  fill:#007AFF,color:#FFFFFF
+  classDef next    fill:#5856D6,color:#FFFFFF
+  classDef partial fill:#FF9500,color:#FFFFFF
+  classDef todo    fill:#8E8E93,color:#FFFFFF
 ```
 
 Epic progress:
 
 ```mermaid
 flowchart TB
-  classDef done    fill:#34C759,stroke:#248A3D,color:#ffffff;
-  classDef active  fill:#0A84FF,stroke:#0060DF,color:#ffffff;
-  classDef next    fill:#FF9F0A,stroke:#C77700,color:#000000;
-  classDef partial fill:#FFD60A,stroke:#B59B00,color:#000000;
-  classDef todo    fill:#8E8E93,stroke:#636366,color:#ffffff;
-
-  subgraph InFlight["Epics in flight"]
+  subgraph Active["Active"]
     direction TB
-    E1221["#1221 recrawl (--resume in progress)"]:::active ~~~ E1036["#1036 per-source DB split"]:::partial ~~~ E191["#191 search quality + FTS"]:::partial
+    E1242["#1242 critical path"]:::active ~~~ E1262["#1262 desktop backend surface"]:::active ~~~ E1221["#1221 recrawl and resume"]:::active
   end
 
-  subgraph Next["Epics next"]
+  subgraph Partial["Partial"]
     direction TB
-    E769["#769 layer separation"]:::next
+    E1261["#1261 data engine extraction (source slice shipped)"]:::partial ~~~ E1036["#1036 per-source DB split (#1061 left)"]:::partial ~~~ E191["#191 search quality and FTS"]:::partial
   end
 
-  subgraph Planned["Epics planned"]
+  subgraph Planned["Planned"]
     direction TB
-    E268["#268 MCP capability (keystone #742)"]:::todo ~~~ E266["#266 availability annotation v2"]:::todo ~~~ E190["#190 source expansion"]:::todo ~~~ E1223["#1223 declarative pluggability"]:::todo ~~~ E1222["#1222 Linux port"]:::todo ~~~ E1228["#1228 semantic + vector"]:::todo ~~~ E189["#189 TUI (dormant)"]:::todo
+    E1228["#1228 semantic and vector search"]:::todo ~~~ E1223["#1223 declarative pluggability"]:::todo ~~~ E1222["#1222 Linux port"]:::todo ~~~ E769["#769 layer separation"]:::todo ~~~ E268["#268 MCP capability expansion"]:::todo ~~~ E266["#266 availability annotation v2"]:::todo ~~~ E190["#190 source expansion"]:::todo ~~~ E189["#189 TUI internal tracker"]:::todo
   end
 
-  subgraph Shipped["Epics shipped"]
+  subgraph Closed["Closed"]
     direction TB
-    E943["#943 comprehensive query batteries"]:::done ~~~ E251["#251 unify sources + databases"]:::done
+    E1227["#1227 distribution and discoverability"]:::done ~~~ E1226["#1226 docs and DocC"]:::done ~~~ E1225["#1225 diagnostics and logging"]:::done ~~~ E1224["#1224 CLI ergonomics"]:::done ~~~ E1220["#1220 v1.3.x bug sweep"]:::done ~~~ E943["#943 query batteries"]:::done ~~~ E919["#919 source and DB pluggability"]:::done ~~~ E893["#893 producer-backend split"]:::done ~~~ E673["#673 v1.2.x ironclad"]:::done ~~~ E503["#503 package-import purification"]:::done ~~~ E495["#495 GoF protocol DI"]:::done ~~~ E381["#381 dependency injection by default"]:::done ~~~ E251["#251 unify sources and databases"]:::done
   end
 
-  InFlight ~~~ Next ~~~ Planned ~~~ Shipped
+  Active ~~~ Partial ~~~ Planned ~~~ Closed
+  classDef done    fill:#34C759,color:#FFFFFF
+  classDef review  fill:#30B0C7,color:#FFFFFF
+  classDef active  fill:#007AFF,color:#FFFFFF
+  classDef next    fill:#5856D6,color:#FFFFFF
+  classDef partial fill:#FF9500,color:#FFFFFF
+  classDef todo    fill:#8E8E93,color:#FFFFFF
 ```
 
 ## Performance

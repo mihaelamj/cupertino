@@ -1,6 +1,7 @@
 import CorePackageIndexingModels
 import CoreProtocols
 import Foundation
+
 extension Core.PackageIndexing {
     /// Disk cache for fetched `Package.swift` / `Package.resolved` files, keyed by
     /// `(owner, repo, branch, file)`. Entries have a TTL (default 24h) so the resolver

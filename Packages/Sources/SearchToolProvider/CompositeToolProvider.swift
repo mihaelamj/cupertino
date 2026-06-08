@@ -224,11 +224,47 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             ),
         ]
 
+        let typedOutputFormatProperties: [String: MCP.Core.Protocols.AnyCodable] = [
+            Shared.Constants.Search.schemaParamFormat: stringSchema(
+                description: "Output format. Default: markdown. Use json for a typed, GUI-decodable payload.",
+                enumValues: [
+                    Shared.Constants.Search.formatValueJSON,
+                    Shared.Constants.Search.formatValueMarkdown,
+                ]
+            ),
+        ]
+
+        let listDocumentsProperties: [String: MCP.Core.Protocols.AnyCodable] = [
+            Shared.Constants.Search.schemaParamFramework: stringSchema(
+                description: "Framework identifier, import name, or display name (e.g. swiftui, SwiftUI)."
+            ),
+            Shared.Constants.Search.schemaParamSource: stringSchema(
+                description: "Source to browse. Default: apple-docs.",
+                enumValues: [Shared.Constants.SourcePrefix.appleDocs]
+            ),
+            Shared.Constants.Search.schemaParamOffset: intSchema(
+                description: "Zero-based result offset (default 0)."
+            ),
+            Shared.Constants.Search.schemaParamLimit: intSchema(
+                description: "Maximum documents to return (default 100, maximum 500)."
+            ),
+        ]
+
+        let listChildrenProperties: [String: MCP.Core.Protocols.AnyCodable] = [
+            Shared.Constants.Search.schemaParamURI: stringSchema(
+                description: "Apple documentation URI or topic-group fragment URI (e.g. apple-docs://swiftui#Essentials)."
+            ),
+            Shared.Constants.Search.schemaParamSource: stringSchema(
+                description: "Source to browse. Default: apple-docs.",
+                enumValues: [Shared.Constants.SourcePrefix.appleDocs]
+            ),
+        ]
+
         let readSampleProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamProjectId: stringSchema(
                 description: "Sample project identifier."
             ),
-        ]
+        ].merging(typedOutputFormatProperties) { lhs, _ in lhs }
 
         let readSampleFileProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamProjectId: stringSchema(
@@ -237,7 +273,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamFilePath: stringSchema(
                 description: "File path relative to the sample project root."
             ),
-        ]
+        ].merging(typedOutputFormatProperties) { lhs, _ in lhs }
 
         // #1200 — advertise the params `handleListSamples` actually reads.
         // Both are optional; matches the `cupertino list-samples` CLI options.
@@ -248,7 +284,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamLimit: intSchema(
                 description: "Maximum results to return (default 50)."
             ),
-        ]
+        ].merging(typedOutputFormatProperties) { lhs, _ in lhs }
 
         // #226 — platform-filter schema fragment shared by all 4
         // AST search-style tools. Same shape as the unified `search`
@@ -290,7 +326,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamLimit: intSchema(
                 description: "Maximum results to return (default 20)."
             ),
-        ].merging(platformFilterProperties) { lhs, _ in lhs }
+        ]
+        .merging(platformFilterProperties) { lhs, _ in lhs }
+        .merging(typedOutputFormatProperties) { lhs, _ in lhs }
 
         let searchPropertyWrappersProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamWrapper: stringSchema(
@@ -302,7 +340,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamLimit: intSchema(
                 description: "Maximum results to return (default 20)."
             ),
-        ].merging(platformFilterProperties) { lhs, _ in lhs }
+        ]
+        .merging(platformFilterProperties) { lhs, _ in lhs }
+        .merging(typedOutputFormatProperties) { lhs, _ in lhs }
 
         let searchConcurrencyProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamPattern: stringSchema(
@@ -314,7 +354,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamLimit: intSchema(
                 description: "Maximum results to return (default 20)."
             ),
-        ].merging(platformFilterProperties) { lhs, _ in lhs }
+        ]
+        .merging(platformFilterProperties) { lhs, _ in lhs }
+        .merging(typedOutputFormatProperties) { lhs, _ in lhs }
 
         let searchConformancesProperties: [String: MCP.Core.Protocols.AnyCodable] = [
             Shared.Constants.Search.schemaParamProtocol: stringSchema(
@@ -326,7 +368,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamLimit: intSchema(
                 description: "Maximum results to return (default 20)."
             ),
-        ].merging(platformFilterProperties) { lhs, _ in lhs }
+        ]
+        .merging(platformFilterProperties) { lhs, _ in lhs }
+        .merging(typedOutputFormatProperties) { lhs, _ in lhs }
 
         // #665 / #409 Layer 2 — generic-parameter constraint search.
         // #226 follow-up — `platformFilterProperties` merged in so the 12th
@@ -341,7 +385,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamLimit: intSchema(
                 description: "Maximum results to return (default 20)."
             ),
-        ].merging(platformFilterProperties) { lhs, _ in lhs }
+        ]
+        .merging(platformFilterProperties) { lhs, _ in lhs }
+        .merging(typedOutputFormatProperties) { lhs, _ in lhs }
 
         // #274 — class-inheritance walk over the `inheritance` edge table.
         let getInheritanceProperties: [String: MCP.Core.Protocols.AnyCodable] = [
@@ -358,7 +404,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamFramework: stringSchema(
                 description: "Disambiguate to a specific framework when the symbol exists in multiple."
             ),
-        ]
+        ].merging(typedOutputFormatProperties) { lhs, _ in lhs }
 
         // Unified search tool (replaces search_docs, search_hig, search_all, search_samples).
         // #645 — visible when EITHER search.db is openable (or present-but-
@@ -381,6 +427,24 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 name: Shared.Constants.Search.toolListFrameworks,
                 description: MCP.SharedTools.Copy.toolListFrameworksDescription,
                 inputSchema: objectSchema(properties: [:])
+            ))
+
+            allTools.append(MCP.Core.Protocols.Tool(
+                name: Shared.Constants.Search.toolListDocuments,
+                description: MCP.SharedTools.Copy.toolListDocumentsDescription,
+                inputSchema: objectSchema(
+                    properties: listDocumentsProperties,
+                    required: [Shared.Constants.Search.schemaParamFramework]
+                )
+            ))
+
+            allTools.append(MCP.Core.Protocols.Tool(
+                name: Shared.Constants.Search.toolListChildren,
+                description: MCP.SharedTools.Copy.toolListChildrenDescription,
+                inputSchema: objectSchema(
+                    properties: listChildrenProperties,
+                    required: [Shared.Constants.Search.schemaParamURI]
+                )
             ))
 
             allTools.append(MCP.Core.Protocols.Tool(
@@ -453,6 +517,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 name: Shared.Constants.Search.toolGetInheritance,
                 description: "Walk class-inheritance chains (UIKit / AppKit / Foundation). " +
                     "Returns ancestors (`direction=up`), descendants (`direction=down`), or both. " +
+                    "`format=json` returns a typed GUI payload with title-bearing tree nodes. " +
                     "When the walk is empty, the response carries the `_No inheritance data` " +
                     "semantic marker with a kind-aware reason: a class at the root of its " +
                     "hierarchy reads 'Root type'; a protocol directs at `search_conformances`; " +
@@ -493,6 +558,10 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             return try await handleSearch(args: args)
         case Shared.Constants.Search.toolListFrameworks:
             return try await handleListFrameworks()
+        case Shared.Constants.Search.toolListDocuments:
+            return try await handleListDocuments(args: args)
+        case Shared.Constants.Search.toolListChildren:
+            return try await handleListChildren(args: args)
         case Shared.Constants.Search.toolReadDocument:
             return try await handleReadDocument(args: args)
         case Shared.Constants.Search.toolListSamples:
@@ -1250,6 +1319,79 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: markdown))])
     }
 
+    // MARK: - List Documents
+
+    private func handleListDocuments(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
+        guard let searchIndex else {
+            throw searchIndexUnavailableError("index")
+        }
+        guard let listing = searchIndex as? any Search.DocumentListing else {
+            throw Shared.Core.ToolError.invalidArgument(
+                "index",
+                "Documentation index does not support document listing"
+            )
+        }
+
+        let framework: String = try args.require(Shared.Constants.Search.schemaParamFramework)
+        let source = args.optional(
+            Shared.Constants.Search.schemaParamSource,
+            default: Shared.Constants.SourcePrefix.appleDocs
+        )
+        guard source == Shared.Constants.SourcePrefix.appleDocs else {
+            throw Shared.Core.ToolError.invalidArgument(
+                Shared.Constants.Search.schemaParamSource,
+                "list_documents currently supports only apple-docs"
+            )
+        }
+
+        let offset = max(args.optional(Shared.Constants.Search.schemaParamOffset, default: 0), 0)
+        let requestedLimit = args.optional(
+            Shared.Constants.Search.schemaParamLimit,
+            default: Shared.Constants.Limit.defaultDocumentListLimit
+        )
+        let limit = min(max(requestedLimit, 0), Shared.Constants.Limit.maxDocumentListLimit)
+        let page = try await listing.listDocuments(
+            source: source,
+            framework: framework,
+            offset: offset,
+            limit: limit
+        )
+        let json = Services.Formatter.Documents.JSON().format(page)
+
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: json))])
+    }
+
+    // MARK: - List Children
+
+    private func handleListChildren(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
+        guard let searchIndex else {
+            throw searchIndexUnavailableError("index")
+        }
+        guard let listing = searchIndex as? any Search.DocumentChildrenListing else {
+            throw Shared.Core.ToolError.invalidArgument(
+                "index",
+                "Documentation index does not support document children listing"
+            )
+        }
+
+        let uri: String = try args.require(Shared.Constants.Search.schemaParamURI)
+        let source = args.optional(
+            Shared.Constants.Search.schemaParamSource,
+            default: Shared.Constants.SourcePrefix.appleDocs
+        )
+        guard source == Shared.Constants.SourcePrefix.appleDocs else {
+            throw Shared.Core.ToolError.invalidArgument(
+                Shared.Constants.Search.schemaParamSource,
+                "list_children currently supports only apple-docs"
+            )
+        }
+
+        let page = try await listing.listChildren(source: source, uri: uri)
+        let json = Services.Formatter.DocumentChildren.JSON().format(page)
+
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: json))])
+    }
+
     // MARK: - Read Document
 
     private func handleReadDocument(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
@@ -1325,10 +1467,22 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
         let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
         let limit = args.limit(default: 50)
+        let format = try Self.mcpToolOutputFormat(args: args)
 
         let projects = try await sampleDatabase.listProjects(framework: framework, limit: limit)
         let totalProjects = try await sampleDatabase.projectCount()
         let totalFiles = try await sampleDatabase.fileCount()
+
+        if format == .json {
+            let json = Self.formatListSamplesJSON(
+                projects: projects,
+                totalProjects: totalProjects,
+                totalFiles: totalFiles,
+                framework: framework,
+                limit: limit
+            )
+            return Self.textResult(json)
+        }
 
         var markdown = "# Indexed Sample Code Projects\n\n"
         markdown += "Total projects: **\(totalProjects)**\n"
@@ -1363,12 +1517,18 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         }
 
         let projectId: String = try args.require(Shared.Constants.Search.schemaParamProjectId)
+        let format = try Self.mcpToolOutputFormat(args: args)
 
         guard let project = try await sampleDatabase.getProject(id: projectId) else {
             throw Shared.Core.ToolError.invalidArgument(
                 Shared.Constants.Search.schemaParamProjectId,
                 "Project not found: \(projectId)"
             )
+        }
+
+        let files = try await sampleDatabase.listFiles(projectId: projectId, folder: nil)
+        if format == .json {
+            return Self.textResult(Self.formatReadSampleJSON(project: project, files: files))
         }
 
         var markdown = "# \(project.title)\n\n"
@@ -1394,8 +1554,6 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             markdown += "\n\n"
         }
 
-        // List some files
-        let files = try await sampleDatabase.listFiles(projectId: projectId, folder: nil)
         if !files.isEmpty {
             markdown += "## Files (\(files.count) total)\n\n"
             for file in files.prefix(30) {
@@ -1418,6 +1576,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
         let projectId: String = try args.require(Shared.Constants.Search.schemaParamProjectId)
         let filePath: String = try args.require(Shared.Constants.Search.schemaParamFilePath)
+        let format = try Self.mcpToolOutputFormat(args: args)
 
         guard let file = try await sampleDatabase.getFile(projectId: projectId, path: filePath) else {
             throw Shared.Core.ToolError.invalidArgument(
@@ -1426,12 +1585,15 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             )
         }
 
+        let language = languageForExtension(file.fileExtension)
+        if format == .json {
+            return Self.textResult(Self.formatReadSampleFileJSON(file: file, language: language))
+        }
+
         var markdown = "# \(file.filename)\n\n"
         markdown += "**Project:** `\(file.projectId)`\n"
         markdown += "**Path:** `\(file.path)`\n"
         markdown += "**Size:** \(Shared.Utils.Formatting.formatBytes(file.size))\n\n"
-
-        let language = languageForExtension(file.fileExtension)
 
         markdown += "```\(language)\n"
         markdown += file.content
@@ -1456,6 +1618,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
         let limit = args.limit()
         let platform = try Self.extractPlatformArgs(args)
+        let format = try Self.mcpToolOutputFormat(args: args)
 
         let results = try await searchIndex.searchSymbols(
             query: query,
@@ -1467,6 +1630,18 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let filtered = try await Self.applyPlatformFilter(
             results: results, platform: platform, searchIndex: searchIndex
         )
+
+        if format == .json {
+            let filters = Self.SymbolFiltersJSON(
+                query: query,
+                kind: kind,
+                isAsync: isAsync,
+                framework: framework,
+                limit: limit,
+                platform: platform
+            )
+            return Self.textResult(Self.formatSymbolSearchJSON(filters: filters, results: filtered))
+        }
 
         let markdown = formatSymbolResults(
             results: filtered,
@@ -1487,6 +1662,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
         let limit = args.limit()
         let platform = try Self.extractPlatformArgs(args)
+        let format = try Self.mcpToolOutputFormat(args: args)
 
         let raw = try await searchIndex.searchPropertyWrappers(
             wrapper: wrapper,
@@ -1498,6 +1674,16 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         )
 
         let normalizedWrapper = wrapper.hasPrefix("@") ? wrapper : "@\(wrapper)"
+        if format == .json {
+            let filters = Self.SymbolFiltersJSON(
+                wrapper: normalizedWrapper,
+                framework: framework,
+                limit: limit,
+                platform: platform
+            )
+            return Self.textResult(Self.formatSymbolSearchJSON(filters: filters, results: results))
+        }
+
         let markdown = formatSymbolResults(
             results: results,
             title: "Property Wrapper: \(normalizedWrapper)",
@@ -1517,6 +1703,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
         let limit = args.limit()
         let platform = try Self.extractPlatformArgs(args)
+        let format = try Self.mcpToolOutputFormat(args: args)
 
         let raw = try await searchIndex.searchConcurrencyPatterns(
             pattern: pattern,
@@ -1526,6 +1713,16 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let results = try await Self.applyPlatformFilter(
             results: raw, platform: platform, searchIndex: searchIndex
         )
+
+        if format == .json {
+            let filters = Self.SymbolFiltersJSON(
+                pattern: pattern,
+                framework: framework,
+                limit: limit,
+                platform: platform
+            )
+            return Self.textResult(Self.formatSymbolSearchJSON(filters: filters, results: results))
+        }
 
         let markdown = formatSymbolResults(
             results: results,
@@ -1549,6 +1746,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let directionString = args.optional(Shared.Constants.Search.schemaParamDirection) ?? "up"
         let frameworkFilter = args.optional(Shared.Constants.Search.schemaParamFramework)
         let depth = args.optional(Shared.Constants.Search.schemaParamDepth, default: 5)
+        let format = try Self.mcpToolOutputFormat(args: args)
 
         guard let direction = Search.InheritanceDirection(rawValue: directionString.lowercased()) else {
             throw Shared.Core.ToolError.invalidArgument(
@@ -1569,6 +1767,12 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         case 0:
             let body = "No symbol named `\(symbol)` in apple-docs. " +
                 "Try `search` first to find the right name, or check `list_frameworks`."
+            if format == .json {
+                return Self.textResult(Self.formatInheritanceNotFoundJSON(
+                    symbol: symbol,
+                    message: body
+                ))
+            }
             return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: body))])
         case 1:
             candidate = candidates[0]
@@ -1584,6 +1788,13 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 for candidate in candidates {
                     body += "- `\(candidate.title)` in `\(candidate.framework)` — \(candidate.uri)\n"
                 }
+                if format == .json {
+                    return Self.textResult(Self.formatInheritanceAmbiguousJSON(
+                        symbol: symbol,
+                        message: body,
+                        candidates: candidates
+                    ))
+                }
                 return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: body))])
             }
         }
@@ -1593,6 +1804,16 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             direction: direction,
             maxDepth: depth
         )
+
+        if format == .json {
+            return try await Self.textResult(Self.formatInheritanceJSON(
+                candidate: candidate,
+                direction: direction,
+                depth: depth,
+                tree: tree,
+                searchIndex: searchIndex
+            ))
+        }
 
         var body = "# Inheritance: \(candidate.title)\n\n"
         body += "**URI:** `\(candidate.uri)`  **Framework:** `\(candidate.framework)`  **Direction:** `\(direction.rawValue)`  **Depth:** `\(depth)`\n\n"
@@ -1638,6 +1859,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
         let limit = args.limit()
         let platform = try Self.extractPlatformArgs(args)
+        let format = try Self.mcpToolOutputFormat(args: args)
 
         let raw = try await searchIndex.searchConformances(
             protocolName: protocolName,
@@ -1647,6 +1869,16 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let results = try await Self.applyPlatformFilter(
             results: raw, platform: platform, searchIndex: searchIndex
         )
+
+        if format == .json {
+            let filters = Self.SymbolFiltersJSON(
+                protocolName: protocolName,
+                framework: framework,
+                limit: limit,
+                platform: platform
+            )
+            return Self.textResult(Self.formatSymbolSearchJSON(filters: filters, results: results))
+        }
 
         let markdown = formatSymbolResults(
             results: results,
@@ -1664,7 +1896,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     /// arguments. All optional. Empty / missing fields stay nil so the
     /// `Search.PlatformFilter.passes(...)` predicate treats them as
     /// "no constraint" downstream.
-    private struct PlatformArgs {
+    struct PlatformArgs {
         let minIOS: String?
         let minMacOS: String?
         let minTvOS: String?
@@ -1795,7 +2027,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         // schema mismatch), still throw an explicit error frame so MCP
         // clients see the configuration-level failure rather than a
         // silently-degraded cross-DB response.
-        if searchIndex == nil, let _ = searchIndexDisabledReason {
+        if searchIndex == nil, searchIndexDisabledReason != nil {
             throw searchIndexUnavailableError("index")
         }
 
@@ -1803,9 +2035,11 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
         let limit = args.limit()
         let platform = try Self.extractPlatformArgs(args)
+        let format = try Self.mcpToolOutputFormat(args: args)
 
         // Source A: search.db apple-docs (rich `Search.SymbolSearchResult`).
         var appleDocsMarkdown: String?
+        var appleDocsResults: [Search.SymbolSearchResult] = []
         if let searchIndex {
             let raw = try await searchIndex.searchByGenericConstraint(
                 constraint: constraint,
@@ -1815,6 +2049,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             let results = try await Self.applyPlatformFilter(
                 results: raw, platform: platform, searchIndex: searchIndex
             )
+            appleDocsResults = results
             appleDocsMarkdown = formatSymbolResults(
                 results: results,
                 title: "Apple Docs",
@@ -1844,6 +2079,21 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 framework: framework,
                 limit: limit
             )) ?? []
+        }
+
+        if format == .json {
+            let filters = Self.SymbolFiltersJSON(
+                constraint: constraint,
+                framework: framework,
+                limit: limit,
+                platform: platform
+            )
+            return Self.textResult(Self.formatGenericsJSON(
+                filters: filters,
+                appleDocs: appleDocsResults,
+                samples: samplesRows,
+                packages: packagesRows
+            ))
         }
 
         let markdown = Self.formatCrossDBGenerics(

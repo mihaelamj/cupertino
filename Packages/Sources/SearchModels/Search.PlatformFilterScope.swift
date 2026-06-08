@@ -32,13 +32,12 @@ extension Search {
         /// `min_*` platform args through to `Search.Database.search`,
         /// causing a non-matching row to be excluded from the response.
         ///
-        /// All 6 sources here route through the same handler at
-        /// `CompositeToolProvider.handleSearch` lines 547-552. The filter
-        /// is applied uniformly; rows with NULL `min_*` are dropped per
-        /// the index's `IS NOT NULL` gate. Whether the source's data is
-        /// *populated* with `min_*` values is orthogonal to whether the
-        /// handler applies the filter — sparse data manifests as fewer
-        /// results, not as unfiltered results.
+        /// The docs-backed entries route through `handleSearchDocs`; packages
+        /// and samples thread the same filter through their own handlers.
+        /// Rows with NULL `min_*` are dropped per the index's `IS NOT NULL`
+        /// gate. Whether the source's data is *populated* with `min_*`
+        /// values is orthogonal to whether the handler applies the filter —
+        /// sparse data manifests as fewer results, not as unfiltered results.
         public static let dispatchAppliesFilter: Set<String> = [
             Shared.Constants.SourcePrefix.appleDocs,
             Shared.Constants.SourcePrefix.appleArchive,
@@ -140,7 +139,8 @@ extension Search {
             case singleSource(String)
             /// Fan-out dispatch (source = nil / empty / `"all"`):
             /// routes to `handleSearchAll`, which today does NOT thread
-            /// platform args through to any of its 8 fetcher sources.
+            /// platform args through to any of its currently wired fetcher
+            /// sources.
             /// Every contributing source is unfiltered.
             case fanOut
         }
@@ -152,7 +152,7 @@ extension Search {
         ///
         /// - `nil`, `"all"`, empty string → `.fanOut` over the supplied
         ///   `fanOutSources` (pre-#1042 Cluster 5 this defaulted to the
-        ///   8-element hardcoded `allFanOutSources` literal; post-fix
+        ///   v1.2.0 hardcoded `allFanOutSources` literal; post-fix
         ///   the registry-aware caller supplies its own list derived
         ///   from `Search.SourceLookup`)
         /// - `appleSampleCode` alias → `.singleSource(samples)` (canonicalised)

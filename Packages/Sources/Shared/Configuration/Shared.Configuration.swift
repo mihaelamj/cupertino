@@ -1,4 +1,5 @@
 import Foundation
+
 // MARK: - Shared.Configuration (aggregate)
 
 extension Shared {

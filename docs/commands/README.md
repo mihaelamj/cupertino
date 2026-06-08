@@ -14,6 +14,8 @@ CLI commands for the Cupertino documentation server.
 | [package-search](package-search/) | Hidden: smart query scoped to packages.db only |
 | [read](read/) | Read full document content by URI |
 | [list-frameworks](list-frameworks/) | List available frameworks with document counts |
+| [list-documents](list-documents/) | List paged documents in an indexed framework |
+| [list-children](list-children/) | List direct children of a document or topic group |
 | [list-samples](list-samples/) | List indexed Apple sample code projects |
 | [read-sample](read-sample/) | Read a sample project's README and metadata |
 | [read-sample-file](read-sample-file/) | Read a source file from a sample project |
@@ -53,6 +55,12 @@ cupertino read "apple-docs://swiftui/documentation_swiftui_view" --format markdo
 
 # List frameworks
 cupertino list-frameworks
+
+# List documents in a framework
+cupertino list-documents --framework swiftui --limit 20
+
+# List children of a document or topic group
+cupertino list-children apple-docs://swiftui
 
 # Sample code commands
 cupertino list-samples --limit 10

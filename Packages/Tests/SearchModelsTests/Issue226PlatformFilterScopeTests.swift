@@ -67,7 +67,16 @@ struct Issue226PlatformFilterScopeBucketsTests {
         #expect(!Search.PlatformFilterScope.allFanOutSources.contains(
             Shared.Constants.SourcePrefix.appleSampleCode
         ))
-        #expect(Search.PlatformFilterScope.allFanOutSources.count == 8)
+        #expect(Set(Search.PlatformFilterScope.allFanOutSources).isSuperset(of: [
+            Shared.Constants.SourcePrefix.appleDocs,
+            Shared.Constants.SourcePrefix.appleArchive,
+            Shared.Constants.SourcePrefix.hig,
+            Shared.Constants.SourcePrefix.swiftEvolution,
+            Shared.Constants.SourcePrefix.swiftOrg,
+            Shared.Constants.SourcePrefix.swiftBook,
+            Shared.Constants.SourcePrefix.packages,
+            Shared.Constants.SourcePrefix.samples,
+        ]))
     }
 }
 

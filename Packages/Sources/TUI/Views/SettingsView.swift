@@ -1,5 +1,6 @@
 import Foundation
 import SharedConstants
+
 // SettingItem moved to SettingItem.swift
 
 struct SettingsView {

@@ -32,6 +32,8 @@ struct Cupertino: AsyncParsableCommand {
           package-search   Smart query over the packages corpus (packages.db source only)
           read             Read a full document by URI
           list-frameworks  List indexed frameworks with document counts
+          list-documents   List indexed documents in a framework
+          list-children    List direct children of a document or topic group
           inheritance      Walk class inheritance chains (Apple class-based APIs)
 
         SAMPLE CODE
@@ -54,6 +56,8 @@ struct Cupertino: AsyncParsableCommand {
             CLIImpl.Command.Search.self,
             CLIImpl.Command.Read.self,
             CLIImpl.Command.ListFrameworks.self,
+            CLIImpl.Command.ListDocuments.self,
+            CLIImpl.Command.ListChildren.self,
             CLIImpl.Command.ListSamples.self,
             CLIImpl.Command.ReadSample.self,
             CLIImpl.Command.ReadSampleFile.self,

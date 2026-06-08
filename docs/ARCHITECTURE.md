@@ -121,7 +121,7 @@ flowchart TD
 
 **Top-level Services/:** infrastructure (`ServiceContainer`, `SearchService` protocol, `CandidateFetcher` adapter). Read commands live under `Services/ReadCommands/`.
 
-**Cross-CLI consumers:** `cupertino read`, `cupertino search`, `cupertino list-frameworks`, `cupertino list-samples`, `cupertino read-sample`, `cupertino read-sample-file`. The MCP `SearchToolProvider` consumes the same services.
+**Cross-CLI consumers:** `cupertino read`, `cupertino search`, `cupertino list-frameworks`, `cupertino list-documents`, `cupertino list-children`, `cupertino list-samples`, `cupertino read-sample`, `cupertino read-sample-file`. The MCP `SearchToolProvider` consumes the same services.
 
 ### Recent architectural changes (1.0)
 
@@ -788,5 +788,3 @@ MCP servers across different languages follow similar patterns:
 - [WKWebView Documentation](https://developer.apple.com/documentation/webkit/wkwebview)
 - [NSApplication Documentation](https://developer.apple.com/documentation/appkit/nsapplication)
 - [Swift Testing Framework](https://developer.apple.com/documentation/testing)
-
-

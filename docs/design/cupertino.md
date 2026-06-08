@@ -89,13 +89,15 @@ These are explicit non-goals so future contributors don't waste cycles re-propos
 | F1 | Full-text search across all indexed sources | `cupertino search`, MCP `search` tool |
 | F2 | Read a full document by `apple-docs://` URI | `cupertino read`, MCP `read_document` |
 | F3 | List indexed frameworks with document counts | `cupertino list-frameworks`, MCP `list_frameworks` |
-| F4 | Filter search results by framework, platform version, source | CLI flags and MCP tool parameters |
-| F5 | Symbol-shape queries (find all `actor`s conforming to `Sendable`) | MCP `search_symbols`, `search_conformances` |
-| F6 | Property-wrapper and concurrency pattern lookup | MCP `search_property_wrappers`, `search_concurrency` |
-| F7 | Sample code read at file granularity | MCP `read_sample`, `read_sample_file` |
-| F8 | Crawl resume from arbitrary kill point | `Crawler` session checkpoint, keyed by start URL |
-| F9 | Content-hash-based incremental re-crawl | SHA-256 per JSON file; skip on hash match |
-| F10 | Audit log of all rejected and deduplicated rows | `Search.JSONLImportLogSink` writes JSONL |
+| F4 | List indexed documents in a framework | `cupertino list-documents`, MCP `list_documents` |
+| F5 | List direct children of a document or topic group | `cupertino list-children`, MCP `list_children` |
+| F6 | Filter search results by framework, platform version, source | CLI flags and MCP tool parameters |
+| F7 | Symbol-shape queries (find all `actor`s conforming to `Sendable`) | MCP `search_symbols`, `search_conformances` |
+| F8 | Property-wrapper and concurrency pattern lookup | MCP `search_property_wrappers`, `search_concurrency` |
+| F9 | Sample code read at file granularity | MCP `read_sample`, `read_sample_file` |
+| F10 | Crawl resume from arbitrary kill point | `Crawler` session checkpoint, keyed by start URL |
+| F11 | Content-hash-based incremental re-crawl | SHA-256 per JSON file; skip on hash match |
+| F12 | Audit log of all rejected and deduplicated rows | `Search.JSONLImportLogSink` writes JSONL |
 
 ### 4.2 Non-functional
 
@@ -177,7 +179,7 @@ Cupertino is a single Swift binary that runs in one of two modes, detected at st
 |---|---|---|
 | pipe | none or `serve` | MCP server (long-lived, reads JSON-RPC, replies on stdout) |
 | TTY | none or `serve` | error: `serve` from terminal is almost always wrong |
-| any | subcommand (`search`, `read`, `fetch`, `save`, `doctor`, `setup`, `cleanup`, `list-frameworks`, ...) | CLI mode, executes subcommand, exits |
+| any | subcommand (`search`, `read`, `fetch`, `save`, `doctor`, `setup`, `cleanup`, `list-frameworks`, `list-documents`, `list-children`, ...) | CLI mode, executes subcommand, exits |
 
 The single-binary topology was chosen over a separate `cupertino-mcp` to simplify deployment: one Homebrew formula, one PATH entry, one update path. Per-mode dispatch is a 5-line check at startup.
 

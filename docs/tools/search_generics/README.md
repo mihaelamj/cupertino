@@ -10,7 +10,8 @@ Find generic types and functions by constraint, across Apple documentation.
   "arguments": {
     "constraint": "Sendable",
     "framework": "swiftui",
-    "limit": 20
+    "limit": 20,
+    "format": "json"
   }
 }
 ```
@@ -67,6 +68,59 @@ Platform-availability floor (#226). Drops rows whose `min_<platform>` is above t
 **Type:** String (dotted-decimal semver, e.g. `"16.0"`, `"10.15"`)
 
 **Example:** `{"constraint": "Sendable", "min_ios": "16.0"}` returns only Sendable-constrained generics whose iOS deployment-target floor is ≤ 16.0 (i.e. available on iOS 16 and earlier; iOS 18-only APIs filtered out).
+
+### format (optional)
+
+Output format. Default: `markdown`; use `json` for typed GUI-decodable results.
+
+## Response
+
+Default markdown returns one section per contributing database. `format=json` returns typed per-source arrays:
+
+```json
+{
+  "filters": {
+    "constraint": "Sendable",
+    "framework": "swiftui",
+    "limit": 20
+  },
+  "apple_docs": [
+    {
+      "doc_uri": "apple-docs://swiftui/example",
+      "doc_title": "Example",
+      "framework": "swiftui",
+      "symbol_name": "SendableBox",
+      "symbol_kind": "struct",
+      "generic_params": "T: Sendable",
+      "is_async": false,
+      "is_public": true
+    }
+  ],
+  "samples": [
+    {
+      "projectId": "sample-id",
+      "path": "Sources/Model.swift",
+      "filename": "Model.swift",
+      "snippet": "struct Box<T: Sendable> ...",
+      "rank": -1.0,
+      "score": 1.0
+    }
+  ],
+  "packages": [
+    {
+      "uri": "package://owner/repo/Sources/Box.swift",
+      "source": "packages",
+      "framework": "Module",
+      "title": "Box.swift",
+      "summary": "...",
+      "file_path": "Sources/Box.swift",
+      "word_count": 120,
+      "rank": -1.0,
+      "score": 1.0
+    }
+  ]
+}
+```
 
 ## Examples
 

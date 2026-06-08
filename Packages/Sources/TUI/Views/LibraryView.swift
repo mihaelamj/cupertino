@@ -1,5 +1,6 @@
 import Foundation
 import SharedConstants
+
 // ArtifactInfo moved to ArtifactInfo.swift
 
 struct LibraryView {

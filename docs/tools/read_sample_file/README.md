@@ -9,7 +9,8 @@ Read a specific source file from a sample code project.
   "name": "read_sample_file",
   "arguments": {
     "project_id": "building-a-document-based-app-with-swiftui",
-    "file_path": "DocumentBrowser/ContentView.swift"
+    "file_path": "DocumentBrowser/ContentView.swift",
+    "format": "json"
   }
 }
 ```
@@ -39,9 +40,26 @@ The relative path to the file within the project.
 
 Use `search` (with `source: samples`) to find files within projects.
 
+### format (optional)
+
+Output format. Default: `markdown`; use `json` for a typed GUI-decodable payload.
+
 ## Response
 
-Returns the source file content.
+Default markdown returns a fenced code block. `format=json` returns source metadata and content:
+
+```json
+{
+  "projectId": "building-a-document-based-app-with-swiftui",
+  "path": "DocumentBrowser/ContentView.swift",
+  "filename": "ContentView.swift",
+  "folder": "DocumentBrowser",
+  "fileExtension": "swift",
+  "language": "swift",
+  "size": 4096,
+  "content": "import SwiftUI\n..."
+}
+```
 
 ## Examples
 
@@ -50,7 +68,8 @@ Returns the source file content.
 ```json
 {
   "project_id": "fruta-building-a-feature-rich-app-with-swiftui",
-  "file_path": "Shared/Smoothie.swift"
+  "file_path": "Shared/Smoothie.swift",
+  "format": "json"
 }
 ```
 

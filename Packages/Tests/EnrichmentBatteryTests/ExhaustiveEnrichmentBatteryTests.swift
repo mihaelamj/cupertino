@@ -138,7 +138,7 @@ enum EnrichmentBattery {
     }
 }
 
-// MARK: - #1 Lexical Index (FTS5) -- all 8 databases
+// MARK: - #1 Lexical Index (FTS5) -- all built-in databases
 
 @Suite("Enrichment #1 Lexical Index (exhaustive, all DBs)", .serialized, .enabled(if: CupertinoCLI.available))
 struct ExhaustiveLexicalIndexTests {

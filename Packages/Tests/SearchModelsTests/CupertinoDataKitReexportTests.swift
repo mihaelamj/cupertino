@@ -4,16 +4,16 @@ import Testing
 
 // MARK: - CupertinoDataKit re-export seam (docs side)
 
-// The `Search` namespace, its read value types, and its read protocols live
-// in the external CupertinoDataKit package. `SearchModels` re-exports it
-// (`@_exported import CupertinoDataKit` in SearchModels.Reexport.swift) so
-// every in-repo consumer keeps naming `Search.*` through SearchModels with no
-// direct CupertinoDataKit import.
-//
-// These tests are the guard for that seam: each names a re-exported protocol
-// or type WITHOUT importing CupertinoDataKit. If the re-export is dropped (or
-// the import is removed), this file fails to COMPILE — surfacing the break
-// here instead of cascading through every downstream consumer target.
+/// The `Search` namespace, its read value types, and its read protocols live
+/// in the external CupertinoDataKit package. `SearchModels` re-exports it
+/// (`@_exported import CupertinoDataKit` in SearchModels.Reexport.swift) so
+/// every in-repo consumer keeps naming `Search.*` through SearchModels with no
+/// direct CupertinoDataKit import.
+///
+/// These tests are the guard for that seam: each names a re-exported protocol
+/// or type WITHOUT importing CupertinoDataKit. If the re-export is dropped (or
+/// the import is removed), this file fails to COMPILE — surfacing the break
+/// here instead of cascading through every downstream consumer target.
 @Suite("CupertinoDataKit re-export seam (docs)")
 struct CupertinoDataKitReexportTests {
     @Test("read protocols are reachable through SearchModels")
@@ -22,6 +22,9 @@ struct CupertinoDataKitReexportTests {
         // through the re-export. No concrete lives in SearchModels, so a
         // metatype is the right (and sufficient) assertion.
         _ = (any Search.DocumentReading).self
+        _ = (any Search.DocumentListing).self
+        _ = (any Search.DocumentChildrenListing).self
+        _ = (any Search.DocumentBrowsing).self
         _ = (any Search.SymbolReading).self
         _ = (any Search.Database).self
     }
@@ -32,6 +35,10 @@ struct CupertinoDataKitReexportTests {
         _ = Search.MatchedSymbol.self
         _ = Search.PlatformAvailability.self
         _ = Search.DocumentFormat.self
+        _ = Search.DocumentListItem.self
+        _ = Search.DocumentListPage.self
+        _ = Search.DocumentChild.self
+        _ = Search.DocumentChildrenPage.self
         _ = Search.SymbolSearchResult.self
         _ = Search.InheritanceTree.self
         _ = Search.InheritanceCandidate.self
@@ -41,12 +48,17 @@ struct CupertinoDataKitReexportTests {
         _ = Search.PlatformMinima.self
     }
 
-    @Test("contract limits are reachable and carry the expected values")
+    @Test("contract constants are reachable and carry the expected values")
     func contractLimitsReachable() {
-        // The 3 contract constants moved into CupertinoDataKit.Limits.
+        // The contract constants moved into CupertinoDataKit.Limits.
         // Pin their values so a contract bump is a deliberate, visible change.
         #expect(CupertinoDataKit.Limits.summaryMaxLength == 1500)
         #expect(CupertinoDataKit.Limits.defaultSearchLimit == 20)
         #expect(CupertinoDataKit.Limits.maxSearchLimit == 100)
+        #expect(CupertinoDataKit.Limits.defaultDocumentListLimit == 100)
+        #expect(CupertinoDataKit.Limits.maxDocumentListLimit == 500)
+        #expect(CupertinoDataKit.SourceIDs.appleDocs == "apple-docs")
+        #expect(CupertinoDataKit.SourceIDs.builtInIDs.contains("swift-book"))
+        #expect(!CupertinoDataKit.SourceIDs.builtInIDs.contains(CupertinoDataKit.SourceIDs.all))
     }
 }

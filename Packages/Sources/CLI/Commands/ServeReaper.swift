@@ -169,18 +169,18 @@ enum ServeReaper {
         var offset = 4
 
         // Skip the canonical exec_path string.
-        while offset < buffer.count && buffer[offset] != 0 {
+        while offset < buffer.count, buffer[offset] != 0 {
             offset += 1
         }
         // Skip the NUL terminator + any alignment padding NULs.
-        while offset < buffer.count && buffer[offset] == 0 {
+        while offset < buffer.count, buffer[offset] == 0 {
             offset += 1
         }
 
         // Read `argc` null-terminated strings starting from here.
         var argv: [String] = []
         var stringStart = offset
-        while offset < buffer.count && argv.count < Int(argc) {
+        while offset < buffer.count, argv.count < Int(argc) {
             if buffer[offset] == 0 {
                 let bytes = Array(buffer[stringStart..<offset])
                 guard let s = String(bytes: bytes, encoding: .utf8) else {

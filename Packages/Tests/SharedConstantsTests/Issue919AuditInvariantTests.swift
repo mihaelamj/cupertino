@@ -46,7 +46,7 @@ struct Issue919AuditInvariantTests {
     }
 
     @Test(
-        "check-target-foundation-only.sh STRICT_PRODUCERS contains exactly 49 entries (post-#1023 PackagesSource net-add; WebKit-companion siblings excluded)"
+        "check-target-foundation-only.sh STRICT_PRODUCERS contains exactly 48 entries (CupertinoDataEngine extracted; WebKit-companion siblings excluded)"
     )
     func strictProducersHasExpectedCount() throws {
         let scriptURL = Self.repoRoot().appendingPathComponent("scripts/check-target-foundation-only.sh")
@@ -73,7 +73,7 @@ struct Issue919AuditInvariantTests {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
             .filter { $0.first.map { $0.isLetter || $0 == "_" } ?? false } // identifier-shaped
-        // Post-#1023: 49 producers strict. CoreJSONParserWebKit +
+        // Post-CupertinoDataEngine extraction: 48 producers strict. CoreJSONParserWebKit +
         // CoreSampleCodeWebKit (added by #904) are WebKit-companion
         // siblings that legitimately import their parent producer to
         // extend its types. They are off STRICT_PRODUCERS but on
@@ -94,6 +94,8 @@ struct Issue919AuditInvariantTests {
         //   dirs that short-circuited the audit) were replaced by the
         //   single real `Crawler` engine target (net -1: -2 stale, +1
         //   real). 49 -> 48.
+        // - CupertinoDataEngine: extracted to its own external package,
+        //   so the in-tree strict producer list returns to 48.
         #expect(entries.count == 48, "expected 48 strict producers, found \(entries.count): \(entries)")
     }
 

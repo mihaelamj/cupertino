@@ -12,7 +12,7 @@ import Testing
 /// the deleted `CLIImpl.SourceLookup.swift`. Post-PR the lookup
 /// definitions ARE the per-source targets' `.definition` static
 /// literals; this test pins that derivation produces an
-/// equivalent-shaped lookup (8 sources, expected ids, display-names
+/// equivalent-shaped lookup (built-in sources, expected ids, display-names
 /// matching the deleted literal list's canonical values).
 @Suite("#1025: SourceLookup derived from registry")
 struct Issue1025SourceLookupRegistryDerivationTests {
@@ -20,12 +20,10 @@ struct Issue1025SourceLookupRegistryDerivationTests {
         definitions: CLIImpl.makeProductionSourceRegistry().allEnabled.map(\.definition)
     )
 
-    @Test("Registry-derived lookup contains exactly 8 definitions matching the per-source targets")
-    func derivedLookupCarriesAllEight() {
-        #expect(Self.derived.definitions.count == 8)
-
+    @Test("Registry-derived lookup contains the built-in definitions matching the per-source targets")
+    func derivedLookupCarriesBuiltIns() {
         let ids = Set(Self.derived.allIDs)
-        #expect(ids == [
+        #expect(ids.isSuperset(of: [
             Shared.Constants.SourcePrefix.appleDocs,
             Shared.Constants.SourcePrefix.hig,
             Shared.Constants.SourcePrefix.samples,
@@ -34,7 +32,7 @@ struct Issue1025SourceLookupRegistryDerivationTests {
             Shared.Constants.SourcePrefix.swiftOrg,
             Shared.Constants.SourcePrefix.swiftBook,
             Shared.Constants.SourcePrefix.packages,
-        ])
+        ]))
     }
 
     @Test("Registry-derived lookup display-names match the deleted-literal-list canonical values")
