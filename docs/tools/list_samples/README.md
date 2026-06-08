@@ -7,7 +7,9 @@ List all indexed Apple sample code projects.
 ```json
 {
   "name": "list_samples",
-  "arguments": {}
+  "arguments": {
+    "format": "json"
+  }
 }
 ```
 
@@ -19,25 +21,39 @@ Returns a list of all indexed sample code projects with their titles, descriptio
 
 None required.
 
+### framework (optional)
+
+Filter projects by framework slug, for example `"swiftui"` or `"uikit"`.
+
+### limit (optional)
+
+Maximum projects to return. Default: `50`.
+
+### format (optional)
+
+Output format. Default: `markdown`; use `json` for a typed GUI-decodable payload.
+
 ## Response
 
-Returns a list of sample projects with metadata:
+Default markdown returns a project table with metadata. `format=json` returns:
 
-```markdown
-# Sample Code Projects
-
-Found **619** projects:
-
-## 1. Building a Document-Based App with SwiftUI
-- **Project ID:** building-a-document-based-app-with-swiftui
-- **Frameworks:** SwiftUI, UIKit
-- **Files:** 12
-
-## 2. Fruta: Building a Feature-Rich App with SwiftUI
-- **Project ID:** fruta-building-a-feature-rich-app-with-swiftui
-- **Frameworks:** SwiftUI, WidgetKit
-- **Files:** 45
-...
+```json
+{
+  "totalProjects": 619,
+  "totalFiles": 18928,
+  "framework": "swiftui",
+  "limit": 50,
+  "projects": [
+    {
+      "id": "building-a-document-based-app-with-swiftui",
+      "title": "Building a Document-Based App with SwiftUI",
+      "description": "...",
+      "frameworks": ["swiftui", "uikit"],
+      "fileCount": 12,
+      "totalSize": 123456
+    }
+  ]
+}
 ```
 
 ## Examples
@@ -46,6 +62,15 @@ Found **619** projects:
 
 ```json
 {}
+```
+
+### Typed JSON
+
+```json
+{
+  "framework": "swiftui",
+  "format": "json"
+}
 ```
 
 ## See Also

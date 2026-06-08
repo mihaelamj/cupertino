@@ -10,7 +10,8 @@ Find Swift property wrapper usage patterns across documentation and samples.
   "arguments": {
     "wrapper": "Observable",
     "framework": "swiftui",
-    "limit": 20
+    "limit": 20,
+    "format": "json"
   }
 }
 ```
@@ -60,32 +61,34 @@ Maximum number of results to return.
 
 **Maximum:** 100
 
+### format (optional)
+
+Output format. Default: `markdown`; use `json` for typed GUI-decodable results.
+
 ## Response
 
-Returns markdown-formatted results showing wrapper usage:
+Default markdown returns grouped wrapper results. `format=json` returns filters plus typed symbol rows:
 
-```markdown
-# Property Wrapper Search: @Observable
-
-Found **8** usages:
-
-## 1. Library.swift
-
-- **Document:** Migrating from ObservableObject to Observable
-- **URI:** `samples://swiftui-migrating...`
-- **Symbol:** Library (class)
-- **Line:** 12
-
-```swift
-@Observable final class Library {
-    var books: [Book] = []
+```json
+{
+  "filters": {
+    "wrapper": "@Observable",
+    "framework": "swiftui",
+    "limit": 20
+  },
+  "results": [
+    {
+      "doc_uri": "apple-docs://swiftui/observable",
+      "doc_title": "Observable",
+      "framework": "swiftui",
+      "symbol_name": "Library",
+      "symbol_kind": "class",
+      "attributes": "@Observable",
+      "is_async": false,
+      "is_public": true
+    }
+  ]
 }
-```
-
----
-
-## 2. Book.swift
-...
 ```
 
 ## Examples

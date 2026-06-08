@@ -17,8 +17,28 @@ Starts the Model Context Protocol (MCP) server that provides documentation searc
 The server communicates via stdio using JSON-RPC and provides:
 - **Resource providers** for documentation access
 - **Search tools** for querying indexed documentation
+- **Typed tool output** for desktop/native clients: sample and semantic tools default to markdown and accept `format=json` for GUI-decodable payloads.
+
+Desktop UI code treats this server as the backend boundary. It calls Cupertino tool/backend interfaces and never opens the SQLite databases directly.
 
 The server runs indefinitely until terminated (Ctrl+C).
+
+## Tool Surface
+
+### Sample Code Tools
+
+- `list_samples` - list indexed sample projects; `format=json` returns typed project metadata.
+- `read_sample` - read sample README, metadata, and file summaries; `format=json` returns typed project data.
+- `read_sample_file` - read a source file; `format=json` returns typed file metadata and content.
+
+### Semantic Search Tools
+
+- `search_symbols` - find Swift symbols by name, kind, async flag, and framework.
+- `search_property_wrappers` - find property-wrapper attributes such as `@State`, `@Observable`, and `@MainActor`.
+- `search_concurrency` - find concurrency patterns such as `async`, `actor`, `sendable`, and `mainactor`.
+- `search_conformances` - find symbols by protocol conformance.
+- `search_generics` - find generic-parameter constraints across docs, samples, and packages.
+- `get_inheritance` - walk class-inheritance chains; `format=json` returns title-bearing tree nodes.
 
 ## Default Command
 

@@ -11,7 +11,8 @@ Walk class-inheritance chains across Apple documentation.
     "symbol": "UIControl",
     "direction": "up",
     "framework": "uikit",
-    "depth": 5
+    "depth": 5,
+    "format": "json"
   }
 }
 ```
@@ -40,9 +41,44 @@ Disambiguator when the symbol exists across multiple frameworks.
 
 ### depth (optional, default 5)
 
-Maximum hops the walker follows in each direction. `depth=0` returns just the start node.
+Maximum hops the walker follows in each direction. The value must be positive; `depth=0` is rejected as an invalid argument.
+
+### format (optional)
+
+Output format. Default: `markdown`; use `json` for a typed GUI-decodable payload.
 
 ## Response shape
+
+### Typed JSON
+
+`format=json` returns one machine-readable object for success, empty-tree, ambiguous, and not-found cases. `status` is `ok`, `no_data`, `ambiguous`, or `not_found`. Inheritance tree nodes include both `uri` and display `title`, so clients can render trees without scraping markdown or doing follow-up title lookups.
+
+```json
+{
+  "symbol": "UIButton",
+  "status": "ok",
+  "framework": "uikit",
+  "uri": "apple-docs://uikit/uibutton",
+  "direction": "up",
+  "depth": 5,
+  "candidates": [
+    {
+      "uri": "apple-docs://uikit/uibutton",
+      "title": "UIButton",
+      "framework": "uikit",
+      "kind": "class"
+    }
+  ],
+  "ancestors": [
+    {
+      "uri": "apple-docs://uikit/uicontrol",
+      "title": "UIControl",
+      "children": []
+    }
+  ],
+  "descendants": []
+}
+```
 
 ### Successful chain (non-empty tree)
 

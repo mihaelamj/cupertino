@@ -120,19 +120,25 @@ extension MCP.SharedTools {
         /// List samples tool description
         public static let toolListSamplesDescription = """
         List all indexed Apple sample code projects with metadata. \
-        Useful for discovering available sample code before searching.
+        Useful for discovering available sample code before searching. \
+        Parameters: framework (optional), limit (default 50), format (markdown default, json for typed GUI payload). \
+        JSON returns totalProjects, totalFiles, framework, limit, and projects [{id,title,description,frameworks,fileCount,totalSize,...}].
         """
 
         /// Read sample tool description
         public static let toolReadSampleDescription = """
         Read a sample code project's README and metadata by project ID. \
-        Use project IDs from search_samples or list_samples results.
+        Use project IDs from search or list_samples results. \
+        Parameters: project_id (required), format (markdown default, json for typed GUI payload). \
+        JSON returns project metadata plus files [{projectId,path,filename,folder,fileExtension,size}].
         """
 
         /// Read sample file tool description
         public static let toolReadSampleFileDescription = """
         Read a specific source file from a sample code project. \
-        Requires project_id and file_path parameters. File paths are relative to project root.
+        Requires project_id and file_path parameters. File paths are relative to project root. \
+        Parameters: format (markdown default, json for typed GUI payload). \
+        JSON returns projectId, path, filename, folder, fileExtension, language, size, and content.
         """
 
         // MARK: Semantic Search Tool Descriptions (#81)
@@ -150,6 +156,7 @@ extension MCP.SharedTools {
         - is_async: Filter async functions only (optional)
         - framework: Filter by framework (optional)
         - limit: Maximum results (default 20)
+        - format: markdown (default) or json (typed results for GUI clients)
 
         **Examples:**
         - Find all actors: kind=actor
@@ -169,6 +176,7 @@ extension MCP.SharedTools {
         - wrapper: Property wrapper name (with or without @)
         - framework: Filter by framework (optional)
         - limit: Maximum results (default 20)
+        - format: markdown (default) or json (typed results for GUI clients)
 
         **Examples:**
         - Find @Observable usage: wrapper=Observable
@@ -186,6 +194,7 @@ extension MCP.SharedTools {
         - pattern: Concurrency pattern to search for
         - framework: Filter by framework (optional)
         - limit: Maximum results (default 20)
+        - format: markdown (default) or json (typed results for GUI clients)
 
         **Examples:**
         - Find async functions: pattern=async
@@ -205,6 +214,7 @@ extension MCP.SharedTools {
         - protocol: Protocol name to search for
         - framework: Filter by framework (optional)
         - limit: Maximum results (default 20)
+        - format: markdown (default) or json (typed results for GUI clients)
 
         **Examples:**
         - Find View conformances: protocol=View
@@ -228,6 +238,7 @@ extension MCP.SharedTools {
         - constraint: Generic constraint to search for (matched as substring)
         - framework: Filter by framework (optional)
         - limit: Maximum results (default 20)
+        - format: markdown (default) or json (typed per-source arrays for GUI clients)
 
         **Examples:**
         - Find Sendable-constrained generics: constraint=Sendable

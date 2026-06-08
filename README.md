@@ -156,8 +156,9 @@ Claude Desktop, OpenAI Codex, Cursor, VS Code (Copilot), GitHub Copilot for Xcod
 - **Resources**: direct page access via `apple-docs://{framework}/{page}`, `swift-evolution://{proposal-id}`, `hig://{category}/{page}`
 - **`search`**: unified full-text search across every indexed source. Parameters: `query` (required), `source`, `framework`, `language`, `include_archive`, `limit`, and the `min_ios`/`min_macos`/`min_tvos`/`min_watchos`/`min_visionos`/`min_swift` platform filters (AND-combined; malformed values are rejected at the boundary with a clear error frame). Replaces the pre-[#239](https://github.com/mihaelamj/cupertino/issues/239) per-source tools.
 - **`list_frameworks`**, **`list_documents`**, **`list_children`**, **`read_document`** (`format`: `json` for agents, `markdown` for humans)
-- **Sample-code tools**: `list_samples`, `read_sample`, `read_sample_file`
-- **AST-powered symbol tools** ([#81](https://github.com/mihaelamj/cupertino/issues/81)): `search_symbols`, `search_property_wrappers`, `search_concurrency`, `search_conformances`, `search_generics`, `get_inheritance`
+- **Sample-code tools**: `list_samples`, `read_sample`, `read_sample_file`; pass `format=json` for typed project/file payloads
+- **AST-powered symbol tools** ([#81](https://github.com/mihaelamj/cupertino/issues/81)): `search_symbols`, `search_property_wrappers`, `search_concurrency`, `search_conformances`, `search_generics`, `get_inheritance`; pass `format=json` for typed symbol rows and title-bearing inheritance trees
+- **Desktop boundary**: desktop UI code consumes these backend/tool contracts. It must not open SQLite databases directly or duplicate Cupertino's read engine.
 
 See **[docs/tools/](docs/tools/)** for per-tool documentation.
 
@@ -233,7 +234,7 @@ Epic progress:
 flowchart TB
   subgraph Active["Active"]
     direction TB
-    E1242["#1242 critical path"]:::active ~~~ E1262["#1262 desktop backend surface (#1208 active)"]:::active ~~~ E1221["#1221 recrawl and resume"]:::active
+    E1242["#1242 critical path"]:::active ~~~ E1262["#1262 desktop backend surface (#1260 review)"]:::review ~~~ E1221["#1221 recrawl and resume"]:::active
   end
 
   subgraph Partial["Partial"]
