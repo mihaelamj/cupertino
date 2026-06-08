@@ -73,7 +73,7 @@ public actor CupertinoDataEngine {
         guard let sampleReader else {
             throw Error.samplesNotConfigured
         }
-        return sampleReader
+        return SampleReaderBox(base: sampleReader)
     }
 
     /// Return the packages reader, when configured.

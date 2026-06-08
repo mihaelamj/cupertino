@@ -70,7 +70,8 @@ extension CupertinoDataEngine {
         }
 
         func disconnect() async {
-            await reader.disconnect()
+            // Borrowed browsers do not own the engine's cached connection.
+            // CupertinoDataEngine.disconnect() closes the underlying handle.
         }
 
         func searchSymbols(

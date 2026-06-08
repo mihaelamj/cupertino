@@ -40,15 +40,17 @@ let allSourceProducts: [Product] = allSourceTargetNames.map { .singleTargetLibra
 let baseProducts: [Product] = [
     // MCP Framework (cross-platform, consolidated from MCPShared + MCPTransport + MCPServer)
     .singleTargetLibrary("MCPCore"),
-    // #1261: app-facing embedded backend facade. Concrete SQLite readers are
-    // injected from Cupertino-owned composition roots, so UI clients depend on
-    // this product instead of opening DBs directly.
-    .singleTargetLibrary("CupertinoDataEngine"),
 ]
 
-// Cupertino products (macOS only - uses FileManager.homeDirectoryForCurrentUser)
+// Cupertino products exposed when the manifest is evaluated on macOS. Some
+// products cross-compile to other Apple platforms, but their target declarations
+// currently live in the Cupertino target block below.
 #if os(macOS)
 let macOSOnlyProducts: [Product] = [
+    // #1261: app-facing embedded backend facade. Concrete SQLite readers are
+    // injected from Cupertino-owned composition roots, so UI clients depend on
+    // this product instead of opening corpus resources directly.
+    .singleTargetLibrary("CupertinoDataEngine"),
     .singleTargetLibrary("Logging"),
     .singleTargetLibrary("LoggingModels"),
     .singleTargetLibrary("SharedConstants"),

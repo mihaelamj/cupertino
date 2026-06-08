@@ -29,6 +29,8 @@ struct CupertinoDataEngineTests {
         #expect(try await reader.documentCount() == 1)
         let content = try await reader.getDocumentContent(uri: "apple-docs://swiftui/view", format: .markdown)
         #expect(content?.contains("SwiftUI View documentation") == true)
+        await reader.disconnect()
+        #expect(try await reader.documentCount() == 1)
         await engine.disconnect()
     }
 
@@ -164,6 +166,8 @@ struct CupertinoDataEngineTests {
         #expect(try await samples.projectCount() == 1)
         let project = try await samples.getProject(id: "sample-app")
         #expect(project?.title == "Sample App")
+        await samples.disconnect()
+        #expect(try await samples.projectCount() == 1)
         await engine.disconnect()
     }
 

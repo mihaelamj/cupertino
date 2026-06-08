@@ -50,7 +50,8 @@ extension CupertinoDataEngine {
         }
 
         func disconnect() async {
-            await base.disconnect()
+            // Borrowed readers do not own the engine's cached connection.
+            // CupertinoDataEngine.disconnect() closes the underlying handle.
         }
 
         func searchSymbols(
