@@ -2,6 +2,8 @@
 
 ### Added
 
+- **test(#1269): add an on-demand release-corpus smoke gate.** `scripts/eval/release-corpus-smoke.sh` now builds the current checkout's `cupertino`, runs a temp-configured copy against a prepared release corpus such as `~/.cupertino`, and validates doctor/search/read/list/sample/package/AST/inheritance surfaces without invoking `setup`, `fetch`, `save`, or reindexing. A manual `Release Corpus Smoke` GitHub workflow can run the same gate from a prepared runner path or downloaded corpus artifact.
+
 - **fix(#1261): adopt `CupertinoDataEngine` 0.2.6 current-corpus layout.** The external engine now matches the release bundle layout: `apple-sample-code.db` is opened through the sample reader only, and the package corpus stays on the release `packages.db` filename. This fixes the first live `LocalEmbeddedBackend` smoke failures against the installed `~/.cupertino` corpus while preserving the opaque corpus boundary.
 
 - **test(#1261): validate `cupertino-desktop` embedded smoke against the installed release corpus.** `scripts/check-local-embedded-corpus.sh` in `cupertino-desktop` now opens `~/.cupertino` through `CatalogStoreAPI` and `CupertinoDataEngine` only, then exercises frameworks, docs search/read, unified search, samples, and package search through `Backend.Documentation`. The smoke passed locally with `CupertinoDataEngine` 0.2.6.

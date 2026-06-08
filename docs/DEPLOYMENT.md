@@ -53,6 +53,12 @@ export CUPERTINO_DOCS_TOKEN="your-token"
 cd Packages
 swift build --product cupertino-rel
 
+# Optional promotion gate for read/search changes: prove the repo-built
+# binary still reads the already prepared release corpus without setup/fetch/save.
+cd ..
+scripts/eval/release-corpus-smoke.sh ~/.cupertino
+cd Packages
+
 # Full release (bumps version, tags, waits for CI, uploads databases, updates Homebrew)
 .build/debug/cupertino-rel 0.6.0
 
@@ -133,25 +139,28 @@ edit Packages/Sources/Shared/Constants.swift  # version = "X.Y.Z"
 edit README.md                                 # Version: X.Y.Z
 edit CHANGELOG.md                              # Add new section
 
-# 2. Commit and push
+# 2. For read/search changes, run the release-corpus smoke against the prepared bundle
+scripts/eval/release-corpus-smoke.sh ~/.cupertino
+
+# 3. Commit and push
 git add -A && git commit -m "chore: bump version to X.Y.Z"
 git push origin main
 
-# 3. Create and push tag
+# 4. Create and push tag
 git tag -a vX.Y.Z -m "vX.Y.Z - Release description"
 git push origin vX.Y.Z
 
-# 4. Wait for GitHub Actions to build the CLI release binary
+# 5. Wait for GitHub Actions to build the CLI release binary
 # (creates cupertino-vX.Y.Z-macos-universal.tar.gz)
 
-# 5. Build locally and install (ensure CUPERTINO_DOCS_TOKEN is set to build cupertino-rel)
+# 6. Build locally and install (ensure CUPERTINO_DOCS_TOKEN is set to build cupertino-rel)
 export CUPERTINO_DOCS_TOKEN="your-token"
 make build && sudo make install
 
-# 6. Upload databases to cupertino-docs
+# 7. Upload databases to cupertino-docs
 cupertino-rel databases
 
-# 7. Update Homebrew tap
+# 8. Update Homebrew tap
 cupertino-rel homebrew --version X.Y.Z
 ```
 

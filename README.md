@@ -278,10 +278,11 @@ flowchart TD
   ios["iOS build proof for complete closure"]:::done
   catalog["CatalogStoreAPI supplies opaque corpus handles"]:::done
   embedded["Live LocalEmbeddedBackend real-corpus smoke"]:::done
-  smoke["#1269 repeatable release-corpus smoke"]:::next
+  smoke["#1269 repeatable release-corpus smoke"]:::done
+  stores["Bundled/downloadable CatalogStore + app packaging"]:::next
   ui["Begin native UI showcase work"]:::todo
 
-  release --> source --> samples --> packages --> bundle --> ios --> catalog --> embedded --> smoke --> ui
+  release --> source --> samples --> packages --> bundle --> ios --> catalog --> embedded --> smoke --> stores --> ui
   classDef done    fill:#34C759,color:#FFFFFF
   classDef next    fill:#5856D6,color:#FFFFFF
   classDef todo    fill:#8E8E93,color:#FFFFFF
@@ -333,6 +334,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full build, test, and release wor
 - **[docs/PRINCIPLES.md](docs/PRINCIPLES.md)**: engineering principles (lossless URIs, no content lost at the door, 10x scale headroom)
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**: technical deep-dives (concurrency, MCP, WKWebView testing)
 - **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**: Homebrew distribution and CI/CD setup
+- **[docs/release/release-corpus-smoke.md](docs/release/release-corpus-smoke.md)**: on-demand release-corpus smoke gate for repo-built binaries
 - **[docs/mcp-clients.md](docs/mcp-clients.md)**: per-client MCP setup (Claude, Codex, Cursor, VS Code, Zed, Windsurf, opencode, and more)
 - **[docs/agent-skill.md](docs/agent-skill.md)**: use Cupertino as a stateless CLI Agent Skill (no server)
 - **[docs/commands/](docs/commands/)**: command-specific documentation (fetch, save, serve, search, doctor, and more)

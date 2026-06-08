@@ -24,4 +24,5 @@ cd Packages && make test
 - [ ] Tests added or updated for the change, and the full suite passes locally.
 - [ ] `CHANGELOG.md` updated under the correct section for any non-trivial change.
 - [ ] `docs/commands/` updated in the same PR if a CLI flag, subcommand, or enum value changed.
+- [ ] Release/promotions touching read/search surfaces ran `scripts/eval/release-corpus-smoke.sh ~/.cupertino` or documented why not.
 - [ ] Cross-references use issue numbers and symbol names, not line numbers; every cited file path exists.

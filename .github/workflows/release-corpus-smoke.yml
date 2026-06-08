@@ -1,0 +1,89 @@
+name: Release Corpus Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      corpus-path:
+        description: "Prepared release corpus directory on the runner"
+        required: false
+        default: "~/.cupertino"
+      runner-label:
+        description: "Runner label with Swift and the prepared corpus"
+        required: false
+        default: "macos-15"
+      artifact-run-id:
+        description: "Optional workflow run id to download a corpus artifact from"
+        required: false
+        default: ""
+      artifact-name:
+        description: "Optional artifact name containing the release corpus"
+        required: false
+        default: ""
+      artifact-subdirectory:
+        description: "Optional subdirectory inside the downloaded artifact"
+        required: false
+        default: ""
+
+concurrency:
+  group: release-corpus-smoke-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  smoke:
+    name: Repo-built binary against release corpus
+    runs-on: ${{ inputs['runner-label'] }}
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        if: startsWith(inputs['runner-label'], 'macos')
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Show Swift Version
+        run: swift --version
+
+      - name: Resolve corpus
+        id: corpus
+        env:
+          CORPUS_PATH_INPUT: ${{ inputs['corpus-path'] }}
+          ARTIFACT_RUN_ID: ${{ inputs['artifact-run-id'] }}
+          ARTIFACT_NAME: ${{ inputs['artifact-name'] }}
+          ARTIFACT_SUBDIRECTORY: ${{ inputs['artifact-subdirectory'] }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "$ARTIFACT_RUN_ID" ]; then
+            if [ -z "$ARTIFACT_NAME" ]; then
+              echo "::error::artifact-name is required when artifact-run-id is set"
+              exit 1
+            fi
+
+            artifact_dir="$RUNNER_TEMP/release-corpus-artifact"
+            mkdir -p "$artifact_dir"
+            gh run download "$ARTIFACT_RUN_ID" \
+              --repo "$GITHUB_REPOSITORY" \
+              --name "$ARTIFACT_NAME" \
+              --dir "$artifact_dir"
+
+            corpus_path="$artifact_dir"
+            if [ -n "$ARTIFACT_SUBDIRECTORY" ]; then
+              corpus_path="$corpus_path/$ARTIFACT_SUBDIRECTORY"
+            fi
+          else
+            corpus_path="$CORPUS_PATH_INPUT"
+          fi
+
+          echo "corpus_path=$corpus_path" >> "$GITHUB_OUTPUT"
+
+      - name: Run release-corpus smoke
+        run: bash scripts/eval/release-corpus-smoke.sh "${{ steps.corpus.outputs.corpus_path }}"
