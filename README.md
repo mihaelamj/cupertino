@@ -239,7 +239,7 @@ Epic progress:
 flowchart TB
   subgraph Active["Active"]
     direction TB
-    E1242["#1242 critical path"]:::active ~~~ E1262["#1262 desktop backend surface"]:::active ~~~ E1221["#1221 recrawl and resume"]:::active
+    E1242["#1242 critical path"]:::active ~~~ E1262["#1262 desktop backend surface"]:::active ~~~ E1270["#1270 pre-UI readiness gate"]:::active ~~~ E1221["#1221 recrawl and resume"]:::active
   end
 
   subgraph Partial["Partial"]
@@ -263,6 +263,27 @@ flowchart TB
   classDef active  fill:#007AFF,color:#FFFFFF
   classDef next    fill:#5856D6,color:#FFFFFF
   classDef partial fill:#FF9500,color:#FFFFFF
+  classDef todo    fill:#8E8E93,color:#FFFFFF
+```
+
+Pre-UI readiness gate:
+
+```mermaid
+flowchart TD
+  release["#1268 current read surfaces green on main"]:::done
+  source["CupertinoDataEngine v0.2.2 source-corpus reader"]:::done
+  samples["Sample-reader construction in CupertinoDataEngine"]:::next
+  packages["Package-reader construction in CupertinoDataEngine"]:::next
+  bundle["Opaque corpus/bundle API"]:::next
+  ios["iOS build proof for complete closure"]:::next
+  catalog["CatalogStore supplies opaque corpus handles"]:::todo
+  embedded["Live LocalEmbeddedBackend real-corpus smoke"]:::todo
+  smoke["#1269 repeatable release-corpus smoke"]:::todo
+  ui["Begin native UI showcase work"]:::todo
+
+  release --> source --> samples --> packages --> bundle --> ios --> catalog --> embedded --> smoke --> ui
+  classDef done    fill:#34C759,color:#FFFFFF
+  classDef next    fill:#5856D6,color:#FFFFFF
   classDef todo    fill:#8E8E93,color:#FFFFFF
 ```
 
