@@ -8,7 +8,8 @@ Read the README of a sample code project.
 {
   "name": "read_sample",
   "arguments": {
-    "project_id": "building-a-document-based-app-with-swiftui"
+    "project_id": "building-a-document-based-app-with-swiftui",
+    "format": "json"
   }
 }
 ```
@@ -32,9 +33,40 @@ The project identifier (folder name) of the sample.
 
 Use `list_samples` or `search` (with `source: samples`) to find project IDs.
 
+### format (optional)
+
+Output format. Default: `markdown`; use `json` for a typed GUI-decodable payload.
+
 ## Response
 
-Returns the README content in markdown format.
+Default markdown returns the README, metadata, and an abbreviated file list. `format=json` returns project metadata and file summaries:
+
+```json
+{
+  "id": "building-a-document-based-app-with-swiftui",
+  "title": "Building a Document-Based App with SwiftUI",
+  "description": "...",
+  "frameworks": ["swiftui"],
+  "readme": "...",
+  "webURL": "https://developer.apple.com/...",
+  "zipFilename": "sample.zip",
+  "fileCount": 12,
+  "totalSize": 123456,
+  "deploymentTargets": {
+    "ios": "17.0"
+  },
+  "files": [
+    {
+      "projectId": "building-a-document-based-app-with-swiftui",
+      "path": "ContentView.swift",
+      "filename": "ContentView.swift",
+      "folder": "",
+      "fileExtension": "swift",
+      "size": 4096
+    }
+  ]
+}
+```
 
 ## Examples
 
@@ -42,7 +74,8 @@ Returns the README content in markdown format.
 
 ```json
 {
-  "project_id": "building-a-document-based-app-with-swiftui"
+  "project_id": "building-a-document-based-app-with-swiftui",
+  "format": "json"
 }
 ```
 

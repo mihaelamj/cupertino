@@ -20,7 +20,7 @@ Extract cupertino's real FTS-SQLite read engine (`Search.Index`, today in the `S
 ## 1. Context
 
 ### 1.1 Problem
-CupertinoDataKit (#1183, shipped; v0.2.0 for the document-browser refinements) gives us the read contract (`Search.Database` = `DocumentReading` + `SymbolReading`, plus optional `Search.DocumentBrowsing`, all read value types, and open-ended source IDs). It is protocols only: it has no implementation a third party can run. cupertino-desktop's macOS app reaches the engine over MCP (`cupertino serve` subprocess); the iOS app cannot, because iOS has no subprocess. The iOS app therefore needs the actual FTS-SQLite read engine compiled into the app.
+CupertinoDataKit (#1183, shipped; v0.2.0 for the document-browser refinements) gives us the read contract (`Search.Database` = `DocumentReading` + `SymbolReading`, plus optional `Search.DocumentBrowsing`, all read value types, and open-ended source IDs). It is protocols only: it has no implementation a third party can run. cupertino-desktop's macOS app reaches the engine over MCP (`cupertino serve` subprocess); the iOS app cannot, because iOS has no subprocess. The iOS app therefore needs the actual FTS-SQLite read engine compiled into its Cupertino backend layer.
 
 ### 1.2 Why the obvious approaches do not work
 - Reimplement a minimal SQLite reader on the app side: produces a second engine implementation, the exact drift the contract extraction exists to kill.
@@ -95,7 +95,7 @@ cupertino monorepo (SearchSQLite successor) ----> CLI / serve / indexers
 cupertino-desktop iOS app (MobileBackend.live(dataSource:))
 ```
 
-CupertinoDataEngine holds the `Search.Index` actor and the read-required helpers, depends on CupertinoDataKit (the contract) plus the minimal foundation-tier seams the read path needs, and links `SQLite3`. The monorepo depends on the engine and re-exports it, retaining only the write/index concretes. The iOS app embeds the engine and opens a prebuilt DB.
+CupertinoDataEngine holds the `Search.Index` actor and the read-required helpers, depends on CupertinoDataKit (the contract) plus the minimal foundation-tier seams the read path needs, and links `SQLite3`. The monorepo depends on the engine and re-exports it, retaining only the write/index concretes. The iOS app embeds the engine behind `MobileBackend.live(dataSource:)`; only that Cupertino backend implementation opens a prebuilt DB, while UI code talks to the backend interface.
 
 ### 5.1 Single-DB vs multi-source fan-out (verified, scope-critical)
 
@@ -282,7 +282,7 @@ No runtime behaviour change for existing cupertino users: the CLI / serve paths 
 
 ### 15.2 Reimplement a minimal SQLite reader on the app side
 **Considered**: cupertino-desktop writes its own small reader against the bundled DB.
-**Rejected**: two engine implementations drift; the contract extraction exists to prevent exactly that. Desktop explicitly declined.
+**Rejected**: two engine implementations drift; the contract extraction exists to prevent exactly that. Desktop explicitly declined, and desktop UI code must not touch the DB directly.
 **Cost paid**: none worth keeping.
 
 ### 15.3 Fold the engine into CupertinoDataKit

@@ -10,7 +10,8 @@ Find types by protocol conformance across Apple documentation and sample code.
   "arguments": {
     "protocol": "View",
     "framework": "swiftui",
-    "limit": 20
+    "limit": 20,
+    "format": "json"
   }
 }
 ```
@@ -60,34 +61,34 @@ Maximum number of results to return.
 
 **Maximum:** 100
 
+### format (optional)
+
+Output format. Default: `markdown`; use `json` for typed GUI-decodable results.
+
 ## Response
 
-Returns markdown-formatted conformance results:
+Default markdown returns grouped conformance results. `format=json` returns filters plus typed symbol rows:
 
-```markdown
-# Conformance Search: View
-
-Found **42** types conforming to View:
-
-## 1. ContentView
-
-- **Document:** Building a SwiftUI App
-- **URI:** `samples://swiftui-building...`
-- **Type:** struct
-- **Line:** 8
-
-```swift
-struct ContentView: View {
-    var body: some View {
-        NavigationStack { ... }
+```json
+{
+  "filters": {
+    "protocol": "View",
+    "framework": "swiftui",
+    "limit": 20
+  },
+  "results": [
+    {
+      "doc_uri": "apple-docs://swiftui/view",
+      "doc_title": "View",
+      "framework": "swiftui",
+      "symbol_name": "ContentView",
+      "symbol_kind": "struct",
+      "conformances": "View",
+      "is_async": false,
+      "is_public": true
     }
+  ]
 }
-```
-
----
-
-## 2. DetailView
-...
 ```
 
 ## Examples

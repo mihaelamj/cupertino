@@ -43,15 +43,22 @@ extension CLIImpl.Command {
             • read_document   - Read full document content by URI
 
             Sample Code Tools (requires 'cupertino save --source samples'):
-            • list_samples     - List all indexed sample projects
-            • read_sample      - Read sample project README and metadata
+            • list_samples     - List all indexed sample projects (format=json for typed output)
+            • read_sample      - Read sample project README, metadata, and files
+                                  (format=json for typed output)
             • read_sample_file - Read a specific source file from a sample
+                                  (format=json for typed output)
 
             Semantic Search Tools (requires 'cupertino save', AST-indexed):
             • search_symbols           - Find Swift symbols by name + kind
             • search_property_wrappers - Find @PropertyWrapper usage in indexed sources
             • search_concurrency       - Find concurrency patterns (@MainActor, async, …)
             • search_conformances      - Find protocol conformances by protocol name
+            • search_generics          - Find generic-parameter constraints
+            • get_inheritance          - Walk class inheritance chains
+
+            The sample and semantic MCP tools default to markdown. Pass
+            format=json for typed, GUI-decodable payloads.
 
             The server runs indefinitely until terminated.
             """

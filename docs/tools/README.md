@@ -2,6 +2,8 @@
 
 Cupertino provides these MCP tools for AI agents to search and read documentation.
 
+For desktop/native clients, these MCP tools are the backend contract. UI layers consume typed tool responses or CupertinoDataKit-style backend interfaces; they must not read the SQLite databases directly.
+
 ## Available Tools
 
 ### Documentation Tools (requires `cupertino save`)
@@ -18,9 +20,9 @@ Cupertino provides these MCP tools for AI agents to search and read documentatio
 
 | Tool | Description |
 |------|-------------|
-| [list_samples](list_samples/) | List all indexed sample projects |
-| [read_sample](read_sample/) | Read sample project README |
-| [read_sample_file](read_sample_file/) | Read specific source file from a sample |
+| [list_samples](list_samples/) | List all indexed sample projects; `format=json` returns typed project metadata |
+| [read_sample](read_sample/) | Read sample project README, metadata, and file list; `format=json` returns typed project data |
+| [read_sample_file](read_sample_file/) | Read specific source file from a sample; `format=json` returns typed file content |
 
 (For sample-code search, use the unified `search` tool above with `source: samples`.)
 
@@ -34,6 +36,8 @@ These tools query SwiftSyntax-extracted symbol data for semantic code search.
 | [search_property_wrappers](search_property_wrappers/) | Find @State, @Observable, @MainActor usage patterns |
 | [search_concurrency](search_concurrency/) | Find async/await, actor, Sendable patterns |
 | [search_conformances](search_conformances/) | Find types by protocol conformance (View, Codable, etc.) |
+| [search_generics](search_generics/) | Find generic-parameter constraints across docs, samples, and packages |
+| [get_inheritance](get_inheritance/) | Walk class inheritance chains with title-bearing tree nodes |
 
 ## How Tools Work
 

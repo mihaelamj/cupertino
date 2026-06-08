@@ -12,7 +12,8 @@ Search Swift symbols by type and name pattern using AST extraction.
     "kind": "class",
     "is_async": true,
     "framework": "swiftui",
-    "limit": 20
+    "limit": 20,
+    "format": "json"
   }
 }
 ```
@@ -80,30 +81,38 @@ Maximum number of results to return.
 
 **Maximum:** 100
 
+### format (optional)
+
+Output format. Default: `markdown`; use `json` for typed GUI-decodable results.
+
 ## Response
 
-Returns markdown-formatted symbol search results:
+Default markdown returns grouped symbol results. `format=json` returns:
 
-```markdown
-# Symbol Search Results
-
-Found **12** symbols matching "Manager":
-
-## 1. NetworkManager (class)
-
-- **Document:** Updating an App to Use Swift Concurrency
-- **URI:** `samples://swift-updating_an_app...`
-- **Attributes:** @MainActor
-- **Line:** 42
-
----
-
-## 2. DataManager (actor)
-
-- **Document:** Building a Modern App
-- **URI:** `samples://building-modern-app...`
-- **Line:** 15
-...
+```json
+{
+  "filters": {
+    "query": "Manager",
+    "kind": "class",
+    "is_async": true,
+    "framework": "swiftui",
+    "limit": 20
+  },
+  "results": [
+    {
+      "doc_uri": "apple-docs://swiftui/example",
+      "doc_title": "Example",
+      "framework": "swiftui",
+      "symbol_name": "NetworkManager",
+      "symbol_kind": "class",
+      "signature": "class NetworkManager",
+      "attributes": "@MainActor",
+      "conformances": "Sendable",
+      "is_async": false,
+      "is_public": true
+    }
+  ]
+}
 ```
 
 ## Examples
