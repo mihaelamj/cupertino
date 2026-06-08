@@ -52,10 +52,10 @@ CupertinoDataKit (#1183, shipped; v0.2.0 for the document-browser refinements) g
 
 ## 3. Non-goals
 
-- **NG1**: Crawl / fetch / index-write capability on iOS. The iOS engine is read-only at runtime; the corpus is built on macOS/server and handed to the Cupertino backend as a prebuilt corpus bundle.
+- **NG1**: Crawl / fetch / index-write capability on iOS. The iOS engine is read-only at runtime; the corpus is built on macOS/server and handed to the Cupertino backend as an installed catalog handle.
 - **NG2**: Reimplementing or forking the engine for iOS. Desktop does not want a second impl.
 - **NG3**: Making a breaking read-contract change or retagging an existing CupertinoDataKit release.
-- **NG4**: Corpus delivery to the device (bundled vs downloadable DB). That is the app's `CatalogStore` concern.
+- **NG4**: Corpus delivery to the device. Mobile delivery is download-only, uses `Application Support/Catalogs` by default, and remains the app's `CatalogStore` concern.
 
 ---
 
@@ -334,7 +334,7 @@ No runtime behaviour change for existing cupertino users: the CLI / serve paths 
 
 - Complete the sample/package/full production parity slices after the v0.2.2 source-corpus reader.
 - Wire CupertinoDataEngine behind `cupertino-desktop`'s mobile backend using the v0.2.2 composed read facade.
-- Corpus delivery to device (bundled vs downloadable) as a separate app-side design.
+- Corpus delivery to device as a separate app-side `CatalogStore` design; mobile is download-only and never stores catalog data in `Documents`.
 - If the full engine proves not iOS-clean, keep the external facade as the stable read-only slice and grow the lean concrete implementation behind it later.
 
 ---

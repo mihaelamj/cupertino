@@ -116,8 +116,8 @@ flowchart LR
         UI["UIKit / SwiftUI / AppKit / Qt UI"]
 
         subgraph MobileDelivery["mobile / embedded corpus delivery"]
-            CatalogStore["CatalogStore<br/>download / locate corpus"]
-            CorpusBundle["Opaque Cupertino corpus bundle<br/>downloaded or bundled"]
+            CatalogStore["DownloadedCatalogStore<br/>install free catalog"]
+            CatalogInstall["Opaque catalog install<br/>Application Support/Catalogs"]
         end
     end
 
@@ -137,16 +137,15 @@ flowchart LR
     Backend --> MobileBackend
     MobileBackend --> CDE
     MobileBackend --> CatalogStore
-    CatalogStore --> CorpusBundle
-    CorpusBundle -.opaque corpus location.-> CDE
+    CatalogStore --> CatalogInstall
+    CatalogInstall -.opaque corpus location.-> CDE
       </pre>
     </div>
 
     <p class="note">
-      Next direction: wire desktop/mobile catalog state to provide opaque corpus handles
-      and add a live LocalEmbeddedBackend real-corpus smoke. Mobile apps can download or
-      bundle a Cupertino corpus, but only the Cupertino-owned engine opens the resources
-      inside it; app clients still never know that storage exists.
+      Next direction: wire mobile catalog state to a free downloadable catalog install
+      under Application Support/Catalogs. Only the Cupertino-owned engine opens the
+      resources inside it; app clients still never know that storage exists.
     </p>
   </main>
 </body>
