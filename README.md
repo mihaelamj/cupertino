@@ -168,7 +168,7 @@ Resumable from saved state, change-detection to skip unchanged pages, a respectf
 
 ## How it works
 
-Cupertino uses an **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** architecture: 49 strict-producer SPM targets across 63 source packages. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full breakdown and [`docs/package-import-contract.md`](docs/package-import-contract.md) for the strict per-target import rules.
+Cupertino uses an **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** architecture: 49 strict-producer SPM targets with explicit import contracts. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full breakdown and [`docs/package-import-contract.md`](docs/package-import-contract.md) for the strict per-target import rules.
 
 ```
 Foundation tier:   SharedConstants, LoggingModels, MCPCore, MCPSharedTools, Resources
@@ -204,7 +204,8 @@ Cupertino factors three reusable, independently-versioned Swift packages out of 
 |---|---|---|
 | **SwiftMCPCore** | [mihaelamj/SwiftMCPCore](https://github.com/mihaelamj/SwiftMCPCore) | Neutral MCP wire types (the JSON-RPC + protocol value types). Not cupertino-specific; a general MCP building block. |
 | **SwiftMCPClient** | [mihaelamj/SwiftMCPClient](https://github.com/mihaelamj/SwiftMCPClient) | Neutral, transport-injectable MCP client (`Client.MCP` seam, `MCPClient` actor, subprocess transport). Depends on SwiftMCPCore. |
-| **CupertinoDataKit** | [mihaelamj/CupertinoDataKit](https://github.com/mihaelamj/CupertinoDataKit) | Cupertino's public **read contract**: the documentation + sample-code read protocols (`Search.DocumentReading`, `Search.DocumentBrowsing`, `Search.SymbolReading`, `Search.Database`, `Sample.Index.Reader`) plus every value type they return. Protocols + value types only, zero implementation; cupertino's engine conforms server-side, and an embedded/in-process reader (e.g. an iOS app) conforms a different implementation. Cupertino's foundation tier re-exports it (`@_exported import CupertinoDataKit`). |
+| **CupertinoDataKit** | [mihaelamj/CupertinoDataKit](https://github.com/mihaelamj/CupertinoDataKit) | Cupertino's public **read contract**: documentation/source reading, document browsing, symbol/code-intelligence reading, and sample-code reading protocols plus every value type they return. Protocols + value types only, zero implementation; cupertino's engine conforms server-side, and an embedded/in-process reader (e.g. an iOS app) conforms a different implementation. Cupertino's foundation tier re-exports it (`@_exported import CupertinoDataKit`). |
+| **CupertinoDataEngine** | in this repo, extraction in progress | Cupertino's embedded **read-only backend facade** for app clients. Normal clients ask for source, sample, and package readers; corpus file layout, schema validation, and concrete SQLite wiring are Cupertino-internal composition details. UI code must not know the storage files exist. |
 
 ## Roadmap
 
@@ -234,7 +235,7 @@ Epic progress:
 flowchart TB
   subgraph Active["Active"]
     direction TB
-    E1242["#1242 critical path"]:::active ~~~ E1262["#1262 desktop backend surface (#1260 review)"]:::review ~~~ E1221["#1221 recrawl and resume"]:::active
+    E1242["#1242 critical path"]:::active ~~~ E1262["#1262 desktop backend surface (#1261 engine)"]:::active ~~~ E1221["#1221 recrawl and resume"]:::active
   end
 
   subgraph Partial["Partial"]

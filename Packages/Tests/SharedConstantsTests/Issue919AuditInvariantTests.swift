@@ -73,7 +73,7 @@ struct Issue919AuditInvariantTests {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
             .filter { $0.first.map { $0.isLetter || $0 == "_" } ?? false } // identifier-shaped
-        // Post-#1023: 49 producers strict. CoreJSONParserWebKit +
+        // Post-#1261: 49 producers strict. CoreJSONParserWebKit +
         // CoreSampleCodeWebKit (added by #904) are WebKit-companion
         // siblings that legitimately import their parent producer to
         // extend its types. They are off STRICT_PRODUCERS but on
@@ -94,7 +94,9 @@ struct Issue919AuditInvariantTests {
         //   dirs that short-circuited the audit) were replaced by the
         //   single real `Crawler` engine target (net -1: -2 stale, +1
         //   real). 49 -> 48.
-        #expect(entries.count == 48, "expected 48 strict producers, found \(entries.count): \(entries)")
+        // - #1261: CupertinoDataEngine net-add (+1), the read-only
+        //   embedded backend facade. 48 -> 49.
+        #expect(entries.count == 49, "expected 49 strict producers, found \(entries.count): \(entries)")
     }
 
     @Test("FORBIDDEN_MODULES list contains every concrete + the two *SQLite siblings")

@@ -12,11 +12,10 @@ extension URL {
     /// `<cwd>/~/foo.db` and a `hasPrefix("~")` check would miss it (which is
     /// exactly why this expansion silently no-opped under `swift test` / CI,
     /// where cwd differs from where the URL literal was written). We rebuild
-    /// from `homeDirectoryForCurrentUser` (a password-database lookup) using
-    /// whatever follows the tilde.
+    /// from the platform home-directory helper using whatever follows the tilde.
     public var expandingTildeInPath: URL {
         guard let tildeRange = path.range(of: "~") else { return self }
-        let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
+        let homeDirectory = Shared.Utils.homeDirectory
         let afterTilde = path[tildeRange.upperBound...].drop(while: { $0 == "/" })
         guard !afterTilde.isEmpty else { return homeDirectory }
         return homeDirectory.appendingPathComponent(String(afterTilde))

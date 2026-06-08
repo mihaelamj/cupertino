@@ -42,9 +42,15 @@ let baseProducts: [Product] = [
     .singleTargetLibrary("MCPCore"),
 ]
 
-// Cupertino products (macOS only - uses FileManager.homeDirectoryForCurrentUser)
+// Cupertino products exposed when the manifest is evaluated on macOS. Some
+// products cross-compile to other Apple platforms, but their target declarations
+// currently live in the Cupertino target block below.
 #if os(macOS)
 let macOSOnlyProducts: [Product] = [
+    // #1261: app-facing embedded backend facade. Concrete SQLite readers are
+    // injected from Cupertino-owned composition roots, so UI clients depend on
+    // this product instead of opening corpus resources directly.
+    .singleTargetLibrary("CupertinoDataEngine"),
     .singleTargetLibrary("Logging"),
     .singleTargetLibrary("LoggingModels"),
     .singleTargetLibrary("SharedConstants"),
@@ -135,11 +141,11 @@ let deps: [Package.Dependency] = [
     // SwiftMCPCore (resolves the same 0.1.0 pin, one node in the graph).
     .package(url: "https://github.com/mihaelamj/SwiftMCPClient.git", from: "0.1.0"),
     // CupertinoDataKit — cupertino's public read contract (protocols + value
-    // types, Foundation-only, zero-dep). v0.2.0 adds the document-browser
-    // refinements used by native UI clients. Owned + published by cupertino;
+    // types, Foundation-only, zero-dep). v0.3.0 adds the package-search reader
+    // slice used by native UI clients. Owned + published by cupertino;
     // SharedConstants re-exports it so every target sees the Search + Sample
     // namespaces with no per-target import edit.
-    .package(url: "https://github.com/mihaelamj/CupertinoDataKit.git", from: "0.2.0"),
+    .package(url: "https://github.com/mihaelamj/CupertinoDataKit.git", from: "0.3.0"),
 ]
 
 // -------------------------------------------------------------
@@ -658,6 +664,34 @@ let targets: [Target] = {
         name: "SQLiteSupport"
     )
 
+    // ---------- CupertinoDataEngine (#1261) ----------
+    // App-facing read-only backend facade. This target owns the embedded-reader
+    // boundary and depends only on model/factory seams plus SQLiteSupport for
+    // schema probes. Concrete SQLite readers are supplied by composition roots
+    // such as CupertinoComposition.
+    let cupertinoDataEngineTarget = Target.target(
+        name: "CupertinoDataEngine",
+        dependencies: [
+            "SampleIndexModels",
+            "SearchModels",
+            "SharedConstants",
+            "SQLiteSupport",
+        ]
+    )
+    let cupertinoDataEngineTestsTarget = Target.testTarget(
+        name: "CupertinoDataEngineTests",
+        dependencies: [
+            "CupertinoDataEngine",
+            "LoggingModels",
+            "SampleIndexModels",
+            "SampleIndexSQLite",
+            "SearchModels",
+            "SearchSQLite",
+            "SharedConstants",
+            "SQLiteSupport",
+        ]
+    )
+
     let searchTarget = Target.target(
         name: "SearchAPI",
         // Search is the orchestration layer over the SearchModels protocol
@@ -933,7 +967,12 @@ let targets: [Target] = {
     let cupertinoCompositionTarget = Target.target(
         name: "CupertinoComposition",
         dependencies: [
+            "CupertinoDataEngine",
+            "LoggingModels",
+            "SampleIndexModels",
+            "SampleIndexSQLite",
             "SearchModels",
+            "SearchSQLite",
             // #536 (lift 3): composition root wires the `CoreSampleCode`
             // producer's `Sample.Core.LiveGitHubFetcherFactory` into
             // `SampleCodeSource`. SampleCodeSource itself stays
@@ -1610,6 +1649,8 @@ let targets: [Target] = {
         searchSQLiteTarget,
         searchSQLiteTestsTarget,
         sqliteSupportTarget,
+        cupertinoDataEngineTarget,
+        cupertinoDataEngineTestsTarget,
         searchTarget,
         searchTestsTarget,
         searchStrategyHelpersTarget,
@@ -1707,6 +1748,10 @@ let package = Package(
     name: "Cupertino",
     platforms: [
         .macOS(.v13),
+        .iOS(.v16),
+        .tvOS(.v16),
+        .watchOS(.v9),
+        .visionOS(.v1),
     ],
     products: allProducts,
     dependencies: deps,
