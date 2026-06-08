@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cupertino Data Engine Wiring</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f5f7;
+      color: #1d1d1f;
+    }
+
+    body {
+      margin: 0;
+      padding: 32px;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      line-height: 1.2;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 24px;
+      max-width: 820px;
+      color: #55555a;
+      font-size: 15px;
+      line-height: 1.45;
+    }
+
+    .diagram {
+      overflow-x: auto;
+      padding: 24px;
+      background: #ffffff;
+      border: 1px solid #d8d8df;
+      border-radius: 8px;
+    }
+
+    .note {
+      margin-top: 18px;
+      font-size: 14px;
+      color: #67676d;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    window.addEventListener("DOMContentLoaded", function () {
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: "base",
+        securityLevel: "loose",
+        flowchart: {
+          curve: "basis",
+          htmlLabels: true
+        },
+        themeVariables: {
+          primaryColor: "#ffffff",
+          primaryTextColor: "#1d1d1f",
+          primaryBorderColor: "#86868b",
+          lineColor: "#515154",
+          secondaryColor: "#f5f5f7",
+          tertiaryColor: "#e8f2ff",
+          fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+        }
+      });
+    });
+  </script>
+</head>
+<body>
+  <main>
+    <h1>Cupertino Data Engine Wiring</h1>
+    <p>
+      Current state: CupertinoDataEngine is an external package. CupertinoComposition is
+      still inside the cupertino repo and adapts the current production readers into that
+      external facade. Desktop and mobile UI code should only see backend contracts or the
+      engine facade, never storage paths or concrete reader types.
+    </p>
+
+    <div class="diagram">
+      <pre class="mermaid">
+flowchart LR
+    subgraph CupertinoRepo["cupertino repo"]
+        CLI["CLI / MCP / serve"]
+        CC["CupertinoComposition<br/>in-tree composition root"]
+
+        subgraph ConcreteReaders["current concrete readers"]
+            SearchSQLite["SearchSQLite<br/>Search.Index"]
+            SampleSQLite["SampleIndexSQLite<br/>Sample.Index.Database"]
+            PackageQuery["SearchSQLite<br/>Search.PackageQuery"]
+        end
+    end
+
+    subgraph External["external package"]
+        CDE["CupertinoDataEngine<br/>facade + composite read engine"]
+        SourceReader["v0.2.2 source-corpus reader<br/>first extracted slice"]
+    end
+
+    subgraph Desktop["cupertino-desktop"]
+        Backend["Backend.Documentation"]
+        MobileBackend["MobileBackend.live(engine:)"]
+        UI["UIKit / SwiftUI / AppKit / Qt UI"]
+    end
+
+    CLI --> CC
+    CC --> CDE
+    CC --> SearchSQLite
+    CC --> SampleSQLite
+    CC --> PackageQuery
+
+    SearchSQLite -.factory injection.-> CDE
+    SampleSQLite -.factory injection.-> CDE
+    PackageQuery -.factory injection.-> CDE
+
+    CDE --> SourceReader
+
+    UI --> Backend
+    Backend --> MobileBackend
+    MobileBackend --> CDE
+      </pre>
+    </div>
+
+    <p class="note">
+      Target direction: move source, sample, and package read-storage into
+      CupertinoDataEngine so CupertinoComposition becomes thinner and app clients still
+      never know that storage exists.
+    </p>
+  </main>
+</body>
+</html>
