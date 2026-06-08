@@ -205,7 +205,7 @@ Cupertino factors reusable, independently-versioned Swift packages out of the mo
 | **SwiftMCPCore** | [mihaelamj/SwiftMCPCore](https://github.com/mihaelamj/SwiftMCPCore) | Neutral MCP wire types (the JSON-RPC + protocol value types). Not cupertino-specific; a general MCP building block. |
 | **SwiftMCPClient** | [mihaelamj/SwiftMCPClient](https://github.com/mihaelamj/SwiftMCPClient) | Neutral, transport-injectable MCP client (`Client.MCP` seam, `MCPClient` actor, subprocess transport). Depends on SwiftMCPCore. |
 | **CupertinoDataKit** | [mihaelamj/CupertinoDataKit](https://github.com/mihaelamj/CupertinoDataKit) | Cupertino's public **read contract**: documentation/source reading, document browsing, symbol/code-intelligence reading, and sample-code reading protocols plus every value type they return. Protocols + value types only, zero implementation; cupertino's engine conforms server-side, and an embedded/in-process reader (e.g. an iOS app) conforms a different implementation. Cupertino's foundation tier re-exports it (`@_exported import CupertinoDataKit`). |
-| **CupertinoDataEngine** | [mihaelamj/CupertinoDataEngine](https://github.com/mihaelamj/CupertinoDataEngine) | Cupertino's embedded **read-only backend facade** for app clients. Normal clients ask for source, sample, and package readers; corpus file layout, schema validation, and concrete SQLite wiring are Cupertino-internal composition details. UI code must not know the storage files exist. |
+| **CupertinoDataEngine** | [mihaelamj/CupertinoDataEngine](https://github.com/mihaelamj/CupertinoDataEngine) | Cupertino's embedded **read-only backend facade** for app clients. The engine itself conforms to the public read/browse contracts and fans out across configured source readers plus packages; corpus file layout, schema validation, and concrete SQLite wiring are Cupertino-internal composition details. UI code must not know the storage files exist. |
 
 ## Roadmap
 
@@ -235,7 +235,7 @@ Epic progress:
 flowchart TB
   subgraph Active["Active"]
     direction TB
-    E1242["#1242 critical path"]:::active ~~~ E1262["#1262 desktop backend surface (#1261 engine)"]:::active ~~~ E1221["#1221 recrawl and resume"]:::active
+    E1242["#1242 critical path"]:::active ~~~ E1262["#1262 desktop backend surface"]:::active ~~~ E1221["#1221 recrawl and resume"]:::active
   end
 
   subgraph Partial["Partial"]
@@ -250,7 +250,7 @@ flowchart TB
 
   subgraph Closed["Closed"]
     direction TB
-    E1227["#1227 distribution and discoverability"]:::done ~~~ E1226["#1226 docs and DocC"]:::done ~~~ E1225["#1225 diagnostics and logging"]:::done ~~~ E1224["#1224 CLI ergonomics"]:::done ~~~ E1220["#1220 v1.3.x bug sweep"]:::done ~~~ E943["#943 query batteries"]:::done ~~~ E919["#919 source and DB pluggability"]:::done ~~~ E893["#893 producer-backend split"]:::done ~~~ E673["#673 v1.2.x ironclad"]:::done ~~~ E503["#503 package-import purification"]:::done ~~~ E495["#495 GoF protocol DI"]:::done ~~~ E381["#381 dependency injection by default"]:::done ~~~ E251["#251 unify sources and databases"]:::done
+    E1261["#1261 data engine facade"]:::done ~~~ E1227["#1227 distribution and discoverability"]:::done ~~~ E1226["#1226 docs and DocC"]:::done ~~~ E1225["#1225 diagnostics and logging"]:::done ~~~ E1224["#1224 CLI ergonomics"]:::done ~~~ E1220["#1220 v1.3.x bug sweep"]:::done ~~~ E943["#943 query batteries"]:::done ~~~ E919["#919 source and DB pluggability"]:::done ~~~ E893["#893 producer-backend split"]:::done ~~~ E673["#673 v1.2.x ironclad"]:::done ~~~ E503["#503 package-import purification"]:::done ~~~ E495["#495 GoF protocol DI"]:::done ~~~ E381["#381 dependency injection by default"]:::done ~~~ E251["#251 unify sources and databases"]:::done
   end
 
   Active ~~~ Partial ~~~ Planned ~~~ Closed

@@ -18,6 +18,8 @@
 
 ### Changed
 
+- **refactor(#1261): adopt `CupertinoDataEngine` 0.2.0 for composed embedded search.** The external engine now conforms to `Search.Database` and `Search.DocumentBrowsing` itself, routing document reads by URI source, merging framework/document counts, fanning symbol/inheritance/availability/resource calls across configured source readers, and applying lightweight RRF fusion for unified search results including packages. The dependency minimum is bumped to `from: "0.2.0"` so desktop and mobile backends can inject one engine facade instead of wiring one source reader and silently losing cross-source search. Concrete SQLite readers are still built only by `CupertinoComposition`; UI clients still see contract protocols, not DB paths or storage objects.
+
 - **refactor(#1261): extract `CupertinoDataEngine` out of the monorepo.** `cupertino` now depends on `https://github.com/mihaelamj/CupertinoDataEngine.git` from `0.1.0`, with `CupertinoComposition` supplying the Cupertino-internal concrete factories that wrap `SearchSQLite` and `SampleIndexSQLite`. The old in-tree target and tests were removed, and the strict producer guard returns to 48 in-tree producers because the engine is no longer audited as a monorepo producer.
 
 - **refactor(contract): adopt `CupertinoDataKit` 0.3.0 for package search.** The package-search reader seam now lives in the external `CupertinoDataKit` contract as `Search.PackagesSearcher`, with its availability and Swift-tools filters alongside it. `SearchModels` re-exports the shared contract instead of carrying duplicate local definitions, so embedded/native clients can depend on the same package-search surface without importing Cupertino storage internals.
