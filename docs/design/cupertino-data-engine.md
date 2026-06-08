@@ -6,7 +6,7 @@
 | **Created** | 2026-05-30 |
 | **Last revised** | 2026-06-08 |
 | **Tracking issue** | #1261 |
-| **Implementation note** | #1261 has shipped the external `CupertinoDataEngine` backend facade at v0.2.0, but the issue is not complete. The engine conforms to the public read/browse contracts and fans out across configured source readers plus packages. Concrete SQLite readers still come from Cupertino-internal SPI handled by `CupertinoComposition`, so external app clients cannot yet construct a real DB-backed engine by public API alone. The remaining #1261 work is the §13 extraction of `Search.Connection` plus the read/write type split so the concrete read-storage closure lives in the external engine package. |
+| **Implementation note** | #1261 has shipped the external `CupertinoDataEngine` backend facade at v0.2.1, but the issue is not complete. The engine conforms to the public read/browse contracts and fans out across configured source readers plus packages. Concrete SQLite readers still come from Cupertino-internal SPI handled by `CupertinoComposition`, so external app clients cannot yet construct a real DB-backed engine by public API alone. The remaining #1261 work is the §13 extraction of `Search.Connection` plus the read/write type split so the concrete read-storage closure lives in the external engine package. |
 | **Companion docs** | [`per-source-db-split.md`](per-source-db-split.md), [`536-standalone-portability-and-linux-port.md`](536-standalone-portability-and-linux-port.md) |
 
 ---
@@ -15,7 +15,7 @@
 
 Extract cupertino's real read engine into a new cupertino-owned public package, CupertinoDataEngine, that builds for iOS and exposes source, sample, and package reader capabilities. cupertino-desktop's iOS variants cannot spawn `cupertino serve` (no subprocess), so the iOS app must embed a real read engine in-process; this package is that engine, consumed by version tag like the other owned packages. The public contract must never expose storage files, database handles, or SQLite vocabulary to app UI code. The headline decision: the engine ships the read path, while the write/index/crawl machinery that lives in the same concrete target today is excluded or kept behind Cupertino-internal composition seams so the iOS product carries no crawl code. This is a larger, riskier carve-out than CupertinoDataKit (pure value types) because the current concrete reader implementation interleaves read and write across many files.
 
-2026-06-08 implementation slice: `CupertinoDataEngine` now exists as an app-facing backend boundary in an external package consumed by this repo through a SwiftPM URL dependency. v0.2.0 makes the engine itself the composed `Search.Database` / `Search.DocumentBrowsing` facade: it routes reads by URI source, fans out source-level queries, includes package search, and fuses unified results without exposing storage. It is not yet the final standalone lean package described above because `CupertinoComposition` still supplies factories that wrap the existing concrete readers. The engine package owns the public facade plus schema probing; the remaining extraction must move the concrete read-storage closure out of the monorepo so embedded apps can open real corpora without SPI.
+2026-06-08 implementation slice: `CupertinoDataEngine` now exists as an app-facing backend boundary in an external package consumed by this repo through a SwiftPM URL dependency. v0.2.0 made the engine itself the composed `Search.Database` / `Search.DocumentBrowsing` facade: it routes reads by URI source, fans out source-level queries, includes package search, and fuses unified results without exposing storage. v0.2.1 adds a public empty-facade initializer so downstream tests and previews do not import SPI just to exercise composition. It is not yet the final standalone lean package described above because `CupertinoComposition` still supplies factories that wrap the existing concrete readers. The engine package owns the public facade plus schema probing; the remaining extraction must move the concrete read-storage closure out of the monorepo so embedded apps can open real corpora without SPI.
 
 ---
 
@@ -164,7 +164,7 @@ Either way the `@_exported` re-export pattern from #1183 keeps every existing co
 
 ### 6.5 Ownership / distribution
 
-Public repo `mihaelamj/CupertinoDataEngine`, cupertino-owned; v0.1.0 is the first facade tag and v0.2.0 adds the composed fan-out read surface. Consumers pin the tag range, and the monorepo consumes the URL dependency using the same #1183 playbook as CupertinoDataKit.
+Public repo `mihaelamj/CupertinoDataEngine`, cupertino-owned; v0.1.0 is the first facade tag, v0.2.0 adds the composed fan-out read surface, and v0.2.1 adds a public empty-facade initializer for downstream composition tests. Consumers pin the tag range, and the monorepo consumes the URL dependency using the same #1183 playbook as CupertinoDataKit.
 
 ### 6.6 Decoupling via the GoF Bridge pattern (decided)
 
@@ -224,7 +224,7 @@ First-principles consequence the engine design must own:
 - Shape = GoF Composite (1994, p.163): "compose objects into tree structures and let clients treat individual objects and compositions uniformly." The cross-source reader is the composite; each per-DB `Search.Database` is a leaf; a client calls one search surface and the composite fans out to its leaves. This is exactly the leaf/composite uniformity Composite exists for, and it composes cleanly with the §6.6 Bridge (each leaf is a Bridge read abstraction over its own `Search.Connection`).
 - Trap (verified, do NOT reuse the existing type): the in-repo `Services.UnifiedSearcher.searchAll(...)` returns `Services.Formatter.Unified.Input` (a PRESENTATION type) and does not itself rank-fuse; it gathers per-source arrays for the formatter, and carries an 11-arg signature coupled to cupertino's source registry (`availableSources: [String]`, `appleImports`, etc.). Shipping that as the engine's cross-source API would (a) drag `Services.Formatter` presentation types into the contract, violating CupertinoDataKit's data-only purity, and (b) export cupertino's registry coupling to every consumer.
 - Therefore the engine implements the composite directly on the existing `Search.Database` / `Search.DocumentBrowsing` contracts, returning contract types only. The constructor takes the set of `Search.Database` leaves the caller opened through Cupertino-internal factories. cupertino's existing `Services.UnifiedSearcher` stays in the monorepo as the presentation-coupled wrapper over read results. No presentation type crosses into the engine contract.
-- Scope note: cross-source RRF fusion is now shipped in `CupertinoDataEngine` v0.2.0 as a `Search.Result`-level ranking step over merged leaf results. It depends only on rank/score already on `Search.Result` (contract type), so it stays iOS-portable.
+- Scope note: cross-source RRF fusion shipped in `CupertinoDataEngine` v0.2.0 as a `Search.Result`-level ranking step over merged leaf results. It depends only on rank/score already on `Search.Result` (contract type), so it stays iOS-portable.
 
 ---
 
@@ -332,7 +332,7 @@ No runtime behaviour change for existing cupertino users: the CLI / serve paths 
 
 ## 17. Future Work
 
-- Wire CupertinoDataEngine behind `cupertino-desktop`'s mobile backend using the v0.2.0 composed read facade.
+- Wire CupertinoDataEngine behind `cupertino-desktop`'s mobile backend using the v0.2.1 composed read facade.
 - Corpus delivery to device (bundled vs downloadable) as a separate app-side design.
 - If the full engine proves not iOS-clean, keep the external facade as the stable read-only slice and grow the lean concrete implementation behind it later.
 

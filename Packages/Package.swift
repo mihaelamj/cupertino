@@ -144,8 +144,9 @@ let deps: [Package.Dependency] = [
     .package(url: "https://github.com/mihaelamj/CupertinoDataKit.git", from: "0.3.0"),
     // External embedded engine facade. Cupertino owns the concrete storage
     // factories and injects them from CupertinoComposition. v0.2.0 adds the
-    // composed Search.Database facade that fans out across configured corpora.
-    .package(url: "https://github.com/mihaelamj/CupertinoDataEngine.git", from: "0.2.0"),
+    // composed Search.Database facade that fans out across configured corpora;
+    // v0.2.1 adds a public empty facade initializer for downstream previews/tests.
+    .package(url: "https://github.com/mihaelamj/CupertinoDataEngine.git", from: "0.2.1"),
 ]
 
 // -------------------------------------------------------------
