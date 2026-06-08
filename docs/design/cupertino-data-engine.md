@@ -2,11 +2,11 @@
 
 | Field | Value |
 |---|---|
-| **Status** | accepted, deferred to a future release |
+| **Status** | accepted, first implementation slice in progress |
 | **Created** | 2026-05-30 |
 | **Last revised** | 2026-06-08 |
-| **Tracking issue** | none yet (follow-on to CupertinoDataKit #1183) |
-| **Deferral** | Design accepted (Q3/Q4/Q5/Q6 resolved; GoF Bridge + Composite). Implementation (the §13 phased extraction of `Search.Connection` + the read/write type split) is NOT scheduled for the current release; it lands in a later release. The contract is already consumed today: cupertino types against `Search.Database` plus optional document-browser refinements from CupertinoDataKit v0.2.0 (`Search.Index` conforms the live read surfaces), so no consumer changes when the iOS engine ships, only a second implementation of the same protocols is added. |
+| **Tracking issue** | #1261 |
+| **Implementation note** | The first #1261 slice adds an in-repo `CupertinoDataEngine` backend facade that validates configured DB files, asserts schema versions, opens readers only through injected backend factories, and returns protocol-typed interfaces. Concrete SQLite wiring lives in `CupertinoComposition`; UI code sees only the backend facade. The larger §13 extraction of `Search.Connection` plus the read/write type split remains the next refactor step toward a standalone lean engine package. |
 | **Companion docs** | [`per-source-db-split.md`](per-source-db-split.md), [`536-standalone-portability-and-linux-port.md`](536-standalone-portability-and-linux-port.md) |
 
 ---
@@ -14,6 +14,8 @@
 ## TL;DR
 
 Extract cupertino's real FTS-SQLite read engine (`Search.Index`, today in the `SearchSQLite` target) into a new cupertino-owned public package, CupertinoDataEngine, that builds for iOS and conforms to CupertinoDataKit's `Search.Database` contract. cupertino-desktop's iOS variants cannot spawn `cupertino serve` (no subprocess), so the iOS app must embed a real read engine in-process; this package is that engine, consumed by version tag like the other owned packages. The headline decision: the engine ships the read path, while the write/index/crawl machinery that lives in the same `SearchSQLite` target is excluded or seamed off so the iOS product carries no crawl code. This is a larger, riskier carve-out than CupertinoDataKit (pure value types) because `Search.Index` interleaves read and write across 33 files.
+
+2026-06-08 implementation slice: `CupertinoDataEngine` now exists as an app-facing backend boundary in this repo. It is not yet the final standalone lean package described above because `CupertinoComposition` still supplies factories that wrap the existing concrete readers, but the engine target itself imports only foundation/model seams plus SQLite schema probing and enforces the product rule that UI code consumes backend interfaces instead of opening SQLite directly.
 
 ---
 
@@ -71,7 +73,7 @@ CupertinoDataKit (#1183, shipped; v0.2.0 for the document-browser refinements) g
 
 | ID | Requirement | Target | Current state |
 |---|---|---|---|
-| N1 | iOS-buildable | engine + closure compile for an iOS destination | imports verified iOS-clean (no WebKit/AppKit/FoundationNetworking/Cocoa); concurrency/platform axis verified clean (no `@MainActor`, no `#if os`, no `canImport`, no `os_log`/`ProcessInfo`/`NSHomeDirectory`, no `@unchecked Sendable`; logging via the injected `Logging.Recording` seam); iOS build NOT yet run |
+| N1 | iOS-buildable | engine + closure compile for an iOS destination | first #1261 facade slice builds for `arm64-apple-ios16.0-simulator` with SwiftPM `--sdk`; closure is not yet lean because current `SearchModels` still pulls SwiftSyntax/ASTIndexer, so the §6 Bridge/type split remains required |
 | N2 | No crawl symbols in product | 0 fetch/index-write symbols in the engine target | not yet measured (write files still in SearchSQLite) |
 | N3 | Monorepo stays green | 0 build errors, full test suite passing | green at develop f74202a9 before this work |
 
@@ -95,7 +97,9 @@ cupertino monorepo (SearchSQLite successor) ----> CLI / serve / indexers
 cupertino-desktop iOS app (MobileBackend.live(dataSource:))
 ```
 
-CupertinoDataEngine holds the `Search.Index` actor and the read-required helpers, depends on CupertinoDataKit (the contract) plus the minimal foundation-tier seams the read path needs, and links `SQLite3`. The monorepo depends on the engine and re-exports it, retaining only the write/index concretes. The iOS app embeds the engine behind `MobileBackend.live(dataSource:)`; only that Cupertino backend implementation opens a prebuilt DB, while UI code talks to the backend interface.
+Target-state design: CupertinoDataEngine holds the `Search.Index` actor and the read-required helpers, depends on CupertinoDataKit (the contract) plus the minimal foundation-tier seams the read path needs, and links `SQLite3`. The monorepo depends on the engine and re-exports it, retaining only the write/index concretes. The iOS app embeds the engine behind `MobileBackend.live(dataSource:)`; only that Cupertino backend implementation opens a prebuilt DB, while UI code talks to the backend interface.
+
+First implementation slice: CupertinoDataEngine is a strict backend facade, not yet the final extracted reader. It validates file presence and schema versions, then opens readers through injected factories. `CupertinoComposition` supplies the production factories that import `SearchSQLite` / `SampleIndexSQLite`; app UI packages should depend on the facade or app-specific backend protocols, not on those concrete DB targets.
 
 ### 5.1 Single-DB vs multi-source fan-out (verified, scope-critical)
 

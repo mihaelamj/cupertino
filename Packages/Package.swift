@@ -40,6 +40,10 @@ let allSourceProducts: [Product] = allSourceTargetNames.map { .singleTargetLibra
 let baseProducts: [Product] = [
     // MCP Framework (cross-platform, consolidated from MCPShared + MCPTransport + MCPServer)
     .singleTargetLibrary("MCPCore"),
+    // #1261: app-facing embedded backend facade. Concrete SQLite readers are
+    // injected from Cupertino-owned composition roots, so UI clients depend on
+    // this product instead of opening DBs directly.
+    .singleTargetLibrary("CupertinoDataEngine"),
 ]
 
 // Cupertino products (macOS only - uses FileManager.homeDirectoryForCurrentUser)
@@ -658,6 +662,34 @@ let targets: [Target] = {
         name: "SQLiteSupport"
     )
 
+    // ---------- CupertinoDataEngine (#1261) ----------
+    // App-facing read-only backend facade. This target owns the embedded-reader
+    // boundary and depends only on model/factory seams plus SQLiteSupport for
+    // schema probes. Concrete SQLite readers are supplied by composition roots
+    // such as CupertinoComposition.
+    let cupertinoDataEngineTarget = Target.target(
+        name: "CupertinoDataEngine",
+        dependencies: [
+            "SampleIndexModels",
+            "SearchModels",
+            "SharedConstants",
+            "SQLiteSupport",
+        ]
+    )
+    let cupertinoDataEngineTestsTarget = Target.testTarget(
+        name: "CupertinoDataEngineTests",
+        dependencies: [
+            "CupertinoDataEngine",
+            "LoggingModels",
+            "SampleIndexModels",
+            "SampleIndexSQLite",
+            "SearchModels",
+            "SearchSQLite",
+            "SharedConstants",
+            "SQLiteSupport",
+        ]
+    )
+
     let searchTarget = Target.target(
         name: "SearchAPI",
         // Search is the orchestration layer over the SearchModels protocol
@@ -933,7 +965,12 @@ let targets: [Target] = {
     let cupertinoCompositionTarget = Target.target(
         name: "CupertinoComposition",
         dependencies: [
+            "CupertinoDataEngine",
+            "LoggingModels",
+            "SampleIndexModels",
+            "SampleIndexSQLite",
             "SearchModels",
+            "SearchSQLite",
             // #536 (lift 3): composition root wires the `CoreSampleCode`
             // producer's `Sample.Core.LiveGitHubFetcherFactory` into
             // `SampleCodeSource`. SampleCodeSource itself stays
@@ -1610,6 +1647,8 @@ let targets: [Target] = {
         searchSQLiteTarget,
         searchSQLiteTestsTarget,
         sqliteSupportTarget,
+        cupertinoDataEngineTarget,
+        cupertinoDataEngineTestsTarget,
         searchTarget,
         searchTestsTarget,
         searchStrategyHelpersTarget,
@@ -1707,6 +1746,10 @@ let package = Package(
     name: "Cupertino",
     platforms: [
         .macOS(.v13),
+        .iOS(.v16),
+        .tvOS(.v16),
+        .watchOS(.v9),
+        .visionOS(.v1),
     ],
     products: allProducts,
     dependencies: deps,

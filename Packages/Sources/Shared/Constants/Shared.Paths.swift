@@ -65,7 +65,7 @@ extension Shared {
                 directoryName = Shared.Constants.devBaseDirectoryName
             }
             self.init(
-                baseDirectory: FileManager.default.homeDirectoryForCurrentUser
+                baseDirectory: Shared.Utils.homeDirectory
                     .appendingPathComponent(directoryName)
             )
         }
