@@ -2,6 +2,10 @@
 
 ### Added
 
+- **feat(#1210): add document child listing for desktop outline browsers.** New CLI command `cupertino list-children <uri> [--source apple-docs] [--format json|text|markdown]` and MCP tool `list_children` return direct child nodes (`source`, `parentURI`, `children[{uri,title,kind,hasChildren}]`) from existing apple-docs rawMarkdown topic sections. Non-document topic headings are represented as `topic-group` fragment URIs, so desktop clients can drill from `apple-docs://swiftui` to `apple-docs://swiftui#Essentials` and then to readable document URIs.
+
+- **feat(#1208): add framework document listing for desktop clients.** New CLI command `cupertino list-documents --framework <name> [--source apple-docs] [--offset 0] [--limit 100] [--format json|text|markdown]` and MCP tool `list_documents` return a paged JSON contract (`source`, `framework`, `offset`, `limit`, `total`, `documents[{uri,title,kind}]`) from the existing apple-docs database. The source capability matrix gains `list-documents`, docs/help/tool descriptions are wired through `docs/commands/list-documents/` and `docs/tools/list_documents/`, and focused SQLite/CLI/MCP tests pin pagination and output shape for cupertino-desktop.
+
 - **docs: README links the project's X account.** Added an X badge ([@cupertinomcp](https://x.com/cupertinomcp)) to the badge row alongside the existing PulseMCP and LobeHub listings, plus a plain-text "Follow updates on X" line under the badges.
 
 - **docs: declutter the README top.** Removed the two-paragraph release-notes blockquote from above the project description (it pushed the badges and tagline below the fold). The first thing a visitor now sees is the tagline, description, badges, and demo, followed by a single one-line `Latest:` pointer. The full v1.3.0 release detail moved down into a refreshed `## Project Status` section (which was stale at v1.2.0), with prior-release history collapsed to a one-line summary pointing at `CHANGELOG.md`.
@@ -9,6 +13,10 @@
 - **docs: split the 425-line Quick Start, extracting per-client setup into `docs/`.** The README's Quick Start was half the file, mostly 13 per-client MCP setup guides. The full per-client reference moved to a new `docs/mcp-clients.md` (Claude Desktop, Claude Code, OpenAI Codex, Cursor, VS Code, GitHub Copilot for Xcode, Zed, Windsurf, opencode), and the Agent-Skill instructions moved to a new `docs/agent-skill.md`. The README keeps Claude Desktop + Claude Code inline as the canonical examples and links out for the rest; both new docs are listed in the README `## Documentation` section, and the Installation note now points at `docs/mcp-clients.md` instead of "the sections below". README dropped from ~873 to ~667 lines.
 
 ### Changed
+
+- **chore(hooks): make `pre-commit run --all-files` usable again.** The SwiftLint pre-commit hook now uses the root repository config explicitly with forced excludes, avoiding accidental nested package-config drift, and the SwiftFormat all-files drift has been applied so the full hook suite can pass cleanly.
+
+- **fix(#1210): harden `list-children` tree metadata for desktop clients.** Topic-group `hasChildren` now reflects readable DB-backed child rows instead of raw markdown links that may point at missing documents, and fragment calls return the matched canonical topic-group URI in `parentURI` so tree cache keys and breadcrumbs stay stable across case-normalized input. Added regression coverage for both cases and refreshed stale `list-documents` example URIs.
 
 - **fix(#1041): `list-frameworks` clarifies that its document count is framework-scoped.** Post per-source-DB split, the command sums only the sources that declare `.listFrameworks` (apple-docs + apple-archive); HIG / swift-evolution / swift-org / swift-book are excluded because their framework column is empty. The text and markdown formatters now print the contributing source IDs under the total (e.g. `(counts cover the framework-scoped sources: apple-docs + apple-archive)`), derived from the registry fan-out rather than hardcoded, so a new framework-scoped source appears in the caveat with zero formatter edits. `docs/commands/list-frameworks/README.md` example numbers refreshed to the v1.3.0 bundle ground truth (412 frameworks, 351,873 documents).
 

@@ -5,6 +5,7 @@ import SharedConstants
 import Testing
 
 // MARK: - #595 — MCP resources/list cursor strictness
+
 //
 // Pre-fix, `MCP.Support.DocsResourceProvider.decodeOffset(from:)`
 // silently returned 0 for any malformed cursor — bad base64, wrong
@@ -54,13 +55,13 @@ struct DocsResourceProviderCursorTests {
     @Test(
         "Malformed cursors throw invalidArgument instead of silently returning 0",
         arguments: [
-            "INVALID_CURSOR_xyz",            // not valid base64
-            "garbage123!@#",                  // not valid base64 (special chars)
-            "bm90LWFuLW9mZnNldA==",           // valid base64 but decodes to "not-an-offset"
-            "Zm9vOjEyMw==",                   // valid base64, decodes to "foo:123" — wrong prefix
-            "b2Zmc2V0Og==",                   // valid base64, decodes to "offset:" — no integer
-            "b2Zmc2V0OmFiYw==",               // valid base64, decodes to "offset:abc" — non-integer
-            "b2Zmc2V0Oi0xMA==",               // valid base64, decodes to "offset:-10" — negative
+            "INVALID_CURSOR_xyz", // not valid base64
+            "garbage123!@#", // not valid base64 (special chars)
+            "bm90LWFuLW9mZnNldA==", // valid base64 but decodes to "not-an-offset"
+            "Zm9vOjEyMw==", // valid base64, decodes to "foo:123" — wrong prefix
+            "b2Zmc2V0Og==", // valid base64, decodes to "offset:" — no integer
+            "b2Zmc2V0OmFiYw==", // valid base64, decodes to "offset:abc" — non-integer
+            "b2Zmc2V0Oi0xMA==", // valid base64, decodes to "offset:-10" — negative
         ]
     )
     func malformedCursorsThrow(cursor: String) {

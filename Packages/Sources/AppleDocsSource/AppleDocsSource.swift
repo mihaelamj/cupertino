@@ -49,7 +49,7 @@ public struct AppleDocsSource: Search.SourceProvider {
     public var capabilities: Search.Capabilities {
         .init(
             searchers: [.text, .symbols, .propertyWrappers, .concurrency, .conformances, .generics],
-            operations: [.readByURI, .listFrameworks, .resolveRefs],
+            operations: [.readByURI, .listFrameworks, .listDocuments, .listChildren, .resolveRefs],
             metadata: [
                 .hasMinPlatformVersion: true,
                 .hasGenerics: true,

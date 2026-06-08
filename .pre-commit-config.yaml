@@ -3,7 +3,7 @@ repos:
     rev: 0.57.0
     hooks:
       - id: swiftlint
-        args: [--quiet]
+        args: [--quiet, --config, .swiftlint.yml, --force-exclude]
 
   - repo: https://github.com/nicklockwood/SwiftFormat
     rev: 0.58.5

@@ -162,7 +162,7 @@ struct MCPIntegrationTests {
 
         // Cupertino exposes tools based on available databases:
         // - Without search DB: 4 tools (search, list_samples, read_sample, read_sample_file)
-        // - With search DB: 10 tools (adds read_document, list_frameworks, search_symbols, etc.)
+        // - With search DB: 12 tools (adds read_document, list_frameworks, list_documents, list_children, search_symbols, etc.)
         #expect(toolsResult.tools.count >= 4, "Should have at least sample code tools")
         #expect(toolsResult.tools.contains { $0.name == "search" })
         #expect(toolsResult.tools.contains { $0.name == "list_samples" })

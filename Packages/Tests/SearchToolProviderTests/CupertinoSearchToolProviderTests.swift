@@ -177,10 +177,12 @@ struct CompositeToolProviderInitTests {
         let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
         let result = try await provider.listTools(cursor: nil)
 
-        // Should have search, list_frameworks, read_document
-        #expect(result.tools.count >= 3)
+        // Should have search, list_frameworks, list_documents, list_children, read_document
+        #expect(result.tools.count >= 4)
         #expect(result.tools.contains { $0.name == Shared.Constants.Search.toolSearch })
         #expect(result.tools.contains { $0.name == Shared.Constants.Search.toolListFrameworks })
+        #expect(result.tools.contains { $0.name == Shared.Constants.Search.toolListDocuments })
+        #expect(result.tools.contains { $0.name == Shared.Constants.Search.toolListChildren })
         #expect(result.tools.contains { $0.name == Shared.Constants.Search.toolReadDocument })
 
         await index.disconnect()

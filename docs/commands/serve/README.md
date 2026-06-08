@@ -264,6 +264,24 @@ List all indexed frameworks with document counts.
 
 **Parameters:** None
 
+### list_documents
+
+List paged documents in a framework.
+
+**Parameters:**
+- `framework` (required): Framework identifier, import name, or display name
+- `source` (optional): Source to browse. Default: `apple-docs`
+- `offset` (optional): Zero-based result offset. Default: `0`
+- `limit` (optional): Max documents (default: `100`, max: `500`)
+
+### list_children
+
+List direct children of a document or topic group.
+
+**Parameters:**
+- `uri` (required): Apple documentation URI or topic-group fragment URI
+- `source` (optional): Source to browse. Default: `apple-docs`
+
 ### read_document
 
 Read a document by URI. Returns the full document content in the requested format.

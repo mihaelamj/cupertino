@@ -38,6 +38,8 @@ struct Issue1158CommandOptionParityTests {
         CLIImpl.Command.Search.self,
         CLIImpl.Command.Read.self,
         CLIImpl.Command.ListFrameworks.self,
+        CLIImpl.Command.ListDocuments.self,
+        CLIImpl.Command.ListChildren.self,
         CLIImpl.Command.ListSamples.self,
         CLIImpl.Command.ReadSample.self,
         CLIImpl.Command.ReadSampleFile.self,
@@ -314,6 +316,38 @@ struct Issue1158CommandOptionParityTests {
         let cmd = try CLIImpl.Command.ListFrameworks.parse([
             "--format", "json",
         ])
+        #expect(cmd.format == .json)
+    }
+
+    // MARK: - list-documents
+
+    @Test("list-documents: every option parses + binds")
+    func listDocumentsOptions() throws {
+        let cmd = try CLIImpl.Command.ListDocuments.parse([
+            "--framework", "swiftui",
+            "--source", "apple-docs",
+            "--offset", "25",
+            "--limit", "125",
+            "--format", "json",
+        ])
+        #expect(cmd.framework == "swiftui")
+        #expect(cmd.source == "apple-docs")
+        #expect(cmd.offset == 25)
+        #expect(cmd.limit == 125)
+        #expect(cmd.format == .json)
+    }
+
+    // MARK: - list-children
+
+    @Test("list-children: every option parses + binds")
+    func listChildrenOptions() throws {
+        let cmd = try CLIImpl.Command.ListChildren.parse([
+            "apple-docs://swiftui#Essentials",
+            "--source", "apple-docs",
+            "--format", "json",
+        ])
+        #expect(cmd.uri == "apple-docs://swiftui#Essentials")
+        #expect(cmd.source == "apple-docs")
         #expect(cmd.format == .json)
     }
 

@@ -144,7 +144,7 @@ struct Issue932IndexerInjectionContractTests {
     private static func repoRoot() -> URL {
         let cwd = FileManager.default.currentDirectoryPath
         var url = URL(fileURLWithPath: cwd)
-        for _ in 0 ..< 4 {
+        for _ in 0..<4 {
             if FileManager.default.fileExists(atPath: url.appendingPathComponent("scripts").path) {
                 return url
             }
@@ -189,10 +189,10 @@ struct Issue932IndexItemDispatchTests {
         // before assertion. A tight retry loop on the actor's state keeps
         // the test deterministic without a fragile sleep.
         var preprocessCount = 0
-        for _ in 0 ..< 50 {
+        for _ in 0..<50 {
             preprocessCount = await fake.preprocessCalls.count
             if preprocessCount >= 1 { break }
-            try? await Task.sleep(nanoseconds: 10_000_000)
+            try? await Task.sleep(nanoseconds: 10000000)
         }
         #expect(preprocessCount >= 1, "preprocess should fire when indexItem dispatches to the injected indexer")
         let preprocessUris = await fake.preprocessCalls
@@ -233,7 +233,7 @@ struct Issue932IndexItemDispatchTests {
 
         // The WWDC fake must NOT have received a preprocess call: the
         // injected dispatch must NOT route across source-ids.
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        try? await Task.sleep(nanoseconds: 50000000)
         let preprocessCalls = await fake.preprocessCalls
         #expect(preprocessCalls.isEmpty, "WWDC fake should not have received preprocess for apple-docs source")
     }

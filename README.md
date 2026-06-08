@@ -155,7 +155,7 @@ Claude Desktop, OpenAI Codex, Cursor, VS Code (Copilot), GitHub Copilot for Xcod
 
 - **Resources**: direct page access via `apple-docs://{framework}/{page}`, `swift-evolution://{proposal-id}`, `hig://{category}/{page}`
 - **`search`**: unified full-text search across every indexed source. Parameters: `query` (required), `source`, `framework`, `language`, `include_archive`, `limit`, and the `min_ios`/`min_macos`/`min_tvos`/`min_watchos`/`min_visionos`/`min_swift` platform filters (AND-combined; malformed values are rejected at the boundary with a clear error frame). Replaces the pre-[#239](https://github.com/mihaelamj/cupertino/issues/239) per-source tools.
-- **`list_frameworks`**, **`read_document`** (`format`: `json` for agents, `markdown` for humans)
+- **`list_frameworks`**, **`list_documents`**, **`list_children`**, **`read_document`** (`format`: `json` for agents, `markdown` for humans)
 - **Sample-code tools**: `list_samples`, `read_sample`, `read_sample_file`
 - **AST-powered symbol tools** ([#81](https://github.com/mihaelamj/cupertino/issues/81)): `search_symbols`, `search_property_wrappers`, `search_concurrency`, `search_conformances`, `search_generics`, `get_inheritance`
 
@@ -209,53 +209,55 @@ Cupertino factors three reusable, independently-versioned Swift packages out of 
 
 The canonical living roadmap is [#183](https://github.com/mihaelamj/cupertino/issues/183); the diagram below tracks epic progress at a glance.
 
-Status colors:
+Status legend:
 
 ```mermaid
-flowchart TB
-  classDef done    fill:#34C759,stroke:#248A3D,color:#ffffff;
-  classDef active  fill:#0A84FF,stroke:#0060DF,color:#ffffff;
-  classDef next    fill:#FF9F0A,stroke:#C77700,color:#000000;
-  classDef partial fill:#FFD60A,stroke:#B59B00,color:#000000;
-  classDef todo    fill:#8E8E93,stroke:#636366,color:#ffffff;
-
-  subgraph Legend["Status colors"]
-    direction TB
-    L1["Shipped"]:::done ~~~ L2["In progress"]:::active ~~~ L3["Next up"]:::next ~~~ L4["Partial or blocked"]:::partial ~~~ L5["Planned"]:::todo
-  end
+flowchart LR
+  done["Done"]:::done
+  review["Review"]:::review
+  active["Active"]:::active
+  next["Next"]:::next
+  partial["Partial"]:::partial
+  todo["Todo"]:::todo
+  classDef done    fill:#34C759,color:#FFFFFF
+  classDef review  fill:#30B0C7,color:#FFFFFF
+  classDef active  fill:#007AFF,color:#FFFFFF
+  classDef next    fill:#5856D6,color:#FFFFFF
+  classDef partial fill:#FF9500,color:#FFFFFF
+  classDef todo    fill:#8E8E93,color:#FFFFFF
 ```
 
 Epic progress:
 
 ```mermaid
 flowchart TB
-  classDef done    fill:#34C759,stroke:#248A3D,color:#ffffff;
-  classDef active  fill:#0A84FF,stroke:#0060DF,color:#ffffff;
-  classDef next    fill:#FF9F0A,stroke:#C77700,color:#000000;
-  classDef partial fill:#FFD60A,stroke:#B59B00,color:#000000;
-  classDef todo    fill:#8E8E93,stroke:#636366,color:#ffffff;
-
-  subgraph InFlight["Epics in flight"]
+  subgraph Active["Active"]
     direction TB
-    E1221["#1221 recrawl (--resume in progress)"]:::active ~~~ E1036["#1036 per-source DB split"]:::partial ~~~ E191["#191 search quality + FTS"]:::partial
+    E1242["#1242 critical path"]:::active ~~~ E1262["#1262 desktop backend surface (#1208 active)"]:::active ~~~ E1221["#1221 recrawl and resume"]:::active
   end
 
-  subgraph Next["Epics next"]
+  subgraph Partial["Partial"]
     direction TB
-    E769["#769 layer separation"]:::next
+    E1036["#1036 per-source DB split (#1061 left)"]:::partial ~~~ E191["#191 search quality and FTS"]:::partial
   end
 
-  subgraph Planned["Epics planned"]
+  subgraph Planned["Planned"]
     direction TB
-    E268["#268 MCP capability (keystone #742)"]:::todo ~~~ E266["#266 availability annotation v2"]:::todo ~~~ E190["#190 source expansion"]:::todo ~~~ E1223["#1223 declarative pluggability"]:::todo ~~~ E1222["#1222 Linux port"]:::todo ~~~ E1228["#1228 semantic + vector"]:::todo ~~~ E189["#189 TUI (dormant)"]:::todo
+    E1228["#1228 semantic and vector search"]:::todo ~~~ E1223["#1223 declarative pluggability"]:::todo ~~~ E1222["#1222 Linux port"]:::todo ~~~ E769["#769 layer separation"]:::todo ~~~ E268["#268 MCP capability expansion"]:::todo ~~~ E266["#266 availability annotation v2"]:::todo ~~~ E190["#190 source expansion"]:::todo ~~~ E189["#189 TUI internal tracker"]:::todo
   end
 
-  subgraph Shipped["Epics shipped"]
+  subgraph Closed["Closed"]
     direction TB
-    E943["#943 comprehensive query batteries"]:::done ~~~ E251["#251 unify sources + databases"]:::done
+    E1227["#1227 distribution and discoverability"]:::done ~~~ E1226["#1226 docs and DocC"]:::done ~~~ E1225["#1225 diagnostics and logging"]:::done ~~~ E1224["#1224 CLI ergonomics"]:::done ~~~ E1220["#1220 v1.3.x bug sweep"]:::done ~~~ E943["#943 query batteries"]:::done ~~~ E919["#919 source and DB pluggability"]:::done ~~~ E893["#893 producer-backend split"]:::done ~~~ E673["#673 v1.2.x ironclad"]:::done ~~~ E503["#503 package-import purification"]:::done ~~~ E495["#495 GoF protocol DI"]:::done ~~~ E381["#381 dependency injection by default"]:::done ~~~ E251["#251 unify sources and databases"]:::done
   end
 
-  InFlight ~~~ Next ~~~ Planned ~~~ Shipped
+  Active ~~~ Partial ~~~ Planned ~~~ Closed
+  classDef done    fill:#34C759,color:#FFFFFF
+  classDef review  fill:#30B0C7,color:#FFFFFF
+  classDef active  fill:#007AFF,color:#FFFFFF
+  classDef next    fill:#5856D6,color:#FFFFFF
+  classDef partial fill:#FF9500,color:#FFFFFF
+  classDef todo    fill:#8E8E93,color:#FFFFFF
 ```
 
 ## Performance

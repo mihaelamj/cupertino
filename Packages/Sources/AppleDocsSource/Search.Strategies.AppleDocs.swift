@@ -611,8 +611,10 @@ extension Search {
                         processed += 1
                         continue
                     case .malignantTitleMismatch:
+                        let priorTitle = prior.canonicalTitle.prefix(80)
+                        let incomingTitle = incoming.canonicalTitle.prefix(80)
                         logger.error(
-                            "🚨 Door (tier C COLLISION) skip: uri=\(uri) url=\(url) prior_title=\"\(prior.canonicalTitle.prefix(80))\" incoming_title=\"\(incoming.canonicalTitle.prefix(80))\"",
+                            "🚨 Door (tier C COLLISION) skip: uri=\(uri) url=\(url) prior_title=\"\(priorTitle)\" incoming_title=\"\(incomingTitle)\"",
                             category: .search
                         )
                         skipped += 1

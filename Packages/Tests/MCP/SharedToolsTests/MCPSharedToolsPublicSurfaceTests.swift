@@ -119,6 +119,8 @@ struct MCPSharedToolsPublicSurfaceTests {
         // = "" assignment that would silently strip the description
         // from any MCP client tool list.
         #expect(!MCP.SharedTools.Copy.toolListFrameworksDescription.isEmpty)
+        #expect(!MCP.SharedTools.Copy.toolListDocumentsDescription.isEmpty)
+        #expect(!MCP.SharedTools.Copy.toolListChildrenDescription.isEmpty)
         #expect(!MCP.SharedTools.Copy.toolReadDocumentDescription.isEmpty)
         #expect(!MCP.SharedTools.Copy.toolListSamplesDescription.isEmpty)
         #expect(!MCP.SharedTools.Copy.toolReadSampleDescription.isEmpty)

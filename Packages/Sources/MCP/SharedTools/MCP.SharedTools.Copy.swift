@@ -92,6 +92,23 @@ extension MCP.SharedTools {
         Useful for discovering what documentation is available.
         """
 
+        /// List documents tool description
+        public static let toolListDocumentsDescription = """
+        List documents in a framework with pagination. \
+        Parameters: framework (required, e.g. swiftui), source (default apple-docs), \
+        offset (default 0), limit (default 100, max 500). \
+        Returns JSON with source, framework, offset, limit, total, and documents [{uri,title,kind}].
+        """
+
+        /// List document children tool description
+        public static let toolListChildrenDescription = """
+        List direct children for an Apple documentation URI. \
+        Parameters: uri (required, e.g. apple-docs://swiftui or apple-docs://swiftui#Essentials), \
+        source (default apple-docs). \
+        Returns JSON with source, parentURI, and children [{uri,title,kind,hasChildren}]. \
+        Topic headings are returned as kind=topic-group with fragment URIs; call list_children on the fragment URI to list documents in that group.
+        """
+
         /// Read document tool description
         public static let toolReadDocumentDescription = """
         Read a document by URI. Returns the full document content in the requested format. \

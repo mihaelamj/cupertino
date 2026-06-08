@@ -1,6 +1,7 @@
 import CoreProtocols
 import Foundation
 import SharedConstants
+
 // MARK: - RefResolver
 
 extension Core.JSONParser {

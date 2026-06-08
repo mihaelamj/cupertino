@@ -38,6 +38,8 @@ extension CLIImpl.Command {
 
             Documentation Tools (requires 'cupertino save'):
             • list_frameworks - List available frameworks with document counts
+            • list_documents  - List paged documents in a framework
+            • list_children   - List direct children of a document or topic group
             • read_document   - Read full document content by URI
 
             Sample Code Tools (requires 'cupertino save --source samples'):

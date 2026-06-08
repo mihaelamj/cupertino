@@ -10,6 +10,8 @@ Cupertino provides these MCP tools for AI agents to search and read documentatio
 |------|-------------|
 | [search](search/) | Unified full-text search across every indexed source (apple-docs, samples, HIG, apple-archive, swift-evolution, swift-org, swift-book, packages). Use the `source` parameter to scope to one source. Replaces the pre-#239 per-source `search_docs` / `search_hig` / `search_samples` tools, which were collapsed into this one. See the [search command docs](../commands/search/) for the same fan-out behavior on the CLI side. |
 | [list_frameworks](list_frameworks/) | List available frameworks with document counts |
+| [list_documents](list_documents/) | List paged documents in a framework |
+| [list_children](list_children/) | List direct children of a document or topic group |
 | [read_document](read_document/) | Read a document by URI in JSON or Markdown format |
 
 ### Sample Code Tools (requires `cupertino save --samples`)
@@ -40,7 +42,7 @@ MCP tools are invoked by AI agents (like Claude) through the Model Context Proto
 ### Typical Workflow
 
 1. **Search** - Use `search` to find relevant documentation (optionally pass `source` to narrow the fan-out to one corpus)
-2. **List** - Use `list_frameworks` to discover available frameworks
+2. **List** - Use `list_frameworks` to discover available frameworks, then `list_documents` or `list_children` to browse
 3. **Read** - Use `read_document` with a URI from search results to get full content
 
 ### Example Conversation

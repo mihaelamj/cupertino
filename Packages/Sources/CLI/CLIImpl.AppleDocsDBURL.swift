@@ -8,7 +8,7 @@ import SharedConstants
 /// Shared apple-docs DB URL resolver for AST-aware CLI subcommands
 /// (`cupertino search-symbols` / `inheritance` / `search-conformances`
 /// / `search-concurrency` / `search-property-wrappers` /
-/// `search-generics` / `list-frameworks`). Post-#1037 every docs source
+/// `search-generics` / `list-frameworks` / `list-documents`). Post-#1037 every docs source
 /// owns its own SQLite file; all of these commands query apple-docs-
 /// specific AST tables that live in `apple-documentation.db` per
 /// `AppleDocsSource.destinationDB`. Centralising the lookup here keeps

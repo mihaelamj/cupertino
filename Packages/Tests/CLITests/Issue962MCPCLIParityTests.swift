@@ -13,13 +13,15 @@ import Testing
 ///
 /// `mcpTools` mirrors the `CompositeToolProvider.callTool` dispatch surface. The
 /// server is independently pinned to exactly these names by
-/// `Issue645ToolsListHonestyTests` (its `tools.count == 12` assertion fails the
+/// `Issue645ToolsListHonestyTests` (its `tools.count == 14` assertion fails the
 /// moment a tool is added or removed), so a new tool forces a visit here too.
 @Suite("#962 MCP/CLI parity: every MCP tool has a CLI command")
 struct Issue962MCPCLIParityTests {
     private static let mcpTools: [String] = [
         Shared.Constants.Search.toolSearch,
         Shared.Constants.Search.toolListFrameworks,
+        Shared.Constants.Search.toolListDocuments,
+        Shared.Constants.Search.toolListChildren,
         Shared.Constants.Search.toolReadDocument,
         Shared.Constants.Search.toolListSamples,
         Shared.Constants.Search.toolReadSample,

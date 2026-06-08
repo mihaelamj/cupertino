@@ -1,9 +1,17 @@
 import Foundation
+
 // MARK: - Shared.Configuration.Crawler
 
 extension Shared.Configuration {
     /// Configuration for the Apple Documentation crawler
     public struct Crawler: Codable, Sendable {
+        @usableFromInline static var defaultStartURL: URL {
+            guard let url = URL(string: Shared.Constants.BaseURL.appleDeveloperDocs) else {
+                preconditionFailure("Invalid Apple developer documentation URL constant")
+            }
+            return url
+        }
+
         public let startURL: URL
         public let allowedPrefixes: [String]
         public let maxPages: Int
@@ -32,7 +40,7 @@ extension Shared.Configuration {
         public let htmlLinkAugmentationMaxRefs: Int
 
         public init(
-            startURL: URL = try! URL(knownGood: Shared.Constants.BaseURL.appleDeveloperDocs),
+            startURL: URL = Self.defaultStartURL,
             allowedPrefixes: [String]? = nil,
             maxPages: Int = Shared.Constants.Limit.defaultMaxPages,
             maxDepth: Int = 15,
