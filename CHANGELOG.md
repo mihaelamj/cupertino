@@ -40,6 +40,8 @@
 
 ### Changed
 
+- **docs(readme): render the GitHub landing-page architecture as Mermaid.** The README now shows the package stack, fetch/save/serve catalog flow, and desktop/mobile app backend boundary as native Mermaid diagrams instead of plain text or linked-only diagrams.
+
 - **docs: refresh README, architecture, command, artifact, source-manifest, and tool docs against the current v1.3.0 per-source bundle.** Corrected stale single-DB wording, Swift Book / Swift.org fetch and save paths, archive fan-out behavior, Apple-docs raw JSON corpus examples, `package-search --swift-tools`, `search --swift` / `--apple-imports`, `constraints-gen conformances`, and the command/help text that still used retired `--type` terminology.
 
 - **docs(regression): refresh command/tool docs after release-corpus smoke.** Updated the command index to list the semantic CLI commands, refreshed stale short-URI and package-read examples in `docs/commands/read`, `docs/commands/search`, and `docs/tools/read_document`, and recorded the current full Swift Testing suite count plus honest lint/format status in the README so the documented regression surface matches the current binary and v1.3.0 release corpus.

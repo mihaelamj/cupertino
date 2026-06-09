@@ -172,28 +172,42 @@ Resumable from saved state, change-detection to skip unchanged pages, a respectf
 
 Cupertino uses an **[ExtremePackaging](https://aleahim.com/blog/extreme-packaging/)** architecture: 48 in-tree strict-producer SPM targets with explicit import contracts, plus the external `CupertinoDataEngine` package. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full breakdown and [`docs/package-import-contract.md`](docs/package-import-contract.md) for the strict per-target import rules.
 
-```
-Foundation tier:   SharedConstants, LoggingModels, MCPCore, MCPSharedTools, Resources
-Infrastructure:    ASTIndexer, Diagnostics, Logging (concrete, composition-root only)
-Producers:         Crawler, Core, Search, SampleIndex, Services,
-                   AppleConstraintsKit, Availability, Cleanup, and more
-Operation packs:   Distribution (setup), Diagnostics (doctor),
-                   Indexer (save), Ingest (fetch)
-MCP layer:         MCPSupport, MCPClient, SearchToolProvider
-Front doors:       CLI (cupertino), TUI (cupertino-tui)
+```mermaid
+flowchart TB
+  Foundation["Foundation tier<br/>SharedConstants · LoggingModels · MCPCore · MCPSharedTools · Resources"]
+  Infrastructure["Infrastructure<br/>ASTIndexer · Diagnostics · Logging"]
+  Producers["Strict producers<br/>Crawler · Core · Search · SampleIndex · Services<br/>AppleConstraintsKit · Availability · Cleanup · more"]
+  Operations["Operation packs<br/>Distribution setup · Diagnostics doctor · Indexer save · Ingest fetch"]
+  MCP["MCP layer<br/>MCPSupport · MCPClient · SearchToolProvider"]
+  FrontDoors["Front doors<br/>CLI cupertino · TUI cupertino-tui"]
+  External["External packages<br/>CupertinoDataKit · CupertinoDataEngine<br/>SwiftMCPCore · SwiftMCPClient"]
+
+  Foundation --> Infrastructure
+  Foundation --> Producers
+  Producers --> Operations
+  Producers --> MCP
+  Operations --> FrontDoors
+  MCP --> FrontDoors
+  External --> Producers
+  External --> MCP
 ```
 
 Data flows through three distinct phases:
 
-```
-1. Fetch   cupertino fetch --source apple-docs
-           WKWebView → Apple JSON API → JSON files on disk (~/.cupertino/docs/)
-2. Save    cupertino save --all
-           JSON → parse + AST extract → per-source SQLite FTS5 indexes
-           (~/.cupertino/apple-documentation.db, hig.db, …)
-3. Serve   cupertino serve
-           MCP server (stdio) ← JSON-RPC ← AI client
-           DocsResourceProvider + CupertinoSearchToolProvider
+```mermaid
+flowchart LR
+  Fetch["Fetch<br/>cupertino fetch --source apple-docs"]
+  Raw["Raw corpus<br/>DocC render JSON, Markdown,<br/>sample archives, package sources"]
+  Save["Save<br/>cupertino save --all"]
+  Bundle["v1.3.0 catalog bundle<br/>apple-documentation.db · hig.db · apple-archive.db<br/>swift-evolution.db · swift-org.db · swift-book.db<br/>apple-sample-code.db · packages.db"]
+  Services["Read services<br/>search · read · list · semantic tools"]
+  CLI["Terminal CLI<br/>human-readable text / JSON / markdown"]
+  MCP["MCP server<br/>typed tool responses over stdio"]
+  Agents["AI agents<br/>Claude · Codex · Cursor · Copilot · more"]
+
+  Fetch --> Raw --> Save --> Bundle --> Services
+  Services --> CLI
+  Services --> MCP --> Agents
 ```
 
 Key design principles: Swift 6.3 with 100% strict concurrency checking, value semantics and `Sendable` by default, actor isolation (`@MainActor` for WKWebView), explicit dependency injection with no singletons, and a hard separation of Crawling → Indexing → Serving.
@@ -210,6 +224,30 @@ Cupertino factors reusable, independently-versioned Swift packages out of the mo
 | **CupertinoDataEngine** | [mihaelamj/CupertinoDataEngine](https://github.com/mihaelamj/CupertinoDataEngine) | Cupertino's embedded **read-only backend facade** for app clients. The engine itself conforms to the public read/browse contracts and fans out across configured source, sample, and package readers. The current v0.2.6 slice keeps the opaque `Corpus` handle and aligns current-corpus opening with release bundles: sample code is opened through the sample reader, and packages stay on `packages.db`. UI code must not know the storage files exist. |
 
 See the current [CupertinoDataEngine wiring diagram](docs/architecture/cupertino-data-engine-wiring.html) for the boundary between `CupertinoDataEngine`, in-tree `CupertinoComposition`, and downstream app clients. Mobile catalog installation is documented in [docs/design/mobile-catalog-delivery.md](docs/design/mobile-catalog-delivery.md), including app storage and the `CatalogStore` contract.
+
+```mermaid
+flowchart LR
+  subgraph Apps["Downstream app clients"]
+    Desktop["macOS / Linux desktop UI<br/>SwiftUI · AppKit · Qt"]
+    Mobile["iPhone / iPad UI<br/>UIKit · SwiftUI"]
+  end
+
+  Backend["App backend interface<br/>CupertinoDataKit contracts"]
+  Boundary["Contract boundary<br/>storage hidden from UI"]
+  Engine["CupertinoDataEngine<br/>opaque Corpus handle"]
+  Composition["CupertinoComposition<br/>cupertino-owned production wiring"]
+  Internals["Cupertino internals<br/>source, sample, package readers<br/>schema checks, storage filenames"]
+  CatalogStore["DownloadedCatalogStore<br/>free mobile catalog download"]
+  AppSupport["Application Support/Catalogs<br/>not Documents, excluded from backup"]
+
+  Desktop --> Backend
+  Mobile --> Backend
+  Backend --> Boundary --> Engine
+  Composition --> Engine
+  Engine --> Internals
+  Mobile --> CatalogStore --> AppSupport --> Engine
+  Boundary -.-> Internals
+```
 
 ## Roadmap
 
