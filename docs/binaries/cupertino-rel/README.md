@@ -79,9 +79,10 @@ cupertino-rel docs-update
 
 The `bump` command updates version in:
 
-- `Sources/Shared/Constants.swift` - App version constant
-- `README.md` - Version badge and references
+- `Packages/Sources/Shared/Constants/Shared.Constants.swift` - App version constant
+- `README.md` - Top Latest release line and release link
 - `CHANGELOG.md` - New version section
+- `docs/DEPLOYMENT.md` - Last tagged release / last updated header
 
 ## See Also
 

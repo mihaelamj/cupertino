@@ -1,9 +1,9 @@
 # Cupertino Deployment Guide
 
-**Last tagged release:** v1.2.1 on 2026-05-23.
-**Last updated:** 2026-05-31.
+**Last tagged release:** v1.3.0 on 2026-05-31.
+**Last updated:** 2026-06-09.
 
-`main` carries the v1.3.0-staged changes (per-source DB bundle: the unified `search.db` split into 8 per-source DBs shipped in rollback journal mode, plus read-only query/read/serve connections) but no `v1.3.0` tag has been cut yet. The release process below describes how each tagged release is shipped.
+`main` and `develop` currently carry the v1.3.0 release line: the unified `search.db` has been physically split into eight per-source DBs shipped in rollback journal mode, and query / read / serve paths open those databases read-only. The release process below describes how each tagged release is shipped.
 
 This guide covers the complete release process for Cupertino.
 
@@ -135,9 +135,9 @@ If you prefer manual control or need to debug:
 
 ```bash
 # 1. Update version and changelog
-edit Packages/Sources/Shared/Constants.swift  # version = "X.Y.Z"
-edit README.md                                 # Version: X.Y.Z
-edit CHANGELOG.md                              # Add new section
+edit Packages/Sources/Shared/Constants/Shared.Constants.swift  # version = "X.Y.Z"
+edit README.md                                                 # Top Latest release line and release link
+edit CHANGELOG.md                                              # Add new section
 
 # 2. For read/search changes, run the release-corpus smoke against the prepared bundle
 scripts/eval/release-corpus-smoke.sh ~/.cupertino
@@ -174,14 +174,15 @@ Update version in these files:
 
 | File | What to Change |
 |------|----------------|
-| `Packages/Sources/Shared/Constants.swift` | `public static let version = "X.Y.Z"` |
-| `README.md` | `**Version:** X.Y.Z` |
+| `Packages/Sources/Shared/Constants/Shared.Constants.swift` | `public static let version = "X.Y.Z"` |
+| `README.md` | Top Latest release line and release link |
 | `CHANGELOG.md` | Add new `## X.Y.Z` section at top |
+| `docs/DEPLOYMENT.md` | Last tagged release / last updated header |
 
 ### Step 2: Commit Version Bump
 
 ```bash
-git add Packages/Sources/Shared/Constants.swift README.md CHANGELOG.md
+git add Packages/Sources/Shared/Constants/Shared.Constants.swift README.md CHANGELOG.md docs/DEPLOYMENT.md
 git commit -m "chore: bump version to X.Y.Z"
 git push origin main
 ```
@@ -192,7 +193,7 @@ git push origin main
 
 ```bash
 # Check version in source
-grep 'version = ' Packages/Sources/Shared/Constants.swift | head -1
+grep 'version = ' Packages/Sources/Shared/Constants/Shared.Constants.swift | head -1
 
 # Build and verify binary reports correct version
 make build && ./Packages/.build/release/cupertino --version

@@ -2,11 +2,12 @@
 
 ## Status (2026-05-20)
 
-Living reference. Updated whenever a schema migration lands on
-`main`. Companion to `per-db-enrichment.md` (which decides *why*
-each DB exists) and `how-cupertino-answers-a-query.md` (which
-decides *how* a query lands). This doc is the *what*: every
-table, every column, every index, every type, every nullability.
+Historical v1.2.0 schema reference. The live v1.3.0 physical layout is the per-source DB bundle documented in `docs/architecture/database.md`, `docs/ARCHITECTURE.md`, and `docs/artifacts/README.md`. Keep this file only as a detailed historical table/column record for the #837 schema/enrichment work; do not treat its search/read-path notes as current behavior.
+
+Companion to `per-db-enrichment.md` (which decides *why* each DB exists)
+and `docs/architecture/database.md` (which documents the current query
+layer). This doc is the historical *what*: every table, every column,
+every index, every type, every nullability at the time it was written.
 
 Written so a reader who has never opened the codebase, never used
 SQLite, and never heard of cupertino can answer "what does
@@ -555,7 +556,7 @@ Calling out gaps that surprise readers:
   `sample_code_metadata` but the actual extracted symbols live in
   samples.db. The two indexes are queried separately and the
   cross-source SmartQuery fan-out unifies them at read time (see
-  `how-cupertino-answers-a-query.md`).
+  `docs/architecture/database.md` §5).
 
 ---
 
@@ -564,9 +565,9 @@ Calling out gaps that surprise readers:
 - Source code: `Packages/Sources/SearchSQLite/Search.Index.Schema.swift`
   (CREATE TABLE statements), `Packages/Sources/SearchSQLite/Search.Index.Migrations.swift`
   (in-place ALTER paths).
-- Companion docs: `docs/design/per-db-enrichment.md` (the *why*),
-  `docs/design/how-cupertino-answers-a-query.md` (the *read
-  path*), `docs/design/post-processor.md` (the enrichment pipeline
+- Companion docs: `docs/design/per-db-enrichment.md` (the historical *why*),
+  `docs/architecture/database.md` (the current query layer),
+  `docs/design/post-processor.md` (the enrichment pipeline
   shape), `docs/design/837-pre-index-test-plan.md` (correctness
   gate before any save run).
 - Schema-stamp safety guard:
@@ -729,7 +730,7 @@ matches an Apple-type in the cupertino-symbolgraphs lookup.
 | `attributes` | TEXT | NULL | — | comma-separated Swift attributes (`'@MainActor'`) | property-wrapper search; mirrored to `file_symbols_fts.attributes` |
 | `conformances` | TEXT | NULL | — | comma-separated conformed protocols | conformance search; mirrored to `file_symbols_fts.conformances` |
 | `generic_params` | TEXT | NULL | — | comma-separated generic parameter names (`'Label,Destination'`) — from SwiftSyntax | symbol-shape queries |
-| `generic_constraints` | TEXT | NULL | — | comma-separated authoritative CONSTRAINTS (`'View,Hashable'`). Written by `Enrichment.SamplesAppleConstraintsPass` post-#837 phase 1 from the same cupertino-symbolgraphs lookup search.db uses. NULL until the pass runs against the row | future ranking signal once `Sample.Index.Database.searchProjects` / `searchFiles` consult it (currently NOT wired — see `how-cupertino-answers-a-query.md` §6) |
+| `generic_constraints` | TEXT | NULL | — | comma-separated authoritative CONSTRAINTS (`'View,Hashable'`). Written by `Enrichment.SamplesAppleConstraintsPass` post-#837 phase 1 from the same cupertino-symbolgraphs lookup search.db uses. NULL until the pass runs against the row | historical note: originally a future ranking signal; current query behavior is documented in `docs/architecture/database.md` §5 |
 | `enrichment_version` | INTEGER | NULL | — | tracks which enrichment pass version last wrote this row. NULL until any pass runs | idempotency tracking; index `idx_file_symbols_enrichment`; lets future passes detect already-enriched rows without scanning every value |
 
 **Indexes (5):** `idx_file_symbols_file`, `idx_file_symbols_kind`,
@@ -843,7 +844,7 @@ Apple framework modules the package imports.
 | `min_visionos` | TEXT | NULL | — | same | `--min-visionos`; index `idx_pkg_min_visionos` |
 | `availability_source` | TEXT | NULL | — | provenance tag for the availability columns | rendering |
 | `swift_tools_version` | TEXT | NULL | — | #225 Part A: the `// swift-tools-version: X.Y` line from the package's Package.swift. Authored, NOT inferred from min_ios | `--swift-tools` filter; index `idx_pkg_swift_tools` |
-| `apple_imports_json` | TEXT | NULL | — | #837 stage 1 — JSON array of Apple framework modules this package imports (`["combine","swiftui"]`, sorted, lowercased). Written by `Enrichment.PackagesAppleImportsPass` post-#837. NULL until the pass runs | future `--apple-imports SwiftUI` filter — currently NOT wired into any query path (see `how-cupertino-answers-a-query.md` §6) |
+| `apple_imports_json` | TEXT | NULL | — | #837 stage 1 — JSON array of Apple framework modules this package imports (`["combine","swiftui"]`, sorted, lowercased). Written by `Enrichment.PackagesAppleImportsPass` post-#837. NULL until the pass runs | historical note: `--apple-imports` is now wired; current query behavior is documented in `docs/commands/search/option (--)/apple-imports.md` |
 | `enrichment_version` | INTEGER | NULL | — | #837 — tracks which enrichment pass version last wrote this row | idempotency; index `idx_pkg_enrichment` |
 
 **Indexes (9):** `idx_pkg_owner`, `idx_pkg_apple`,
@@ -926,7 +927,7 @@ whose name matches an Apple-type in the lookup.
 | `attributes` | TEXT | NULL | — | comma-separated Swift attributes | property-wrapper search |
 | `conformances` | TEXT | NULL | — | comma-separated conformed protocols | conformance search |
 | `generic_params` | TEXT | NULL | — | comma-separated generic parameter names | symbol-shape queries |
-| `generic_constraints` | TEXT | NULL | — | comma-separated authoritative CONSTRAINTS. Written by `Enrichment.PackagesAppleConstraintsPass` post-#837. NULL until the pass runs | future ranking signal — currently NOT wired into `Search.PackageIndex.searchPackages` (see `how-cupertino-answers-a-query.md` §6) |
+| `generic_constraints` | TEXT | NULL | — | comma-separated authoritative CONSTRAINTS. Written by `Enrichment.PackagesAppleConstraintsPass` post-#837. NULL until the pass runs | historical note: current query behavior is documented in `docs/architecture/database.md` §5 |
 | `enrichment_version` | INTEGER | NULL | — | enrichment pass version | idempotency; index `idx_package_symbols_enrichment` |
 
 **Indexes (4):** `idx_package_symbols_file`,
@@ -966,13 +967,10 @@ behaviour touches which column on which DB.
 | BM25 ranking on full-text query | `docs_fts.title/content/summary/symbols/symbol_components` | `projects_fts.title/description/readme/frameworks` + `files_fts.path/filename/content` | `package_files_fts.title/content/symbols` |
 | Schema-stamp safety guard | `Search.Index.schemaVersion: Int32 = 18` | `Sample.Index.Database.schemaVersion: Int32 = 4` | `Search.PackageIndex.schemaVersion: Int32 = 5` |
 
-Rows marked **(not yet wired)** in samples.db / packages.db columns
-remain tracked at `docs/design/how-cupertino-answers-a-query.md` §6.
-The four AST tools (`search_symbols`, `search_property_wrappers`,
-`search_concurrency`, `search_conformances`) still hit search.db only;
-extending each to fan out across all three databases is the v1.2.1+
-follow-up that mirrors the v1.2.0 `search_generics` cross-DB path
-(see issue #857 for the methodology used).
+Historical rows marked **(not yet wired)** reflect the v1.2.0-era state
+captured when this file was written. Current query and tool behavior lives
+in `docs/architecture/database.md`, `docs/commands/search/`, and
+`docs/tools/`.
 
 PR-2 of the v1.2.0 round closed the previously-open rows in the
 matrix:
@@ -1004,7 +1002,7 @@ matrix:
   - `Packages/Sources/SearchSQLite/PackageIndex.swift`
 - Companion docs:
   - `docs/design/per-db-enrichment.md` (the *why*)
-  - `docs/design/how-cupertino-answers-a-query.md` (the *read path*)
+  - `docs/architecture/database.md` (the current query layer)
   - `docs/design/post-processor.md` (the enrichment pipeline shape)
   - `docs/design/837-pre-index-test-plan.md` (correctness gate before any save run)
 - Schema-stamp safety guard:

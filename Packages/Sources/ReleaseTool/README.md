@@ -83,9 +83,9 @@ The `bump` command updates:
 | File | Field |
 |------|-------|
 | `Packages/Sources/Shared/Constants/Shared.Constants.swift` | `version = "X.Y.Z"` |
-| `README.md` | `**Version:** X.Y.Z` |
+| `README.md` | Top Latest release line and release link |
 | `CHANGELOG.md` | Adds `## X.Y.Z` section |
-| `docs/DEPLOYMENT.md` | `**Version:** X.Y.Z` |
+| `docs/DEPLOYMENT.md` | Last tagged release / last updated header |
 
 ## Why Separate from CLI?
 

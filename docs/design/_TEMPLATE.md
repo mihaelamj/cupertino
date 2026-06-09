@@ -299,7 +299,7 @@ it as a separate file under docs/design/<parent>-<sub>.md and link it
 here. The parent doc stays at the "shape of the system" level; the
 child docs are per-decision deep dives.
 
-cupertino.md and post-processor.md are an example: post-processor is
+`docs/architecture/database.md` and `docs/design/post-processor.md` are an example: post-processor is
 a child of cupertino, focused on one stage of the pipeline.
 -->
 

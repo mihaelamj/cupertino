@@ -80,7 +80,7 @@ The result is empirically what an AI coding agent in 2026 needs: searching "URLS
 
 ## Implications for Criterion 2 (anti-hallucination)
 
-Deprecation-axis failures are one of the four explicit anti-hallucination concerns in `docs/design/cupertino.md` §1.1 ("avoid generating code that ... uses deprecated APIs"). This baseline shows the ranker is doing its job on this axis at the v1.2.0 candidate state. An LLM agent grounded on cupertino's top-1 result for any of these 30 queries will write modern Swift, not legacy Objective-C-style code.
+Deprecation-axis failures are one of the explicit anti-hallucination concerns in the README's "Why build this" section. This baseline shows the ranker is doing its job on this axis at the v1.2.0 candidate state. An LLM agent grounded on cupertino's top-1 result for any of these 30 queries will write modern Swift, not legacy Objective-C-style code.
 
 This is **necessary but not sufficient** for Criterion 2. The agent could still hallucinate within the modern API surface (calling methods that don't exist on the correct type). Phase 1.7 (agent-end-to-end eval) is where that failure mode gets tested.
 

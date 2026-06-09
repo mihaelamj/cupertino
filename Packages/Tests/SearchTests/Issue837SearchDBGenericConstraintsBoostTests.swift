@@ -8,7 +8,7 @@ import Testing
 
 // MARK: - #837 read-side wiring — search.db symbol-boost picks up generic_constraints
 
-/// Pinned per `docs/design/how-cupertino-answers-a-query.md` §6.
+/// Pinned per `docs/design/837-pre-index-test-plan.md` §9.
 /// Before this PR, `Search.Index.searchSymbolsForURIs` queried
 /// `doc_symbols` on name / attributes / conformances / signature but
 /// NOT on `generic_constraints`. Even though #759 iter 3 populates

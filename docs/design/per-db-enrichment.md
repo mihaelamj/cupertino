@@ -2,6 +2,8 @@
 
 ## Status (2026-05-20)
 
+Historical implementation plan for the #837 enrichment work. Keep it for design traceability, but use `docs/architecture/database.md`, `docs/commands/`, and `docs/tools/` for current shipped query/read behavior.
+
 Draft. Tracks the per-DB scope of #837. Companion to
 `docs/design/post-processor.md` (which defines the pipeline shape) —
 this doc decides *what* each DB actually gets enriched with.

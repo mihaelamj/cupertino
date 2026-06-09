@@ -10,7 +10,7 @@ import Testing
 
 // MARK: - #837 read-side wiring — samples.db searchSymbolsForFiles consults generic_constraints
 
-/// Pinned per `docs/design/how-cupertino-answers-a-query.md` §6.
+/// Pinned per `docs/design/837-pre-index-test-plan.md` §9.
 /// `Sample.Search.Service.search` now calls
 /// `Sample.Index.Database.searchSymbolsForFiles` to find files whose
 /// `file_symbols` row LIKE-matches the query in name, attributes,

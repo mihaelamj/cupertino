@@ -85,7 +85,7 @@ Even when HIG has a perfect rank-1 hit and apple-docs has a tangential rank-1 hi
 
 ### Is this a bug?
 
-**No, it is the design.** The source weights were tuned in `Search.SmartQuery.sourceWeights` (#254 Option B) specifically to bias toward apple-docs because that is the canonical reference for code-generating AI agents (cupertino's stated purpose per `README.md` and `docs/design/cupertino.md` §1.1). For an LLM grounding a Swift code-generation task, getting apple-docs at top-1 is the right answer even when HIG might be more conceptually relevant — the agent is writing code, not designing UX.
+**No, it is the design.** The source weights were tuned in `Search.SmartQuery.sourceWeights` (#254 Option B) specifically to bias toward apple-docs because that is the canonical reference for code-generating AI agents (cupertino's stated purpose per `README.md`). For an LLM grounding a Swift code-generation task, getting apple-docs at top-1 is the right answer even when HIG might be more conceptually relevant — the agent is writing code, not designing UX.
 
 **But it has a knowable cost.** Designers, UX writers, and humans using cupertino to look up Apple's design guidance get apple-docs answers when HIG answers exist. The current workaround is the explicit `--source hig` flag. Documenting the cost here so it isn't a surprise the next time the question comes up.
 

@@ -64,9 +64,9 @@ extension Release.Command {
             if dryRun {
                 Release.Console.info("\n🏃 Dry run - would update:")
                 Release.Console.substep("Constants.swift: \(currentVersion) → \(newVersion)")
-                Release.Console.substep("README.md: Release.Version badge")
+                Release.Console.substep("README.md: latest release references")
                 Release.Console.substep("CHANGELOG.md: Add \(newVersion) section")
-                Release.Console.substep("DEPLOYMENT.md: Release.Version header")
+                Release.Console.substep("DEPLOYMENT.md: last tagged release header")
                 return
             }
 
@@ -77,7 +77,7 @@ extension Release.Command {
 
             Release.Console.step(2, "Updating README.md...")
             try updateReadme(at: paths.readme, to: newVersion)
-            Release.Console.substep("✓ Updated Release.Version: \(newVersion)")
+            Release.Console.substep("✓ Updated README release references: \(newVersion)")
 
             Release.Console.step(3, "Updating CHANGELOG.md...")
             try updateChangelog(at: paths.changelog, version: newVersion)
@@ -85,7 +85,7 @@ extension Release.Command {
 
             Release.Console.step(4, "Updating DEPLOYMENT.md...")
             try updateDeployment(at: paths.deployment, to: newVersion)
-            Release.Console.substep("✓ Updated Release.Version: \(newVersion)")
+            Release.Console.substep("✓ Updated last tagged release: \(newVersion)")
 
             Release.Console.success("Release.Version bumped to \(newVersion)")
             Release.Console.info("\nNext steps:")
@@ -148,17 +148,23 @@ extension Release.Command {
 
         private func updateReadme(at url: URL, to version: Release.Version) throws {
             var content = try String(contentsOf: url, encoding: .utf8)
+            let today = ISO8601DateFormatter.string(
+                from: Date(),
+                timeZone: .current,
+                formatOptions: [.withFullDate, .withDashSeparatorInDate]
+            )
 
-            // Update **Version:** X.Y.Z
-            let pattern = #"(\*\*Version:\*\*\s*)\d+\.\d+\.\d+"#
-            guard let regex = try? NSRegularExpression(pattern: pattern) else {
-                throw BumpError.updateFailed(url.path)
-            }
-
-            content = regex.stringByReplacingMatches(
-                in: content,
-                range: NSRange(content.startIndex..., in: content),
-                withTemplate: "$1\(version)"
+            try replaceRequired(
+                pattern: #"(\*\*Latest:\s*)v\d+\.\d+\.\d+(\*\*\s*\()\d{4}-\d{2}-\d{2}(\))"#,
+                in: &content,
+                with: "$1v\(version)$2\(today)$3",
+                file: url
+            )
+            try replaceRequired(
+                pattern: #"(releases/tag/)v\d+\.\d+\.\d+"#,
+                in: &content,
+                with: "$1v\(version)",
+                file: url
             )
 
             try content.write(to: url, atomically: true, encoding: .utf8)
@@ -207,20 +213,43 @@ extension Release.Command {
 
         private func updateDeployment(at url: URL, to version: Release.Version) throws {
             var content = try String(contentsOf: url, encoding: .utf8)
+            let today = ISO8601DateFormatter.string(
+                from: Date(),
+                timeZone: .current,
+                formatOptions: [.withFullDate, .withDashSeparatorInDate]
+            )
 
-            // Update **Version:** X.Y.Z
-            let pattern = #"(\*\*Version:\*\*\s*)\d+\.\d+\.\d+"#
+            try replaceRequired(
+                pattern: #"(\*\*Last tagged release:\*\*\s*)v\d+\.\d+\.\d+ on \d{4}-\d{2}-\d{2}\."#,
+                in: &content,
+                with: "$1v\(version) on \(today).",
+                file: url
+            )
+            try replaceRequired(
+                pattern: #"(\*\*Last updated:\*\*\s*)\d{4}-\d{2}-\d{2}\."#,
+                in: &content,
+                with: "$1\(today).",
+                file: url
+            )
+
+            try content.write(to: url, atomically: true, encoding: .utf8)
+        }
+
+        private func replaceRequired(pattern: String, in content: inout String, with template: String, file: URL) throws {
             guard let regex = try? NSRegularExpression(pattern: pattern) else {
-                throw BumpError.updateFailed(url.path)
+                throw BumpError.updateFailed(file.path)
+            }
+
+            let range = NSRange(content.startIndex..., in: content)
+            guard regex.numberOfMatches(in: content, range: range) > 0 else {
+                throw BumpError.updateFailed(file.path)
             }
 
             content = regex.stringByReplacingMatches(
                 in: content,
-                range: NSRange(content.startIndex..., in: content),
-                withTemplate: "$1\(version)"
+                range: range,
+                withTemplate: template
             )
-
-            try content.write(to: url, atomically: true, encoding: .utf8)
         }
     }
 }

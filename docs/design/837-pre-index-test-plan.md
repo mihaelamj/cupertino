@@ -2,6 +2,8 @@
 
 ## Status (2026-05-20)
 
+Historical implementation/test plan for #837. Tests still cite exact cases from this document, so it remains as traceability. It is not the current catalog-layout or read-path reference; use `docs/architecture/database.md`, `docs/commands/`, and `docs/tools/` for live behavior.
+
 Draft. Companion to `docs/design/per-db-enrichment.md` (what each DB
 gets enriched with) and `docs/design/post-processor.md` (how the
 pipeline is structured). This doc decides *how we prove the code is

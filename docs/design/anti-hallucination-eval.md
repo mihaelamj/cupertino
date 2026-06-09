@@ -6,7 +6,7 @@
 | **Created** | 2026-05-20 |
 | **Last revised** | 2026-05-20 |
 | **Tracking issue** | none yet |
-| **Companion docs** | `docs/design/search-quality-eval.md` (this design is its §14.4); `docs/design/cupertino.md` §1.1 (the purpose this measures); `docs/architecture/database.md` (the substrate); `docs/database-handbook.md` §5 (index) |
+| **Companion docs** | `docs/design/search-quality-eval.md` (this design is its §14.4); `README.md` ("Why build this") (the purpose this measures); `docs/architecture/database.md` (the substrate); `docs/database-handbook.md` §5 (index) |
 
 ---
 
@@ -24,7 +24,7 @@ Cupertino's user-facing pitch (`README.md` §"Why Build This?") is:
 
 > No more hallucinations: AI agents get accurate, up-to-date Apple API documentation.
 
-And from `docs/design/cupertino.md` §1.1:
+And from the current README's "Why build this" section:
 
 > AI coding agents (Claude, Copilot, Cursor, etc.) need accurate, current Apple API references to avoid generating code that calls nonexistent symbols, uses deprecated APIs, or violates platform availability constraints.
 
@@ -408,7 +408,7 @@ Estimated total: 1-2 weeks of focused work for the first end-to-end run.
 ## 15. References
 
 1. **`docs/design/search-quality-eval.md`** §14.4 — this design is the implementation of that section.
-2. **`docs/design/cupertino.md`** §1.1 — the purpose this measures.
+2. **`README.md`** "Why build this" — the purpose this measures.
 3. **`docs/architecture/database.md`** — the substrate under test.
 4. **`docs/audits/search-quality-*-baseline-v1.2.0.md`** — the six Phase 1.x baselines this complements with Criterion 2.
 5. McNemar, Q. (1947). Note on the sampling error of the difference between correlated proportions or percentages. *Psychometrika* 12(2): 153-157.

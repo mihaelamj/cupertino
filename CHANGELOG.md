@@ -40,6 +40,8 @@
 
 ### Changed
 
+- **docs: remove stale pre-v1.3 design docs and relabel historical schema plans.** Deleted the outdated `docs/design/cupertino.md` and `docs/design/how-cupertino-answers-a-query.md`, redirected references to the current README / architecture docs, refreshed `docs/DEPLOYMENT.md` to v1.3.0, and marked #837-era schema/enrichment plans as historical records instead of live behavior docs.
+
 - **docs(readme): render the GitHub landing-page architecture as Mermaid.** The README now shows the package stack, fetch/save/serve catalog flow, and desktop/mobile app backend boundary as native Mermaid diagrams instead of plain text or linked-only diagrams.
 
 - **docs: refresh README, architecture, command, artifact, source-manifest, and tool docs against the current v1.3.0 per-source bundle.** Corrected stale single-DB wording, Swift Book / Swift.org fetch and save paths, archive fan-out behavior, Apple-docs raw JSON corpus examples, `package-search --swift-tools`, `search --swift` / `--apple-imports`, `constraints-gen conformances`, and the command/help text that still used retired `--type` terminology.
