@@ -16,7 +16,7 @@ Equivalent to running `cupertino search <query>` with **no** `--source` filter, 
 
 ## Behavior
 
-- Sources participating: `apple-docs`, `samples`, `swift-evolution`, `swift-org`, `swift-book`, `packages`, `hig` (and `apple-archive` if `--include-archive` is passed).
+- Sources participating: `apple-docs`, `samples`, `swift-evolution`, `swift-org`, `swift-book`, `packages`, `hig`, and `apple-archive` when the corresponding DBs exist locally.
 - Each source contributes up to `--per-source <N>` candidates (default 10).
 - Final result list is RRF-fused, then chunked excerpts are emitted in the configured `--format`.
 
@@ -36,4 +36,4 @@ cupertino search "Observable" --source all --per-source 5
 
 - Identical to omitting `--source` entirely, provided for script clarity.
 - Use `--skip-docs` / `--skip-packages` / `--skip-samples` to prune the fan-out without picking a single source.
-- Apple Archive is excluded unless you also pass `--include-archive`.
+- Apple Archive is part of current fan-out with a low source weight. Use `--source apple-archive` to search archive only.

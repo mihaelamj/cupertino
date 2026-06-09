@@ -20,28 +20,28 @@ cupertino fetch --source apple-sample-code
 
 ```
 ~/.cupertino/sample-code/
-├── checkpoint.json                                          # Progress tracking (code type)
-├── cupertino-sample-code/                                   # GitHub clone (samples type)
+├── checkpoint.json                                          # Progress tracking (apple-sample-code source)
+├── cupertino-sample-code/                                   # GitHub clone (samples source)
 │   ├── .git/
 │   ├── accelerate-adding-a-bokeh-effect-to-images/
 │   ├── arkit-creating-a-collaborative-session/
 │   ├── swiftui-building-lists-and-navigation/
 │   └── ...                                                  # 619 extracted projects
-├── accelerate-adding-a-bokeh-effect-to-images.zip           # ZIP files (code type)
+├── accelerate-adding-a-bokeh-effect-to-images.zip           # ZIP files (apple-sample-code source)
 ├── arkit-creating-a-collaborative-session.zip
 └── ...                                                      # 600+ ZIP files
 ```
 
 ## Contents
 
-### GitHub Clone (samples type)
+### GitHub Clone (`samples` source)
 - **619 sample code projects** as extracted folders
 - Cloned from https://github.com/mihaelamj/cupertino-sample-code
 - Uses Git LFS for large binary files (~10GB total)
 - Ready to open in Xcode immediately
 - Pull to update: `cd cupertino-sample-code && git pull`
 
-### ZIP Files (code type)
+### ZIP Files (`apple-sample-code` source)
 - **~600 sample code projects** as ZIP archives
 - Downloaded directly from Apple Developer website
 - Complete Xcode projects
@@ -107,7 +107,7 @@ ls ~/.cupertino/sample-code/arkit-*.zip
 
 ## Authentication
 
-### GitHub (samples type) - No authentication required
+### GitHub (`samples` source) - No authentication required
 ```bash
 cupertino fetch --source samples
 ```
@@ -117,7 +117,7 @@ brew install git-lfs
 git lfs install
 ```
 
-### Apple Website (code type) - Apple ID required
+### Apple Website (`apple-sample-code` source) - Apple ID required
 ```bash
 cupertino fetch --source apple-sample-code
 ```
@@ -130,9 +130,9 @@ Requires:
 
 After fetching, index the samples for full-text search:
 ```bash
-cupertino save --samples
+cupertino save --source samples
 # or force reindex:
-cupertino save --samples --force
+cupertino save --source samples --force
 ```
 
 This creates `apple-sample-code.db` with 18,000+ indexed source files.

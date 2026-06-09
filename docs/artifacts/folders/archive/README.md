@@ -67,16 +67,16 @@ source: apple-archive
 
 ## Size
 
-- **~75 markdown files**
+- **~368 indexed pages in the v1.3.0 archive corpus** (raw Markdown file count varies by crawl)
 - **~5-10 MB total**
 
 ## Search Behavior
 
-Archive documentation is **excluded from search by default** to prioritize modern documentation.
+Archive documentation participates in default fan-out at a lower rank weight, so modern documentation still ranks first when both sources match.
 
-### Include in Search Results
+### Search Mixed Results
 ```bash
-cupertino search "Core Animation" --include-archive
+cupertino search "Core Animation"
 ```
 
 ### Search Archive Only
@@ -88,7 +88,7 @@ cupertino search "CALayer" --source apple-archive
 ```json
 {
   "query": "Core Animation",
-  "include_archive": true
+  "source": "apple-archive"
 }
 ```
 

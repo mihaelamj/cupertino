@@ -5,7 +5,7 @@ Directory containing Apple Archive documentation
 ## Synopsis
 
 ```bash
-cupertino save --archive-dir <path>
+cupertino save --source apple-archive --archive-dir <path>
 ```
 
 ## Description
@@ -19,7 +19,7 @@ Override the default `~/.cupertino/archive/` location for legacy Apple Archive g
 ## Example
 
 ```bash
-cupertino save --archive-dir ~/old-docs/archive
+cupertino save --source apple-archive --archive-dir ~/old-docs/archive
 ```
 
 ## Notes

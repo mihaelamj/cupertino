@@ -174,10 +174,10 @@ extension CLIImpl.Command {
         )
         var discoveryMode: Shared.Configuration.DiscoveryMode = .auto
 
-        @Flag(name: .long, inversion: .prefixedNo, help: "Only download accepted/implemented proposals (evolution type only)")
+        @Flag(name: .long, inversion: .prefixedNo, help: "Only download accepted/implemented proposals (swift-evolution source only)")
         var onlyAccepted: Bool = true
 
-        @Option(name: .long, help: "Maximum number of items to fetch (packages/code types only)")
+        @Option(name: .long, help: "Maximum number of items to fetch (packages and sample-code sources only)")
         var limit: Int?
 
         @Flag(name: .long, help: "Use fast mode (higher concurrency, shorter timeout) for availability fetch")
@@ -432,12 +432,9 @@ extension CLIImpl.Command {
         /// the production source registry at call time. Every
         /// `Search.SourceProvider` with a non-nil `fetchInfo` ships a
         /// fetch leg; we add the `availability` maintenance token + the
-        /// `apple-sample-code` legacy alias on top. `swift-book`
-        /// view-source remains opted-out (its pages are co-crawled by
-        /// SwiftOrgStrategy via URL-prefix tagging; a separate
-        /// `swift-book` leg would double-fetch), encoded by checking
-        /// each provider's `fetchInfo != nil`, since SwiftBookSource
-        /// declares `fetchInfo == nil`.
+        /// `apple-sample-code` legacy alias on top. `swift-book` has
+        /// its own fetchInfo post-#1093, so it participates in the
+        /// all-sources fan-out independently from `swift-org`.
         ///
         /// Static helper because `runAllFetches` is called on `self`
         /// but iterates source-ids without needing instance state.
@@ -524,7 +521,7 @@ extension CLIImpl.Command {
         }
 
         private mutating func runAllFetches() async throws {
-            Cupertino.Context.composition.logging.recording.info("📚 Fetching all documentation types in parallel:\n")
+            Cupertino.Context.composition.logging.recording.info("📚 Fetching all documentation sources in parallel:\n")
             let baseCommand = self
 
             try await withThrowingTaskGroup(of: (String, Result<Void, Error>).self) { group in
@@ -580,7 +577,7 @@ extension CLIImpl.Command {
             }
 
             if failures.isEmpty {
-                Cupertino.Context.composition.logging.recording.info("\n✅ All documentation types fetched successfully!")
+                Cupertino.Context.composition.logging.recording.info("\n✅ All documentation sources fetched successfully!")
             } else {
                 Cupertino.Context.composition.logging.recording.info("\n⚠️  Completed with \(failures.count) failure(s)")
                 throw ExitCode.failure

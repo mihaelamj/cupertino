@@ -84,7 +84,7 @@ The diagram above zooms from the eight-database bundle down into a documentation
 
 ## 3. Schema
 
-The live schema definition is in `Packages/Sources/SearchSQLite/Search.Index.Schema.swift`. The current value of `PRAGMA user_version` is **18**. We describe each table by the role it plays in the indexing or query pipeline, deferring the detailed column lists to the schema file itself.
+The live schema DDL is in `Packages/Sources/SearchSchema/Search.Schema.CreateAllTablesSQL.swift`, with the SQLite executor in `Packages/Sources/SearchSQLite/Search.Index.Schema.swift`. The current value of `PRAGMA user_version` is **18**. We describe each table by the role it plays in the indexing or query pipeline, deferring the detailed column lists to the schema file itself.
 
 ### 3.1 Relational (B-tree) tables
 
@@ -136,7 +136,7 @@ This two-column design separates precision-of-name from recall-of-fragment as in
 
 ## 4. Indexer pipeline
 
-The transition from on-disk raw corpus to a populated documentation database is a multi-stage pipeline executed by `cupertino save --docs`. The stages are described in execution order.
+The transition from on-disk raw corpus to a populated documentation database is a multi-stage pipeline executed per source by `cupertino save --source <source-id>` (for example, `cupertino save --source apple-docs`). The stages are described in execution order.
 
 ### 4.1 Raw corpus and source-specific strategies
 
@@ -316,7 +316,7 @@ The end-user bundle carries its own constant `Shared.Constants.App.databaseVersi
 Empirical measurements on the v1.2.0 apple-docs corpus (351,495 indexed rows) on an Apple M4 (base) machine:
 
 - **Database size after full save**: 2.87 GB
-- **Wall time for a full `cupertino save --docs`**: approximately 7 hours with the develop-tip binary, approximately 6 hours 20 minutes with the #800 experimental A+B mitigations.
+- **Wall time for a full apple-docs rebuild** (`cupertino save --source apple-docs`; this was the legacy docs scope before the per-source CLI): approximately 7 hours with the develop-tip binary, approximately 6 hours 20 minutes with the #800 experimental A+B mitigations.
 - **Indexing rate decay**: the per-row insertion cost scales super-linearly in the number of already-indexed rows. Empirical fits give `T ∝ N^2.126` for the develop-tip binary and `T ∝ N^1.95` for the #800 variant. The dominant cost is FTS5 segment-merge work, which compounds as N grows.
 - **Post-optimisation FTS5 storage layout**: without `optimize`, `docs_fts` carries documents distributed across approximately twelve segment buckets; with the #800 final `optimize`, distribution collapses to two buckets.
 - **Query latency at v1.2.0 corpus size**: 145 ms (short identifier queries such as `@MainActor`) to 510 ms (multi-word prose queries such as `actor reentrancy`) for the binary in its default configuration, with negligible cold-vs-warm difference for the cupertino binary on a system with adequate page cache.
@@ -403,7 +403,7 @@ The architecture would be incomplete without a way to claim "the new build is be
 
 **Methodology design:** `docs/design/search-quality-eval.md` (Cranfield-paradigm; 8 query classes with class-appropriate metrics; Phase 1 single-system mode + Phase 1.x per-class baselines + Phase 1.7 agent-end-to-end + Phase 1.8 version-diff comparison).
 
-**Harness:** `scripts/eval/search-quality-phase1.py` invokes `cupertino search --format json` against a `(binary, search.db)` pair for each query in a fixed corpus, parses the top-10 URI list, scores against per-query right-answer regexes, computes P@1 / P@5 / MRR / NDCG@10. Paired comparison mode: same corpus against two `(binary, db)` pairs, with Wilcoxon signed-rank on per-query reciprocal rank + McNemar 2 × 2 on the rank-1 outcome + bucketed query-list deltas (Added / Removed / Fixed / Degraded / Unchanged / Both-suboptimal). Sibling harness `search-quality-phase1-extended.py` extends to multi-corpus paired comparison (canonical-V2 + deprecation-pair corpora). Both deterministic — two runs against the same inputs produce byte-identical per-query ranks.
+**Harness:** `scripts/eval/search-quality-phase1.py` is the historical v1.2 single-DB evaluator. It invokes `cupertino search --format json` against a `(binary, search.db)` pair for each query in a fixed corpus, parses the top-10 URI list, scores against per-query right-answer regexes, computes P@1 / P@5 / MRR / NDCG@10, and supports paired comparisons with Wilcoxon + McNemar. That shape remains useful for archived v1.2 snapshots; the current v1.3 eight-database bundle is guarded by `scripts/eval/release-corpus-smoke.sh`, which exercises the installed corpus through the current public CLI surfaces without `setup`, `fetch`, `save`, or reindexing.
 
 **Audits:** `docs/audits/search-quality-*-v1.2.0.md`. Seven absolute baselines (one per query class) + three paired v1.1.0 → v1.2.0 version-diff audits land in this folder. The dashboard at `docs/dashboards/` auto-derives every card on the live site (https://cupertino.aleahim.com/) from the audit MDs via `regen-all.sh`; no per-audit hardcoding.
 
@@ -415,7 +415,7 @@ The architecture would be incomplete without a way to claim "the new build is be
 
 | Concern | Path |
 |---|---|
-| Schema definition | `Packages/Sources/SearchSQLite/Search.Index.Schema.swift` |
+| Schema definition | `Packages/Sources/SearchSchema/Search.Schema.CreateAllTablesSQL.swift` |
 | Migrations | `Packages/Sources/SearchSQLite/Search.Index.Migrations.swift` |
 | Connection open, PRAGMAs | `Packages/Sources/SearchSQLite/Search.Index.swift` |
 | Query implementation, BM25F weights | `Packages/Sources/SearchSQLite/Search.Index.Search.swift` |
@@ -428,9 +428,9 @@ The architecture would be incomplete without a way to claim "the new build is be
 | AST extraction (iter-1 substrate) | `Packages/Sources/ASTIndexer/` |
 | Symbol-graph constraint extraction | `Packages/Sources/AppleConstraintsKit/` |
 | Indexer orchestration | `Packages/Sources/Indexer/` and `Packages/Sources/SearchAPI/Search.IndexBuilder.swift` |
-| Source-specific strategies | per-source SPM packages under `Packages/Sources/{HIGSource,AppleDocsSource,AppleArchiveSource,SampleCodeSource,SwiftEvolutionSource,SwiftOrgSource,SwiftBookSource,PackagesSource}/`. Each target carries some subset of: the strategy concrete (`Search.Strategies.*.swift`), the indexer concrete (`Search.*Indexer.swift`), the `*.Definition.swift` static literal, and the `*.FetchInfo.swift` static literal. The 6 web-source targets (AppleDocsSource / HIGSource / SampleCodeSource / SwiftEvolutionSource / SwiftOrgSource / AppleArchiveSource) carry all four files. `SwiftBookSource` is a view-source: Definition + Indexer only, no Strategies file (the no-op `SwiftBookViewSourceStrategy` is a private struct inside `SwiftBookSource.swift`) and no FetchInfo file (fetchInfo returns `nil`). `PackagesSource` is a view-source for a non-search.db destination: Definition + FetchInfo only, no Strategies file (the no-op `PackagesViewSourceStrategy` is a private struct inside `PackagesSource.swift`) and no Indexer file (the no-op `PackagesViewSourceIndexer` is a private struct alongside). PackagesSource declares `destinationDB = .packages`; actual indexing runs in `Indexer.PackagesService` against packages.db. Renames landed in #1008/#1010/#1012/#1014/#1017/#1019; the SwiftBookSource view-source target landed in #1021; the PackagesSource non-search.db target landed in #1023; all as part of the #1007 source-unification epic. |
+| Source-specific strategies | per-source SPM packages under `Packages/Sources/{HIGSource,AppleDocsSource,AppleArchiveSource,SampleCodeSource,SwiftEvolutionSource,SwiftOrgSource,SwiftBookSource,PackagesSource}/`. Each target carries some subset of: the strategy concrete (`Search.Strategies.*.swift`), the indexer concrete (`Search.*Indexer.swift`), the `*.Definition.swift` static literal, and the `*.FetchInfo.swift` static literal. The web-crawl documentation targets (AppleDocsSource / HIGSource / SwiftEvolutionSource / SwiftOrgSource / SwiftBookSource / AppleArchiveSource) carry their fetch metadata and indexing strategy. `SampleCodeSource` supplies the docs-FTS view over the sample catalog, while the rich sample-code tables are built by `Sample.Index.Builder`. `PackagesSource` declares `destinationDB = .packages`; actual indexing runs in `Indexer.PackagesService` against packages.db. |
 | Door dedup and garbage filter | per-source strategy classes |
-| Three-database save command | `Packages/Sources/CLI/Commands/CLIImpl.Command.Save.swift` |
+| Per-source save command | `Packages/Sources/CLI/Commands/CLIImpl.Command.Save.swift` |
 | Phase 1 search-quality harness (single-arm + paired) | `scripts/eval/search-quality-phase1.py` |
 | Phase 1 extended (multi-corpus paired) | `scripts/eval/search-quality-phase1-extended.py` |
 | Audit MDs (per-class baselines + version-diff) | `docs/audits/search-quality-*-v1.2.0.md` |
@@ -442,7 +442,7 @@ The architecture would be incomplete without a way to claim "the new build is be
 - `docs/PRINCIPLES.md`: the engineering principles (lossless URIs, collisions handled at the door, garbage filtered at input, 10x scale headroom) that constrain the indexer pipeline.
 - `docs/package-import-contract.md`: the strict-DI import contract between cupertino's Swift targets.
 - `docs/audits/release-readiness-v1.2.0.md`: a worked example of schema-shape and count-shape validation.
-- `docs/design/search-quality-eval.md`: the Cranfield-paradigm IR-evaluation methodology used to compare two `search.db` builds quantitatively. Implements §G1-G4 via `scripts/eval/search-quality-phase1.py`.
+- `docs/design/search-quality-eval.md`: the historical Cranfield-paradigm IR-evaluation methodology used to compare two v1.2 `search.db` builds quantitatively. Current release-bundle regression coverage lives in `scripts/eval/release-corpus-smoke.sh`.
 - `docs/design/anti-hallucination-eval.md`: Phase 1.7 design (forward-looking) — measures whether an AI agent given cupertino's top-K results actually produces correct Swift code.
 - `docs/release-writeup-v1.2.0.md`: long-form v1.2.0 release narrative — what changed, where the gains came from (#77, #192, #254, #858), what v1.2.0 still gets wrong, how the measurement works, honest disclosure of the canonical-V2 corpus's one rank-shift case.
 - `docs/perf/2026-05-19-fts5-bulk-load-research.md`: deferred-work note on FTS5 bulk-load mitigations.

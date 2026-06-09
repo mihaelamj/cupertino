@@ -5,7 +5,7 @@ Seconds to wait between `SIGTERM` and `SIGKILL` when [`--force-replace`](force-r
 ## Synopsis
 
 ```bash
-cupertino save --force-replace --force-replace-grace <seconds>
+cupertino save --source <id> --force-replace --force-replace-grace <seconds>
 ```
 
 ## Description
@@ -30,14 +30,14 @@ A positive integer (seconds).
 ### Default, fine for most cases
 
 ```bash
-cupertino save --force-replace --yes
+cupertino save --source apple-docs --force-replace --yes
 # grace defaults to 30 seconds
 ```
 
 ### Generous grace for a near-completed apple-documentation.db build
 
 ```bash
-cupertino save --force-replace --yes --force-replace-grace 120
+cupertino save --source apple-docs --force-replace --yes --force-replace-grace 120
 ```
 
 If the sibling save is mid-checkpoint with a multi-GB WAL, give it 2 minutes to flush. The cost of waiting is wallclock; the cost of SIGKILL-mid-checkpoint is a corrupted DB.
@@ -45,7 +45,7 @@ If the sibling save is mid-checkpoint with a multi-GB WAL, give it 2 minutes to 
 ### Aggressive (CI cleanup, sibling known-frozen)
 
 ```bash
-cupertino save --force-replace --yes --force-replace-grace 5
+cupertino save --source apple-docs --force-replace --yes --force-replace-grace 5
 ```
 
 Only when you've already confirmed the sibling is stuck (e.g. via `ps -p <pid>` showing 0% CPU for minutes + no WAL growth).

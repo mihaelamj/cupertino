@@ -122,7 +122,7 @@ const FLOWS = {
     { id: "ReleaseTool",         layer: "app",        summary: "cupertino-rel: bundle + GH release publishing" },
 
     // Features
-    { id: "Indexer",             layer: "feature",    summary: "Orchestrates save: docs, samples, packages -> search.db" },
+    { id: "Indexer",             layer: "feature",    summary: "Orchestrates save: per-source docs DBs, samples, packages" },
     { id: "Ingest",              layer: "feature",    summary: "fetch session, retries, queue persistence" },
     { id: "Distribution",        layer: "feature",    summary: "setup: download bundle from GH Releases" },
     { id: "Diagnostics",         layer: "feature",    summary: "doctor probes: DB / corpus / config" },
@@ -134,8 +134,8 @@ const FLOWS = {
 
     // Infrastructure
     { id: "Core",                layer: "infra",      summary: "Crawler, WKWeb fetcher, JSON/HTML transformers" },
-    { id: "Search",              layer: "infra",      summary: "search.db (FTS5) read + write + index builder" },
-    { id: "SampleIndex",         layer: "infra",      summary: "samples.db read + write" },
+    { id: "Search",              layer: "infra",      summary: "Per-source docs DBs (FTS5) read + write + index builder" },
+    { id: "SampleIndex",         layer: "infra",      summary: "apple-sample-code.db read + write" },
     { id: "Availability",        layer: "infra",      summary: "Per-page availability fetcher (iOS/macOS minimums)" },
     { id: "ASTIndexer",          layer: "infra",      summary: "SwiftSyntax-driven symbol extraction" },
     { id: "RemoteSync",          layer: "infra",      summary: "GitHub API + raw content fetcher" },
@@ -151,13 +151,13 @@ const FLOWS = {
       id: "setup",
       name: "cupertino setup",
       cmd: "cupertino setup",
-      description: "First-time install path. Downloads the pre-built bundle (search.db + samples.db + packages.db) from a versioned GitHub Release, unzips it into ~/.cupertino/, and stamps .setup-version. No crawling required.",
+      description: "First-time install path. Downloads the pre-built eight-database bundle (six per-source docs DBs, apple-sample-code.db, packages.db) from a versioned GitHub Release, unzips it into ~/.cupertino/, and stamps .setup-version. No crawling required.",
       steps: [
         { from: "CLI",          to: "Distribution",  label: "SetupCommand.run()",               annotation: "Parses --base-dir / --keep-existing flags, hands off to Distribution" },
         { from: "Distribution", to: "Shared",        label: "Constants.databaseVersion",        annotation: "Reads the binary's expected bundle version" },
         { from: "Distribution", to: "RemoteSync",    label: "download(asset:)",                 annotation: "Streams cupertino-databases-vX.zip from GH Releases on mihaelamj/cupertino" },
         { from: "RemoteSync",   to: "Distribution",  label: "Data return",                      annotation: "Returns the zip payload + progress events" },
-        { from: "Distribution", to: "CLI",           label: "writes search.db / samples.db / packages.db", annotation: "Unzips to baseDir, stamps .setup-version, reports completion" },
+        { from: "Distribution", to: "CLI",           label: "writes the eight database files", annotation: "Unzips to baseDir, stamps .setup-version, reports completion" },
       ]
     },
     {
@@ -176,17 +176,16 @@ const FLOWS = {
     },
     {
       id: "save",
-      name: "cupertino save --docs",
-      cmd: "cupertino save --docs",
+      name: "cupertino save --source apple-docs",
+      cmd: "cupertino save --source apple-docs",
       description: "Builds the search index from on-disk JSON. Reads every <framework>/<name>.json under ~/.cupertino/docs/, extracts symbols via SwiftSyntax, writes docs_metadata / docs_structured / docs_fts / doc_symbols. Skips files whose title is an HTTP error template OR whose body is the JS-disabled fallback (#284 indexer defense).",
       steps: [
-        { from: "CLI",        to: "Indexer",       label: "SaveCommand.run()",                  annotation: "Parses --docs / --search-db / --docs-dir; runs preflight" },
-        { from: "Indexer",    to: "Search",        label: "IndexBuilder.buildIndex()",          annotation: "Initializes search.db schema v13, clears index if --clear" },
+        { from: "CLI",        to: "Indexer",       label: "SaveCommand.run()",                  annotation: "Parses --source / --all / --docs-dir; runs preflight" },
+        { from: "Indexer",    to: "Search",        label: "IndexBuilder.buildIndex()",          annotation: "Initializes apple-documentation.db schema v18, clears index if --clear" },
         { from: "Search",     to: "Search",        label: "indexAppleDocsFromDirectory",        annotation: "Walks docs/ with deduplicateDocFilesByCanonicalURL, processes JSON / MD per file" },
         { from: "Search",     to: "Search",        label: "titleLooksLikeHTTPErrorTemplate / pageLooksLikeJavaScriptFallback", annotation: "PR #289 + #291 defenses: skip + log + bump skipped counter; never reach docs_structured" },
         { from: "Search",     to: "ASTIndexer",    label: "extract(symbols:from:)",             annotation: "Per-page Swift symbol + import extraction into doc_symbols / doc_imports" },
         { from: "Search",     to: "Shared",        label: "deterministicID + canonicalContentHash", annotation: "Stable id / contentHash per page (#199), so re-runs are idempotent" },
-        { from: "Indexer",    to: "SampleIndex",   label: "indexSamples (optional)",            annotation: "If catalog.json present, also populate samples.db" },
         { from: "Indexer",    to: "CLI",           label: "Final document count + framework count", annotation: "Reports '✅ Search index built: N documents' on completion" },
       ]
     },
@@ -201,7 +200,7 @@ const FLOWS = {
         { from: "MCP",                to: "MCPSupport",           label: "resources/list, resources/read", annotation: "Exposes apple-docs:// + swift-evolution:// + apple-archive:// URIs" },
         { from: "SearchToolProvider", to: "Search",               label: "Index.search(query:filters:)", annotation: "FTS5 query with RRF fusion across sources" },
         { from: "SearchToolProvider", to: "SampleIndex",          label: "SampleDatabase.search(query:)", annotation: "Joined into the same RRF when --source samples or all" },
-        { from: "MCPSupport",         to: "Search",               label: "Index.getDocumentContent(uri:)", annotation: "Reads markdown / JSON content from search.db for resources/read" },
+        { from: "MCPSupport",         to: "Search",               label: "Index.getDocumentContent(uri:)", annotation: "Reads markdown / JSON content from the matching per-source docs DB" },
         { from: "Search",             to: "Shared",               label: "StructuredDocumentationPage decode", annotation: "Renders the result rows into the MCP-facing TextContent shape" },
         { from: "MCP",                to: "CLI",                  label: "stdout JSON-RPC response",  annotation: "Each chunk written to stdout for the client to read" },
       ]
@@ -213,7 +212,7 @@ const FLOWS = {
       description: "One-shot search from the CLI (not via MCP). Same Search.Index code path as serve uses for its 'search' tool — useful for shell scripts and CI smoke tests.",
       steps: [
         { from: "CLI",        to: "Services",     label: "SearchCommand.run()",                annotation: "Parses query, --source, --framework, --limit, --language" },
-        { from: "Services",   to: "Search",       label: "Index.search(query: filters:)",      annotation: "Opens search.db read-only, runs FTS5 + RRF" },
+        { from: "Services",   to: "Search",       label: "Index.search(query: filters:)",      annotation: "Opens per-source docs DBs read-only, runs FTS5 + RRF" },
         { from: "Search",     to: "Shared",       label: "decodes StructuredDocumentationPage rows", annotation: "Maps SQLite rows back into typed pages for formatting" },
         { from: "Services",   to: "CLI",          label: "ranked results",                     annotation: "Formats the top-N with title / score / abstract / URI" },
       ]
@@ -225,17 +224,17 @@ const FLOWS = {
       description: "Health probe over the installed bundle + binary. Checks DB schema versions, file presence, corpus integrity, and config sanity. Used in CI and by support to verify a clean install.",
       steps: [
         { from: "CLI",          to: "Diagnostics", label: "DoctorCommand.run()",                annotation: "Walks the probe registry, runs each in turn" },
-        { from: "Diagnostics",  to: "Search",      label: "Index.openReadOnly + PRAGMA user_version", annotation: "Verifies schema v13 + non-empty docs_metadata" },
-        { from: "Diagnostics",  to: "SampleIndex", label: "SampleDatabase.openReadOnly",        annotation: "Verifies samples.db present + indexable" },
+        { from: "Diagnostics",  to: "Search",      label: "Index.openReadOnly + PRAGMA user_version", annotation: "Verifies schema v18 + non-empty docs_metadata" },
+        { from: "Diagnostics",  to: "SampleIndex", label: "SampleDatabase.openReadOnly",        annotation: "Verifies apple-sample-code.db present + indexable" },
         { from: "Diagnostics",  to: "Shared",      label: "Constants.databaseVersion / paths",  annotation: "Cross-checks bundle's expected version against on-disk .setup-version" },
         { from: "Diagnostics",  to: "CLI",         label: "ProbeReport[] + final summary",      annotation: "Prints per-probe ✓/✗ + exits non-zero on any failure" },
       ]
     },
     {
       id: "publish",
-      name: "cupertino-rel publish",
-      cmd: "cupertino-rel publish --version 1.0.3",
-      description: "Maintainer-only path. Zips the latest search.db / samples.db / packages.db into cupertino-databases-vX.zip and uploads as a GH Release asset on mihaelamj/cupertino-docs, then updates the homebrew formula.",
+      name: "cupertino-rel databases",
+      cmd: "cupertino-rel databases",
+      description: "Maintainer-only path. Zips the latest eight-database bundle into cupertino-databases-vX.zip and uploads it as a GH Release asset on mihaelamj/cupertino-docs; the broader release workflow then updates the Homebrew formula.",
       steps: [
         { from: "ReleaseTool",   to: "Shared",       label: "Constants.App.version / databaseVersion", annotation: "Reads the binary's stamped version" },
         { from: "ReleaseTool",   to: "ReleaseTool",  label: "databases / sha256 / homebrew sub-commands", annotation: "Composes the multi-step pipeline locally" },

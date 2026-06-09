@@ -226,7 +226,7 @@ See [`--save`](save.md) for the full additive surface.
 
 🔍 Search Index
    ✗ Database: ~/.cupertino/apple-documentation.db (not found)
-     → Run: cupertino setup  (or `cupertino save` if building locally)
+     → Run: cupertino setup  (or `cupertino save --all` if building locally)
 
 🔧 Providers
    ✓ MCP.Support.DocsResourceProvider: available

@@ -11,7 +11,7 @@ As of v1.3.0 the shipped database is in rollback (`journal=delete`) mode ([#1192
 ## Created By
 
 ```bash
-cupertino save --samples
+cupertino save --source samples
 ```
 
 **Important**: Run `cupertino cleanup` before indexing to remove unnecessary files from sample code archives.
@@ -120,7 +120,7 @@ CREATE INDEX idx_file_symbols_name   ON file_symbols(name);
 CREATE INDEX idx_file_symbols_async  ON file_symbols(is_async);
 ```
 
-Populated by SwiftSyntax during `cupertino save --samples`. Schema mirrors `doc_symbols` in `apple-documentation.db` (same column shapes; different parent FK — `file_id` here vs `doc_uri` there).
+Populated by SwiftSyntax during `cupertino save --source samples`. Schema mirrors `doc_symbols` in `apple-documentation.db` (same column shapes; different parent FK — `file_id` here vs `doc_uri` there).
 
 ### `file_symbols_fts` (FTS5)
 
@@ -242,20 +242,20 @@ The MCP server provides sample-code-related tools:
 
 ```bash
 # Clear and rebuild from scratch
-cupertino save --samples --clear
+cupertino save --source samples --clear
 
 # Force reindex all projects (even if already indexed)
-cupertino save --samples --force
+cupertino save --source samples --force
 ```
 
 ## Customizing Location
 
 ```bash
 # Use custom database path
-cupertino save --samples --samples-db ./my-samples.db
+cupertino save --source samples --samples-db ./my-samples.db
 
 # Use custom sample code directory
-cupertino save --samples --samples-dir ~/my-samples
+cupertino save --source samples --samples-dir ~/my-samples
 ```
 
 ## Technical Details

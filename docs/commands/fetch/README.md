@@ -12,7 +12,7 @@ cupertino fetch [--source <id>] [options]
 
 The `fetch` command is the unified fetching command that handles both web crawling and direct downloads:
 
-- **Web Crawling** (apple-docs, swift-org, swift-evolution): Uses WKWebView to render and crawl JavaScript-heavy documentation sites
+- **Web Crawling** (apple-docs, swift-org, swift-book, swift-evolution): Uses WKWebView to render and crawl JavaScript-heavy documentation sites
 - **Direct Fetching** (packages, apple-sample-code, samples): Downloads resources directly from APIs without web crawling
 - **Parallel Fetching** (all): Fetches all sources concurrently for maximum efficiency
 
@@ -23,6 +23,7 @@ The `fetch` command is the unified fetching command that handles both web crawli
 - [--source](source.md) - Source to fetch (canonical id from the per-source registry) **[default: apple-docs]**
   - `apple-docs` - Apple Developer Documentation (web crawl)
   - `swift-org` - Swift.org Documentation (web crawl)
+  - `swift-book` - The Swift Programming Language book (independent Swift Book web crawl)
   - `swift-evolution` - Swift Evolution Proposals (web crawl)
   - `packages` - Swift package source archives (#217). Stage 2 by default; pass `--refresh-metadata` to also pull the SPI metadata + stars (#1108).
   - `apple-sample-code` - Apple Sample Code (direct download from Apple, legacy bundle path, requires auth)
@@ -45,7 +46,7 @@ The `fetch` command is the unified fetching command that handles both web crawli
 - `--baseline <path>` - Path to a known-good baseline corpus directory (e.g. a prior `cupertino-docs/docs` snapshot). On startup, URLs present in the baseline but missing from the current crawl's known set are prepended to the queue so the resumed crawl recovers gaps without a full recrawl. Path comparison is case-insensitive.
 - `--urls <path>` - Path to a text file containing one URL per line. Each URL is enqueued at depth 0; the crawler follows links from each up to `--max-depth`. Set `--max-depth 0` to fetch only the listed URLs with no descent. Useful for fetching a fixed list of URLs another corpus has but this one is missing, without re-spidering. Lines starting with `#` and blank lines are ignored. ([#210](https://github.com/mihaelamj/cupertino/issues/210))
 - `--discovery-mode <mode>` - Discovery mode for the docs crawler. Values: `auto` (default; JSON API primary, WKWebView fallback when JSON returns 404), `json-only` (JSON API only, no fallback. Fastest, narrowest), `webview-only` (WKWebView for everything. Slowest, broadest discovery, matches pre-2025-11-30 behavior). ([#208](https://github.com/mihaelamj/cupertino/issues/208))
-- `--only-accepted` / `--no-only-accepted` - Only download accepted/implemented proposals (evolution type only). On by default; use `--no-only-accepted` to include drafts and rejected proposals.
+- `--only-accepted` / `--no-only-accepted` - Only download accepted/implemented proposals (`swift-evolution` source only). On by default; use `--no-only-accepted` to include drafts and rejected proposals.
 
 #### HTML link augmentation in `--discovery-mode auto` (v1.0.2+)
 
@@ -93,7 +94,7 @@ cupertino fetch --source apple-docs
 cupertino fetch --source swift-evolution
 ```
 
-### Fetch All Types in Parallel
+### Fetch All Sources in Parallel
 ```bash
 cupertino fetch --source all
 ```
@@ -165,10 +166,11 @@ Default locations:
 - **swift-evolution**: `~/.cupertino/swift-evolution/`
 - **apple-archive**: `~/.cupertino/archive/`
 - **hig**: `~/.cupertino/hig/`
-- **swift-book**: co-crawled with `swift-org` (SwiftOrgStrategy tags swift-book pages via URL-prefix during emission; no separate output dir)
+- **swift-book**: `~/.cupertino/swift-book/`
 
 Output files:
-- **Markdown files**, converted documentation pages
+
+- **Source-specific page files**, DocC render JSON for Apple docs / Swift Book and Markdown for Markdown-backed sources
 - **metadata.json**, crawl metadata for change detection and resume
 - **session.json**, session state for resuming interrupted crawls
 

@@ -6,6 +6,7 @@ Recursively scan a directory for `*.symbols.json` files.
 
 ```bash
 cupertino-constraints-gen generate --from-directory <dir> -o <output>
+cupertino-constraints-gen conformances --from-directory <dir> -o <output>
 ```
 
 ## Description
@@ -24,4 +25,8 @@ String (directory path). Optional, but exactly one of `--from-directory` or the 
 cupertino-constraints-gen generate \
   --from-directory ~/Developer/public/cupertino-symbolgraphs \
   -o apple-constraints.json
+
+cupertino-constraints-gen conformances \
+  --from-directory ~/Developer/public/cupertino-symbolgraphs \
+  -o apple-conformances.json
 ```

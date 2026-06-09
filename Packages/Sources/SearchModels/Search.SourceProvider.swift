@@ -142,11 +142,10 @@ extension Search {
         /// in `CLIImpl.Command.Fetch.run` becomes a single line:
         /// `try await registry.entry(for: source).provider.makeFetchStrategy()?.run(env:)`.
         ///
-        /// Sources without a fetch capability (today: `swift-book`,
-        /// a view-source whose pages are co-crawled by `swift-org`
-        /// via URL-prefix tagging) return nil; the default extension
-        /// below returns nil. The CLI distinguishes "no strategy"
-        /// from "unknown source-id" so the user gets a useful error.
+        /// Sources without a fetch capability return nil; the default
+        /// extension below returns nil. The CLI distinguishes "no
+        /// strategy" from "unknown source-id" so the user gets a
+        /// useful error.
         func makeFetchStrategy() -> (any Search.SourceFetchStrategy)?
 
         /// 2026-05-26 audit #1055: per-source read strategy. Pre-fix
@@ -210,11 +209,10 @@ extension Search {
         /// `env.sampleCatalogProvider`) override to `false`; the CLI
         /// resolver supplies a `/dev/null` sentinel for them.
         ///
-        /// View-sources that share another source's directory
-        /// (today: `SwiftBookSource` over swift-org) take a different
-        /// path: they declare `corpusDirectoryAlias` and inherit the
-        /// parent source's resolved directory + override via
-        /// `makeDocsIndexingDirectoryByKey`. They keep
+        /// View-sources that share another source's directory take a
+        /// different path: they declare `corpusDirectoryAlias` and
+        /// inherit the parent source's resolved directory + override
+        /// via `makeDocsIndexingDirectoryByKey`. They keep
         /// `requiresCorpusDirectory == true` because their strategy
         /// DOES read a directory — just not their own.
         var requiresCorpusDirectory: Bool { get }
@@ -327,12 +325,9 @@ extension Search.SourceProvider {
 
     /// Default: no fetch capability. Sources whose data ships via
     /// `cupertino fetch` (apple-docs / hig / apple-archive /
-    /// swift-evolution / swift-org / samples / packages) override
-    /// to return their bespoke strategy concrete. View-sources that
-    /// share another source's corpus (today: `SwiftBookSource`)
-    /// inherit nil — `cupertino fetch --source <parent>` covers
-    /// their content via shared URL-prefix crawling; spawning a
-    /// separate leg would double-fetch.
+    /// swift-evolution / swift-org / swift-book / samples / packages)
+    /// override to return their bespoke strategy concrete. A source
+    /// with no fetch capability inherits nil.
     public func makeFetchStrategy() -> (any Search.SourceFetchStrategy)? {
         nil
     }
@@ -351,17 +346,15 @@ extension Search.SourceProvider {
     /// `env.sampleCatalogProvider` instead) override to `false`; the
     /// CLI resolver supplies a placeholder URL so the strategy still
     /// runs in the dispatch fan-out. View-sources that share another
-    /// source's directory (today: `SwiftBookSource`) declare
-    /// `corpusDirectoryAlias` instead — the resolver routes them to
-    /// the parent source's directory via the override-propagation
-    /// path, not the placeholder.
+    /// source's directory declare `corpusDirectoryAlias` instead —
+    /// the resolver routes them to the parent source's directory via
+    /// the override-propagation path, not the placeholder.
     public var requiresCorpusDirectory: Bool {
         true
     }
 
     /// Default: not a view-source. Providers that share another
-    /// source's on-disk corpus directory (today: `SwiftBookSource`
-    /// → `"swift-org"`) override.
+    /// source's on-disk corpus directory override.
     public var corpusDirectoryAlias: String? {
         nil
     }

@@ -1,6 +1,6 @@
 # docs/ - Apple Documentation
 
-Crawled Apple developer documentation in Markdown format.
+Crawled Apple developer documentation in DocC render-JSON format.
 
 ## Location
 
@@ -18,26 +18,26 @@ cupertino fetch --source apple-docs
 ~/.cupertino/docs/
 ├── metadata.json                                    # Crawl metadata
 ├── swift/                                          # Swift framework
-│   ├── documentation_swift_array.md
-│   ├── documentation_swift_dictionary.md
-│   ├── documentation_swift_string.md
+│   ├── documentation_swift_array.json
+│   ├── documentation_swift_dictionary.json
+│   ├── documentation_swift_string.json
 │   └── ...
 ├── swiftui/                                        # SwiftUI framework
-│   ├── documentation_swiftui_view.md
-│   ├── documentation_swiftui_text.md
-│   ├── documentation_swiftui_button.md
+│   ├── documentation_swiftui_view.json
+│   ├── documentation_swiftui_text.json
+│   ├── documentation_swiftui_button.json
 │   └── ...
 ├── uikit/                                          # UIKit framework
-│   ├── documentation_uikit_uiviewcontroller.md
-│   ├── documentation_uikit_uitableview.md
+│   ├── documentation_uikit_uiviewcontroller.json
+│   ├── documentation_uikit_uitableview.json
 │   └── ...
 ├── foundation/                                     # Foundation framework
-│   ├── documentation_foundation_url.md
-│   ├── documentation_foundation_urlsession.md
+│   ├── documentation_foundation_url.json
+│   ├── documentation_foundation_urlsession.json
 │   └── ...
 ├── storekit/                                       # StoreKit framework
-│   ├── documentation_storekit_product_subscriptionoffer_signature.md
-│   ├── documentation_storekit_understanding-storekit-workflows.md
+│   ├── documentation_storekit_product_subscriptionoffer_signature.json
+│   ├── documentation_storekit_understanding-storekit-workflows.json
 │   └── ...
 └── ...                                             # 250+ framework folders
 ```
@@ -46,29 +46,28 @@ cupertino fetch --source apple-docs
 
 ### Folder Organization
 - **Top-level folders** = Framework names (lowercase)
-- **Files** = Markdown documentation pages with `documentation_framework_` prefix
+- **Files** = DocC render-JSON documentation pages with `documentation_framework_` prefix
 
 ### Filename Format
 ```
-documentation_{framework}_{topic}.md
+documentation_{framework}_{topic}.json
 ```
 
 ### Example Paths
 ```
-docs/swift/documentation_swift_array.md
-docs/swiftui/documentation_swiftui_view.md
-docs/uikit/documentation_uikit_uiviewcontroller.md
-docs/foundation/documentation_foundation_url.md
-docs/storekit/documentation_storekit_product_subscriptionoffer_signature.md
+docs/swift/documentation_swift_array.json
+docs/swiftui/documentation_swiftui_view.json
+docs/uikit/documentation_uikit_uiviewcontroller.json
+docs/foundation/documentation_foundation_url.json
+docs/storekit/documentation_storekit_product_subscriptionoffer_signature.json
 ```
 
 ## Files
 
-### Markdown Files (.md)
+### JSON Files (.json)
 - One file per documentation page
-- Converted from HTML
-- Preserves code examples
-- Includes links to related pages
+- Preserves DocC metadata, topic sections, rawMarkdown, relationships, and availability
+- Carries code examples and related-page links consumed by `cupertino save --source apple-docs`
 
 ### [metadata.json](metadata.json.md)
 - Tracks all crawled pages
@@ -78,16 +77,16 @@ docs/storekit/documentation_storekit_product_subscriptionoffer_signature.md
 
 ## Size
 
-- **~10,000-15,000 pages** for full Apple documentation crawl
-- **~500 MB - 1 GB** total size
-- Varies based on `--max-pages` setting
+- **Hundreds of thousands of JSON pages** for a full maintainer Apple documentation crawl
+- Several GB on disk for the current full corpus
+- Varies based on crawl scope and source freshness
 
 ## Usage
 
 ### Search This Documentation
 ```bash
 # Build search index
-cupertino save --docs-dir ~/.cupertino/docs
+cupertino save --source apple-docs --docs-dir ~/.cupertino/docs
 
 # Use with MCP
 cupertino
@@ -95,8 +94,8 @@ cupertino
 
 ### Read Directly
 ```bash
-# Browse with any Markdown viewer
-open ~/.cupertino/docs/swiftui/view/index.md
+# Inspect a raw DocC JSON page
+open ~/.cupertino/docs/swiftui/documentation_swiftui_view.json
 ```
 
 ## Customizing Location
@@ -129,13 +128,13 @@ This enables:
 **Recommended workflow:**
 ```bash
 cupertino fetch --source apple-docs         # Fetch documentation
-cupertino fetch --source availability # Add availability data
-cupertino save                       # Build search index
+cupertino fetch --source availability       # Add availability data
+cupertino save --source apple-docs          # Build search index
 ```
 
 ## Notes
 
 - Framework folders match URL structure
-- All content is Markdown for easy parsing
+- Content is DocC JSON with markdown-bearing fields for easy parsing
 - metadata.json enables resume and change detection
 - Can be version controlled (though large)

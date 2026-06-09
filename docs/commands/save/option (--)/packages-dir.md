@@ -1,16 +1,16 @@
 # --packages-dir
 
-Directory containing package READMEs
+Directory containing Swift package source trees
 
 ## Synopsis
 
 ```bash
-cupertino save --packages-dir <path>
+cupertino save --source packages --packages-dir <path>
 ```
 
 ## Description
 
-Specifies the directory containing Swift package README files to include in the search index.
+Specifies the directory containing Swift package source trees to include in `packages.db`.
 
 ## Default
 
@@ -18,19 +18,19 @@ Specifies the directory containing Swift package README files to include in the 
 
 ## Examples
 
-### Include Package READMEs (Default)
+### Include Packages (Default)
 ```bash
 cupertino save --all
 ```
 
 ### Custom Packages Directory
 ```bash
-cupertino save --packages-dir ./my-packages
+cupertino save --source packages --packages-dir ./my-packages
 ```
 
 ### No Package Documentation
 ```bash
-cupertino save --packages-dir ""
+cupertino save --source packages --packages-dir ""
 ```
 
 ## Expected Structure
@@ -38,21 +38,24 @@ cupertino save --packages-dir ""
 The directory should contain:
 ```
 packages-dir/
-├── package1-README.md
-├── package2-README.md
+├── owner/
+│   └── repo/
+│       ├── README.md
+│       ├── Package.swift
+│       └── Sources/
 └── ...
 ```
 
 ## Use Cases
 
-- Index Swift package documentation alongside Apple docs
-- Search package READMEs
+- Index Swift package source, READMEs, manifests, and DocC content
+- Search package code and documentation
 - Unified search across all Swift resources
 
 ## Notes
 
 - Directory must exist if specified
-- Should contain README Markdown (`.md`) files from Swift packages
+- Should contain extracted Swift package source trees from `cupertino fetch --source packages`
 - Works with output from `cupertino fetch --source packages`
 - Indexed separately but searchable together
 - Can be empty or omitted if not needed

@@ -12,7 +12,7 @@ cupertino save --source <id> [--source <id>]...
 
 ## Default Behavior
 
-`cupertino save --all` runs the **full pipeline**: every source's DB is built if its source data is present. Each source reads from its standard directory under `~/.cupertino/` and writes to its standard DB path. With explicit `--source <id>`, only the selected scope(s) fire (current internal dispatch is bucket-level; see [source.md](source.md) Notes for the per-source-id dispatch refactor that lands in a follow-up commit).
+`cupertino save --all` runs the **full pipeline**: every source's DB is built if its source data is present. Each source reads from its standard directory under `~/.cupertino/` and writes to its standard DB path. With explicit `--source <id>`, only the selected source(s) fire.
 
 Equivalent to specifying every default explicitly:
 
@@ -129,7 +129,7 @@ cupertino save --remote
 
 ### Skip preflight prompt
 ```bash
-cupertino save --yes
+cupertino save --all --yes
 ```
 
 ## Output
@@ -137,7 +137,7 @@ cupertino save --yes
 | Scope (`--source <id>`) | DB | Tables (top-level) |
 |-------|-----|---------|
 | docs-bucket sources (`apple-docs`, `swift-evolution`, `hig`, `apple-archive`, `swift-org`, `swift-book`) | `apple-documentation.db` + sibling per-source DBs | `docs_fts`, `docs_metadata`, `docs_structured`, `doc_symbols`, `doc_imports`, `framework_aliases`, `doc_code_examples`, `doc_code_fts` |
-| `packages` | `packages.db` | `package_files_fts`, `package_files`, `packages` |
+| `packages` | `packages.db` | `package_metadata`, `package_files`, `package_files_fts`, `package_symbols`, `package_imports` |
 | `samples` | `apple-sample-code.db` (one file, two table tracks per #1037) | rich: `projects`, `files`, `file_symbols`, `file_imports`, `samples_schema_version`; FTS: `docs_metadata`, `docs_fts` |
 
 ## Error Handling

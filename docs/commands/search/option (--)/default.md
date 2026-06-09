@@ -34,7 +34,7 @@ cupertino search "your query" \
 | `--format` | `text` | Output format (text / json / markdown / md) |
 | `--packages-db` | `~/.cupertino/packages.db` | packages source |
 | `--sample-db` | `~/.cupertino/apple-sample-code.db` | samples source |
-| `--include-archive` | `false` | Apple Archive excluded from fan-out unless on |
+| `--include-archive` | `false` | Legacy compatibility flag; current fan-out already includes `apple-archive` |
 | `--skip-docs` | `false` | Fan-out only |
 | `--skip-packages` | `false` | Fan-out only |
 | `--skip-samples` | `false` | Fan-out only |

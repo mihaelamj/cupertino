@@ -1,7 +1,7 @@
 # Cupertino Architecture
 
-**Last tagged release:** v1.2.1 on 2026-05-23.
-**`develop` HEAD as of:** 2026-05-31 — `main` carries the v1.3.0 per-source DB bundle (the unified `search.db` split into 8 per-source databases shipped read-only, #1036 / #1194); no `v1.3.0` tag cut yet.
+**Last tagged release:** v1.3.0 on 2026-05-31.
+**`develop` HEAD as of:** 2026-06-09 — current docs reflect the v1.3.0 per-source DB bundle (the unified `search.db` split into eight read-only per-source databases, #1036 / #1194) plus the unreleased desktop/mobile read-surface work tracked in `CHANGELOG.md`.
 **Swift Version:** 6.3 (Xcode 26 SDK; use `xcrun swift build` not bare `swift`)
 **Language Mode:** Swift 6 with Strict Concurrency Checking
 
@@ -25,7 +25,7 @@ Cupertino is a Swift-based Apple documentation crawler and MCP (Model Context Pr
 
 ### Package Structure
 
-Cupertino uses **ExtremePackaging** with ~40 single-responsibility SPM targets across 38 source directories, organized by role. The strict-DI contract (which targets may import which) is in `docs/package-import-contract.md`.
+Cupertino uses **ExtremePackaging** with 64 non-empty `Packages/Sources` directories and 124 SPM targets including tests, tools, front doors, and support packages. The strict-DI contract (which production targets may import which) is in `docs/package-import-contract.md`.
 
 ```
 Foundation tier (foundation-only by construction; any target may import these):
@@ -97,7 +97,7 @@ The Services package provides shared read services used by **both** CLI commands
 flowchart TD
     SC[ServiceContainer<br/>lifecycle mgmt: with*Service { … }]
 
-    R[ReadService<br/>3-DB dispatch]
+    R[ReadService<br/>source/sample/package dispatch]
     DS[DocsSearchService<br/>per-source docs DBs]
     HS[HIGSearchService<br/>HIG-only, delegates]
     SS[Sample.Search.Service<br/>apple-sample-code.db]
@@ -129,7 +129,7 @@ flowchart TD
 - **Unified `cupertino read`** (#239 follow-up): single command dispatches across docs / samples / packages via `--source`. `Services.ReadService` + `Search.PackageQuery.fileContent` (reads from `package_files_fts.content`, no on-disk packages tree required).
 - **Default `cupertino search` is fan-out** (#239): merges what was `cupertino ask` — RRF (k=60) across every available DB, chunked excerpts, per-result `▶ Read full:` hints. `--brief`, `--per-source`, `--platform`, `--min-version`, `--skip-{docs,packages,samples}`, `--packages-db`.
 - **MCP read tools split** today by source: `read_document` / `read_sample` / `read_sample_file` (separate). The CLI's unified `cupertino read` is the single front-door for all three.
-- **`Search.Index` actor split by concern** (v1.0.2+): `Sources/Search/SearchIndex.swift` was a 4598-line actor. Split into a 253-line core file (declaration, properties, lifecycle) plus 21 `Search.Index.<Concern>.swift` extension files covering schema, migrations, indexing, search, semantic search, attribute search, query parsing, code examples, packages, counts/aliases, helpers, enrichment passes, inheritance, platform availability, and more. Public API unchanged; declarations widened from `private` to package-internal so cross-file extensions can share state. See diagrams below.
+- **`Search.Index` actor split by concern** (v1.0.2+): `Sources/Search/SearchIndex.swift` was a 4598-line actor. It is now a small core file (declaration, properties, lifecycle) plus focused `Search.Index.<Concern>.swift` extension files covering schema, migrations, indexing, search, semantic search, attribute search, query parsing, code examples, packages, counts/aliases, helpers, enrichment passes, inheritance, platform availability, and more. Public API unchanged; declarations widened from `private` to package-internal so cross-file extensions can share state. See diagrams below.
 
 **v0.2 Package Changes** (historical): MCPShared + MCPTransport + MCPServer → MCP; namespaced types (CupertinoLogging → Logging, etc.); unified `cupertino` binary (no separate `cupertino-mcp`).
 
@@ -139,10 +139,10 @@ The `Search.Index` actor is the on-disk search engine — a per-source SQLite FT
 
 ```mermaid
 flowchart LR
-    Idx["Search.Index<br/>actor (253 LoC core)"]
+    Idx["Search.Index<br/>actor core"]
 
-    Idx --> Schema["+Schema.swift<br/>createTables, full v13 SQL"]
-    Idx --> Migr["+Migrations.swift<br/>migrate3..11, version r/w"]
+    Idx --> Schema["+Schema.swift<br/>createTables delegates to SearchSchema v18 DDL"]
+    Idx --> Migr["+Migrations.swift<br/>migrate3..18, version r/w"]
     Idx --> IxP["+Indexing.swift<br/>indexPackage, indexSampleCode,<br/>code examples, AST clear/recompute"]
     Idx --> IxD["+IndexingDocs.swift<br/>indexDocument, indexItem,<br/>indexStructuredDocument,<br/>indexDocSymbols/Imports"]
     Idx --> Sch["+Search.swift<br/>search() + multi-pass ranker,<br/>fetchCanonicalTypePages,<br/>fetchFrameworkRoot"]
@@ -202,7 +202,7 @@ Heuristic 1 (#254) flattens BM25 ties between pages whose title exactly matches 
 
 ### Technology Stack
 
-- **Swift 6.2** with strict concurrency checking
+- **Swift 6.3 toolchain** with strict concurrency checking (`Package.swift` declares Swift tools version 6.2 for package compatibility)
 - **WKWebView** for web page rendering
 - **SQLite FTS5** for full-text search
 - **ArgumentParser** for CLI interface

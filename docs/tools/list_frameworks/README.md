@@ -105,7 +105,7 @@ If searches return no results, check if the framework is indexed:
 {"name": "list_frameworks", "arguments": {}}
 ```
 
-If total documents is 0, run `cupertino save` to build the index.
+If total documents is 0, run `cupertino setup` to install the pre-built bundle, or `cupertino save --all` if you are rebuilding locally.
 
 ## See Also
 

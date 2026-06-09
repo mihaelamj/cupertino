@@ -5,7 +5,7 @@ Directory containing Swift Evolution proposals
 ## Synopsis
 
 ```bash
-cupertino save --evolution-dir <path>
+cupertino save --source swift-evolution --evolution-dir <path>
 ```
 
 ## Description
@@ -25,12 +25,12 @@ cupertino save --all
 
 ### Custom Evolution Directory
 ```bash
-cupertino save --evolution-dir ./my-evolution
+cupertino save --source swift-evolution --evolution-dir ./my-evolution
 ```
 
 ### No Evolution Proposals
 ```bash
-cupertino save --evolution-dir ""
+cupertino save --source swift-evolution --evolution-dir ""
 ```
 
 ## Expected Structure

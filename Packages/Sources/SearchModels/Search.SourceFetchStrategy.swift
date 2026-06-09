@@ -152,9 +152,8 @@ extension Search {
     /// registered provider; there is no source-id switch anywhere
     /// in the dispatch.
     ///
-    /// Sources without a fetch capability (today: `swift-book`, a
-    /// view-source co-crawled by `swift-org`'s strategy) return nil
-    /// from `makeFetchStrategy()`.
+    /// Sources without a fetch capability return nil from
+    /// `makeFetchStrategy()`.
     public protocol SourceFetchStrategy: Sendable {
         /// Resolve a complete fetch using the supplied environment.
         /// May span hours (full apple-docs crawl), short minutes

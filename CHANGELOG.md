@@ -40,6 +40,8 @@
 
 ### Changed
 
+- **docs: refresh README, architecture, command, artifact, source-manifest, and tool docs against the current v1.3.0 per-source bundle.** Corrected stale single-DB wording, Swift Book / Swift.org fetch and save paths, archive fan-out behavior, Apple-docs raw JSON corpus examples, `package-search --swift-tools`, `search --swift` / `--apple-imports`, `constraints-gen conformances`, and the command/help text that still used retired `--type` terminology.
+
 - **docs(regression): refresh command/tool docs after release-corpus smoke.** Updated the command index to list the semantic CLI commands, refreshed stale short-URI and package-read examples in `docs/commands/read`, `docs/commands/search`, and `docs/tools/read_document`, and recorded the current full Swift Testing suite count plus honest lint/format status in the README so the documented regression surface matches the current binary and v1.3.0 release corpus.
 
 - **refactor(#1261): adopt `CupertinoDataEngine` 0.2.x for composed embedded search.** The external engine now conforms to `Search.Database` and `Search.DocumentBrowsing` itself, routing document reads by URI source, merging framework/document counts, fanning symbol/inheritance/availability/resource calls across configured source readers, and applying lightweight RRF fusion for unified search results including packages. The dependency minimum is bumped to `from: "0.2.2"` so desktop and mobile backends can inject one engine facade instead of wiring one source reader and silently losing cross-source search. Cupertino still keeps the current production reader construction in `CupertinoComposition` until the remaining #1261 parity slices land; UI clients still see contract protocols, not storage paths or concrete storage objects.

@@ -5,7 +5,7 @@
 ## Synopsis
 
 ```bash
-cupertino save --docs-dir <path>
+cupertino save --source apple-docs --docs-dir <path>
 ```
 
 ## Description
@@ -27,17 +27,17 @@ cupertino save --all
 
 ### Index Custom Directory
 ```bash
-cupertino save --docs-dir ./my-docs
+cupertino save --source apple-docs --docs-dir ./my-docs
 ```
 
 ### Index Swift.org Documentation
 ```bash
-cupertino save --docs-dir ~/.cupertino/swift-org
+cupertino save --source swift-org --swift-org-dir ~/.cupertino/swift-org
 ```
 
 ### Absolute Path
 ```bash
-cupertino save --docs-dir /Users/username/Documents/apple-docs
+cupertino save --source apple-docs --docs-dir /Users/username/Documents/apple-docs
 ```
 
 ## Expected Structure
@@ -47,16 +47,16 @@ The directory should contain:
 docs-dir/
 ├── metadata.json           # Optional but recommended
 ├── framework1/
-│   ├── page1.md
-│   └── page2.md
+│   ├── page1.json
+│   └── page2.json
 └── framework2/
-    └── page3.md
+    └── page3.json
 ```
 
 ## Notes
 
 - Directory may be absent, `save` skips the apple-docs source cleanly when it is ([#671](https://github.com/mihaelamj/cupertino/issues/671))
-- Should contain Markdown (`.md`) files or structured `.json` pages
+- Should contain structured `.json` pages (older markdown fixtures are accepted where the source strategy supports them)
 - Works with output from `cupertino fetch`
 - Tilde (`~`) expansion is supported
 - Recursive: indexes all files in subdirectories

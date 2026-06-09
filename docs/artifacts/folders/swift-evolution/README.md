@@ -81,7 +81,7 @@ Downloads only proposals with status:
 ### Search Proposals
 ```bash
 # Build search index
-cupertino save --evolution-dir ~/.cupertino/swift-evolution
+cupertino save --source swift-evolution --evolution-dir ~/.cupertino/swift-evolution
 ```
 
 ### Browse Locally

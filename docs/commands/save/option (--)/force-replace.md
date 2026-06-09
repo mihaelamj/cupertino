@@ -5,8 +5,8 @@ Authorise SIGTERM of any sibling `cupertino save` that targets the same database
 ## Synopsis
 
 ```bash
-cupertino save [--docs|--packages|--samples] --force-replace
-cupertino save [--docs|--packages|--samples] --force-replace --yes
+cupertino save --source apple-docs --force-replace
+cupertino save --all --force-replace --yes
 ```
 
 ## Description
@@ -58,16 +58,16 @@ Skip none of these, they take 30 seconds total and save you from losing real wor
    ```
    Run twice 10s apart. WAL still growing = checkpoint in progress = leave it alone.
 
-4. **Only if 1-3 confirm the sibling is genuinely stuck**, run `cupertino save --force-replace` (or `--force-replace --yes` for CI).
+4. **Only if 1-3 confirm the sibling is genuinely stuck**, run `cupertino save --source <id> --force-replace` (or `cupertino save --all --force-replace --yes` for CI).
 
 ## When to use
 
-- **Recovery from runaway-save corruption**, exactly the scenario that motivated #253's gate. A runaway `cupertino save` process leaves a partial write + holds the lock; `cupertino save --force-replace --yes` clears it.
+- **Recovery from runaway-save corruption**, exactly the scenario that motivated #253's gate. A runaway `cupertino save` process leaves a partial write + holds the lock; `cupertino save --source <id> --force-replace --yes` clears it.
 - **CI re-run after an interrupted previous run**, `--force-replace --yes` skips the prompt; the typed-confirmation gate is a TTY-only safeguard.
 
 ## When NOT to use
 
-- **Routine workflow.** The plain `cupertino save` (no flag) is the right interactive default, the existing `[c]/[w]/[a]` prompt offers wait + abort options that don't risk losing the sibling's work.
+- **Routine workflow.** A scoped `cupertino save --source <id>` or `cupertino save --all` without `--force-replace` is the right interactive default; the existing `[c]/[w]/[a]` prompt offers wait + abort options that don't risk losing the sibling's work.
 - **Without confirming the sibling is actually stuck.** A sibling save that's progressing normally should be left alone; killing it loses real work. Run the diagnostic ladder above first.
 
 ## When SIGKILL doesn't take

@@ -5,7 +5,7 @@ Path to metadata.json file from crawl
 ## Synopsis
 
 ```bash
-cupertino save --metadata-file <path>
+cupertino save --source apple-docs --metadata-file <path>
 ```
 
 ## Description
@@ -25,12 +25,12 @@ cupertino save --all
 
 ### Custom Metadata File
 ```bash
-cupertino save --metadata-file ./my-docs/metadata.json
+cupertino save --source apple-docs --metadata-file ./my-docs/metadata.json
 ```
 
 ### No Metadata File
 ```bash
-cupertino save --metadata-file ""
+cupertino save --source apple-docs --metadata-file ""
 ```
 
 ## Metadata File Contents

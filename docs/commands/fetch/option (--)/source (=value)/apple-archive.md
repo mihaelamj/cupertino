@@ -31,7 +31,7 @@ Creates Markdown files with YAML front matter:
 | Source | Apple Developer Archive |
 | Fetch Method | Web crawling with WKWebView |
 | Authentication | Not required |
-| Estimated Size | ~75 pages, 5-10 MB |
+| Estimated Size | ~368 indexed pages in the v1.3.0 archive corpus; raw crawl size varies |
 
 ## Examples
 
@@ -114,11 +114,11 @@ Archive docs are indexed with synonyms for better search:
 
 ## Search Integration
 
-Archive documentation is excluded from search by default:
+Archive documentation participates in default fan-out at a lower rank weight:
 
-### Include in Mixed Results
+### Search Mixed Results
 ```bash
-cupertino search "Core Animation" --include-archive
+cupertino search "Core Animation"
 ```
 
 ### Search Archive Only
@@ -133,7 +133,7 @@ cupertino search "CALayer" --source apple-archive
 | Download time | 5-10 minutes |
 | Incremental update | Minutes (only changed) |
 | Total storage | ~5-10 MB |
-| Pages | ~75 markdown files |
+| Pages | ~368 indexed pages in the v1.3.0 archive corpus |
 
 ## Use Cases
 
@@ -158,6 +158,6 @@ Archive guides fill these gaps with comprehensive programming guides.
 
 - Content from pre-2016 Apple documentation
 - Some APIs may be deprecated but concepts remain valid
-- Excluded from default search to prioritize modern docs
-- Use `--include-archive` or `--source apple-archive` for search
+- Included in default search fan-out at a lower rank weight
+- Use `--source apple-archive` for archive-only search
 - Great complement to modern API documentation

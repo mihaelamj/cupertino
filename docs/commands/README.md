@@ -28,7 +28,7 @@ CLI commands for the Cupertino documentation server.
 | [resolve-refs](resolve-refs/) | Rewrite unresolved `doc://` markers in saved page rawMarkdown |
 | [doctor](doctor/) | Check server health and configuration |
 | [cleanup](cleanup/) | Clean up downloaded sample code archives |
-| [constraints-gen](constraints-gen/) | Maintainer tool (separate `cupertino-constraints-gen` binary): generate `apple-constraints.json` from Swift symbol graphs |
+| [constraints-gen](constraints-gen/) | Maintainer tool (separate `cupertino-constraints-gen` binary): generate `apple-constraints.json` and `apple-conformances.json` from Swift symbol graphs |
 
 ## Quick Reference
 
@@ -53,7 +53,7 @@ cupertino serve
 # Search documentation
 cupertino search "SwiftUI View" --limit 10
 cupertino search "async" --source swift-evolution
-cupertino search "Core Animation" --include-archive
+cupertino search "Core Animation" --source apple-archive
 cupertino search "Observable" --min-ios 17.0  # Filter by iOS version
 
 # Read full document

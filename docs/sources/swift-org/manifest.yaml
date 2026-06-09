@@ -9,7 +9,8 @@
 # Search.SwiftBookStrategy (lives in the SwiftBookSource target, calls
 # the same shared helper with scope=.swiftBookOnly into swift-book.db).
 # Pre-#1038 swift-book was a view-source companion sharing
-# swift-documentation.db with swift-org; see docs/sources/swift-book/.
+# swift-documentation.db with swift-org; post-#1093 it has its own
+# fetch surface and corpus folder.
 
 sourceId: swift-org
 displayName: Swift.org

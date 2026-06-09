@@ -6,7 +6,7 @@ SQLite database with Full-Text Search (FTS5) index for fast Swift package code s
 
 **Default**: `~/.cupertino/packages.db`
 
-When `cupertino save --packages` or any reader is connected, two sidecar files appear next to the main file:
+When `cupertino save --source packages` or any reader is connected in WAL mode, two sidecar files may appear next to the main file:
 
 - `packages.db-wal` — write-ahead log (#236; lets readers and writers proceed concurrently).
 - `packages.db-shm` — shared-memory index for the WAL.
@@ -16,10 +16,10 @@ Copy all three together, or run `PRAGMA wal_checkpoint(TRUNCATE)` first to fold 
 ## Created By
 
 ```bash
-cupertino save --packages
+cupertino save --source packages
 ```
 
-Builds the index from per-package source archives downloaded by `cupertino fetch --source packages` (which itself runs the Swift Package Index metadata refresh and the GitHub source-archive download stage). See [`fetch --source packages`](../../commands/fetch/) and [`save --packages`](../../commands/save/) for the full pipeline.
+Builds the index from per-package source archives downloaded by `cupertino fetch --source packages`. See [`fetch --source packages`](../../commands/fetch/) and [`save --source packages`](../../commands/save/) for the full pipeline.
 
 ## Purpose
 
@@ -31,15 +31,17 @@ Builds the index from per-package source archives downloaded by `cupertino fetch
 
 ## Database Schema
 
-Schema version `3` (per `PRAGMA user_version`). Defined end-to-end in [`Packages/Sources/SearchSQLite/PackageIndex.swift`](../../../Packages/Sources/SearchSQLite/PackageIndex.swift); the version constant is `PackageIndex.schemaVersion`. Migrations are incremental — fresh DBs created by `cupertino save --packages` write directly at v3; older DBs run `ALTER TABLE` migrations on open (v1→v2 added the `min_*` availability columns via #219; v2→v3 added the `swift_tools_version` column + `idx_pkg_swift_tools` index via #225 Part A).
+Schema version `5` (per `PRAGMA user_version`). Defined end-to-end in [`Packages/Sources/SearchSQLite/PackageIndex.swift`](../../../Packages/Sources/SearchSQLite/PackageIndex.swift); the version constant is `PackageIndex.schemaVersion`. Migrations are incremental — fresh DBs created by `cupertino save --source packages` write directly at v5; older DBs run migrations on open (v1 -> v2 added `min_*` availability columns, v2 -> v3 added `swift_tools_version`, v3 -> v4 added `package_symbols` plus package-level Apple-import enrichment columns, and v4 -> v5 added `package_imports`).
 
-`packages.db` holds **3 tables**:
+`packages.db` holds these core tables:
 
 | Table | Purpose |
 |---|---|
-| `package_metadata` | One row per indexed package. Canonical owner/repo, source-tarball stats, declared deployment targets (#219), Apple-official flag. |
+| `package_metadata` | One row per indexed package. Canonical owner/repo, source-tarball stats, declared deployment targets (#219), Swift tools version (#225), Apple-official flag, and Apple-import enrichment state (#837/#860). |
 | `package_files` | One row per indexed source file. FK → `package_metadata`. Carries kind, module, size, and per-file `@available` annotations (#219). |
 | `package_files_fts` | FTS5 over file titles, content, and AST-extracted symbol names. UNINDEXED filter columns mirror `package_files` for direct projection without joins. |
+| `package_symbols` | SwiftSyntax-extracted symbols per file, including attributes, conformances, generic parameters, and generic constraints. |
+| `package_imports` | Swift import statements per file, used by Apple-import enrichment and package filtering. |
 
 ### `package_metadata`
 
@@ -65,6 +67,9 @@ CREATE TABLE package_metadata (
     min_watchos TEXT,
     min_visionos TEXT,
     availability_source TEXT,               -- 'package-swift' | 'inferred' | NULL
+    swift_tools_version TEXT,
+    apple_imports_json TEXT,
+    enrichment_version INTEGER,
     UNIQUE(owner, repo)
 );
 
@@ -75,6 +80,8 @@ CREATE INDEX idx_pkg_min_macos      ON package_metadata(min_macos);
 CREATE INDEX idx_pkg_min_tvos       ON package_metadata(min_tvos);
 CREATE INDEX idx_pkg_min_watchos    ON package_metadata(min_watchos);
 CREATE INDEX idx_pkg_min_visionos   ON package_metadata(min_visionos);
+CREATE INDEX idx_pkg_swift_tools    ON package_metadata(swift_tools_version);
+CREATE INDEX idx_pkg_enrichment     ON package_metadata(enrichment_version);
 ```
 
 > **Naming note**: `package_metadata` here in `packages.db` is the **per-package source-tree metadata**. (The pre-v1.3.0 unified `search.db` also carried a separate, smaller cross-reference `packages` table linking docs pages to package identity via `docs_metadata.package_id`; the per-source split removed that docs-side cross-reference table, so it no longer exists in `apple-documentation.db`.)
@@ -130,20 +137,17 @@ CREATE VIRTUAL TABLE package_files_fts USING fts5(
 
 ```bash
 # Clear and rebuild from scratch
-cupertino save --packages --clear
-
-# Force re-index every package even if already in the DB
-cupertino save --packages --force
+cupertino save --source packages --clear
 ```
 
 ## Customizing Location
 
 ```bash
-# Use custom database path
-cupertino save --packages --packages-db ./my-packages.db
-
 # Use custom packages directory (containing the per-package source trees)
-cupertino save --packages --packages-dir ~/my-packages
+cupertino save --source packages --packages-dir ~/my-packages
+
+# Use an alternate base directory; output is <base-dir>/packages.db
+cupertino save --source packages --base-dir ~/my-cupertino
 ```
 
 ## Technical Details
@@ -167,4 +171,4 @@ cupertino save --packages --packages-dir ~/my-packages
 - Index reads `~/.cupertino/packages/` source trees written by `cupertino fetch --source packages`
 - Pre-#246 / pre-v1.0 the package metadata lived in a separate `cupertino-packages` GitHub repo with its own release zip; that companion repo was folded into `cupertino-docs` and the bundle is now single-zip
 - Thread-safe for concurrent reads
-- Uses the same dev-base override pattern as the docs index: `--packages-db <path>` for explicit override, `cupertino.config.json` next to the dev binary for redirection (#211)
+- Uses the same base-directory override pattern as the docs index: pass `--base-dir <path>` for one run, or use `cupertino.config.json` next to a dev binary for redirection (#211)

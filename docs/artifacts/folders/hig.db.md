@@ -13,7 +13,7 @@ Ships in rollback (`journal=delete`) mode ([#1192](https://github.com/mihaelamj/
 | Property | Value |
 |---|---|
 | Source id | `hig` |
-| URI scheme | `hig://components/buttons` |
+| URI scheme | `hig://general/buttons` |
 | Approx. documents | ~173 |
 | Approx. size | ~12 MB |
 | Schema version (`PRAGMA user_version`) | 18 |

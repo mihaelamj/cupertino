@@ -1,4 +1,4 @@
-# `cupertino save --dry-run`
+# `cupertino save --source <id> --dry-run`
 
 Run the full `save` import pipeline against a throwaway temp database;
 emit the same final report and per-document import log a real save
@@ -8,13 +8,14 @@ clean before committing it to the on-disk databases.
 ## Usage
 
 ```sh
-cupertino save --dry-run                     # uses default docs dir
-cupertino save --dry-run --docs-dir /path    # arbitrary docs dir
-cupertino save --dry-run --docs-dir /Volumes/Code/.../cupertino-docs/docs
+cupertino save --source apple-docs --dry-run                     # uses default docs dir
+cupertino save --source apple-docs --dry-run --docs-dir /path    # arbitrary docs dir
+cupertino save --all --dry-run                                   # every selected source, temp outputs
 ```
 
-All other `save` flags (`--docs-dir`, `--evolution-dir`, `--clear`,
-`--yes`, etc.) are honored. Only `--remote` is incompatible (a remote
+At least one build scope is still required: pass `--source <id>` one or more
+times, or pass `--all`. All other `save` flags (`--docs-dir`, `--evolution-dir`,
+`--clear`, `--yes`, etc.) are honored. Only `--remote` is incompatible (a remote
 sync streams to its own destination already).
 
 ## What it does
@@ -47,7 +48,7 @@ zero if the import succeeds, non-zero otherwise.
 ## See also
 
 - `cupertino save`, write the index for real
-- `cupertino save --clear`, wipe the existing DB and rebuild
+- `cupertino save --source <id> --clear`, wipe the existing DB and rebuild
 - `cupertino doctor --save`, preflight only, no DB at all
 - `docs/PRINCIPLES.md`, the import-time invariants verified by this
   command

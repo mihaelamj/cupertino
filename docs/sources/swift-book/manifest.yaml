@@ -1,33 +1,22 @@
 # Swift Book documentation source manifest.
 # Schema: docs/design/corpus-structure.md §3
 #
-# Post #1038 ("diff db for each source") swift-book owns its own DB
-# (swift-book.db) rather than the pre-#1038 view-source co-location
-# under swift-org's swift-documentation.db. The on-disk corpus is
-# still shared with swift-org (one crawl of docs.swift.org produces
-# both subtrees); per-source emission is filtered via
-# Search.StrategyHelpers.crawlSwiftDocumentation(scope: .swiftBookOnly).
+# Post #1038/#1093 swift-book owns its own DB (swift-book.db), its
+# own fetch surface, and its own corpus folder. It no longer shares
+# swift-org's crawl or the retired swift-documentation.db.
 
 sourceId: swift-book
 displayName: Swift Book
 description: |
   The Swift Programming Language book (docs.swift.org/swift-book/*).
   Universal-text + tutorial-grade code samples; capability matrix is
-  a subset of swift-org's (no generics-search because the Book's code
-  fences aren't type-graph-extractable like Swift.org's API references).
+  a subset of swift-org's plus AST-backed symbols/generics extracted
+  from the Book's code fences.
 
-corpusFolder: swift-org
+corpusFolder: swift-book
 destinationDB: swift-book
 
-# swift-book has no dedicated fetch surface: the swift-org crawl
-# (rootURL: https://www.swift.org/documentation/) descends into
-# docs.swift.org/swift-book/ and writes both subtrees under
-# corpusFolder=swift-org. The Strategy classes filter per-page. The
-# fetcher.kind below mirrors swift-org's web-crawl because the
-# manifest-schema check requires a known kind; in practice
-# `cupertino fetch --source swift-book` re-runs the same crawl as
-# `cupertino fetch --source swift-org` (the on-disk output covers
-# both subtrees).
+# swift-book has its own direct fetch surface rooted at the Swift Book.
 fetcher:
   kind: web-crawl
   options:

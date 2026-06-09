@@ -5,7 +5,7 @@ Base directory (auto-fills all directories from standard structure)
 ## Synopsis
 
 ```bash
-cupertino save --base-dir <path>
+cupertino save --all --base-dir <path>
 ```
 
 ## Description
@@ -34,12 +34,12 @@ cupertino save --all
 
 Equivalent to:
 ```bash
-cupertino save --base-dir ~/.cupertino
+cupertino save --all --base-dir ~/.cupertino
 ```
 
 ### Index Custom Base Directory
 ```bash
-cupertino save --base-dir ./my-cupertino
+cupertino save --all --base-dir ./my-cupertino
 ```
 
 Auto-fills:
@@ -51,7 +51,7 @@ Auto-fills:
 
 ### Absolute Path
 ```bash
-cupertino save --base-dir /Users/username/Documents/cupertino
+cupertino save --all --base-dir /Users/username/Documents/cupertino
 ```
 
 ## Expected Structure

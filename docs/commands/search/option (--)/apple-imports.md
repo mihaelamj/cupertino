@@ -19,7 +19,7 @@ Wired through CLI → `Search.PackageFTSCandidateFetcher` → `Search.PackageQue
 ## Scope
 
 - Applies on **packages** results only. No effect on rows from `apple-docs`, `apple-archive`, `hig`, `swift-evolution`, `swift-org`, `swift-book`, or `samples`.
-- Combines with `--platform` / `--min-version` (different axes) and `--swift-tools` (different axis).
+- Combines with `--platform` / `--min-version` in fan-out mode; both filters apply to package rows before ranking.
 - Module slug is **lowercased** at write time, so the CLI lowercases its argument before binding. Passing `--apple-imports SwiftUI` is equivalent to `--apple-imports swiftui`.
 
 ## Default

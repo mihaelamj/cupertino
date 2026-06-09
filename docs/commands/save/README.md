@@ -21,7 +21,7 @@ The `save` command builds the local SQLite databases that back `cupertino search
 | `hig` | `hig.db` | `~/.cupertino/hig/` |
 | `apple-archive` | `apple-archive.db` | `~/.cupertino/archive/` |
 | `swift-org` | `swift-org.db` | `~/.cupertino/swift-org/` |
-| `swift-book` | `swift-book.db` | `~/.cupertino/swift-org/swift-book/` |
+| `swift-book` | `swift-book.db` | `~/.cupertino/swift-book/` |
 | `samples` | `apple-sample-code.db` (Sample.Index rich schema + SampleCodeSource FTS rows; one DB, two table tracks per #1037) | `~/.cupertino/sample-code/*.zip` |
 | `packages` | `packages.db` | `~/.cupertino/packages/<owner>/<repo>/` |
 

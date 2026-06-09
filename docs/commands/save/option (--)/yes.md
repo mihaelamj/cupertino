@@ -5,8 +5,8 @@ Skip the preflight summary's confirmation prompt
 ## Synopsis
 
 ```bash
-cupertino save --yes
-cupertino save -y
+cupertino save --all --yes
+cupertino save --source apple-docs -y
 ```
 
 ## Description
@@ -22,7 +22,7 @@ The prompt is also auto-skipped when stdin isn't a TTY (CI / pipes), so this fla
 ## Example
 
 ```bash
-cupertino save --yes
+cupertino save --all --yes
 cupertino save --source packages --source samples -y
 ```
 

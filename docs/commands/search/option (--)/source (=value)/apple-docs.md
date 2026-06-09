@@ -21,8 +21,8 @@ Filters search results to only include Apple Developer Documentation. This is th
 
 ## Typical Size
 
-- **~277,000+ pages** in the v1.0.2 indexed bundle (raw crawl is ~404,000+ pages, deduplicated by post-#283 canonicalization)
-- **402 frameworks** indexed
+- **351,505 pages** in the v1.3.0 indexed Apple documentation DB (raw crawl is ~404,000+ pages, deduplicated by post-#283 canonicalization)
+- **420+ frameworks** indexed
 - **~2-3 GB** on disk
 
 ## Examples
