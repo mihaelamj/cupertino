@@ -58,7 +58,7 @@ hig://{category}/{page}
 ```
 
 Examples:
-- `hig://components/buttons`
+- `hig://general/buttons`
 - `hig://patterns/navigation`
 - `hig://foundations/color`
 - `hig://technologies/siri`

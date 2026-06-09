@@ -315,7 +315,7 @@ make format                 # SwiftFormat
 make lint                   # SwiftLint
 ```
 
-**Tests:** 3,095 `@Test` functions across 344 test files (493 `@Suite`s); parameterized `@Test(arguments:)` cases expand further at runtime. Built on Swift Testing (`@Test`, `@Suite`, `#expect`) with `withDependencies` for injection, spanning unit tests, integration tests (real WKWebView against real Apple docs), and formatter tests.
+**Tests:** the current full package suite reports 3,122 runtime tests across 501 suites from 351 Swift test files; parameterized `@Test(arguments:)` cases expand at runtime. Built on Swift Testing (`@Test`, `@Suite`, `#expect`) with `withDependencies` for injection, spanning unit tests, integration tests (real WKWebView against real Apple docs), and formatter tests.
 
 **Logging:** structured `os.log` under the `com.cupertino.cli` subsystem (categories: crawler, mcp, search, cli, transport, evolution, samples, package-downloader, archive, hig).
 
@@ -348,8 +348,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full build, test, and release wor
 **Previously:** v1.2.1 (2026-05-23, maintenance + [Source Independence Day](https://github.com/mihaelamj/cupertino/issues/919)), v1.2.0 "ironclad" (2026-05-20, search-quality release: rank-1 accuracy on canonical-lookup queries 52% → 92%), v1.1.0 (2026-05-14), v1.0.2 (2026-05-11). Full history in [CHANGELOG.md](CHANGELOG.md).
 
 - ✅ All core functionality working, all production bugs resolved at ship time
-- ✅ 3,095 test functions across 344 files (493 suites)
-- ✅ 0 lint violations, Swift 6.3 with 100% strict concurrency checking
+- ✅ 3,122 runtime tests across 351 Swift test files (501 suites)
+- ⚠️ SwiftLint exits clean with 0 serious violations; warning-level lint debt and SwiftFormat drift remain in existing Swift files. Swift 6.3 with 100% strict concurrency checking.
 - ✅ Search quality measured end-to-end (Phase 1 of `docs/design/search-quality-eval.md`): single-system baselines on 7 query classes + 3 paired v1.1.0 → v1.2.0 version-diff audits, all checked into `docs/audits/`
 
 ## Contributing

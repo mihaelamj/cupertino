@@ -332,7 +332,7 @@ Found 20 result(s) for 'SwiftUI View':
 
 [1] View | Apple Developer Documentation
     Source: apple-docs | Framework: swiftui
-    URI: apple-docs://swiftui/documentation_swiftui_view
+    URI: apple-docs://swiftui/view
 ...
 ```
 
@@ -368,13 +368,13 @@ cupertino search "Observable" --format json --limit 3
 ```json
 [
   {
-    "filePath": "/Users/user/.cupertino/docs/swiftui/documentation_observation_observable.md",
+    "filePath": "https://developer.apple.com/documentation/observation/observable",
     "framework": "observation",
     "score": 12.45,
     "source": "apple-docs",
     "summary": "A type that emits notifications to observers when underlying data changes.",
     "title": "Observable | Apple Developer Documentation",
-    "uri": "apple-docs://observation/documentation_observation_observable",
+    "uri": "apple-docs://observation/observable",
     "wordCount": 1234
   }
 ]
@@ -396,7 +396,7 @@ Found 20 result(s).
 
 - **Source:** apple-docs
 - **Framework:** swift
-- **URI:** `apple-docs://swift/documentation_swift_concurrency`
+- **URI:** `apple-docs://swift/concurrency`
 
 > Perform asynchronous and parallel operations...
 ```

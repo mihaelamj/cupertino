@@ -37,11 +37,11 @@ Found 20 result(s) for 'View':
 
 [1] View | Apple Developer Documentation
     Source: apple-docs | Framework: swiftui
-    URI: apple-docs://swiftui/documentation_swiftui_view
+    URI: apple-docs://swiftui/view
 
 [2] ViewBuilder | Apple Developer Documentation
     Source: apple-docs | Framework: swiftui
-    URI: apple-docs://swiftui/documentation_swiftui_viewbuilder
+    URI: apple-docs://swiftui/viewbuilder
 ```
 
 ### JSON Output
@@ -53,13 +53,13 @@ Output:
 ```json
 [
   {
-    "filePath": "/Users/user/.cupertino/docs/swiftui/documentation_swiftui_view.md",
+    "filePath": "https://developer.apple.com/documentation/swiftui/view",
     "framework": "swiftui",
     "score": 15.23,
     "source": "apple-docs",
     "summary": "A type that represents part of your app's user interface.",
     "title": "View | Apple Developer Documentation",
-    "uri": "apple-docs://swiftui/documentation_swiftui_view",
+    "uri": "apple-docs://swiftui/view",
     "wordCount": 2345
   }
 ]
@@ -80,7 +80,7 @@ Found 2 result(s).
 
 - **Source:** apple-docs
 - **Framework:** swiftui
-- **URI:** `apple-docs://swiftui/documentation_swiftui_view`
+- **URI:** `apple-docs://swiftui/view`
 ```
 
 ## Use Cases

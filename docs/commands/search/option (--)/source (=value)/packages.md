@@ -10,20 +10,21 @@ cupertino search <query> --source packages
 
 ## Description
 
-Filters search results to only include Swift package metadata. This is a bundled catalog of Swift packages from the Swift Package Index.
+Filters search results to only include indexed Swift package source and documentation chunks from `packages.db`.
 
 ## Content
 
-- **Package names** and descriptions
+- **Package README and DocC content**
+- **Package source-file chunks**
 - **Repository URLs**
 - **Stars and popularity metrics**
 - **License information**
-- **Keywords and categories**
+- **Deployment-target and Swift-tools annotations**
 
 ## Typical Size
 
-- **9,600+ packages** indexed
-- **Bundled** (no fetch required)
+- **185 curated packages** indexed in the v1.3.0 release bundle
+- **Bundled by `cupertino setup`** (no crawl required for normal users)
 - Updated periodically by maintainers
 
 ## Examples
@@ -43,24 +44,30 @@ cupertino search "database" --source packages
 cupertino search "vapor" --source packages
 ```
 
-## URI Format
+## Read Identifiers
 
-Results use the `packages://` URI scheme:
+Results use package-relative identifiers, not a custom URI scheme:
 
 ```
-packages://{package_name}
+<owner>/<repo>/<relative-path>
+```
+
+Search results include a `readFullCommand` such as:
+
+```bash
+cupertino read pointfreeco/swift-navigation/README.md --source packages
 ```
 
 ## How to Populate
 
-The packages catalog is **bundled** with Cupertino and indexed automatically:
+The packages database is included in the release bundle downloaded by `cupertino setup`.
+Maintainers can rebuild it from fetched package archives:
 
 ```bash
-# Just build the index (packages included automatically)
 cupertino save --source packages
 ```
 
-To fetch package source archives (optional):
+To fetch package source archives first:
 
 ```bash
 # Fetch source archives for priority packages (#217). Post-#1108 stage 2
@@ -73,13 +80,12 @@ cupertino save --source packages
 
 ## Priority Packages
 
-36 curated high-priority packages are included:
-- **31 Apple official packages** (swift-nio, swift-argument-parser, etc.)
-- **5 essential ecosystem packages** (Alamofire, etc.)
+The release bundle indexes the curated package closure maintained by Cupertino,
+including Apple packages and widely used ecosystem packages.
 
 ## Notes
 
-- Bundled catalog - no download required
-- Metadata only (not full README content by default)
+- Bundled in `packages.db` by `cupertino setup`
+- Full package chunks, not metadata-only search
 - Updated periodically in Cupertino releases
 - Great for discovering Swift packages

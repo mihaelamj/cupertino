@@ -79,9 +79,9 @@ Output (abbreviated):
 🔍 cupertino search "View"
 
 [apple-docs] View
-   apple-docs://swiftui/documentation_swiftui_view
+   apple-docs://swiftui/view
    A type that represents part of your app's user interface…
-   ▶ Read full: cupertino read apple-docs://swiftui/documentation_swiftui_view
+   ▶ Read full: cupertino read apple-docs://swiftui/view
 
 [swift-evolution] SE-0250, Swift Package Manager Resources
    …

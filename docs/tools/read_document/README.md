@@ -8,7 +8,7 @@ Read a document by URI in JSON or Markdown format.
 {
   "name": "read_document",
   "arguments": {
-    "uri": "apple-docs://swiftui/documentation_swiftui_view",
+    "uri": "apple-docs://swiftui/view",
     "format": "json"
   }
 }
@@ -35,14 +35,13 @@ Document URI from search results.
 - `swift-org://` - Swift.org documentation
 - `hig://` - Human Interface Guidelines
 - `apple-archive://` - Apple Archive legacy programming guides
-- `packages://` - Swift package documentation
 
 **Examples:**
-- `apple-docs://swiftui/documentation_swiftui_view`
-- `apple-docs://swift/documentation_swift_actor`
+- `apple-docs://swiftui/view`
+- `apple-docs://swift/actor`
 - `swift-evolution://SE-0001`
 - `swift-evolution://SE-0302`
-- `hig://components/buttons`
+- `hig://general/buttons`
 - `apple-archive://TP40014097/about-views`
 
 ### format (optional)
@@ -143,7 +142,7 @@ protocol View
 
 ```json
 {
-  "uri": "apple-docs://swift/documentation_swift_actor",
+  "uri": "apple-docs://swift/actor",
   "format": "json"
 }
 ```
@@ -152,7 +151,7 @@ protocol View
 
 ```json
 {
-  "uri": "apple-docs://swiftui/documentation_swiftui_view",
+  "uri": "apple-docs://swiftui/view",
   "format": "markdown"
 }
 ```
@@ -177,12 +176,12 @@ protocol View
 
 2. **Extract URI from results:**
    ```
-   URI: apple-docs://swift/documentation_swift_actor
+   URI: apple-docs://swift/actor
    ```
 
 3. **Read the document:**
    ```json
-   {"name": "read_document", "arguments": {"uri": "apple-docs://swift/documentation_swift_actor"}}
+   {"name": "read_document", "arguments": {"uri": "apple-docs://swift/actor"}}
    ```
 
 ## Error Handling

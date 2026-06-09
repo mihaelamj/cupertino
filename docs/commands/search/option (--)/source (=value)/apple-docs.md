@@ -51,8 +51,8 @@ apple-docs://{framework}/{page_path}
 ```
 
 Examples:
-- `apple-docs://swiftui/documentation_swiftui_view`
-- `apple-docs://foundation/documentation_foundation_url`
+- `apple-docs://swiftui/view`
+- `apple-docs://foundation/url`
 
 ## How to Populate
 
