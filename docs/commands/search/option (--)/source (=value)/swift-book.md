@@ -64,8 +64,8 @@ swift-book://{chapter_path}
 ## How to Populate
 
 ```bash
-# Fetch Swift book (part of swift type)
-cupertino fetch --source swift-org
+# Fetch Swift Book
+cupertino fetch --source swift-book
 
 # Build index
 cupertino save --source swift-book

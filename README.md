@@ -2,7 +2,7 @@
 
 **Apple documentation CLI for humans and MCP server for AI agents.**
 
-Cupertino is a CLI for human developers and an MCP server for AI agents. Both surfaces use the same local index of Apple documentation, Swift packages, sample code, Human Interface Guidelines, Swift Evolution proposals, and Swift.org pages.
+Cupertino is a CLI for human developers and an MCP server for AI agents. Both surfaces use the same local catalog of Apple documentation, Swift packages, sample code, Human Interface Guidelines, Swift Evolution proposals, and Swift.org pages.
 
 [![Swift 6.3+](https://img.shields.io/badge/Swift-6.3+-orange.svg)](https://swift.org)
 [![macOS 15+](https://img.shields.io/badge/macOS-15+-blue.svg)](https://www.apple.com/macos)
@@ -13,7 +13,7 @@ Cupertino is a CLI for human developers and an MCP server for AI agents. Both su
 
 ![Cupertino Demo](docs/images/cupertino.gif)
 
-> **Latest: v1.3.0** (2026-05-31): per-source database bundle, read-only databases. The shipped bundle carries **351,505 documents / 240,543 symbols across 420+ frameworks**. [Release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.3.0) · [CHANGELOG](CHANGELOG.md) · [Roadmap](#roadmap) · live dashboard at <https://cupertino.aleahim.com/>. Follow updates on X: [@cupertinomcp](https://x.com/cupertinomcp).
+> **Latest: v1.3.0** (2026-05-31): per-source database bundle, read-only databases. The Apple documentation slice carries **351,505 documents / 240,543 symbols across 420+ frameworks**, alongside the HIG, archive, Swift Evolution, Swift.org, Swift Book, package, and sample-code DBs. [Release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.3.0) · [CHANGELOG](CHANGELOG.md) · [Roadmap](#roadmap) · live dashboard at <https://cupertino.aleahim.com/>. Follow updates on X: [@cupertinomcp](https://x.com/cupertinomcp).
 
 > If Cupertino is useful to your work with Apple docs or AI agents, consider [sponsoring its development](https://github.com/sponsors/mihaelamj). Sponsorship helps keep releases, documentation, and the Apple/Linux tooling around it moving.
 
@@ -22,10 +22,10 @@ Cupertino is a CLI for human developers and an MCP server for AI agents. Both su
 Cupertino is a local, structured documentation system for Apple platforms. It:
 
 - **Crawls** Apple Developer documentation, Swift.org, Swift Evolution proposals, Human Interface Guidelines, Apple Archive legacy guides, and Swift package metadata
-- **Indexes** everything into a fast, searchable SQLite FTS5 database with field-weighted BM25 (BM25F) ranking and AST-extracted symbol columns
+- **Indexes** everything into fast, searchable SQLite FTS5 databases with field-weighted BM25 (BM25F) ranking and AST-extracted symbol columns
 - **Runs** as a terminal CLI for developers who want fast local `search`, `read`, `doctor`, and `setup` commands
 - **Serves** the same corpus to AI agents like Claude, ChatGPT, Codex, Cursor, and Copilot via the Model Context Protocol
-- **Provides** offline access to 351,505 documentation pages / 240,543 symbols across 420+ frameworks (v1.3.0 bundle)
+- **Provides** offline access to 351,505 Apple documentation pages / 240,543 Apple-doc symbols across 420+ frameworks, plus the HIG, archive, Swift Evolution, Swift.org, Swift Book, package, and sample-code slices (v1.3.0 bundle)
 
 Why build this:
 
@@ -77,7 +77,7 @@ cupertino serve                                  # start the MCP server (also th
 
 Prefer to build the index yourself instead of downloading it? `cupertino save --remote` streams the corpus from GitHub and rebuilds locally, and `cupertino fetch --source <name>` crawls a single source from the original site. See [docs/commands/](docs/commands/) for every command, flag, and the slower self-hosted paths.
 
-### Two surfaces, one index
+### Two surfaces, one catalog
 
 A terminal search prints a human-friendly result with scores and follow-up commands:
 
@@ -142,10 +142,10 @@ Claude Desktop, OpenAI Codex, Cursor, VS Code (Copilot), GitHub Copilot for Xcod
 - **Swift Evolution** (~429 proposals) and **Swift.org** (~501 pages): GitHub- and site-based fetching in Markdown
 - **Swift package metadata**: `packages.db` ships 185 packages with full source, stars, licenses, deployment-target platforms, and authored `swift-tools-version`
 - **Apple Sample Code** (619 projects, 18,000+ indexed Swift files): fetched from Apple's CDN or the GitHub mirror, full-text searchable
-- **Apple Archive legacy guides** (~75 pages): pre-2016 conceptual docs (Core Animation, Quartz 2D, Core Text); excluded from search by default (`--include-archive`)
+- **Apple Archive legacy guides** (~368 pages in v1.3.0): pre-2016 conceptual docs (Core Animation, Quartz 2D, Core Text); included in default fan-out with a lower rank weight, or searchable alone with `--source apple-archive`
 - **Human Interface Guidelines**: Apple's design guidelines across iOS, macOS, watchOS, visionOS, and tvOS
 
-### Full-text search engine
+### Full-text search engines
 
 - **BM25F ranking**: SQLite FTS5 with field-weighted BM25 (Robertson/Zaragoza/Taylor 2004) over a 9-column index (`uri`, `source`, `framework`, `language`, `title`, `content`, `summary`, `symbols`, `symbol_components`). Title 10×, AST-extracted symbols 5×, summary 3×, framework 2×, CamelCase-split components 1.5×.
 - **AST-aware**: a Swift extractor pulls identifiers from every embedded code block and the page declaration into a `symbols` column, so a query like `Task` ranks the Swift `Task` struct above prose mentions of "task".
@@ -315,7 +315,7 @@ make format                 # SwiftFormat
 make lint                   # SwiftLint
 ```
 
-**Tests:** 3,095 `@Test` functions across 344 test files (493 `@Suite`s); parameterized `@Test(arguments:)` cases expand further at runtime. Built on Swift Testing (`@Test`, `@Suite`, `#expect`) with `withDependencies` for injection, spanning unit tests, integration tests (real WKWebView against real Apple docs), and formatter tests.
+**Tests:** the current full package suite reports 3,122 runtime tests across 501 suites from 351 Swift test files; parameterized `@Test(arguments:)` cases expand at runtime. Built on Swift Testing (`@Test`, `@Suite`, `#expect`) with `withDependencies` for injection, spanning unit tests, integration tests (real WKWebView against real Apple docs), and formatter tests.
 
 **Logging:** structured `os.log` under the `com.cupertino.cli` subsystem (categories: crawler, mcp, search, cli, transport, evolution, samples, package-downloader, archive, hig).
 
@@ -348,8 +348,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full build, test, and release wor
 **Previously:** v1.2.1 (2026-05-23, maintenance + [Source Independence Day](https://github.com/mihaelamj/cupertino/issues/919)), v1.2.0 "ironclad" (2026-05-20, search-quality release: rank-1 accuracy on canonical-lookup queries 52% → 92%), v1.1.0 (2026-05-14), v1.0.2 (2026-05-11). Full history in [CHANGELOG.md](CHANGELOG.md).
 
 - ✅ All core functionality working, all production bugs resolved at ship time
-- ✅ 3,095 test functions across 344 files (493 suites)
-- ✅ 0 lint violations, Swift 6.3 with 100% strict concurrency checking
+- ✅ 3,122 runtime tests across 351 Swift test files (501 suites)
+- ⚠️ SwiftLint exits clean with 0 serious violations; warning-level lint debt and SwiftFormat drift remain in existing Swift files. Swift 6.3 with 100% strict concurrency checking.
 - ✅ Search quality measured end-to-end (Phase 1 of `docs/design/search-quality-eval.md`): single-system baselines on 7 query classes + 3 paired v1.1.0 → v1.2.0 version-diff audits, all checked into `docs/audits/`
 
 ## Contributing

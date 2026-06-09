@@ -27,7 +27,7 @@ Controls how the document content is formatted in the output. Different formats 
 
 ### JSON Output (Default)
 ```bash
-cupertino read "apple-docs://swiftui/documentation_swiftui_view"
+cupertino read "apple-docs://swiftui/view"
 ```
 
 Output:
@@ -46,7 +46,7 @@ Output:
 
 ### Markdown Output
 ```bash
-cupertino read "apple-docs://swiftui/documentation_swiftui_view" --format markdown
+cupertino read "apple-docs://swiftui/view" --format markdown
 ```
 
 Output:
@@ -85,12 +85,12 @@ You create custom views by declaring types that conform to the View protocol...
 
 ### Extract Declaration
 ```bash
-cupertino read "apple-docs://swift/documentation_swift_array" --format json | jq '.declaration'
+cupertino read "apple-docs://swift/array" --format json | jq '.declaration'
 ```
 
 ### Save to File
 ```bash
-cupertino read "apple-docs://swiftui/documentation_swiftui_view" --format markdown > view.md
+cupertino read "apple-docs://swiftui/view" --format markdown > view.md
 ```
 
 ## Notes

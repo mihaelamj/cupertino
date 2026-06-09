@@ -10,7 +10,7 @@ cupertino fetch --source apple-docs
 
 ## Description
 
-Crawls and downloads Apple's official developer documentation from developer.apple.com. This is the **default fetch type** and captures comprehensive API documentation for all Apple frameworks and platforms.
+Crawls and downloads Apple's official developer documentation from developer.apple.com. This is the **default fetch source** and captures comprehensive API documentation for all Apple frameworks and platforms.
 
 ## Data Source
 
@@ -18,9 +18,9 @@ Crawls and downloads Apple's official developer documentation from developer.app
 
 ## Output
 
-Creates Markdown files for each documentation page:
-- One `.md` file per documentation page
-- Hierarchical directory structure matching Apple's organization
+Creates DocC render-JSON files for each documentation page:
+- One `.json` file per documentation page
+- Framework-grouped directory structure using lowercased framework names
 - Metadata tracking in `metadata.json`
 
 ## Default Settings
@@ -78,17 +78,17 @@ cupertino fetch --source apple-docs --output-dir ./my-docs
 ```
 ~/.cupertino/docs/
 ├── metadata.json
-├── Foundation/
-│   ├── NSString.md
-│   ├── NSArray.md
+├── foundation/
+│   ├── documentation_foundation_url.json
+│   ├── documentation_foundation_urlsession.json
 │   └── ...
-├── SwiftUI/
-│   ├── View.md
-│   ├── Text.md
+├── swiftui/
+│   ├── documentation_swiftui_view.json
+│   ├── documentation_swiftui_text.json
 │   └── ...
-├── UIKit/
-│   ├── UIViewController.md
-│   ├── UIView.md
+├── uikit/
+│   ├── documentation_uikit_uiviewcontroller.json
+│   ├── documentation_uikit_uitableview.json
 │   └── ...
 └── ... (all frameworks)
 ```
@@ -113,7 +113,7 @@ cupertino fetch --source apple-docs --output-dir ./my-docs
       "title": "View",
       "contentHash": "a1b2c3d4...",
       "lastCrawled": "2025-11-19T10:30:00Z",
-      "outputPath": "SwiftUI/View.md"
+      "outputPath": "swiftui/documentation_swiftui_view.json"
     }
   }
 }
@@ -136,7 +136,7 @@ cupertino fetch --source apple-docs --output-dir ./my-docs
 
 ## Crawl Behavior
 
-1. **Respectful crawling** - 0.5 second delay between requests
+1. **Respectful crawling** - 0.05 second default delay between requests
 2. **Change detection** - Only re-downloads changed pages (via content hash)
 3. **Session persistence** - Can pause and resume long crawls
 4. **Auto-save** - Progress saved every 100 pages
@@ -148,9 +148,9 @@ cupertino fetch --source apple-docs --output-dir ./my-docs
 |--------|-------|
 | Initial crawl time | 12+ days (~404,000+ pages) |
 | Incremental update | Minutes to hours (only changed) |
-| Average page size | 10-50 KB (markdown) |
-| Total storage | ~200-300 MB |
-| Pages per minute | ~10-12 (with 0.5s delay) |
+| Average page size | varies by DocC JSON payload |
+| Total storage | several GB for the current full corpus |
+| Pages per minute | source/network dependent (with 0.05s default delay) |
 
 ## Use Cases
 
@@ -163,10 +163,10 @@ cupertino fetch --source apple-docs --output-dir ./my-docs
 
 ## Notes
 
-- **Default fetch type** - `--source apple-docs` can be omitted
+- **Default fetch source** - `--source apple-docs` can be omitted
 - Requires internet connection
 - No authentication needed
-- HTML automatically converted to Markdown
+- DocC pages are preserved as render JSON for indexing
 - Preserves documentation structure
 - Includes code examples and descriptions
 - Compatible with `cupertino save` for search indexing

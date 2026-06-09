@@ -5,7 +5,7 @@ Clear existing index before building
 ## Synopsis
 
 ```bash
-cupertino save --clear
+cupertino save --source <id> --clear
 ```
 
 ## Description
@@ -37,7 +37,7 @@ Note: `--source samples` always wipes-and-rebuilds inside its scope independent 
 
 ### Rebuild from scratch (force full re-index of apple-documentation.db)
 ```bash
-cupertino save --clear
+cupertino save --source apple-docs --clear
 ```
 
 ### Default incremental update

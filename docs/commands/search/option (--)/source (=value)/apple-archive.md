@@ -23,7 +23,7 @@ Filters search results to only include Apple Archive legacy programming guides. 
 
 ## Typical Size
 
-- **~75 pages** across 8 guides
+- **~368 pages** across the v1.3.0 archive corpus
 - **~5-10 MB** on disk
 
 ## Examples
@@ -77,8 +77,7 @@ Archive documentation has a slight ranking penalty compared to modern documentat
 
 ## Notes
 
-- Excluded from default search results
 - Use `--source apple-archive` to search archive only
-- Use `--include-archive` to include in mixed results
+- Default fan-out includes archive at a lower rank weight
 - Contains deep conceptual knowledge often missing from modern docs
 - Great for understanding the "why" behind Apple frameworks

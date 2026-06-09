@@ -55,7 +55,7 @@ Disambiguator for non-URI identifiers.
 ```bash
 cupertino read swiftui-controlling-the-timing-and-movements-of-your-animations --source samples
 cupertino read pointfreeco/swift-navigation/Sources/.../UIKitNavigation.md --source packages
-cupertino read "apple-docs://swiftui/documentation_swiftui_view" --source apple-docs
+cupertino read "apple-docs://swiftui/view" --source apple-docs
 ```
 
 ### --format
@@ -84,7 +84,7 @@ Path to the packages database (`packages.db`).
 ### Read a doc by URI
 
 ```bash
-cupertino read "apple-docs://swiftui/documentation_swiftui_view" --format markdown
+cupertino read "apple-docs://swiftui/view" --format markdown
 ```
 
 ### Read a sample project's README
@@ -121,17 +121,17 @@ cupertino read swiftui-controlling-the-timing-and-movements-of-your-animations -
 ### Pipe to other tools
 
 ```bash
-cupertino read "apple-docs://swift/documentation_swift_array" --format json | jq '.declaration'
-cupertino read "apple-docs://swiftui/documentation_swiftui_view" --format markdown > view.md
+cupertino read "apple-docs://swift/array" --format json | jq '.declaration'
+cupertino read "apple-docs://swiftui/view" --format markdown > view.md
 ```
 
 ## URI shapes (docs sources)
 
 | Source | URI shape | Example |
 |---|---|---|
-| Apple Documentation | `apple-docs://<framework>/<path>` | `apple-docs://swiftui/documentation_swiftui_view` |
+| Apple Documentation | `apple-docs://<framework>/<path>` | `apple-docs://swiftui/view` |
 | Apple Archive | `apple-archive://<guide>/<page>` | `apple-archive://TP40014097/about-views` |
-| HIG | `hig://<category>/<page>` | `hig://components/buttons` |
+| HIG | `hig://<category>/<page>` | `hig://general/buttons` |
 | Swift Evolution | `swift-evolution://<proposal-id>` | `swift-evolution://SE-0302` |
 | Swift.org | `swift-org://<path>` | `swift-org://swift-org_documentation_articles_value-and-reference-types` |
 | Swift Book | `swift-book://<path>` | `swift-book://swift-book_documentation_the-swift-programming-language_concurrency` |

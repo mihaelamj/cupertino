@@ -1,4 +1,4 @@
-# Default Type Behavior
+# Default Source Behavior
 
 When no `--source` is specified
 
@@ -18,7 +18,7 @@ cupertino fetch --source apple-docs
 
 This fetches **Apple Developer Documentation** from developer.apple.com.
 
-## Why `docs` is the Default
+## Why `apple-docs` is the Default
 
 - **Most commonly used** - Apple's documentation is the primary use case
 - **Largest dataset** - ~404,000+ pages of comprehensive API docs
@@ -35,9 +35,9 @@ cupertino fetch --source apple-docs
 cupertino fetch --source apple-docs --max-pages 1000000
 ```
 
-## Other Type Options
+## Other Source Options
 
-To fetch different types, explicitly specify `--source`:
+To fetch different sources, explicitly specify `--source`:
 
 ```bash
 # Swift.org documentation
@@ -60,7 +60,7 @@ cupertino fetch --source all
 
 | Setting | Default Value |
 |---------|---------------|
-| Type | `docs` |
+| Source | `apple-docs` |
 | Start URL | `https://developer.apple.com/documentation/` |
 | Output Directory | `~/.cupertino/docs` |
 | Max Pages | 1,000,000 (effectively uncapped) |
@@ -76,21 +76,21 @@ cupertino fetch
 
 ### With Custom Options
 ```bash
-# Still uses docs type, but with options
+# Still uses the default apple-docs source, but with options
 cupertino fetch --max-pages 5000
 cupertino fetch --start-clean   # discard saved session, start fresh
 cupertino fetch --force         # re-fetch even unchanged pages
 ```
 
-### Explicit Type
+### Explicit Source
 ```bash
-# Explicitly specify type
+# Explicitly specify source
 cupertino fetch --source swift-evolution
 ```
 
 ## Notes
 
 - Default can be overridden with `--source`
-- All other options still apply with default type
-- Use `cupertino fetch --help` to see all available types
+- All other options still apply with the default source
+- Use `cupertino fetch --help` to see all available sources
 - Default behavior matches most common use case

@@ -20,8 +20,8 @@ Selects which source's database `cupertino save` will rebuild. Pass `--source <i
 | `swift-evolution` | `swift-evolution.db` |
 | `hig` | `hig.db` |
 | `apple-archive` | `apple-archive.db` |
-| `swift-org` | `swift-documentation.db` (view-source, shared with `swift-book`) |
-| `swift-book` | `swift-documentation.db` (view-source, shared with `swift-org`) |
+| `swift-org` | `swift-org.db` |
+| `swift-book` | `swift-book.db` |
 | `samples` | `apple-sample-code.db` (BOTH the Sample.Index rich schema AND SampleCodeSource FTS rows; one DB, two table tracks per #1037) |
 | `packages` | `packages.db` (standalone PackagesService pipeline) |
 
@@ -48,7 +48,7 @@ cupertino save --source samples
 
 - `--source apple-docs` builds `apple-documentation.db` alone.
 - `--source hig` builds `hig.db` alone (and analogously for `swift-evolution`, `apple-archive`).
-- `--source swift-org` (or `--source swift-book`) builds `swift-documentation.db`, with BOTH SwiftOrgSource and SwiftBookSource indexers running into the same DB (view-source co-location per `docs/design/corpus-structure.md` §3.5.5; either id pulls both).
+- `--source swift-org` builds `swift-org.db`; `--source swift-book` builds `swift-book.db`. They are separate source databases post-#1038/#1093.
 - `--source samples` (or `--source apple-sample-code` alias) writes to `apple-sample-code.db` via BOTH the standalone `Sample.Index.Builder` pipeline (rich schema: projects + files + file_symbols + imports) AND the docs runner's `SampleCodeSource` group (FTS rows: docs_metadata + docs_fts). One file, two table tracks per #1037.
 - `--source packages` runs the standalone `Indexer.PackagesService` against `packages.db` (not via the docs runner; PackagesSource is excluded from `groupedByDestinationDB`).
 

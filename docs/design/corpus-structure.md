@@ -1,5 +1,7 @@
 # Design: Formal Corpus Structure (per-source folder layout + manifest schema)
 
+> Historical design contract. Some examples below predate the v1.3.0 per-source DB bundle and #1093 Swift Book split. Current live database/file mappings are documented in `docs/architecture/database.md`, `docs/ARCHITECTURE.md`, `docs/commands/save/`, and `docs/sources/*/manifest.yaml`.
+
 ## Status (2026-05-25)
 
 Draft. Companion to `docs/design/per-source-db-split.md` (the

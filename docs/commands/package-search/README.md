@@ -7,7 +7,7 @@ Smart query over the packages index (packages source only).
 ## Synopsis
 
 ```bash
-cupertino package-search "<question>" [--limit <n>] [--db <path>] [--platform <name>] [--min-version <ver>]
+cupertino package-search "<question>" [--limit <n>] [--db <path>] [--platform <name>] [--min-version <ver>] [--swift-tools <ver>]
 ```
 
 ## Description
@@ -25,6 +25,7 @@ Use it when you want results from `packages.db` only and want to bypass the mult
 | `--db` | Override `packages.db` path. Defaults to the configured packages database. |
 | `--platform` | Restrict to packages whose declared deployment target is compatible with the named platform. Values: `iOS`, `macOS`, `tvOS`, `watchOS`, `visionOS` (case-insensitive). Requires `--min-version`. ([#220](https://github.com/mihaelamj/cupertino/issues/220)) |
 | `--min-version` | Minimum version for `--platform`, e.g. `16.0` / `13.0` / `10.15`. Lexicographic compare in SQL, works for current Apple platform versions. |
+| `--swift-tools` | Restrict to packages whose authored `// swift-tools-version: X.Y` declaration is at or above the requested Swift compiler floor, e.g. `5.9` or `6.0`. |
 
 ## Examples
 
@@ -32,6 +33,7 @@ Use it when you want results from `packages.db` only and want to bypass the mult
 cupertino package-search "swift-collections deque API"
 cupertino package-search "vapor middleware composition" --limit 5
 cupertino package-search "swift-syntax visitor pattern" --db /tmp/packages.db
+cupertino package-search "concurrency patterns" --swift-tools 6.0
 
 # Packages whose declared iOS deployment target is at or below 16.0
 # (i.e. they install and run on iOS 16).
@@ -44,6 +46,7 @@ cupertino package-search "json codable" --platform iOS --min-version 13.0
 ## Platform filter notes (#220)
 
 - Both `--platform` and `--min-version` must be passed; one without the other errors out.
+- `--swift-tools` is orthogonal to `--platform` / `--min-version`; both filters can be used together and stack as AND.
 - Packages with no annotation source are dropped from results when the filter is active. To populate annotation, run `cupertino fetch --source packages --annotate-availability` followed by `cupertino save --source packages` (#219).
 - Comparison is lexicographic on the dotted-decimal `min_<platform>` column, correct for current Apple platforms (iOS 13+, macOS 11+, tvOS 13+, watchOS 6+, visionOS 1+). macOS 10.x with multi-digit minors (`10.15` vs `10.5`) would mis-order; not currently a concern for the priority package set.
 

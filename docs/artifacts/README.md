@@ -32,9 +32,9 @@ All Cupertino artifacts are stored under:
 | [swift-book.db](folders/swift-book.db.md) | FTS5 search index for The Swift Programming Language | File documentation |
 | [apple-sample-code.db](folders/apple-sample-code.db.md) | FTS5 search index for Apple sample code | File documentation |
 | [packages.db](folders/packages.db.md) | FTS5 search index for Swift packages | File documentation |
+| [config.json](folders/config.json.md) | Application configuration | File documentation |
 
 The eight databases above are the v1.3.0 per-source split of the former unified `search.db` ([#1036](https://github.com/mihaelamj/cupertino/issues/1036)); all ship in rollback (read-only) mode.
-| [config.json](folders/config.json.md) | Application configuration | File documentation |
 
 ## Quick Reference
 
@@ -86,8 +86,8 @@ The eight databases above are the v1.3.0 per-source split of the former unified 
 
 | Operation | Creates | Location |
 |-----------|---------|----------|
-| `cupertino fetch --source apple-docs` | Markdown files + metadata | `~/.cupertino/docs/` |
-| `cupertino fetch --source swift-org` | Markdown files + metadata | `~/.cupertino/swift-org/` |
+| `cupertino fetch --source apple-docs` | DocC JSON pages + metadata | `~/.cupertino/docs/` |
+| `cupertino fetch --source swift-org` | Markdown/HTML-derived pages + metadata | `~/.cupertino/swift-org/` |
 | `cupertino fetch --source swift-evolution` | Proposal files + metadata | `~/.cupertino/swift-evolution/` |
 | `cupertino fetch --source apple-archive` | Markdown files | `~/.cupertino/archive/` |
 | `cupertino fetch --source hig` | Markdown files | `~/.cupertino/hig/` |
@@ -95,8 +95,9 @@ The eight databases above are the v1.3.0 per-source split of the former unified 
 | `cupertino fetch --source samples` | Git clone (619 projects) | `~/.cupertino/sample-code/cupertino-sample-code/` |
 | `cupertino fetch --source packages` | Package data + checkpoint | `~/.cupertino/packages/` |
 | `cupertino fetch --source availability` | Updates JSON with availability | `~/.cupertino/docs/*.json` |
-| `cupertino save` | Per-source documentation databases | `~/.cupertino/apple-documentation.db` (+ per-source siblings) |
-| `cupertino save --samples` | Sample code search database | `~/.cupertino/apple-sample-code.db` |
+| `cupertino save --source <id>` | The selected per-source database | `~/.cupertino/<source>.db` |
+| `cupertino save --all` | All eight databases | `~/.cupertino/*.db` |
+| `cupertino save --source samples` | Sample code search database | `~/.cupertino/apple-sample-code.db` |
 
 ## Customizing Locations
 

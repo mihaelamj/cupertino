@@ -12,17 +12,23 @@ CLI commands for the Cupertino documentation server.
 | [serve](serve/) | Start MCP server for AI agent access |
 | [search](search/) | Search documentation from the command line. Default fan-out across every source (replaces former `ask`); `--source <name>` filters to a single source |
 | [package-search](package-search/) | Hidden: smart query scoped to packages.db only |
+| [search-symbols](search-symbols/) | Search indexed AST symbols by name, kind, async marker, framework, source, and platform floor |
+| [search-property-wrappers](search-property-wrappers/) | Find declarations using property wrappers such as `@State`, `@Observable`, or `@MainActor` |
+| [search-concurrency](search-concurrency/) | Find concurrency patterns such as `async`, actors, `Sendable`, `@MainActor`, and `Task` |
+| [search-conformances](search-conformances/) | Find symbols that conform to a protocol such as `View`, `Codable`, or `Sendable` |
+| [search-generics](search-generics/) | Find generic-parameter constraints such as `View`, `Hashable`, `Sendable`, or `Codable` |
 | [read](read/) | Read full document content by URI |
 | [list-frameworks](list-frameworks/) | List available frameworks with document counts |
 | [list-documents](list-documents/) | List paged documents in an indexed framework |
 | [list-children](list-children/) | List direct children of a document or topic group |
+| [inheritance](inheritance/) | Walk class inheritance chains for Apple class-based APIs |
 | [list-samples](list-samples/) | List indexed Apple sample code projects |
 | [read-sample](read-sample/) | Read a sample project's README and metadata |
 | [read-sample-file](read-sample-file/) | Read a source file from a sample project |
 | [resolve-refs](resolve-refs/) | Rewrite unresolved `doc://` markers in saved page rawMarkdown |
 | [doctor](doctor/) | Check server health and configuration |
 | [cleanup](cleanup/) | Clean up downloaded sample code archives |
-| [constraints-gen](constraints-gen/) | Maintainer tool (separate `cupertino-constraints-gen` binary): generate `apple-constraints.json` from Swift symbol graphs |
+| [constraints-gen](constraints-gen/) | Maintainer tool (separate `cupertino-constraints-gen` binary): generate `apple-constraints.json` and `apple-conformances.json` from Swift symbol graphs |
 
 ## Quick Reference
 
@@ -47,11 +53,11 @@ cupertino serve
 # Search documentation
 cupertino search "SwiftUI View" --limit 10
 cupertino search "async" --source swift-evolution
-cupertino search "Core Animation" --include-archive
+cupertino search "Core Animation" --source apple-archive
 cupertino search "Observable" --min-ios 17.0  # Filter by iOS version
 
 # Read full document
-cupertino read "apple-docs://swiftui/documentation_swiftui_view" --format markdown
+cupertino read "apple-docs://swiftui/view" --format markdown
 
 # List frameworks
 cupertino list-frameworks
@@ -61,6 +67,12 @@ cupertino list-documents --framework swiftui --limit 20
 
 # List children of a document or topic group
 cupertino list-children apple-docs://swiftui
+
+# Semantic symbol/code-intelligence commands
+cupertino search-symbols --query NavigationStack --kind struct --framework swiftui
+cupertino search-conformances --protocol View --framework swiftui
+cupertino search-generics --constraint Sendable --source apple-docs
+cupertino inheritance UIButton --direction up --format json
 
 # Sample code commands
 cupertino list-samples --limit 10
@@ -124,7 +136,7 @@ cupertino save --source samples
 cupertino search "MainActor" --limit 5
 
 # Read full document when needed
-cupertino read "apple-docs://swift/documentation_swift_mainactor" --format markdown
+cupertino read "apple-docs://swift/mainactor" --format markdown
 ```
 
 ## See Also

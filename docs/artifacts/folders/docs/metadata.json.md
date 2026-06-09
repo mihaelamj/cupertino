@@ -111,7 +111,7 @@ When re-crawling:
 
 - `cupertino fetch` - Auto-resume picks up `crawlState` if `isActive: true` and start URL matches
 - `cupertino fetch --start-clean` - Wipes `crawlState` to force a fresh run
-- `cupertino save` - URL mapping for search results
+- `cupertino save --source apple-docs` - URL mapping for search results
 - Change detection on re-crawl
 
 ## Notes

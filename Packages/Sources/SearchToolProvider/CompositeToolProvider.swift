@@ -9,7 +9,7 @@ import SharedConstants
 // MARK: - Unified Cupertino Tool Provider
 
 /// Composite tool provider that provides unified search across all documentation sources.
-/// Handles `search_docs` with `source` parameter to search docs, samples, HIG, archive, etc.
+/// Handles the unified `search` tool with a `source` parameter for docs, samples, HIG, archive, packages, etc.
 public actor CompositeToolProvider: MCP.Core.ToolProvider {
     // Protocol-typed so this file doesn't import the Search, SampleIndex,
     // or Services behavioural targets — every cross-package surface is
@@ -183,7 +183,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
                 description: "Language filter for Swift.org sources."
             ),
             Shared.Constants.Search.schemaParamIncludeArchive: boolSchema(
-                description: "Include Apple Archive results when source is not specified."
+                description: "Legacy compatibility flag. Current fan-out already includes apple-archive; use source=apple-archive for archive-only results."
             ),
             Shared.Constants.Search.schemaParamLimit: intSchema(
                 description: "Maximum results to return (default 20)."

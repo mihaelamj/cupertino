@@ -1,6 +1,6 @@
 # --source all
 
-Fetch All Documentation Types
+Fetch all fetchable sources
 
 ## Synopsis
 
@@ -10,39 +10,35 @@ cupertino fetch --source all
 
 ## Description
 
-Fetches all documentation types in parallel: Apple docs, Swift.org docs, Swift Evolution proposals, Swift packages metadata, and sample code. This is the most comprehensive fetch option that downloads the entire Cupertino corpus.
+Fetches all fetchable sources in parallel: Apple docs, Swift.org docs, the Swift Book, Swift Evolution proposals, HIG, Apple Archive, Swift package archives, Apple sample-code ZIPs, the GitHub sample-code mirror, and the availability maintenance pass. This is the most comprehensive local rebuild path; most users should prefer `cupertino setup`.
 
-## Fetched Types
+## Fetched Sources
 
-Runs every non-`all` fetch type **in parallel**:
+Runs every non-`all` fetchable source **in parallel**:
 
-1. **docs**, Apple Developer Documentation
-2. **swift**, Swift.org Documentation
-3. **evolution**, Swift Evolution Proposals
-4. **packages**, Swift Package Index metadata + GitHub source archives ([#217](https://github.com/mihaelamj/cupertino/issues/217))
-5. **code**, Apple Sample Code from `developer.apple.com/sample-code` (requires Safari sign-in for cookie reuse)
-6. **samples**, Sample code projects from GitHub (the recommended path for sample data)
-7. **archive**, Apple Archive legacy programming guides
-8. **hig**, Human Interface Guidelines
-9. **availability**, API version-info pass over an existing docs corpus
+1. **apple-docs**, Apple Developer Documentation
+2. **swift-org**, Swift.org documentation
+3. **swift-book**, The Swift Programming Language book
+4. **swift-evolution**, Swift Evolution proposals
+5. **packages**, priority Swift package source archives; metadata refresh is opt-in via `--refresh-metadata`
+6. **apple-sample-code**, Apple sample-code ZIPs from `developer.apple.com/sample-code` (requires Safari sign-in for cookie reuse)
+7. **samples**, sample-code projects from GitHub (recommended path for sample data)
+8. **apple-archive**, Apple Archive legacy programming guides
+9. **hig**, Human Interface Guidelines
+10. **availability**, API version-info pass over an existing docs corpus
 
 ## Default Settings
 
 | Setting | Value |
 |---------|-------|
 | Output Directory | `~/.cupertino/` (base directory) |
-| Execution Mode | Parallel (all types simultaneously) |
+| Execution Mode | Parallel (all sources simultaneously) |
 | Authentication | Required for sample code only |
 | Estimated Total Pages | ~404,000+ items |
 
 ## Examples
 
 ### Fetch Everything
-```bash
-cupertino fetch --source all
-```
-
-### Fetch Everything Including Sample Code
 ```bash
 cupertino fetch --source all
 ```
@@ -62,9 +58,13 @@ cupertino fetch --source all --max-pages 5000 --limit 100
 │   ├── SwiftUI/
 │   └── ... (~404,000+ pages)
 │
-├── swift-book/               # Swift.org Documentation
+├── swift-org/                # Swift.org documentation
 │   ├── metadata.json
-│   └── ... (~200 pages)
+│   └── ... (~500 pages)
+│
+├── swift-book/               # The Swift Programming Language
+│   ├── metadata.json
+│   └── ... (~40 pages)
 │
 ├── swift-evolution/          # Swift Evolution Proposals
 │   ├── metadata.json
@@ -81,7 +81,7 @@ cupertino fetch --source all --max-pages 5000 --limit 100
 
 ## Parallel Execution
 
-All fetch types run **simultaneously** in separate tasks:
+All fetchable sources run **simultaneously** in separate tasks:
 
 ```
 [10:30:00] 🚀 Starting Apple Documentation...
@@ -96,34 +96,36 @@ All fetch types run **simultaneously** in separate tasks:
 [14:23:45] ✅ Completed Sample Code
 [22:18:32] ✅ Completed Apple Documentation
 
-✅ All documentation types fetched successfully!
+✅ All documentation sources fetched successfully!
 ```
 
 ## Performance
 
 | Metric | Value |
 |--------|-------|
-| Total download time | ~20-24 hours (parallel) |
-| Total storage | ~1-2 GB |
-| Total items | ~14,000+ |
-| Network bandwidth | ~50-100 MB/hour average |
+| Total download time | dominated by Apple docs; multi-day for a full crawl |
+| Total storage | several GB of raw corpus data before indexing |
+| Total items | Apple docs alone are ~404,000 raw pages; other source counts vary |
+| Network bandwidth | source-dependent |
 
 ### Individual Type Timing
 
-| Type | Estimated Time | Item Count |
+| Source | Estimated Time | Item Count |
 |------|----------------|------------|
-| docs | 12+ days | ~404,000+ pages |
-| swift | 15-30 minutes | ~200 pages |
-| evolution | 5-15 minutes | ~400 proposals |
-| packages | 10-30 minutes | ~10,000 packages |
-| code | 2-6 hours | ~600 projects |
+| apple-docs | 12+ days | ~404,000+ raw pages |
+| swift-org | 15-30 minutes | ~500 pages |
+| swift-book | minutes | ~40 pages |
+| swift-evolution | 5-15 minutes | ~400 proposals |
+| packages | ~100 seconds for priority archives; metadata refresh is hours without `GITHUB_TOKEN` | 185 indexed release packages / larger SPI metadata catalog |
+| apple-sample-code | 2-6 hours | ~600 projects |
+| samples | minutes, dominated by Git LFS bandwidth | 619 projects |
 
 ## Error Handling
 
-If any fetch type fails:
-- Other types continue running
-- Final summary shows which types succeeded/failed
-- Failed types can be re-run individually
+If any fetch source fails:
+- Other sources continue running
+- Final summary shows which sources succeeded/failed
+- Failed sources can be re-run individually
 - Exit code indicates partial failure
 
 Example output with failures:
@@ -139,20 +141,20 @@ Example output with failures:
 
 ## Option Inheritance
 
-Options like `--max-pages`, `--force`, and `--start-clean` apply to all relevant fetch types:
+Options like `--max-pages`, `--force`, and `--start-clean` apply to all relevant fetch sources:
 
 ```bash
-# Force re-fetch all types
+# Force re-fetch all sources
 cupertino fetch --source all --force
 
-# Discard saved sessions and start every type fresh
+# Discard saved sessions and start every source fresh
 cupertino fetch --source all --start-clean
 
-# Limit pages for web crawl types
+# Limit pages for web-crawl sources
 cupertino fetch --source all --max-pages 1000
 ```
 
-Resume is automatic across all types, interrupted fetches pick up where they left off on the next run with no flag.
+Resume is automatic across all sources, interrupted fetches pick up where they left off on the next run with no flag.
 
 ## Sample Code Authentication
 
@@ -164,7 +166,7 @@ cupertino fetch --source all
 
 Without a valid Safari sign-in:
 - Sample code fetch will fail
-- Other types will complete successfully
+- Other sources will complete successfully
 - Warning displayed about missing cookie
 
 Alternative: drop `code` and use `samples` (GitHub mirror, no auth required) for sample-code coverage.
@@ -203,5 +205,5 @@ Alternative: drop `code` and use `samples` (GitHub mirror, no auth required) for
    ```bash
    cupertino fetch --source apple-docs        # auto-resumes if interrupted previously
    cupertino fetch --source swift-evolution
-   cupertino save --clear
+   cupertino save --all --clear
    ```

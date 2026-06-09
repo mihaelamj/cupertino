@@ -25,7 +25,7 @@ The default mode runs a fan-out across every available database in parallel and 
 | `source` | string | no | Limit results to a single source. Values: `all`, `apple-docs`, `samples`, `apple-sample-code`, `hig`, `apple-archive`, `swift-evolution`, `swift-org`, `swift-book`, `packages`. |
 | `framework` | string | no | Framework filter, e.g. `swiftui`, `foundation`, `uikit`. Case-insensitive. |
 | `language` | string | no | Language filter for the Swift.org sources (typically `swift`). |
-| `include_archive` | boolean | no | When `source` is not specified, include Apple Archive (legacy programming guides) in the fan-out. |
+| `include_archive` | boolean | no | Legacy compatibility flag. Current fan-out already includes Apple Archive at low weight; use `source: "apple-archive"` for archive-only results. |
 | `limit` | integer | no | Maximum number of results to return. Default `20`. |
 | `min_ios` | string | no | Minimum iOS version filter, e.g. `17.0`. Drops results whose minimum-iOS availability annotation is higher. |
 | `min_macos` | string | no | Minimum macOS version filter, e.g. `14.0`. |

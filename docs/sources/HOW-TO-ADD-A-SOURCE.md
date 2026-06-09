@@ -113,7 +113,7 @@ The strategy + indexer + fetch + read concretes live in the same target. Look at
 |---|---|
 | `searchRoute: .docs` | Your source has a bespoke search runner (HIG, samples, packages). Declare `static let myRoute = SearchRoute(rawValue: "my-source-id")` in `Search.SourceRoute` extensions and return it. Unknown routes fall through to `.unified`. |
 | `isSearchTier: true` | Your source ships its OWN database family with a non-FTS schema (today: `SampleCodeSource` → `apple-sample-code.db` catalog tables; `PackagesSource` → `packages.db` BM25 + chunks). Return `false` and the unified docs fan-out skips you. |
-| `makeFetchStrategy()` returns `nil` (default) | Your source's data ships from another source's crawl (today: `SwiftBookSource`, a view-source whose pages are co-crawled by `swift-org`). Otherwise return your strategy concrete. |
+| `makeFetchStrategy()` returns `nil` (default) | Your source has no direct fetch path and is populated by setup or another source-specific mechanism. Otherwise return your strategy concrete. |
 | `makeReadStrategy()` returns `nil` (default) | Always override. Use `Search.DocsReadStrategy(sourceID:)` for the FTS family, or write your own conformer for a custom backend. |
 
 ## Pluggable today — surfaces that pick up the new source automatically

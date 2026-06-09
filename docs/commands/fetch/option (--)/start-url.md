@@ -5,16 +5,16 @@ Override the default start URL for the chosen `--source`
 ## Synopsis
 
 ```bash
-cupertino fetch --source <type> --start-url <url>
+cupertino fetch --source <source> --start-url <url>
 ```
 
 ## Description
 
-Each web-crawl `--source` (docs, swift, evolution) has a default start URL baked in (`Cupertino.FetchType.defaultURL`). Override here to crawl a different seed.
+Each web-crawl `--source` (for example `apple-docs`, `swift-org`, `swift-book`, `swift-evolution`, `hig`, or `apple-archive`) has a default start URL from its source definition. Override here to crawl a different seed.
 
 ## Default
 
-Type-dependent. For `--source apple-docs`: `https://developer.apple.com/documentation/`. For `--source swift-org`: swift.org docs root.
+Source-dependent. For `--source apple-docs`: `https://developer.apple.com/documentation/`. For `--source swift-org`: swift.org docs root.
 
 ## Example
 
@@ -24,5 +24,5 @@ cupertino fetch --source apple-docs --start-url https://developer.apple.com/docu
 
 ## Notes
 
-- Only meaningful for web-crawl types (docs, swift, evolution). Direct-fetch types (packages, samples) don't use it.
+- Only meaningful for web-crawl sources. Direct-fetch sources (`packages`, `samples`, `apple-sample-code`) don't use it.
 - The crawler uses this URL to derive `--allowed-prefixes` automatically when the latter isn't set.

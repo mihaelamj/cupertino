@@ -461,7 +461,7 @@ cupertino fetch --source apple-docs
 **Problem:**
 ```
 ✗ Database: /Users/you/.cupertino/apple-documentation.db (not found)
-  → Run: cupertino setup  (or `cupertino save` if building locally)
+  → Run: cupertino setup  (or `cupertino save --all` if building locally)
 ```
 
 **Solution (recommended):**

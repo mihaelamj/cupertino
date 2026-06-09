@@ -5,7 +5,7 @@ Directory containing Swift.org documentation
 ## Synopsis
 
 ```bash
-cupertino save --swift-org-dir <path>
+cupertino save --source swift-org --swift-org-dir <path>
 ```
 
 ## Description
@@ -25,12 +25,12 @@ cupertino save --all
 
 ### Custom Swift.org Directory
 ```bash
-cupertino save --swift-org-dir ./my-swift-org
+cupertino save --source swift-org --swift-org-dir ./my-swift-org
 ```
 
 ### No Swift.org Documentation
 ```bash
-cupertino save --swift-org-dir ""
+cupertino save --source swift-org --swift-org-dir ""
 ```
 
 ## Expected Structure
@@ -38,8 +38,9 @@ cupertino save --swift-org-dir ""
 The directory should contain:
 ```
 swift-org-dir/
-├── documentation-page-1.md
-├── documentation-page-2.md
+├── metadata.json
+├── documentation/
+│   └── ...
 └── ...
 ```
 
@@ -52,7 +53,7 @@ swift-org-dir/
 ## Notes
 
 - Directory must exist if specified
-- Should contain Markdown (`.md`) files from Swift.org
+- Should contain the source files emitted by `cupertino fetch --source swift-org`
 - Works with output from `cupertino fetch --source swift-org`
 - Indexed separately but searchable together
 - Can be empty or omitted if not needed

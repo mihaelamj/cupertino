@@ -21,9 +21,8 @@ import SharedConstants
 ///
 /// Conformance facets:
 /// - `definition`: lifted from `CLI/CLIImpl.SourceLookup.swift`
-/// - `fetchInfo`: `nil` (no dedicated fetch; SwiftOrgStrategy's single
-///   crawl over `docs.swift.org` produces both sub-sources' files;
-///   SwiftBookSource just walks the same on-disk corpus directory).
+/// - `fetchInfo`: independent Swift Book crawl metadata
+///   (`docs.swift.org/swift-book/...`, output directory `swift-book`).
 /// - `destinationDB`: `.swiftBook` (filename `swift-book.db`).
 /// - `makeStrategy(env:)`: returns `Search.SwiftBookStrategy`, which
 ///   delegates to `Search.StrategyHelpers.crawlSwiftDocumentation(

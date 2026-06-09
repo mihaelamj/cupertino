@@ -108,7 +108,7 @@ Default markdown returns one section per contributing database. `format=json` re
   ],
   "packages": [
     {
-      "uri": "package://owner/repo/Sources/Box.swift",
+      "uri": "packages://owner/repo/Sources/Box.swift#Box",
       "source": "packages",
       "framework": "Module",
       "title": "Box.swift",

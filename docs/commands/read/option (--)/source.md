@@ -72,7 +72,7 @@ cupertino read pointfreeco/swift-navigation/Sources/.../UIKitNavigation.md --sou
 ### Docs URI (auto-detected, --source optional)
 
 ```bash
-cupertino read "apple-docs://swiftui/documentation_swiftui_view"
+cupertino read "apple-docs://swiftui/view"
 ```
 
 ### Non-URI docs identifier with explicit source

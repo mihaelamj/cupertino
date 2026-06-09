@@ -7,6 +7,8 @@ Generate the Apple-type generic-constraints table (`apple-constraints.json`) fro
 ```bash
 cupertino-constraints-gen generate <symbol-graph-files> ... -o <output>
 cupertino-constraints-gen generate --from-directory <dir> -o <output>
+cupertino-constraints-gen conformances <symbol-graph-files> ... -o <output>
+cupertino-constraints-gen conformances --from-directory <dir> -o <output>
 ```
 
 ## Description
@@ -31,6 +33,10 @@ The command hard-fails (exit 1) with remediation instructions instead of writing
 
 A 0-entry table would silently strip Apple constraint enrichment from every consuming DB (apple-docs, samples, packages), and the loss is only visible by inspecting the DB afterwards. The error text names how to produce symbol graphs and re-run.
 
+### `conformances` subcommand
+
+Reads the same `.symbols.json` inputs and writes `apple-conformances.json`, the conformance sibling of `apple-constraints.json`. The conformance table feeds the SDK conformance enrichment pass for apple-docs, samples, and packages. It refuses to write a 0-entry table for the same reason as `generate`: an empty artifact would silently remove SDK conformance facts from every consuming DB.
+
 ## Options
 
 - [`<symbol-graph-files>`](argument%20%28%3C%3E%29/symbol-graph-files.md): explicit list of `.symbols.json` files.
@@ -54,6 +60,14 @@ cupertino-constraints-gen generate \
 cupertino-constraints-gen generate \
   /tmp/SwiftUI.symbols.json /tmp/Foundation.symbols.json \
   -o apple-constraints.json
+```
+
+### Conformance table
+
+```bash
+cupertino-constraints-gen conformances \
+  --from-directory ~/Developer/public/cupertino-symbolgraphs \
+  -o apple-conformances.json
 ```
 
 ### Producing symbol graphs first

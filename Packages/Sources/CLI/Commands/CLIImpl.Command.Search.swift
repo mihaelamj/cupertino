@@ -69,7 +69,7 @@ extension CLIImpl.Command {
 
         @Flag(
             name: .long,
-            help: "Include Apple Archive documentation in results (excluded by default)"
+            help: "Legacy archive inclusion flag; current fan-out already searches apple-archive. Use --source apple-archive for archive-only results."
         )
         var includeArchive: Bool = false
 

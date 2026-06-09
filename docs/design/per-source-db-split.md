@@ -1,5 +1,7 @@
 # Design: Per-Source DB Split (implementation arc)
 
+> Historical implementation plan. The shipped v1.3.0 layout differs in two important ways: Swift.org and the Swift Book are separate databases (`swift-org.db`, `swift-book.db`), and packages remain `packages.db` rather than `swift-packages.db`. For the current live architecture, see `docs/architecture/database.md` and `docs/ARCHITECTURE.md`.
+
 ## Status (2026-05-25)
 
 Draft. Implementation companion to

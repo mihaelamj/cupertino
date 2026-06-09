@@ -7,11 +7,11 @@ description: |
   Open-source Swift Package Manager packages: GitHub metadata,
   Package.swift contents, READMEs, and source archives for the
   ~10k-package curated catalog. Independent of search.db; lives in
-  its own DB (swift-packages.db) so package-search queries don't
+  its own DB (packages.db) so package-search queries don't
   scan apple-documentation rows.
 
 corpusFolder: packages
-destinationDB: swift-packages
+destinationDB: packages
 
 fetcher:
   kind: github-api

@@ -16,7 +16,7 @@ For desktop/native clients, these MCP tools are the backend contract. UI layers 
 | [list_children](list_children/) | List direct children of a document or topic group |
 | [read_document](read_document/) | Read a document by URI in JSON or Markdown format |
 
-### Sample Code Tools (requires `cupertino save --samples`)
+### Sample Code Tools (requires `cupertino save --source samples`)
 
 | Tool | Description |
 |------|-------------|

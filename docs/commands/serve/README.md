@@ -25,6 +25,17 @@ The server runs indefinitely until terminated (Ctrl+C).
 
 ## Tool Surface
 
+### Unified Search
+
+- `search` - smart query fanned out across every available source (`apple-docs`, `samples`, `swift-evolution`, `swift-org`, `swift-book`, `packages`, `hig`, `apple-archive`) with reciprocal-rank fusion.
+
+### Documentation Tools
+
+- `list_frameworks` - list available frameworks with document counts.
+- `list_documents` - list paged documents in a framework.
+- `list_children` - list direct children of a document or topic group.
+- `read_document` - read full document content by URI.
+
 ### Sample Code Tools
 
 - `list_samples` - list indexed sample projects; `format=json` returns typed project metadata.
@@ -53,20 +64,21 @@ This makes it easy to configure in MCP client applications - you only need to sp
 
 ## Prerequisites
 
-Before starting the MCP server, you need:
+Before starting the MCP server, you need a local database bundle. Most users should install it with:
 
-1. **Downloaded documentation**:
-   ```bash
-   cupertino fetch --source apple-docs
-   cupertino fetch --source swift-evolution
-   ```
+```bash
+cupertino setup
+```
 
-2. **Search index** (recommended):
-   ```bash
-   cupertino save --all
-   ```
+Maintainers rebuilding from raw sources can instead fetch sources and rebuild the databases:
 
-Without documentation, the server will display a getting started guide and exit.
+```bash
+cupertino fetch --source apple-docs
+cupertino fetch --source swift-evolution
+cupertino save --all
+```
+
+Without a database bundle, the server will display a getting started guide and exit.
 
 ## Examples
 
@@ -220,7 +232,7 @@ When the server starts successfully:
    Waiting for client connection...
 ```
 
-Note: Only existing databases are shown. At least one database (search or samples) must exist for the server to start.
+Note: only existing databases are shown. At least one supported database must exist for the server to start. Most users create these with `cupertino setup`; maintainers can rebuild them with `cupertino save --all` or a scoped `cupertino save --source <id>`.
 
 ### With Search Index
 
@@ -232,7 +244,7 @@ Note: Only existing databases are shown. At least one database (search or sample
 
 ```
 ℹ️  Search index not found at: /Users/username/.cupertino/apple-documentation.db
-   Tools will not be available. Run 'cupertino save' to enable search.
+   Tools will not be available. Run 'cupertino setup' or 'cupertino save --all' to enable search.
 ```
 
 The server will still work for resource access, but search tools won't be available.
@@ -411,16 +423,15 @@ Press `Ctrl+C` to stop the server gracefully.
 
 ### Server Won't Start
 
-**Check if documentation exists:**
+**Check if the database bundle exists:**
 ```bash
-ls -la ~/.cupertino/docs
-ls -la ~/.cupertino/swift-evolution
+ls -la ~/.cupertino/apple-documentation.db
+ls -la ~/.cupertino/packages.db
 ```
 
-**Solution:** Download documentation first:
+**Solution:** Download the pre-built bundle:
 ```bash
-cupertino fetch --source apple-docs
-cupertino fetch --source swift-evolution
+cupertino setup
 ```
 
 ### No Search Tools Available

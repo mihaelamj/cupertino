@@ -1,6 +1,6 @@
 # --include-archive
 
-Include Apple Archive legacy programming guides in search results
+Legacy Apple Archive inclusion flag
 
 ## Synopsis
 
@@ -10,11 +10,11 @@ cupertino search <query> --include-archive
 
 ## Description
 
-By default, Apple Archive legacy programming guides are excluded from search results to prioritize modern documentation. Use this flag to include them in mixed results alongside other documentation sources.
+In the current v1.3.0 per-source bundle, default fan-out already opens `apple-archive.db` and includes Apple Archive legacy programming guides as a low-weight source. This flag remains accepted for compatibility with older unified-DB workflows and scripts, but it is no longer required for the normal `cupertino search <query>` fan-out.
 
 ## Default
 
-`false` (archive excluded)
+`false`
 
 ## Examples
 
@@ -23,14 +23,14 @@ By default, Apple Archive legacy programming guides are excluded from search res
 cupertino search "Core Animation" --include-archive
 ```
 
-### Search All Sources Including Archive
+### Search Archive Only
 ```bash
-cupertino search "layer" --include-archive --limit 20
+cupertino search "layer" --source apple-archive --limit 20
 ```
 
 ### Framework-Specific with Archive
 ```bash
-cupertino search "CALayer" --include-archive --framework quartzcore
+cupertino search "CALayer" --source apple-archive --framework quartzcore
 ```
 
 ## Combining with Other Options
@@ -54,8 +54,8 @@ cupertino search "graphics context" --include-archive --limit 10
 
 | Approach | Behavior |
 |----------|----------|
-| No flag | Archive excluded, modern docs only |
-| `--include-archive` | Archive included in mixed results |
+| No flag | Fan-out includes archive as a low-weight source |
+| `--include-archive` | Accepted for compatibility; not needed for current fan-out |
 | `--source apple-archive` | Archive only, no other sources |
 
 ## Use Cases
@@ -77,7 +77,7 @@ Includes these programming guides:
 
 ## Search Ranking
 
-When included, archive results have a slight ranking penalty to ensure modern documentation appears first. Use `--source apple-archive` if you specifically want archive results prioritized.
+Archive results have a slight ranking penalty in fan-out to ensure modern documentation appears first. Use `--source apple-archive` if you specifically want archive results prioritized.
 
 ## Notes
 

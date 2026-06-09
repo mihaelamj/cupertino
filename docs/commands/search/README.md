@@ -16,7 +16,7 @@ This command provides the same search functionality as the MCP `search` tool, al
 
 `search` operates in two modes:
 
-- **Default (no `--source`)**: fans the question out across every available DB in parallel, Apple docs, sample code, HIG, Apple Archive, Swift Evolution, swift.org, the Swift Book, packages, samples, and ranks the merged candidates via reciprocal-rank fusion (k=60). Output is chunked excerpts ready for LLM context. This used to be a separate `cupertino ask` command; it was absorbed into `search` in [#239](https://github.com/mihaelamj/cupertino/issues/239).
+- **Default (no `--source`)**: fans the question out across every available DB in parallel: Apple docs, samples, HIG, Apple Archive, Swift Evolution, swift.org, the Swift Book, and packages. It ranks the merged candidates via reciprocal-rank fusion (k=60). Output is chunked excerpts ready for LLM context. This used to be a separate `cupertino ask` command; it was absorbed into `search` in [#239](https://github.com/mihaelamj/cupertino/issues/239).
 - **`--source <name>`**: queries one source and returns the source-specific list view (URI + summary). Use this when you know exactly which corpus you want.
 
 A failing fetcher (e.g. missing DB) collapses to empty rather than failing the whole query, so partial coverage still returns useful results.
@@ -56,17 +56,17 @@ cupertino search "buttons" --source hig
 
 ### --include-archive
 
-Include Apple Archive legacy programming guides in search results.
+Legacy Apple Archive inclusion flag.
 
 **Type:** Flag (boolean)
-**Default:** false (archive excluded by default)
+**Default:** false
 
-Archive documentation is excluded from search by default to prioritize modern documentation. Use this flag to include legacy guides like Core Animation Programming Guide, Quartz 2D Programming Guide, etc.
+Current fan-out already includes `apple-archive` as a normal low-weight source. The flag remains accepted for compatibility with older unified-DB workflows; for archive-only results, prefer `--source apple-archive`.
 
 **Example:**
 ```bash
-cupertino search "Core Animation" --include-archive
-cupertino search "CALayer" --include-archive --framework quartzcore
+cupertino search "Core Animation" --source apple-archive
+cupertino search "CALayer" --source apple-archive --framework quartzcore
 ```
 
 ### -f, --framework
@@ -178,6 +178,30 @@ cupertino search "immersive" --min-visionos 1.0
 cupertino search "spatial" --min-visionos 1.0 --framework realitykit
 ```
 
+### --swift
+
+Maximum Swift toolchain version for `swift-evolution` rows. Filters proposals to those implemented at or below the requested Swift version; rows from other sources are filtered out when this is set.
+
+**Type:** String (version number, e.g., `5.5`, `5.9`, `6.0`)
+
+**Example:**
+```bash
+cupertino search "actors" --source swift-evolution --swift 5.5
+cupertino search "macros" --source swift-evolution --swift 5.9
+```
+
+### --apple-imports
+
+Restrict package results to packages whose indexed source imports the named Apple framework module. No-op outside the packages source.
+
+**Type:** String (module name, e.g., `SwiftUI`, `Combine`, `AppKit`)
+
+**Example:**
+```bash
+cupertino search "View" --source packages --apple-imports SwiftUI
+cupertino search "Publisher" --source packages --apple-imports Combine
+```
+
 ### --packages-db
 
 Path to the packages database. Used in fan-out mode (and with `--source packages`).
@@ -287,18 +311,19 @@ cupertino search "SwiftUI" --format markdown
 
 ## Prerequisites
 
-Before searching, you need a populated search index:
+Before searching, you need a populated database bundle. Most users should run:
 
-1. **Download documentation:**
-   ```bash
-   cupertino fetch --source apple-docs
-   cupertino fetch --source swift-evolution
-   ```
+```bash
+cupertino setup
+```
 
-2. **Build search index:**
-   ```bash
-   cupertino save --all
-   ```
+Maintainers rebuilding from raw sources can instead fetch sources and rebuild:
+
+```bash
+cupertino fetch --source apple-docs
+cupertino fetch --source swift-evolution
+cupertino save --all
+```
 
 ## Examples
 
@@ -332,7 +357,7 @@ Found 20 result(s) for 'SwiftUI View':
 
 [1] View | Apple Developer Documentation
     Source: apple-docs | Framework: swiftui
-    URI: apple-docs://swiftui/documentation_swiftui_view
+    URI: apple-docs://swiftui/view
 ...
 ```
 
@@ -368,13 +393,13 @@ cupertino search "Observable" --format json --limit 3
 ```json
 [
   {
-    "filePath": "/Users/user/.cupertino/docs/swiftui/documentation_observation_observable.md",
+    "filePath": "https://developer.apple.com/documentation/observation/observable",
     "framework": "observation",
     "score": 12.45,
     "source": "apple-docs",
     "summary": "A type that emits notifications to observers when underlying data changes.",
     "title": "Observable | Apple Developer Documentation",
-    "uri": "apple-docs://observation/documentation_observation_observable",
+    "uri": "apple-docs://observation/observable",
     "wordCount": 1234
   }
 ]
@@ -396,7 +421,7 @@ Found 20 result(s).
 
 - **Source:** apple-docs
 - **Framework:** swift
-- **URI:** `apple-docs://swift/documentation_swift_concurrency`
+- **URI:** `apple-docs://swift/concurrency`
 
 > Perform asynchronous and parallel operations...
 ```
@@ -468,7 +493,7 @@ Formatted markdown output. Best for:
 
 ```
 Error: Search database not found at /Users/user/.cupertino/apple-documentation.db
-Run 'cupertino save' to build the search index first.
+Run 'cupertino setup' or 'cupertino save --all' to build the search index first.
 ```
 
 **Solution:** Build the search index:
