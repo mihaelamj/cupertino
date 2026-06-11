@@ -133,6 +133,7 @@ TRIVIAL_PATTERNS=(
     '^scripts/.*\.sh$'
     '^scripts/[^/]+$'
     '^Packages/Tests/.*\.swift$'
+    'Package\.resolved$'
 )
 
 needs_changelog=false

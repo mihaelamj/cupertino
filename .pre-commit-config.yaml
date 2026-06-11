@@ -4,6 +4,7 @@ repos:
     hooks:
       - id: swiftlint
         args: [--quiet, --config, .swiftlint.yml, --force-exclude]
+        exclude: ^(Packages/Tests/|DerivedData/|Packages/\.build/|.*\.generated)
 
   - repo: https://github.com/nicklockwood/SwiftFormat
     rev: 0.58.5
@@ -45,4 +46,4 @@ repos:
         # the commit message body to opt out per-commit. Now usually
         # passes because the prepare-commit-msg auto-inject above stages
         # a TODO entry on the author's behalf.
-        stages: [commit]
+        stages: [pre-commit]

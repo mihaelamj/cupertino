@@ -1,6 +1,24 @@
 {
-  "originHash" : "3e41c1a12fdad80d192fdc1c71ff3d6e5d8ea0e142af4f5655d31354bccdcce0",
+  "originHash" : "1acd6492185bd44a554df389a4aaffff3ca9639ebc56c7e4b1a3443950aefbf0",
   "pins" : [
+    {
+      "identity" : "cupertinodataengine",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mihaelamj/CupertinoDataEngine.git",
+      "state" : {
+        "revision" : "1b8f8781f8e7195c6a5843ecc4fcb2f932259861",
+        "version" : "0.2.6"
+      }
+    },
+    {
+      "identity" : "cupertinodatakit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mihaelamj/CupertinoDataKit.git",
+      "state" : {
+        "revision" : "8cf995507467d353387e506005f962b606eea207",
+        "version" : "0.3.0"
+      }
+    },
     {
       "identity" : "swift-argument-parser",
       "kind" : "remoteSourceControl",
@@ -17,6 +35,33 @@
       "state" : {
         "revision" : "0687f71944021d616d34d922343dcef086855920",
         "version" : "600.0.1"
+      }
+    },
+    {
+      "identity" : "swiftmcpclient",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mihaelamj/SwiftMCPClient.git",
+      "state" : {
+        "revision" : "d049156ded908b5c30abd771c7e92cbd6f461a11",
+        "version" : "0.1.0"
+      }
+    },
+    {
+      "identity" : "swiftmcpcore",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mihaelamj/SwiftMCPCore.git",
+      "state" : {
+        "revision" : "12e02eb7fd3c484f366c7389e5530c8185bf2b77",
+        "version" : "0.1.0"
+      }
+    },
+    {
+      "identity" : "swiftmcpserver",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mihaelamj/SwiftMCPServer.git",
+      "state" : {
+        "revision" : "bd13e4932c14066c2462ec8947237ec54e29af8d",
+        "version" : "0.1.0"
       }
     }
   ],

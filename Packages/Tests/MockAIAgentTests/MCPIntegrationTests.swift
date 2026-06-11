@@ -74,7 +74,7 @@ struct MCPIntegrationTests {
         let buffer = try await readUntil(
             stdout: stdoutPipe,
             stderr: stderrPipe,
-            until: { $0.contains("\"id\":1") },
+            until: { $0.contains("\"id\":1") && $0.hasSuffix("\n") },
             deadline: 30
         )
 
@@ -144,7 +144,7 @@ struct MCPIntegrationTests {
         let buffer = try await readUntil(
             stdout: stdoutPipe,
             stderr: stderrPipe,
-            until: { $0.contains("\"id\":1") && $0.contains("\"id\":2") },
+            until: { $0.contains("\"id\":1") && $0.contains("\"id\":2") && $0.hasSuffix("\n") },
             deadline: 30
         )
 
