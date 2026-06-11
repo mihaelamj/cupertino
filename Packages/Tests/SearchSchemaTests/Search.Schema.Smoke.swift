@@ -1,7 +1,6 @@
-import Testing
-
 import SearchModels
 import SearchSchema
+import Testing
 
 @Suite("SearchSchema smoke")
 struct SearchSchemaSmokeTests {

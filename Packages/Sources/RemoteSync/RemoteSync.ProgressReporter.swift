@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Progress Reporter
 
 extension RemoteSync {
-    /// Reports progress to terminal with animated updates
+    // Reports progress to terminal with animated updates
     // @unchecked Sendable per concurrency.md §24: class holds animation
     // state (lastUpdate, lineCount) mutated only on a single MainActor
     // queue from the RemoteSync.Indexer actor. Mutation isolation is

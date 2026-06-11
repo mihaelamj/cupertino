@@ -16,30 +16,30 @@ import SharedConstants
 /// Identifies which documentation source produced a result
 // MARK: - Source (formerly an enum, now a String-wrapping struct)
 
-//
-// Open. The closed `enum Source: String, CaseIterable { case appleDocs;
-// case samples; ... }` shape was the single biggest blocker to adding a
-// new content source as a 2-file PR (the #919 epic goal): every new
-// source required a new enum case, every `switch source` site became
-// non-exhaustive, every `allCases` consumer required a recompile.
-//
-// Post-#251 second cut, `Search.Source` is a value type that wraps a
-// raw `String` identifier. The 8 historical sources (`apple-docs`,
-// `samples`, `hig`, `apple-archive`, `swift-evolution`, `swift-org`,
-// `swift-book`, `packages`) remain reachable as static constants
-// (`Search.Source.appleDocs`, etc.) so every existing call site keeps
-// compiling. New sources land by registering a `SourceDefinition` in
-// `Search.SourceRegistry.all` plus a `SourcePrefix` constant in
-// `Shared.Constants`; no edit to this file required.
-//
-// `displayName` and `emoji` were closed switches on the enum cases;
-// they now look up the descriptor in `Search.SourceRegistry` and fall
-// back to the raw identifier when no descriptor is registered. The
-// fallback keeps existing call sites non-Optional without forcing every
-// reader to handle nil for the 8 known sources; for new sources the
-// human-facing fallback is "wwdc-transcripts" rather than a typed
-// rename ceremony, and the descriptor's `displayName` takes over the
-// moment the SourceRegistry row lands.
+///
+/// Open. The closed `enum Source: String, CaseIterable { case appleDocs;
+/// case samples; ... }` shape was the single biggest blocker to adding a
+/// new content source as a 2-file PR (the #919 epic goal): every new
+/// source required a new enum case, every `switch source` site became
+/// non-exhaustive, every `allCases` consumer required a recompile.
+///
+/// Post-#251 second cut, `Search.Source` is a value type that wraps a
+/// raw `String` identifier. The 8 historical sources (`apple-docs`,
+/// `samples`, `hig`, `apple-archive`, `swift-evolution`, `swift-org`,
+/// `swift-book`, `packages`) remain reachable as static constants
+/// (`Search.Source.appleDocs`, etc.) so every existing call site keeps
+/// compiling. New sources land by registering a `SourceDefinition` in
+/// `Search.SourceRegistry.all` plus a `SourcePrefix` constant in
+/// `Shared.Constants`; no edit to this file required.
+///
+/// `displayName` and `emoji` were closed switches on the enum cases;
+/// they now look up the descriptor in `Search.SourceRegistry` and fall
+/// back to the raw identifier when no descriptor is registered. The
+/// fallback keeps existing call sites non-Optional without forcing every
+/// reader to handle nil for the 8 known sources; for new sources the
+/// human-facing fallback is "wwdc-transcripts" rather than a typed
+/// rename ceremony, and the descriptor's `displayName` takes over the
+/// moment the SourceRegistry row lands.
 extension Search {
     public struct Source: Hashable, Sendable, Codable, RawRepresentable {
         public let rawValue: String

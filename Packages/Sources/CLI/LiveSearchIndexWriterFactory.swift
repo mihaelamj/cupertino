@@ -43,6 +43,6 @@ struct LiveSearchIndexWriterFactory: Search.IndexWriterFactory {
         // `indexItem`. Empty dict is correct; the only production
         // `indexItem` consumer (when it lands, e.g. #58 WWDC) will use the
         // explicit dict assembled in `CLIImpl.Command.Save.Indexers.swift`.
-        try await SearchModule.Index(dbPath: url, logger: Cupertino.Context.composition.logging.recording, indexers: [:], sourceLookup: .empty)
+        try await SearchModule.Indexer(dbPath: url, logger: Cupertino.Context.composition.logging.recording, indexers: [:], sourceLookup: .empty)
     }
 }

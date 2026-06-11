@@ -32,10 +32,10 @@ import Testing
 struct Issue668DocsStructuredCoverageTests {
     // MARK: - Helpers
 
-    private func makeIndex() async throws -> (Search.Index, URL) {
+    private func makeIndex() async throws -> (Search.Indexer, URL) {
         let tempDB = FileManager.default.temporaryDirectory
             .appendingPathComponent("test-668-\(UUID().uuidString).db")
-        let index = try await Search.Index(dbPath: tempDB, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let index = try await Search.Indexer(dbPath: tempDB, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         return (index, tempDB)
     }
 

@@ -3,7 +3,7 @@ import Foundation
 import SearchModels
 import SQLite3
 
-extension Search.Index {
+extension Search.Indexer {
     /// Index a Swift package
     public func indexPackage(
         owner: String,
@@ -137,48 +137,6 @@ extension Search.Index {
             let errorMessage = String(cString: sqlite3_errmsg(database))
             throw Search.Error.insertFailed("Sample code metadata insert: \(errorMessage)")
         }
-    }
-
-    /// Look up availability for a framework from indexed docs
-    public func getFrameworkAvailability(framework: String) async -> Search.FrameworkAvailability {
-        guard let database else {
-            return .empty
-        }
-
-        // Query the framework root document for availability
-        let sql = """
-        SELECT min_ios, min_macos, min_tvos, min_watchos, min_visionos
-        FROM docs_metadata
-        WHERE framework = ? AND min_ios IS NOT NULL
-        LIMIT 1;
-        """
-
-        var statement: OpaquePointer?
-        defer { sqlite3_finalize(statement) }
-
-        guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
-            return .empty
-        }
-
-        sqlite3_bind_text(statement, 1, (framework.lowercased() as NSString).utf8String, -1, nil)
-
-        guard sqlite3_step(statement) == SQLITE_ROW else {
-            return .empty
-        }
-
-        let minIOS = sqlite3_column_text(statement, 0).map { String(cString: $0) }
-        let minMacOS = sqlite3_column_text(statement, 1).map { String(cString: $0) }
-        let minTvOS = sqlite3_column_text(statement, 2).map { String(cString: $0) }
-        let minWatchOS = sqlite3_column_text(statement, 3).map { String(cString: $0) }
-        let minVisionOS = sqlite3_column_text(statement, 4).map { String(cString: $0) }
-
-        return Search.FrameworkAvailability(
-            minIOS: minIOS,
-            minMacOS: minMacOS,
-            minTvOS: minTvOS,
-            minWatchOS: minWatchOS,
-            minVisionOS: minVisionOS
-        )
     }
 
     // MARK: - Doc Code Examples Indexing

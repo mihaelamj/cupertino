@@ -15,8 +15,8 @@ import Testing
 
 @Suite("MCP resources path — DB-only enumeration (real DBs)", .enabled(if: LocalDBs.anyDocsAvailable))
 struct ResourcesPathRealDBTests {
-    // Sources whose resourceListMode is `.allDocuments` (every docs source
-    // except apple-docs, which uses `.frameworkRoots`).
+    /// Sources whose resourceListMode is `.allDocuments` (every docs source
+    /// except apple-docs, which uses `.frameworkRoots`).
     static let allDocumentsSources = [
         LocalDBs.hig, LocalDBs.swiftOrg, LocalDBs.swiftBook,
         LocalDBs.swiftEvolution, LocalDBs.appleArchive,

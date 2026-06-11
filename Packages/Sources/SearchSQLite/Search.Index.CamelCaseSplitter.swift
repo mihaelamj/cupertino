@@ -1,7 +1,7 @@
 import Foundation
 import SearchModels
 
-extension Search.Index {
+extension Search.Indexer {
     /// Split a CamelCase / PascalCase identifier into recall-aiding components
     /// (#77).
     ///

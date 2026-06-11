@@ -57,8 +57,13 @@ private actor FakeSourceIndexer: Search.SourceIndexer {
         _postprocessCalls.append(uri)
     }
 
-    var preprocessCalls: [String] { _preprocessCalls }
-    var postprocessCalls: [String] { _postprocessCalls }
+    var preprocessCalls: [String] {
+        _preprocessCalls
+    }
+
+    var postprocessCalls: [String] {
+        _postprocessCalls
+    }
 }
 
 @Suite("#932: Search.Index init requires an explicit indexer dict")
@@ -85,7 +90,7 @@ struct Issue932IndexerInjectionContractTests {
     }
 
     @Test("no `Search.productionIndexers` Service-Locator surface exists on the Search namespace")
-    func noStaticFactoryOnSearchNamespace() throws {
+    func noStaticFactoryOnSearchNamespace() {
         // gof-di-rules.md Rule 1: producer namespaces must not expose
         // static factories that name a production list. Adding a
         // `Search.productionIndexers()` static would re-introduce a
@@ -114,7 +119,7 @@ struct Issue932IndexerInjectionContractTests {
     }
 
     @Test("no `Search.IndexerRegistry` static surface exists in SearchSQLite")
-    func noStaticIndexerRegistry() throws {
+    func noStaticIndexerRegistry() {
         let repoRoot = Self.repoRoot()
         let searchSQLiteDir = repoRoot.appendingPathComponent("Packages/Sources/SearchSQLite")
         guard let enumerator = FileManager.default.enumerator(

@@ -26,11 +26,11 @@ import SharedConstants
 // `cupertino read` wires one of these into every `Services.ReadService.read`
 // call.
 
-// 2026-05-26 audit #1055: conforms to the canonical
-// `Search.PackageFileLookupStrategy` protocol (in SearchModels)
-// that per-source `PackagesReadStrategy` consumes. The legacy
-// `Services.ReadService.PackageFileLookupStrategy` typealias still
-// points here for back-compat with the existing CLI plumbing.
+/// 2026-05-26 audit #1055: conforms to the canonical
+/// `Search.PackageFileLookupStrategy` protocol (in SearchModels)
+/// that per-source `PackagesReadStrategy` consumes. The legacy
+/// `Services.ReadService.PackageFileLookupStrategy` typealias still
+/// points here for back-compat with the existing CLI plumbing.
 struct LivePackageFileLookupStrategy: Search.PackageFileLookupStrategy {
     func read(
         packagesDB: URL,

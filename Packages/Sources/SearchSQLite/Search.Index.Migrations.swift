@@ -2,7 +2,7 @@ import Foundation
 import SearchModels
 import SQLite3
 
-extension Search.Index {
+extension Search.Indexer {
     func getSchemaVersion() -> Int32 {
         guard let database else { return 0 }
 
@@ -18,7 +18,7 @@ extension Search.Index {
     }
 
     func setSchemaVersion() async throws {
-        guard let database else {
+        guard database != nil else {
             throw Search.Error.databaseNotInitialized
         }
 

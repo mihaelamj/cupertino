@@ -52,7 +52,7 @@ enum SaveSiblingGate {
     /// declaration without a switch arm. `dbFilename` is derived from
     /// the rawValue (`<rawValue>.db`), so the static lets carry the
     /// bucket name and the file shape stays mechanical.
-    struct Target: RawRepresentable, Sendable, Equatable, Hashable {
+    struct Target: RawRepresentable, Equatable, Hashable {
         let rawValue: String
         init(rawValue: String) {
             self.rawValue = rawValue
@@ -67,7 +67,9 @@ enum SaveSiblingGate {
         /// Back-compat alias for CaseIterable callsites pre-Cluster-9.
         static let allCases: [Target] = allKnownCases
 
-        var dbFilename: String { "\(rawValue).db" }
+        var dbFilename: String {
+            "\(rawValue).db"
+        }
     }
 
     // MARK: - Sibling

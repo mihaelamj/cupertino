@@ -40,6 +40,8 @@
 
 ### Changed
 
+- **refactor(storage): split Search.Index into read-only Search.Index and write-capable Search.Indexer.** Split database write concerns out of the read-side `Search.Index` actor into a dedicated write-capable `Search.Indexer` actor. Added a backward-compatibility layer on `Search.Index` for legacy unit tests. This enables clean in-process execution on mobile platforms where indexing/write capabilities are omitted.
+
 - **docs: remove stale pre-v1.3 design docs and relabel historical schema plans.** Deleted the outdated `docs/design/cupertino.md` and `docs/design/how-cupertino-answers-a-query.md`, redirected references to the current README / architecture docs, refreshed `docs/DEPLOYMENT.md` to v1.3.0, and marked #837-era schema/enrichment plans as historical records instead of live behavior docs.
 
 - **docs(readme): render the GitHub landing-page architecture as Mermaid.** The README now shows the package stack, fetch/save/serve catalog flow, and desktop/mobile app backend boundary as native Mermaid diagrams instead of plain text or linked-only diagrams.

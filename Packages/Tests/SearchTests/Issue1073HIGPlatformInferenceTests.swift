@@ -33,15 +33,15 @@ import Testing
 struct Issue1073HIGPlatformInferenceTests {
     // MARK: - Fixtures
 
-    // #1073 flake fix: the original actor recorded events via fire-and-forget
-    // `Task { await append(...) }` inside nonisolated protocol methods. A
-    // snapshot taken right after the pass returned could miss appends whose
-    // Tasks had not been scheduled yet, leaving the snapshot empty under
-    // parallel CI load (the docURIs-is-empty flake). This lock-guarded class
-    // records SYNCHRONOUSLY: every record* call completes before the
-    // producer's call returns, so the snapshot is deterministic regardless of
-    // executor pressure. `@unchecked Sendable` is sound because every access
-    // to mutable state is serialized by `lock`.
+    /// #1073 flake fix: the original actor recorded events via fire-and-forget
+    /// `Task { await append(...) }` inside nonisolated protocol methods. A
+    /// snapshot taken right after the pass returned could miss appends whose
+    /// Tasks had not been scheduled yet, leaving the snapshot empty under
+    /// parallel CI load (the docURIs-is-empty flake). This lock-guarded class
+    /// records SYNCHRONOUSLY: every record* call completes before the
+    /// producer's call returns, so the snapshot is deterministic regardless of
+    /// executor pressure. `@unchecked Sendable` is sound because every access
+    /// to mutable state is serialized by `lock`.
     private final class RecordingAudit: Search.EnrichmentAuditObserver, @unchecked Sendable {
         private let lock = NSLock()
         private var startEvents: [(pass: String, dbPath: String)] = []

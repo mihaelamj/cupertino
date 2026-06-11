@@ -9,12 +9,12 @@ import SharedConstants
 
 extension Core.Parser {
     /// Converts HTML documentation to clean Markdown
-    // @unchecked Sendable per concurrency.md §24: stateless value type
-    // with no stored properties; every method is a pure function
-    // (parsing input -> output, no shared state, no thread-local cache).
-    // Marked @unchecked only because Core.Protocols.ContentTransformer
-    // declares Sendable and conformance is structural; there is no
-    // shared mutable state to protect.
+    /// @unchecked Sendable per concurrency.md §24: stateless value type
+    /// with no stored properties; every method is a pure function
+    /// (parsing input -> output, no shared state, no thread-local cache).
+    /// Marked @unchecked only because Core.Protocols.ContentTransformer
+    /// declares Sendable and conformance is structural; there is no
+    /// shared mutable state to protect.
     public struct HTML: Core.Protocols.ContentTransformer, @unchecked Sendable {
         public typealias RawContent = String
 

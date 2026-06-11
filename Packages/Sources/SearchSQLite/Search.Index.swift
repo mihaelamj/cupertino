@@ -1,4 +1,3 @@
-import ASTIndexer
 import Foundation
 import LoggingModels
 import SearchModels
@@ -101,9 +100,23 @@ extension Search {
         // SearchSQLite target) can access them. Public API surface is
         // unchanged; internal only widens visibility within this
         // SearchSQLite target, not outside.
-        var database: OpaquePointer?
-        let dbPath: URL
-        var isInitialized = false
+        public nonisolated let connection: Search.Connection
+        var database: OpaquePointer? {
+            connection.database
+        }
+
+        public nonisolated var dbPath: URL {
+            connection.dbPath
+        }
+
+        public nonisolated var readOnly: Bool {
+            connection.readOnly
+        }
+
+        var isInitialized: Bool {
+            connection.isInitialized
+        }
+
         /// GoF Strategy seam for log emission (1994 p. 315). Injected by
         /// the binary's composition root.
         let logger: any LoggingModels.Logging.Recording
@@ -135,13 +148,6 @@ extension Search {
         /// `sourceLookup:` per `gof-di-rules.md` Rule 2.
         public nonisolated let sourceLookup: Search.SourceLookup
 
-        /// When true, the connection is opened `SQLITE_OPEN_READONLY` and no
-        /// open-time writes run (no WAL/synchronous PRAGMA, no migration, no
-        /// `CREATE TABLE`, no schema-version stamp). Set by the query / read /
-        /// serve / list / doctor paths so an end user cannot write or delete
-        /// rows (#1194). The indexer (`save` / `fetch`) leaves it false.
-        public nonisolated let readOnly: Bool
-
         /// Count of docs the incremental indexer skipped this run because the
         /// doc was already in the DB with an unchanged `content_hash` (#1146).
         /// `indexStructuredDocument` skips such docs BEFORE the expensive AST
@@ -150,41 +156,54 @@ extension Search {
         public internal(set) var incrementalSkips = 0
 
         public init(
+            connection: Search.Connection,
+            logger: any LoggingModels.Logging.Recording,
+            indexers: [String: any Search.SourceIndexer],
+            sourceLookup: Search.SourceLookup
+        ) {
+            self.connection = connection
+            self.logger = logger
+            self.indexers = indexers
+            self.sourceLookup = sourceLookup
+        }
+
+        public init(
             dbPath: URL,
             logger: any LoggingModels.Logging.Recording,
             indexers: [String: any Search.SourceIndexer],
             sourceLookup: Search.SourceLookup,
             readOnly: Bool = false
         ) async throws {
-            self.dbPath = dbPath
-            self.logger = logger
-            self.indexers = indexers
-            self.sourceLookup = sourceLookup
-            self.readOnly = readOnly
+            let connection = Search.Connection(dbPath: dbPath, logger: logger, readOnly: readOnly)
+            try connection.connect()
 
-            if readOnly {
-                // Query / read / serve / list / doctor paths: open read-only
-                // and stop. No directory creation, no migration, no schema
-                // writes. The DB is expected to already be at the current
-                // schema (a shipped bundle, or a DB the writer migrated during
-                // `save`). A read connection must never mutate rows (#1194).
-                try await openDatabase()
-                isInitialized = true
-                return
-            }
-
-            // Ensure directory exists
-            let directory = dbPath.deletingLastPathComponent()
-            try FileManager.default.createDirectory(
-                at: directory,
-                withIntermediateDirectories: true
+            self.init(
+                connection: connection,
+                logger: logger,
+                indexers: indexers,
+                sourceLookup: sourceLookup
             )
 
-            try await openDatabase()
-            try await checkAndMigrateSchema()
-            try await createTables()
-            try await setSchemaVersion()
-            isInitialized = true
+            if !readOnly {
+                let indexer = Search.Indexer(
+                    connection: connection,
+                    logger: logger,
+                    indexers: indexers,
+                    sourceLookup: sourceLookup
+                )
+                try await indexer.checkAndMigrateSchema()
+                try await indexer.createTables()
+                try await indexer.setSchemaVersion()
+            } else {
+                let currentVersion = getSchemaVersion()
+                if currentVersion != Self.schemaVersion {
+                    throw Search.Error.schemaVersionMismatch(
+                        currentDBVersion: Int(currentVersion),
+                        expectedBinaryVersion: Int(Self.schemaVersion),
+                        dbPath: dbPath.path
+                    )
+                }
+            }
         }
 
         // Note: deinit cannot access actor-isolated properties
@@ -193,10 +212,7 @@ extension Search {
 
         /// Close the database connection explicitly
         public func disconnect() {
-            if let database {
-                sqlite3_close(database)
-                self.database = nil
-            }
+            connection.disconnect()
         }
 
         /// Inspect `PRAGMA synchronous` on the actor's own connection
@@ -237,93 +253,20 @@ extension Search {
             return sqlite3_column_int(stmt, 0)
         }
 
-        // MARK: - Database Setup
+        func getSchemaVersion() -> Int32 {
+            guard let database else { return 0 }
 
-        private func openDatabase() async throws {
-            var dbPointer: OpaquePointer?
+            var statement: OpaquePointer?
+            defer { sqlite3_finalize(statement) }
 
-            if readOnly {
-                // #1194: the one shared read-only open every reader uses
-                // (`SQLiteSupport.openReadOnly`). The handle cannot write, so
-                // no migration / PRAGMA / table-create runs. Return after open.
-                database = try SQLiteSupport.openReadOnly(at: dbPath)
-                return
+            guard sqlite3_prepare_v2(database, "PRAGMA user_version", -1, &statement, nil) == SQLITE_OK,
+                  sqlite3_step(statement) == SQLITE_ROW else {
+                return 0
             }
 
-            guard sqlite3_open(dbPath.path, &dbPointer) == SQLITE_OK else {
-                let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
-                sqlite3_close(dbPointer)
-                throw Search.Error.sqliteError("Failed to open database: \(errorMessage)")
-            }
-
-            // Auto-retry on SQLITE_BUSY for up to 5 seconds so concurrent
-            // `cupertino search` invocations against the same DB don't fail
-            // immediately on transient lock contention. SQLite default is 0
-            // (fail on first contention). 5 s covers idempotent open-time
-            // writes (`PRAGMA user_version`, `CREATE TABLE IF NOT EXISTS`)
-            // when a sibling process is doing the same.
-            sqlite3_busy_timeout(dbPointer, 5000)
-
-            // #236: WAL journal mode lets readers (`cupertino search`,
-            // `cupertino ask`, `cupertino doctor`) proceed while a
-            // `cupertino save --source apple-docs` writer holds the DB. PRAGMA is
-            // idempotent — re-setting on an already-WAL DB is a no-op,
-            // and the mode persists in the file header so subsequent
-            // connections inherit it without setting again. Log and
-            // continue on failure: the DB is still usable in whatever
-            // mode it ended up in (default rollback journal).
-            if sqlite3_exec(dbPointer, "PRAGMA journal_mode = WAL", nil, nil, nil) != SQLITE_OK {
-                let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
-                logger.warning(
-                    "Failed to enable WAL on \(dbPath.lastPathComponent): \(errorMessage)",
-                    category: .search
-                )
-            }
-
-            // #236 follow-up: SQLite docs explicitly recommend
-            // `synchronous=NORMAL` paired with WAL mode.
-            //
-            //   "The synchronous=NORMAL setting provides the best
-            //    balance between performance and safety for most
-            //    applications running in WAL mode. You lose
-            //    durability across power loss with synchronous
-            //    NORMAL in WAL mode, but that is not important for
-            //    most applications. Transactions are still atomic,
-            //    consistent, and isolated."
-            //   — https://www.sqlite.org/pragma.html#pragma_synchronous
-            //
-            // Default is FULL (sync at every transaction). NORMAL
-            // syncs only at checkpoint boundaries. The DB stays
-            // consistent at all times; only the very last commit
-            // before a power loss might roll back. Cupertino's data
-            // is rebuildable, so this is the right tradeoff.
-            // Per-connection PRAGMA — set on every open.
-            if sqlite3_exec(dbPointer, "PRAGMA synchronous = NORMAL", nil, nil, nil) != SQLITE_OK {
-                let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
-                logger.warning(
-                    "Failed to set synchronous=NORMAL on \(dbPath.lastPathComponent): \(errorMessage)",
-                    category: .search
-                )
-            }
-
-            // #236 follow-up: cap the WAL sidecar size. Default is
-            // -1 (unlimited). SQLite docs flag three scenarios that
-            // grow the WAL without bound (disabled auto-checkpoint,
-            // reader starvation, very large transactions); a 64 MB
-            // cap is 16× the default 1000-page (~4 MB) auto-
-            // checkpoint threshold, so a healthy steady state never
-            // hits it, while a pathological case truncates back to
-            // 64 MB at the next checkpoint instead of growing
-            // forever.
-            if sqlite3_exec(dbPointer, "PRAGMA journal_size_limit = 67108864", nil, nil, nil) != SQLITE_OK {
-                let errorMessage = String(cString: sqlite3_errmsg(dbPointer))
-                logger.warning(
-                    "Failed to set journal_size_limit on \(dbPath.lastPathComponent): \(errorMessage)",
-                    category: .search
-                )
-            }
-
-            database = dbPointer
+            return sqlite3_column_int(statement, 0)
         }
+
+        // MARK: - Database Setup
     }
 }

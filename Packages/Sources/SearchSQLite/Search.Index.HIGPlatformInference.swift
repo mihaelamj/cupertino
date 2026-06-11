@@ -4,7 +4,7 @@ import SQLite3
 
 // MARK: - HIG platform-inference pass
 
-extension Search.Index {
+extension Search.Indexer {
     /// Narrows the `min_<platform>` columns on HIG rows whose URI
     /// declares an explicit platform target, NULL-ing the columns
     /// for platforms the topic doesn't cover. Pre-fix every HIG row

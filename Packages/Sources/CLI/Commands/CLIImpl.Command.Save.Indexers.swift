@@ -465,7 +465,7 @@ extension CLIImpl.Command.Save {
 
             for (descriptor, providers) in orderedGroups {
                 let dbPath = baseDirectory.appendingPathComponent(descriptor.filename)
-                let index = try await Search.Index(
+                let index = try await Search.Indexer(
                     dbPath: dbPath,
                     logger: logger,
                     indexers: providers.reduce(into: [:]) { dict, provider in

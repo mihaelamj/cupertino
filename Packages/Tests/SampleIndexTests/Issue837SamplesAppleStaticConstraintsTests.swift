@@ -25,7 +25,9 @@ struct Issue837SamplesAppleStaticConstraintsTests {
 
     private struct InMemoryLookup: Search.StaticConstraintsLookup {
         let entries: [Search.StaticConstraintEntry]
-        func allEntries() async throws -> [Search.StaticConstraintEntry] { entries }
+        func allEntries() async throws -> [Search.StaticConstraintEntry] {
+            entries
+        }
     }
 
     private static func makeFreshDB() async throws -> (path: URL, db: Sample.Index.Database) {

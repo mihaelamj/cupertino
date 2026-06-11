@@ -259,13 +259,13 @@ extension RemoteSync {
 
         // MARK: - Helpers
 
-        // #1042 Cluster 11 sub-1: Phase became a RawRepresentable
-        // struct in RemoteSyncModels; the 3 mapping switches below
-        // are dict lookups keyed by phase. Unknown phases (a future
-        // source that registers a Phase outside the production set)
-        // resolve to empty strings; the indexer surfaces this as a
-        // structural error at fetch time rather than crashing in a
-        // switch arm.
+        /// #1042 Cluster 11 sub-1: Phase became a RawRepresentable
+        /// struct in RemoteSyncModels; the 3 mapping switches below
+        /// are dict lookups keyed by phase. Unknown phases (a future
+        /// source that registers a Phase outside the production set)
+        /// resolve to empty strings; the indexer surfaces this as a
+        /// structural error at fetch time rather than crashing in a
+        /// switch arm.
         private static let phaseDirs: [IndexState.Phase: String] = [
             .docs: Shared.Constants.Directory.docs,
             .evolution: Shared.Constants.Directory.swiftEvolution,

@@ -14,4 +14,4 @@ import SearchModels
 // Mirrors the read-side witness in `Search.Index.Database.swift`
 // (`extension Search.Index: Search.Database {}`). Added by epic #893's
 // child #896; both witnesses moved into this target by #898 sub-PR E.
-extension Search.Index: Search.IndexWriter {}
+extension Search.Indexer: Search.IndexWriter {}

@@ -34,12 +34,12 @@ import Testing
 struct SearchStrategiesBehaviouralTests {
     // MARK: - Helpers
 
-    private static func makeIndex() async throws -> (index: Search.Index, dbPath: URL) {
+    private static func makeIndex() async throws -> (index: Search.Indexer, dbPath: URL) {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("cupertino-978-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         let path = tempDir.appendingPathComponent("search.db")
-        let index = try await Search.Index(
+        let index = try await Search.Indexer(
             dbPath: path,
             logger: Logging.NoopRecording(),
             indexers: [:],

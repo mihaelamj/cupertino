@@ -4,7 +4,7 @@ import SQLite3
 
 // MARK: - #759 / #755 iteration 2. hierarchy-walk constraint inheritance
 
-extension Search.Index {
+extension Search.Indexer {
     /// Walk the doc_symbols table after primary indexing completes and
     /// fill in `generic_constraints` on method / property / nested-type
     /// rows that themselves have no constraint clause but whose parent

@@ -222,7 +222,7 @@ struct SamplesSchemaVersionProbeTests {
     }
 
     @Test("Returns nil for a nonexistent file")
-    func missingFileReturnsNil() throws {
+    func missingFileReturnsNil() {
         let path = FileManager.default.temporaryDirectory
             .appendingPathComponent("does-not-exist-\(UUID().uuidString).db")
         #expect(Diagnostics.Probes.samplesSchemaVersion(at: path) == nil)

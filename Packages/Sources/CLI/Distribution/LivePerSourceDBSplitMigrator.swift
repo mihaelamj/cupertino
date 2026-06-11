@@ -205,10 +205,10 @@ public actor LiveLegacyDBReader: Distribution.PerSourceDBSplitMigrator.LegacyDBR
 /// Step 6c-iii wires this into `cupertino setup`'s post-extract
 /// flow + `cupertino save`'s first-run hook.
 public actor LivePerDBWriter: Distribution.PerSourceDBSplitMigrator.PerDBWriter {
-    private let searchIndex: Search.Index
+    private let searchIndex: Search.Indexer
     private var isDisconnected = false
 
-    public init(searchIndex: Search.Index) {
+    public init(searchIndex: Search.Indexer) {
         self.searchIndex = searchIndex
     }
 
@@ -326,7 +326,7 @@ public enum LivePerDBWriterFactory {
                     try? FileManager.default.removeItem(at: path)
                 }
             }
-            let searchIndex = try await Search.Index(
+            let searchIndex = try await Search.Indexer(
                 dbPath: destinationPath,
                 logger: logger,
                 indexers: [:],

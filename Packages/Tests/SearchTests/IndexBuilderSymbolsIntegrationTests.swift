@@ -147,7 +147,7 @@ struct IndexBuilderSymbolsIntegrationTests {
         _ = try writeFixtureDoc(framework: "swiftui", name: "sample", into: docsDir)
 
         let dbPath = tempRoot.appendingPathComponent("search.db")
-        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let index = try await Search.Indexer(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         // #933: inline strategy assembly (factory dissolved). AppleDocs
         // only; pre-#933 factory took `indexSampleCode: false` to skip
         // the samples strategy. Inline assembly omits it entirely.

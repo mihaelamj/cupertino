@@ -27,7 +27,9 @@ private enum Parity {
     /// A query "hit" on the CLI side: a non-empty JSON payload decoded to >0 rows.
     /// A query "hit" on the MCP side: a non-error result with non-trivial text.
     /// Parity holds when both hit or both miss.
-    static func agree(cliHit: Bool, mcpHit: Bool) -> Bool { cliHit == mcpHit }
+    static func agree(cliHit: Bool, mcpHit: Bool) -> Bool {
+        cliHit == mcpHit
+    }
 
     /// Empty-result sentinels cupertino emits as ok-text (NOT error frames).
     /// These are substantive markdown blocks (the AST tools print "No symbols
@@ -79,31 +81,31 @@ private enum Parity {
 // MARK: Query corpora (20 each)
 
 private enum Queries {
-    // Broad documentation terms that exist across Apple frameworks.
+    /// Broad documentation terms that exist across Apple frameworks.
     static let search = [
         "View", "Button", "navigation", "animation", "gesture", "scroll", "layout",
         "color", "image", "text field", "stack", "list", "toolbar", "alert", "sheet",
         "tab bar", "progress", "slider", "picker", "map",
     ]
-    // Symbol-name substrings that match many indexed AST symbols.
+    /// Symbol-name substrings that match many indexed AST symbols.
     static let symbols = [
         "View", "Controller", "Manager", "Delegate", "Configuration", "Request",
         "Response", "Session", "Coordinator", "Provider", "Handler", "Context",
         "Descriptor", "Builder", "Renderer", "Observer", "Container", "Resolver",
         "Factory", "Registry",
     ]
-    // Property wrappers that appear in Apple + Swift sources.
+    /// Property wrappers that appear in Apple + Swift sources.
     static let wrappers = [
         "State", "Binding", "Published", "ObservedObject", "StateObject",
         "EnvironmentObject", "Environment", "FetchRequest", "AppStorage",
         "SceneStorage", "FocusState", "GestureState", "Namespace", "Bindable",
         "Query", "Observable", "MainActor", "available", "objc", "escaping",
     ]
-    // Concurrency patterns the search-concurrency command recognizes.
-    // The search_concurrency tool accepts one of five patterns. To reach 20
-    // genuinely DISTINCT cases (not the same five repeated) each pattern is
-    // paired with a different framework filter, so every case is a unique
-    // (pattern, framework) query against the corpus.
+    /// Concurrency patterns the search-concurrency command recognizes.
+    /// The search_concurrency tool accepts one of five patterns. To reach 20
+    /// genuinely DISTINCT cases (not the same five repeated) each pattern is
+    /// paired with a different framework filter, so every case is a unique
+    /// (pattern, framework) query against the corpus.
     static let concurrency: [(pattern: String, framework: String)] = [
         ("async", "swiftui"), ("async", "foundation"), ("async", "uikit"), ("async", "combine"),
         ("actor", "swiftui"), ("actor", "foundation"), ("actor", "uikit"), ("actor", "swiftdata"),
@@ -111,23 +113,23 @@ private enum Queries {
         ("mainactor", "swiftui"), ("mainactor", "foundation"), ("mainactor", "uikit"), ("mainactor", "observation"),
         ("task", "swiftui"), ("task", "foundation"), ("task", "uikit"), ("task", "combine"),
     ]
-    // Protocols with conformers in the corpus.
+    /// Protocols with conformers in the corpus.
     static let conformances = [
         "Equatable", "Hashable", "Codable", "Comparable", "Identifiable",
         "Sendable", "View", "Error", "CustomStringConvertible", "Sequence",
         "Collection", "Encodable", "Decodable", "RawRepresentable", "CaseIterable",
         "ExpressibleByStringLiteral", "Numeric", "AdditiveArithmetic", "Iterator", "AsyncSequence",
     ]
-    // Generic constraints present in indexed signatures.
+    /// Generic constraints present in indexed signatures.
     static let generics = [
         "Equatable", "Hashable", "Codable", "Comparable", "Sendable",
         "Numeric", "Collection", "Sequence", "RawRepresentable", "Identifiable",
         "Encodable", "Decodable", "BinaryInteger", "FloatingPoint", "StringProtocol",
         "CaseIterable", "Error", "View", "AdditiveArithmetic", "SignedInteger",
     ]
-    // Symbols whose inheritance chain the get_inheritance tool can walk. These
-    // are class-based Apple APIs (value types legitimately have no chain, which
-    // both surfaces report consistently — still parity).
+    /// Symbols whose inheritance chain the get_inheritance tool can walk. These
+    /// are class-based Apple APIs (value types legitimately have no chain, which
+    /// both surfaces report consistently — still parity).
     static let inheritance = [
         "UIViewController", "UIView", "UILabel", "UIButton", "UIScrollView",
         "UITableView", "UICollectionView", "UIControl", "UINavigationController",
@@ -219,7 +221,8 @@ struct ConcurrencyParityBattery {
     @Test("search-concurrency vs search_concurrency", arguments: Queries.concurrency)
     func parity(_ qcase: (pattern: String, framework: String)) {
         let cliData = CupertinoCLI.jsonData(
-            ["search-concurrency", "--pattern", qcase.pattern, "--framework", qcase.framework, "--limit", "5"])
+            ["search-concurrency", "--pattern", qcase.pattern, "--framework", qcase.framework, "--limit", "5"]
+        )
         let cliHit = cliResultsNonEmpty(cliData)
         let mcp = CupertinoMCP.callTool(
             "search_concurrency", ["pattern": qcase.pattern, "framework": qcase.framework, "limit": 5]

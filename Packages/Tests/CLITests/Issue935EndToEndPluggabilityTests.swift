@@ -171,7 +171,7 @@ struct Issue935EndToEndPluggabilityTests {
         let logger = LoggingModels.Logging.NoopRecording()
         let testLookup = Search.SourceLookup(definitions: [.fakeWWDC])
 
-        let searchIndex = try await Search.Index(
+        let searchIndex = try await Search.Indexer(
             dbPath: dbPath,
             logger: logger,
             indexers: ["wwdc-transcripts": FakeWWDCIndexer()],

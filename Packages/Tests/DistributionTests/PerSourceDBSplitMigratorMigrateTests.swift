@@ -555,7 +555,10 @@ struct PerSourceDBSplitMigratorMigrateTests {
                 }
             }
 
-            func rowCount() async throws -> Int { written.count }
+            func rowCount() async throws -> Int {
+                written.count
+            }
+
             func disconnect() async {}
         }
 

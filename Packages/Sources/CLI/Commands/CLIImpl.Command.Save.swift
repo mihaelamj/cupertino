@@ -695,7 +695,7 @@ extension CLIImpl.Command.Save {
     /// document fetched by `RemoteSync.Indexer.run` into the binary's
     /// `Search.Index` database.
     private struct SearchIndexDocumentIndexer: RemoteSync.DocumentIndexing {
-        let searchIndex: SearchModule.Index
+        let searchIndex: SearchModule.Indexer
 
         func indexDocument(
             uri: String,
@@ -819,7 +819,7 @@ extension CLIImpl.Command.Save {
         // #932: this Save path indexes via `RemoteSync.Indexer.run` +
         // `SearchIndexDocumentIndexer` which calls bare `indexDocument` on
         // the actor, NOT `indexItem`. Empty dict is correct.
-        let searchIndex = try await SearchModule.Index(dbPath: dbURL, logger: Cupertino.Context.composition.logging.recording, indexers: [:], sourceLookup: .empty)
+        let searchIndex = try await SearchModule.Indexer(dbPath: dbURL, logger: Cupertino.Context.composition.logging.recording, indexers: [:], sourceLookup: .empty)
 
         let progressDisplay = RemoteSync.AnimatedProgress(barWidth: 20, useEmoji: true)
         let reporter = RemoteSync.ProgressReporter(display: progressDisplay)

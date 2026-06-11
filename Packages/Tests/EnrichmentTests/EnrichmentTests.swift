@@ -44,7 +44,7 @@ struct EnrichmentLiveRunnerTests {
         let runner = Enrichment.LiveRunner(passes: passes)
         let results = try await runner.run(target: .search)
         let order = results.map(\.passIdentifier)
-        #expect(order.firstIndex(of: "constraints")! < order.firstIndex(of: "hierarchy")!)
+        #expect(try #require(order.firstIndex(of: "constraints")) < order.firstIndex(of: "hierarchy")!)
         #expect(order.contains("synonyms"))
     }
 

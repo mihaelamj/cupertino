@@ -1,20 +1,22 @@
 import Foundation
 
-// Drives the real `cupertino serve` MCP surface for the CLI/MCP parity battery.
-// Spawns the same debug binary `CupertinoCLI` uses (so it reads the same local
-// snapshot via the co-located cupertino.config.json), performs the MCP lifecycle
-// handshake (initialize + notifications/initialized — the latter is required
-// before a spec-compliant `serve` will dispatch any further request), and
-// exposes one `callTool` that returns the concatenated text content of the
-// tool result.
-//
-// One server process is spawned per call and torn down after — slower than a
-// persistent session, but it keeps each parity case hermetic and side-effect
-// free, matching how `CupertinoCLI` spawns one process per query. Spawns are
-// serialized process-wide (shared lock with the cold-DB-open contention concern
-// that `CupertinoCLI` documents).
+/// Drives the real `cupertino serve` MCP surface for the CLI/MCP parity battery.
+/// Spawns the same debug binary `CupertinoCLI` uses (so it reads the same local
+/// snapshot via the co-located cupertino.config.json), performs the MCP lifecycle
+/// handshake (initialize + notifications/initialized — the latter is required
+/// before a spec-compliant `serve` will dispatch any further request), and
+/// exposes one `callTool` that returns the concatenated text content of the
+/// tool result.
+///
+/// One server process is spawned per call and torn down after — slower than a
+/// persistent session, but it keeps each parity case hermetic and side-effect
+/// free, matching how `CupertinoCLI` spawns one process per query. Spawns are
+/// serialized process-wide (shared lock with the cold-DB-open contention concern
+/// that `CupertinoCLI` documents).
 enum CupertinoMCP {
-    static var available: Bool { CupertinoCLI.available }
+    static var available: Bool {
+        CupertinoCLI.available
+    }
 
     struct ToolResult {
         let text: String

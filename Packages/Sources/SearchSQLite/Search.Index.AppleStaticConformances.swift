@@ -4,7 +4,7 @@ import SQLite3
 
 // MARK: - Apple SDK conformance-graph apply (conformance sibling of #759 iter 3)
 
-extension Search.Index {
+extension Search.Indexer {
     /// Apply the authoritative Apple SDK conformance table over the
     /// `doc_symbols.conformances` column. Conformance analogue of
     /// `applyAppleStaticConstraints`: the rendered DocC markdown spells out a

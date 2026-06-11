@@ -3,11 +3,11 @@ import SharedConstants
 
 // MARK: - Sample Index Errors
 
-// Lifted from `Packages/Sources/SampleIndex/Sample.Index.Error.swift` to
-// this foundation-only target by #902 (mirror of the #898 sub-PR E
-// Search.Error lift) so both the orchestration `SampleIndex` target and
-// the SQLite-backed `SampleIndexSQLite` concrete can throw and catch
-// `Sample.Index.Error` without depending on each other.
+/// Lifted from `Packages/Sources/SampleIndex/Sample.Index.Error.swift` to
+/// this foundation-only target by #902 (mirror of the #898 sub-PR E
+/// Search.Error lift) so both the orchestration `SampleIndex` target and
+/// the SQLite-backed `SampleIndexSQLite` concrete can throw and catch
+/// `Sample.Index.Error` without depending on each other.
 extension Sample.Index {
     /// Errors that can occur during sample code indexing and search
     public enum Error: Swift.Error, LocalizedError, Sendable {

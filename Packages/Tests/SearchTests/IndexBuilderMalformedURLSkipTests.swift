@@ -77,7 +77,7 @@ struct IndexBuilderMalformedURLSkipTests {
         )
 
         let dbPath = tempRoot.appendingPathComponent("search.db")
-        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let index = try await Search.Indexer(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         let strategy = Search.AppleDocsStrategy(
             docsDirectory: docsDir,
             markdownStrategy: NoopMarkdownStrategy(),
@@ -119,7 +119,7 @@ struct IndexBuilderMalformedURLSkipTests {
         let crawlMetadata = Shared.Models.CrawlMetadata(pages: ["": onlyMetadata])
 
         let dbPath = tempRoot.appendingPathComponent("search.db")
-        let index = try await Search.Index(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let index = try await Search.Indexer(dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         let strategy = Search.AppleDocsStrategy(
             docsDirectory: docsDir,
             markdownStrategy: NoopMarkdownStrategy(),

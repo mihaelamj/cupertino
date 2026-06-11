@@ -69,7 +69,9 @@ public struct AppleArchiveFetchStrategy: Search.SourceFetchStrategy {
 
     public enum FetchError: Error, CustomStringConvertible {
         case noGuidesConfigured
-        public var description: String { "No archive guides configured" }
+        public var description: String {
+            "No archive guides configured"
+        }
     }
 }
 

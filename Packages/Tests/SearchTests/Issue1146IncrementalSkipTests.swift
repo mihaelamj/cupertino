@@ -33,8 +33,8 @@ struct Issue1146IncrementalSkipTests {
         )
     }
 
-    private static func makeIndex(at dbPath: URL) async throws -> Search.Index {
-        try await Search.Index(
+    private static func makeIndexer(at dbPath: URL) async throws -> Search.Indexer {
+        try await Search.Indexer(
             dbPath: dbPath,
             logger: Logging.NoopRecording(),
             indexers: [:],
@@ -46,7 +46,7 @@ struct Issue1146IncrementalSkipTests {
     func unchangedDocSkipped() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Self.makeIndex(at: dbPath)
+        let idx = try await Self.makeIndexer(at: dbPath)
         let uri = "apple-docs://storekit/product"
 
         try await idx.indexStructuredDocument(
@@ -70,7 +70,7 @@ struct Issue1146IncrementalSkipTests {
     func changedDocReindexed() async throws {
         let dbPath = Self.tempDB()
         defer { try? FileManager.default.removeItem(at: dbPath) }
-        let idx = try await Self.makeIndex(at: dbPath)
+        let idx = try await Self.makeIndexer(at: dbPath)
         let uri = "apple-docs://storekit/product"
 
         try await idx.indexStructuredDocument(

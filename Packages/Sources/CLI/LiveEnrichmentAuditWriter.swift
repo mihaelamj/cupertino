@@ -36,7 +36,9 @@ extension CLIImpl {
 
         /// Path to the audit JSONL file. Surfaced to the user at save
         /// end so they know where to grep for per-URI detail.
-        var path: URL { fileURL }
+        var path: URL {
+            fileURL
+        }
 
         deinit {
             try? handle?.close()
@@ -102,7 +104,7 @@ extension CLIImpl {
             // run).
             var line = "{"
             var first = true
-            let numericKeys: Set<String> = [
+            let numericKeys: Set = [
                 "rows_affected", "total_rows_affected", "total_rows_skipped", "duration_ms",
             ]
             for (key, value) in object where !value.isEmpty || numericKeys.contains(key) {

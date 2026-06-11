@@ -260,7 +260,7 @@ struct Issue952PropertyWrapperRankingTests {
         await index.disconnect()
 
         let frameworks = results.map(\.framework)
-        let inSet: Set<String> = ["uikit", "swiftui", "appkit", "realitykit"]
+        let inSet: Set = ["uikit", "swiftui", "appkit", "realitykit"]
         let firstFour = Set(frameworks.prefix(4))
         #expect(firstFour == inSet, "@MainActor's first 4 ranks must be the boost set {uikit, swiftui, appkit, realitykit} in some order; got: \(frameworks)")
         #expect(frameworks.last == "swift", "@MainActor's out-of-set framework (swift) must rank last; got: \(frameworks)")

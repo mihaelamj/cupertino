@@ -3,7 +3,7 @@ import SearchModels
 import SharedConstants
 import SQLite3
 
-extension Search.Index {
+extension Search.Indexer {
     func detectLanguage(from content: String) -> String {
         // Look for Objective-C indicators
         let objcPatterns = [

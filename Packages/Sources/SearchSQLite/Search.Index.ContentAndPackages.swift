@@ -188,28 +188,49 @@ extension Search.Index {
         }
     }
 
-    /// Clear all documents from the index
-    public func clearIndex() async throws {
-        guard let database else {
-            throw Search.Error.databaseNotInitialized
-        }
-
-        let sql = """
-        DELETE FROM docs_fts;
-        DELETE FROM docs_metadata;
-        """
-
-        var errorPointer: UnsafeMutablePointer<CChar>?
-        defer { sqlite3_free(errorPointer) }
-
-        guard sqlite3_exec(database, sql, nil, nil, &errorPointer) == SQLITE_OK else {
-            let errorMessage = errorPointer.map { String(cString: $0) } ?? "Unknown error"
-            throw Search.Error.sqliteError("Failed to clear index: \(errorMessage)")
-        }
-    }
-
     // MARK: - Helper Methods
 
-    // Detect programming language from content using heuristics
-    // Returns "swift", "objc", or defaults to "swift"
+    /// Detect programming language from content using heuristics
+    /// Returns "swift", "objc", or defaults to "swift"
+    /// Look up availability for a framework from indexed docs
+    public func getFrameworkAvailability(framework: String) async -> Search.FrameworkAvailability {
+        guard let database else {
+            return .empty
+        }
+
+        // Query the framework root document for availability
+        let sql = """
+        SELECT min_ios, min_macos, min_tvos, min_watchos, min_visionos
+        FROM docs_metadata
+        WHERE framework = ? AND min_ios IS NOT NULL
+        LIMIT 1;
+        """
+
+        var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
+
+        guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else {
+            return .empty
+        }
+
+        sqlite3_bind_text(statement, 1, (framework.lowercased() as NSString).utf8String, -1, nil)
+
+        guard sqlite3_step(statement) == SQLITE_ROW else {
+            return .empty
+        }
+
+        let minIOS = sqlite3_column_text(statement, 0).map { String(cString: $0) }
+        let minMacOS = sqlite3_column_text(statement, 1).map { String(cString: $0) }
+        let minTvOS = sqlite3_column_text(statement, 2).map { String(cString: $0) }
+        let minWatchOS = sqlite3_column_text(statement, 3).map { String(cString: $0) }
+        let minVisionOS = sqlite3_column_text(statement, 4).map { String(cString: $0) }
+
+        return Search.FrameworkAvailability(
+            minIOS: minIOS,
+            minMacOS: minMacOS,
+            minTvOS: minTvOS,
+            minWatchOS: minWatchOS,
+            minVisionOS: minVisionOS
+        )
+    }
 }

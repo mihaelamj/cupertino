@@ -154,4 +154,34 @@ struct Issue673PhaseESchemaMismatchTests {
         let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         await index.disconnect()
     }
+
+    @Test("ReadOnly mode: mismatched-version DB throws .schemaVersionMismatch")
+    func readOnlyMismatchedVersionDBThrows() async throws {
+        let dbURL = tempDBURL()
+        defer { try? FileManager.default.removeItem(at: dbURL) }
+        makeStampedDB(at: dbURL, userVersion: 10) // Mismatched (older) version than currentVersion (18)
+
+        do {
+            _ = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty, readOnly: true)
+            Issue.record("expected .schemaVersionMismatch to throw in readOnly mode; nothing was thrown")
+        } catch let error as Search.Error {
+            guard case .schemaVersionMismatch(let dbVersion, let binaryVersion, let path) = error else {
+                Issue.record("expected .schemaVersionMismatch; got \(error)")
+                return
+            }
+            #expect(dbVersion == 10)
+            #expect(binaryVersion == Int(Search.Index.schemaVersion))
+            #expect(path == dbURL.path)
+        }
+    }
+
+    @Test("ReadOnly mode: matching-version DB does NOT throw")
+    func readOnlyMatchingVersionDBDoesNotThrow() async throws {
+        let dbURL = tempDBURL()
+        defer { try? FileManager.default.removeItem(at: dbURL) }
+        makeStampedDB(at: dbURL, userVersion: Int(Search.Index.schemaVersion))
+
+        let index = try await Search.Index(dbPath: dbURL, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty, readOnly: true)
+        await index.disconnect()
+    }
 }

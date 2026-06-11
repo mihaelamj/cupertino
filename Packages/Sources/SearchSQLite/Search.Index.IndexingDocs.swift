@@ -4,7 +4,7 @@ import SearchModels
 import SharedConstants
 import SQLite3
 
-extension Search.Index {
+extension Search.Indexer {
     /// Index a document for searching.
     ///
     /// All per-page values flow through `Search.IndexDocumentParams`

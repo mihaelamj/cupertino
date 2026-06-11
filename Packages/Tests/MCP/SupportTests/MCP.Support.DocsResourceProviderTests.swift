@@ -182,7 +182,7 @@ private struct IndexBackedLookup: MCP.Support.MarkdownLookupStrategy {
     let mode: Search.ResourceListMode
 
     func lookup(uri: String) async throws -> String? {
-        let index = try await Search.Index(
+        let index = try await Search.Indexer(
             dbPath: dbURL,
             logger: Logging.NoopRecording(),
             indexers: [:],
@@ -193,7 +193,7 @@ private struct IndexBackedLookup: MCP.Support.MarkdownLookupStrategy {
     }
 
     func listResources() async throws -> [Search.URIResource] {
-        let index = try await Search.Index(
+        let index = try await Search.Indexer(
             dbPath: dbURL,
             logger: Logging.NoopRecording(),
             indexers: [:],
@@ -216,7 +216,7 @@ struct DocsResourceProviderDBBackedTests {
     /// Build a per-source `Search.Index` with apple-docs framework
     /// roots + sub-pages.
     private static func seedAppleDocs(_ dbURL: URL) async throws {
-        let index = try await Search.Index(
+        let index = try await Search.Indexer(
             dbPath: dbURL,
             logger: Logging.NoopRecording(),
             indexers: [:],
@@ -293,7 +293,7 @@ struct DocsResourceProviderDBBackedTests {
     func allDocumentsList() async throws {
         let dbURL = Self.makeTempDB()
         defer { try? FileManager.default.removeItem(at: dbURL) }
-        let index = try await Search.Index(
+        let index = try await Search.Indexer(
             dbPath: dbURL,
             logger: Logging.NoopRecording(),
             indexers: [:],

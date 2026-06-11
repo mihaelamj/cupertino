@@ -198,7 +198,7 @@ struct Issue1037OneDBIntegrationTests {
     // MARK: - Path identity
 
     @Test("Sample.Index.databasePath and SampleCodeSource.destinationDB resolve to the same on-disk file (one DB target)")
-    func pathIdentityProof() throws {
+    func pathIdentityProof() {
         let baseDir = URL(fileURLWithPath: "/tmp/issue-1037-path-identity")
         let sampleIndexPath = Sample.Index.databasePath(baseDirectory: baseDir)
         let descriptorFilename = Shared.Models.DatabaseDescriptor.appleSampleCode.filename

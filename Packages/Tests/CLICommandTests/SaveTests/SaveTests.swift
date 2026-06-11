@@ -71,7 +71,7 @@ struct SaveCommandTests {
 
         // Build search index
         let docsDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: docsDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let searchIndex = try await Search.Indexer(dbPath: docsDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         let metadata = try Shared.Models.CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
         // #933: inline strategy assembly (factory dissolved).
@@ -140,7 +140,7 @@ struct SaveCommandTests {
         _ = try await crawler.crawl()
 
         let docsDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: docsDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let searchIndex = try await Search.Indexer(dbPath: docsDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         let metadata = try Shared.Models.CrawlMetadata.load(from: tempDir.appendingPathComponent("metadata.json"))
         // #933: inline strategy assembly (factory dissolved).
@@ -186,7 +186,7 @@ struct SaveCommandTests {
         print("🧪 Test: Save empty directory")
 
         let docsDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: docsDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let searchIndex = try await Search.Indexer(dbPath: docsDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         // Create empty metadata
         let emptyMetadata = Shared.Models.CrawlMetadata()
@@ -259,7 +259,7 @@ struct SaveCommandTests {
         print("   ✅ Base directory paths verified!")
 
         // Test that index builds successfully with base-dir structure
-        let searchIndex = try await Search.Index(dbPath: docsDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let searchIndex = try await Search.Indexer(dbPath: docsDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
         // #933: inline strategy assembly (factory dissolved). This test
         // exercises both AppleDocs + SwiftEvolution indexing paths.
         let strategies: [any Search.SourceIndexingStrategy] = [
@@ -341,7 +341,7 @@ struct SaveCommandTests {
 
         // Build index WITHOUT metadata.json
         let docsDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: docsDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let searchIndex = try await Search.Indexer(dbPath: docsDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         // #933: inline strategy assembly (factory dissolved).
         let strategies: [any Search.SourceIndexingStrategy] = [
@@ -403,7 +403,7 @@ struct SaveCommandTests {
 
         // Build index
         let docsDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: docsDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let searchIndex = try await Search.Indexer(dbPath: docsDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         // #933: inline strategy assembly (factory dissolved).
         let strategies: [any Search.SourceIndexingStrategy] = [
@@ -469,7 +469,7 @@ struct SaveCommandTests {
         print("🧪 Test: Index packages catalog (post-#194 empty contract)")
 
         let docsDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(dbPath: docsDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
+        let searchIndex = try await Search.Indexer(dbPath: docsDbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty)
 
         // #933: inline strategy assembly (factory dissolved).
         let strategies: [any Search.SourceIndexingStrategy] = [

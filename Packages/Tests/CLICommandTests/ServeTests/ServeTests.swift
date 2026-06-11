@@ -27,7 +27,7 @@ private struct IndexBackedLookup: MCP.Support.MarkdownLookupStrategy {
     let mode: Search.ResourceListMode
 
     func lookup(uri: String) async throws -> String? {
-        let index = try await Search.Index(
+        let index = try await Search.Indexer(
             dbPath: dbURL,
             logger: Logging.NoopRecording(),
             indexers: [:],
@@ -39,7 +39,7 @@ private struct IndexBackedLookup: MCP.Support.MarkdownLookupStrategy {
     }
 
     func listResources() async throws -> [Search.URIResource] {
-        let index = try await Search.Index(
+        let index = try await Search.Indexer(
             dbPath: dbURL,
             logger: Logging.NoopRecording(),
             indexers: [:],
@@ -95,7 +95,7 @@ struct MCPCommandTests {
 
         // Build a per-source apple-docs DB with a framework-root row.
         let dbURL = tempDir.appendingPathComponent("apple-documentation.db")
-        let index = try await Search.Index(
+        let index = try await Search.Indexer(
             dbPath: dbURL,
             logger: Logging.NoopRecording(),
             indexers: [:],
@@ -146,7 +146,7 @@ struct MCPCommandTests {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let dbURL = tempDir.appendingPathComponent("apple-documentation.db")
-        let index = try await Search.Index(
+        let index = try await Search.Indexer(
             dbPath: dbURL,
             logger: Logging.NoopRecording(),
             indexers: [:],
@@ -202,7 +202,7 @@ struct MCPCommandTests {
 
         // Create search index with test data
         let docsDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(
+        let searchIndex = try await Search.Indexer(
             dbPath: docsDbPath,
             logger: Logging.NoopRecording(),
             indexers: [:],
@@ -254,7 +254,7 @@ struct MCPCommandTests {
 
         // Create and populate search index
         let docsDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(
+        let searchIndex = try await Search.Indexer(
             dbPath: docsDbPath,
             logger: Logging.NoopRecording(),
             indexers: [:],
@@ -303,7 +303,7 @@ struct MCPCommandTests {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let dbURL = tempDir.appendingPathComponent("swift-evolution.db")
-        let index = try await Search.Index(
+        let index = try await Search.Indexer(
             dbPath: dbURL,
             logger: Logging.NoopRecording(),
             indexers: [:],
@@ -357,7 +357,7 @@ struct MCPCommandTests {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let dbURL = tempDir.appendingPathComponent("swift-evolution.db")
-        let index = try await Search.Index(
+        let index = try await Search.Indexer(
             dbPath: dbURL,
             logger: Logging.NoopRecording(),
             indexers: [:],
@@ -424,7 +424,7 @@ struct MCPCommandTests {
         // Empty per-source DB: a read of any URI must throw notFound,
         // with no filesystem fallback.
         let dbURL = tempDir.appendingPathComponent("apple-documentation.db")
-        let index = try await Search.Index(
+        let index = try await Search.Indexer(
             dbPath: dbURL,
             logger: Logging.NoopRecording(),
             indexers: [:],
@@ -496,7 +496,7 @@ struct MCPServerIntegrationTests {
         // Step 2: Build index
         print("\n   🔍 Step 2: Building search index...")
         let docsDbPath = tempDir.appendingPathComponent("search.db")
-        let searchIndex = try await Search.Index(
+        let searchIndex = try await Search.Indexer(
             dbPath: docsDbPath,
             logger: Logging.NoopRecording(),
             indexers: [:],

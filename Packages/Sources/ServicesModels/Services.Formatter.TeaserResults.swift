@@ -41,7 +41,9 @@ extension Services.Formatter {
                 self.results = results
             }
 
-            public var isEmpty: Bool { results.isEmpty }
+            public var isEmpty: Bool {
+                results.isEmpty
+            }
         }
 
         public init(

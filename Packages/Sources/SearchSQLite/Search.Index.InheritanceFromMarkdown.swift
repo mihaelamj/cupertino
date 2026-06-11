@@ -4,7 +4,7 @@ import SharedConstants
 
 // MARK: - Inheritance fallback parser (#669)
 
-extension Search.Index {
+extension Search.Indexer {
     /// Parse class-inheritance URIs from a page's `rawMarkdown` blob (#669).
     ///
     /// Defensive fallback for the case where the on-disk JSON predates PR #638's
@@ -70,7 +70,7 @@ extension Search.Index {
         if page.inheritsFromURIs == nil,
            page.inheritedByURIs == nil,
            let rawMarkdown = page.rawMarkdown {
-            let recovered = Search.Index.extractInheritanceURIsFromMarkdown(rawMarkdown)
+            let recovered = Search.Indexer.extractInheritanceURIsFromMarkdown(rawMarkdown)
             return (
                 recovered.inheritsFrom.isEmpty ? nil : recovered.inheritsFrom,
                 recovered.inheritedBy.isEmpty ? nil : recovered.inheritedBy

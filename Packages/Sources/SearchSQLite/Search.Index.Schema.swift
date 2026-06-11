@@ -3,7 +3,7 @@ import SearchModels
 import SearchSchema
 import SQLite3
 
-extension Search.Index {
+extension Search.Indexer {
     /// Create every table, view, FTS5 virtual table, and index in the
     /// canonical `search.db` schema. Idempotent: the script in
     /// `Search.Schema.createAllTablesSQL` uses `CREATE ... IF NOT EXISTS`

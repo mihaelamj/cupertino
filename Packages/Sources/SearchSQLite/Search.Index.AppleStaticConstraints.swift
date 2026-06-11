@@ -4,7 +4,7 @@ import SQLite3
 
 // MARK: - #759 iteration 3. authoritative static-table apply
 
-extension Search.Index {
+extension Search.Indexer {
     /// Apply the authoritative Apple-type constraints table over the
     /// `doc_symbols.generic_constraints` column.
     ///

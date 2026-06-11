@@ -52,18 +52,18 @@ struct PriorityPackageOutcomeTests {
 @Suite("Crawler.NoopHTMLParserStrategy returns empty defaults")
 struct NoopHTMLParserStrategyTests {
     @Test("convert returns empty string for any input")
-    func convertReturnsEmpty() {
+    func convertReturnsEmpty() throws {
         let strategy = Crawler.NoopHTMLParserStrategy()
-        let url = URL(string: "https://developer.apple.com/documentation/swiftui")!
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/swiftui"))
         #expect(strategy.convert(html: "", url: url) == "")
         #expect(strategy.convert(html: "<html><body>hi</body></html>", url: url) == "")
         #expect(strategy.convert(html: "anything", url: url) == "")
     }
 
     @Test("toStructuredPage returns nil regardless of inputs")
-    func toStructuredPageReturnsNil() {
+    func toStructuredPageReturnsNil() throws {
         let strategy = Crawler.NoopHTMLParserStrategy()
-        let url = URL(string: "https://developer.apple.com/documentation/swiftui")!
+        let url = try #require(URL(string: "https://developer.apple.com/documentation/swiftui"))
         #expect(strategy.toStructuredPage(html: "", url: url, source: .appleJSON, depth: nil) == nil)
         #expect(strategy.toStructuredPage(html: "<h1>title</h1>", url: url, source: .appleJSON, depth: 3) == nil)
     }
@@ -96,33 +96,33 @@ struct NoopHTMLParserStrategyTests {
 @Suite("Crawler.NoopAppleJSONParserStrategy returns empty defaults")
 struct NoopAppleJSONParserStrategyTests {
     @Test("convert returns nil for any JSON")
-    func convertReturnsNil() {
+    func convertReturnsNil() throws {
         let strategy = Crawler.NoopAppleJSONParserStrategy()
-        let url = URL(string: "https://developer.apple.com/tutorials/data/documentation/swiftui.json")!
+        let url = try #require(URL(string: "https://developer.apple.com/tutorials/data/documentation/swiftui.json"))
         #expect(strategy.convert(json: Data(), url: url) == nil)
         #expect(strategy.convert(json: Data("{}".utf8), url: url) == nil)
         #expect(strategy.convert(json: Data("{\"k\":1}".utf8), url: url) == nil)
     }
 
     @Test("toStructuredPage returns nil for any JSON")
-    func toStructuredPageReturnsNil() {
+    func toStructuredPageReturnsNil() throws {
         let strategy = Crawler.NoopAppleJSONParserStrategy()
-        let url = URL(string: "https://developer.apple.com/tutorials/data/documentation/swiftui.json")!
+        let url = try #require(URL(string: "https://developer.apple.com/tutorials/data/documentation/swiftui.json"))
         #expect(strategy.toStructuredPage(json: Data(), url: url, depth: nil) == nil)
         #expect(strategy.toStructuredPage(json: Data("{}".utf8), url: url, depth: 2) == nil)
     }
 
     @Test("jsonAPIURL returns nil for any input URL")
-    func jsonAPIURLReturnsNil() {
+    func jsonAPIURLReturnsNil() throws {
         let strategy = Crawler.NoopAppleJSONParserStrategy()
-        let docURL = URL(string: "https://developer.apple.com/documentation/swiftui/list")!
+        let docURL = try #require(URL(string: "https://developer.apple.com/documentation/swiftui/list"))
         #expect(strategy.jsonAPIURL(from: docURL) == nil)
     }
 
     @Test("documentationURL returns nil for any input URL")
-    func documentationURLReturnsNil() {
+    func documentationURLReturnsNil() throws {
         let strategy = Crawler.NoopAppleJSONParserStrategy()
-        let jsonURL = URL(string: "https://developer.apple.com/tutorials/data/documentation/swiftui/list.json")!
+        let jsonURL = try #require(URL(string: "https://developer.apple.com/tutorials/data/documentation/swiftui/list.json"))
         #expect(strategy.documentationURL(from: jsonURL) == nil)
     }
 
