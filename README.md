@@ -39,18 +39,18 @@ Why build this:
 
 Requires **macOS 15+ (Sequoia)** and ~4.2 GB free disk for the full v1.3.0 bundle (compressed download ~742 MB). Building from source additionally needs Swift 6.3+ and Xcode 26+ (use `xcrun swift build`, not bare `swift`).
 
-**One-command install (recommended)**: downloads a signed, notarized universal binary to `/usr/local/bin` and fetches the databases:
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/mihaelamj/cupertino/main/install.sh)
-```
-
-**Homebrew:**
+**Homebrew (recommended):** installs the signed, notarized universal binary and lets you upgrade or uninstall it with `brew`:
 
 ```bash
 brew tap mihaelamj/tap
 brew install cupertino
 cupertino setup            # download the pre-built databases
+```
+
+**One-command install (alternative):** downloads the binary to `/usr/local/bin` and fetches the databases in one step:
+
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/mihaelamj/cupertino/main/install.sh)
 ```
 
 **Build from source:**

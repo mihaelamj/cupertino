@@ -242,18 +242,18 @@ cupertino doctor       # Health check
 
 ## Installation Methods
 
-### 1. One-Command Install (Recommended)
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/mihaelamj/cupertino/main/install.sh)
-```
-
-### 2. Homebrew
+### 1. Homebrew (Recommended)
 
 ```bash
 brew tap mihaelamj/tap
 brew install cupertino
 cupertino setup
+```
+
+### 2. One-Command Install (Alternative)
+
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/mihaelamj/cupertino/main/install.sh)
 ```
 
 ### 3. Build from Source
