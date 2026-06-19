@@ -343,7 +343,11 @@ extension CLIImpl.Command {
                 documentResourceProvider: resourceProvider,
                 searchIndexDisabledReason: searchIndexDisabledReason,
                 searchToolSourceEnumValues: searchToolSourceEnumValues,
-                searchToolRoutesByID: searchToolRoutesByID
+                searchToolRoutesByID: searchToolRoutesByID,
+                // #1277: the registry-derived active-source inventory (presence + schema version),
+                // so the `list_sources` tool can report which per-source databases are installed
+                // and clients can detect a missing/partial corpus and guide setup.
+                sourceInventory: CLIImpl.activeSourceInventory()
             )
             await server.registerToolProvider(toolProvider)
 

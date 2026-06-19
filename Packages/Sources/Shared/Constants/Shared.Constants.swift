@@ -763,6 +763,9 @@ extension Shared.Constants {
         /// List document children tool name
         public static let toolListChildren = "list_children"
 
+        /// List installed sources / per-source databases tool name (#1277)
+        public static let toolListSources = "list_sources"
+
         // MARK: Sample Code Tool Names
 
         /// List samples tool name

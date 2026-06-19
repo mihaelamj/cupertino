@@ -82,6 +82,12 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     /// `SourceProvider.searchRoute`.
     private let searchToolRoutesByID: [String: Search.SearchRoute]
 
+    /// #1277: the canonical active-source inventory (registry-declared per-source databases with
+    /// on-disk presence + schema version), supplied by the composition root. When non-nil the
+    /// `list_sources` tool is advertised and returns it; when nil the tool stays hidden, so
+    /// existing call sites and test doubles that do not wire it are unaffected.
+    private let sourceInventory: Search.SourceInventory?
+
     /// Primary init used by the CLI composition root. Each cross-package
     /// surface arrives pre-wired as a protocol-typed value so this file
     /// doesn't have to import the Search / SampleIndex / Services
@@ -97,7 +103,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         documentResourceProvider: (any MCP.Core.ResourceProvider)? = nil,
         searchIndexDisabledReason: String? = nil,
         searchToolSourceEnumValues: [String] = [],
-        searchToolRoutesByID: [String: Search.SearchRoute] = [:]
+        searchToolRoutesByID: [String: Search.SearchRoute] = [:],
+        sourceInventory: Search.SourceInventory? = nil
     ) {
         self.searchIndex = searchIndex
         self.sampleDatabase = sampleDatabase
@@ -110,6 +117,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         self.searchIndexDisabledReason = searchIndexDisabledReason
         self.searchToolSourceEnumValues = searchToolSourceEnumValues
         self.searchToolRoutesByID = searchToolRoutesByID
+        self.sourceInventory = sourceInventory
     }
 
     /// True when the server should advertise search.db-dependent tools.
@@ -457,6 +465,17 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             ))
         }
 
+        // #1277: the installed-source inventory. Independent of the search.db tools (it reports
+        // which per-source databases exist even when none are open), so it is gated on its own
+        // injected value rather than `searchToolsVisible`.
+        if sourceInventory != nil {
+            allTools.append(MCP.Core.Protocols.Tool(
+                name: Shared.Constants.Search.toolListSources,
+                description: "List the installed documentation sources (per-source databases), each with on-disk presence and schema version.",
+                inputSchema: objectSchema(properties: [:])
+            ))
+        }
+
         // Sample code tools
         if sampleDatabase != nil {
             allTools.append(MCP.Core.Protocols.Tool(
@@ -562,6 +581,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             return try await handleListDocuments(args: args)
         case Shared.Constants.Search.toolListChildren:
             return try await handleListChildren(args: args)
+        case Shared.Constants.Search.toolListSources:
+            return try await handleListSources()
         case Shared.Constants.Search.toolReadDocument:
             return try await handleReadDocument(args: args)
         case Shared.Constants.Search.toolListSamples:
@@ -1389,6 +1410,27 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         let page = try await listing.listChildren(source: source, uri: uri)
         let json = Services.Formatter.DocumentChildren.JSON().format(page)
 
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: json))])
+    }
+
+    // MARK: - List Sources (#1277)
+
+    /// Return the injected active-source inventory as JSON: the per-source databases the server
+    /// declares, each with on-disk presence and schema version, so a client can detect a missing
+    /// or partial corpus and guide setup. Advertised only when the composition root injected the
+    /// inventory, so this is non-nil here.
+    private func handleListSources() async throws -> MCP.Core.Protocols.CallToolResult {
+        guard let sourceInventory else {
+            throw Shared.Core.ToolError.invalidArgument("index", "Source inventory is not available")
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let json: String = if let data = try? encoder.encode(sourceInventory),
+                              let text = String(data: data, encoding: .utf8) {
+            text
+        } else {
+            #"{"sources":[]}"#
+        }
         return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: json))])
     }
 
