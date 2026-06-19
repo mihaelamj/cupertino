@@ -9,12 +9,22 @@ extension Diagnostics {
     public enum Probes {
         // MARK: - SQLite probes
 
+        /// Open `dbPath` through the one robust read-only path every probe and
+        /// reader uses (`SQLiteSupport.openReadOnly`, the WAL `immutable=1`
+        /// fallback, #1194), so a present WAL database with no `-shm` sidecar
+        /// reads correctly instead of as empty / version 0. Returns nil for
+        /// unreadable / unopenable files. #1281 routed the remaining count /
+        /// histogram / freshness probes through here, so all seven read-only
+        /// opens in this type share one open path with no per-probe weakness.
+        private static func openReadOnlyProbe(at dbPath: URL) -> OpaquePointer? {
+            try? SQLiteSupport.openReadOnly(at: dbPath)
+        }
+
         /// Per-source row counts from `docs_metadata`. Returns an array
         /// of `(source, count)` tuples sorted by count descending.
         /// Empty when the table or DB can't be read.
         public static func perSourceCounts(at dbPath: URL) -> [(source: String, count: Int)] {
-            var db: OpaquePointer?
-            guard sqlite3_open_v2(dbPath.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+            guard let db = openReadOnlyProbe(at: dbPath) else {
                 return []
             }
             defer { sqlite3_close(db) }
@@ -42,7 +52,7 @@ extension Diagnostics {
             // #1194: open through the robust read-only path (WAL `immutable=1` fallback) instead
             // of a naive `sqlite3_open_v2(READONLY)`, so a present-but-WAL-without-shm database is
             // read correctly rather than misreported as version 0 ("looks broken / rebuild now").
-            guard let db = try? SQLiteSupport.openReadOnly(at: dbPath) else {
+            guard let db = openReadOnlyProbe(at: dbPath) else {
                 return nil
             }
             defer { sqlite3_close(db) }
@@ -83,7 +93,7 @@ extension Diagnostics {
         public static func samplesSchemaVersion(at dbPath: URL) -> Int32? {
             // #1194: robust read-only open (WAL `immutable=1` fallback) so a present-but-
             // WAL-without-shm samples DB is read correctly, not misreported as version 0.
-            guard let db = try? SQLiteSupport.openReadOnly(at: dbPath) else {
+            guard let db = openReadOnlyProbe(at: dbPath) else {
                 return nil
             }
             defer { sqlite3_close(db) }
@@ -143,8 +153,7 @@ extension Diagnostics {
         /// Returns the mode as a lowercase string (sqlite's own
         /// canonical form), or nil for unreadable / unopenable files.
         public static func journalMode(at dbPath: URL) -> String? {
-            var db: OpaquePointer?
-            guard sqlite3_open_v2(dbPath.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+            guard let db = openReadOnlyProbe(at: dbPath) else {
                 return nil
             }
             defer { sqlite3_close(db) }
@@ -164,8 +173,7 @@ extension Diagnostics {
         /// Returns nil on failure (most commonly because the table
         /// doesn't exist — surface that as blank rather than crash).
         public static func rowCount(at dbPath: URL, sql: String) -> Int? {
-            var db: OpaquePointer?
-            guard sqlite3_open_v2(dbPath.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+            guard let db = openReadOnlyProbe(at: dbPath) else {
                 return nil
             }
             defer { sqlite3_close(db) }
@@ -199,8 +207,7 @@ extension Diagnostics {
         /// mismatch refused at open, file missing). The caller is
         /// expected to surface that as `(skipped)` rather than crash.
         public static func kindHistogramBySource(at dbPath: URL) -> [(source: String, kind: String, count: Int)]? {
-            var db: OpaquePointer?
-            guard sqlite3_open_v2(dbPath.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+            guard let db = openReadOnlyProbe(at: dbPath) else {
                 return nil
             }
             defer { sqlite3_close(db) }
@@ -260,8 +267,7 @@ extension Diagnostics {
         public static func freshnessBySource(
             at dbPath: URL
         ) -> [FreshnessRow]? {
-            var db: OpaquePointer?
-            guard sqlite3_open_v2(dbPath.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+            guard let db = openReadOnlyProbe(at: dbPath) else {
                 return nil
             }
             defer { sqlite3_close(db) }
