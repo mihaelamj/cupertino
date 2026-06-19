@@ -180,8 +180,10 @@ extension Crawler {
             while !queue.isEmpty, visited.count < configuration.maxPages {
                 let (url, depth) = queue.removeFirst()
                 // No longer in the queue — clear from the enqueued set so a
-                // re-enqueue (e.g. via --retry-errors) is allowed. Use the
-                // raw URL string since enqueue keys on `link.absoluteString`.
+                // re-enqueue (e.g. via --retry-errors) is allowed. The queue
+                // holds normalized URLs (seeds, resume, and enqueue all
+                // normalize post-#1284), so `url.absoluteString` is the same
+                // normalized key the enqueue dedup inserted.
                 enqueued.remove(url.absoluteString)
 
                 guard let normalizedURL = Shared.Models.URLUtilities.normalize(url),
@@ -532,9 +534,21 @@ extension Crawler {
             // is only enqueued once. Pre-#206 the queue ran ~72 % duplicates.
             if depth < configuration.maxDepth {
                 for link in links where shouldVisit(url: link) {
-                    let key = link.absoluteString
+                    // Dedup on the NORMALIZED form (#1284). `visited` holds
+                    // normalized keys and pop normalizes before fetching, but
+                    // pre-#1284 enqueue keyed on raw `link.absoluteString`:
+                    // casing / dash-underscore variants of one logical URL each
+                    // got their own queue entry, and a raw link that normalizes
+                    // to an already-visited URL was re-enqueued (the raw key
+                    // never matched the normalized `visited` set). Normalizing
+                    // here collapses variants to one entry and makes the enqueue
+                    // dedup consistent with the visited set and the pop path.
+                    // An un-normalizable link is dropped, exactly as the pop
+                    // guard would drop it.
+                    guard let normalized = Shared.Models.URLUtilities.normalize(link) else { continue }
+                    let key = normalized.absoluteString
                     if visited.contains(key) || !enqueued.insert(key).inserted { continue }
-                    queue.append((url: link, depth: depth + 1))
+                    queue.append((url: normalized, depth: depth + 1))
                 }
             }
 
