@@ -32,6 +32,57 @@ struct SQLiteSupportReadOnlyTests {
         return dbURL
     }
 
+    /// Build a WAL-mode DB stamped at a non-zero `user_version`, checkpoint it so
+    /// the committed state is wholly in the main file, then DELETE its `-wal`/`-shm`
+    /// sidecars — the exact shape that made a read-only open trap with
+    /// `SQLITE_CANTOPEN` and get misreported as "schema version 0". Returns its URL.
+    private func makeCheckpointedWALDBWithoutSidecars(userVersion: Int32) throws -> URL {
+        let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("sqlitesupport-wal-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let dbURL = dir.appendingPathComponent("fixture.db")
+
+        var db: OpaquePointer?
+        #expect(sqlite3_open(dbURL.path, &db) == SQLITE_OK)
+        #expect(sqlite3_exec(db, "PRAGMA journal_mode=WAL;", nil, nil, nil) == SQLITE_OK)
+        #expect(sqlite3_exec(db, "PRAGMA user_version=\(userVersion);", nil, nil, nil) == SQLITE_OK)
+        #expect(sqlite3_exec(db, "CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT);", nil, nil, nil) == SQLITE_OK)
+        #expect(sqlite3_exec(db, "INSERT INTO t (id, name) VALUES (1, 'a'), (2, 'b');", nil, nil, nil) == SQLITE_OK)
+        // Fold the WAL into the main file so there are no pending frames.
+        sqlite3_exec(db, "PRAGMA wal_checkpoint(TRUNCATE);", nil, nil, nil)
+        sqlite3_close(db)
+        for sidecar in ["-wal", "-shm"] {
+            try? FileManager.default.removeItem(atPath: dbURL.path + sidecar)
+        }
+        return dbURL
+    }
+
+    @Test("a checkpointed WAL database with no -shm sidecar still reads read-only (not misreported as version 0)")
+    func readsCheckpointedWALWithoutSidecars() throws {
+        let dbURL = try makeCheckpointedWALDBWithoutSidecars(userVersion: 18)
+        defer { try? FileManager.default.removeItem(at: dbURL.deletingLastPathComponent()) }
+
+        let db = try SQLiteSupport.openReadOnly(at: dbURL)
+        defer { sqlite3_close(db) }
+
+        // The schema version reads back correctly (18), NOT 0.
+        var versionStmt: OpaquePointer?
+        #expect(sqlite3_prepare_v2(db, "PRAGMA user_version;", -1, &versionStmt, nil) == SQLITE_OK)
+        #expect(sqlite3_step(versionStmt) == SQLITE_ROW)
+        #expect(sqlite3_column_int(versionStmt, 0) == 18)
+        sqlite3_finalize(versionStmt)
+
+        // The rows are readable too.
+        var rowStmt: OpaquePointer?
+        #expect(sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM t;", -1, &rowStmt, nil) == SQLITE_OK)
+        #expect(sqlite3_step(rowStmt) == SQLITE_ROW)
+        #expect(sqlite3_column_int(rowStmt, 0) == 2)
+        sqlite3_finalize(rowStmt)
+
+        // Still strictly read-only: the immutable fallback must not enable writes.
+        #expect(sqlite3_exec(db, "INSERT INTO t (id, name) VALUES (3, 'c');", nil, nil, nil) == SQLITE_READONLY)
+    }
+
     @Test("a read-only connection can SELECT but cannot INSERT or DELETE")
     func readOnlyConnectionRejectsWrites() throws {
         let dbURL = try makeFixtureDB()

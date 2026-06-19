@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Fixed
+
+- **fix(#1194): read-only open now reads a checkpointed WAL database with no `-shm` sidecar instead of misreporting "schema version 0".** `SQLiteSupport.openReadOnly` opens with `SQLITE_OPEN_READONLY`, which cannot create the `-shm` shared-memory index a WAL-mode database needs; the open succeeds but the first read traps with `SQLITE_CANTOPEN`, and the schema check swallowed that as version `0` and told the user to rebuild an intact database. The open now probes the connection and, when the read fails while the `-wal` carries no pending frames (so the committed state is wholly in the main file), reopens `immutable=1` to read the file directly; when the `-wal` does carry frames it fails honestly asking for a checkpoint rather than returning stale data. Shipped rollback-mode bundles are unaffected (their first read succeeds). Reproduced and locked by a red/green test in `SQLiteSupportReadOnlyTests` (a checkpointed WAL DB with its sidecars removed now reads `user_version` 18 and stays strictly read-only). Surfaced while proving the desktop #88 `list_children`/`list_documents` path end to end against a locally-built (WAL) corpus.
+
 ### Added
 
 - **docs(#1270): record mobile catalog installation.** The README roadmap now names the next gate as mobile catalog install through `CatalogStore`, and `docs/design/mobile-catalog-delivery.md` defines the accepted mobile storage contract: install catalog data under `Application Support/Catalogs`, use App Group namespacing only for shared targets, exclude it from backup, never use `Documents`, and keep DB details inside Cupertino.

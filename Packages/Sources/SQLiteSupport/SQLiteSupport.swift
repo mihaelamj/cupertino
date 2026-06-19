@@ -35,11 +35,69 @@ public enum SQLiteSupport {
     /// (DELETE) journal-mode database, which is how cupertino ships its
     /// bundles (#1192); when the DB is in WAL mode with an existing `-shm`
     /// (a locally-indexed database), the read connection honours the WAL.
-    /// A 5-second busy timeout absorbs transient lock contention from a
-    /// concurrent writer.
+    ///
+    /// The edge case this guards (found reproducing #88's empty-tree probe on a
+    /// locally-built corpus): a **WAL-mode database whose `-shm` sidecar is
+    /// absent**. A read-only connection cannot create the `-shm` a WAL database
+    /// needs, so `sqlite3_open_v2` SUCCEEDS but the first read traps with
+    /// `SQLITE_CANTOPEN` — which a naive caller misreads as "schema version 0,
+    /// rebuild required" even though the file is intact. When the `-wal` has no
+    /// pending frames (absent or zero-length), the committed state lives wholly
+    /// in the main database file, so reopening `immutable=1` — which bypasses
+    /// the `-wal`/`-shm` machinery and reads the file directly — is correct, not
+    /// merely a workaround. When the `-wal` DOES carry frames, reading immutable
+    /// would silently skip them, so we fail honestly and ask for a checkpoint
+    /// rather than return stale data. A 5-second busy timeout absorbs transient
+    /// lock contention from a concurrent writer.
     public static func openReadOnly(at url: URL) throws -> OpaquePointer {
+        let handle = try open(url, immutable: false)
+        if canRead(handle) {
+            return handle
+        }
+
+        // The strict read-only open succeeded but the first read failed — the
+        // WAL-without-`-shm` case described above.
+        sqlite3_close(handle)
+        guard walIsEmpty(for: url) else {
+            throw OpenError.readOnlyOpenFailed(
+                path: url.path,
+                message: "WAL-mode database has pending frames and no readable -shm sidecar; "
+                    + "checkpoint it (open read-write once) before read-only access"
+            )
+        }
+
+        let immutableHandle = try open(url, immutable: true)
+        guard canRead(immutableHandle) else {
+            sqlite3_close(immutableHandle)
+            throw OpenError.readOnlyOpenFailed(
+                path: url.path,
+                message: "database could not be read even as immutable; it may be corrupt or truncated"
+            )
+        }
+        return immutableHandle
+    }
+
+    /// Open a read-only handle, optionally with the `immutable=1` URI parameter
+    /// (which tells SQLite the file and its WAL will not change, so it reads the
+    /// main file directly without the `-wal`/`-shm` machinery).
+    private static func open(_ url: URL, immutable: Bool) throws -> OpaquePointer {
         var handle: OpaquePointer?
-        guard sqlite3_open_v2(url.path, &handle, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+        let flags: Int32 = immutable ? (SQLITE_OPEN_READONLY | SQLITE_OPEN_URI) : SQLITE_OPEN_READONLY
+        let target: String
+        if immutable {
+            guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+                throw OpenError.readOnlyOpenFailed(path: url.path, message: "could not form a file URI for immutable open")
+            }
+            components.queryItems = [URLQueryItem(name: "immutable", value: "1")]
+            guard let uri = components.string else {
+                throw OpenError.readOnlyOpenFailed(path: url.path, message: "could not form an immutable file URI")
+            }
+            target = uri
+        } else {
+            target = url.path
+        }
+
+        guard sqlite3_open_v2(target, &handle, flags, nil) == SQLITE_OK else {
             let message = handle.flatMap { String(cString: sqlite3_errmsg($0)) } ?? "unknown sqlite3 error"
             sqlite3_close(handle)
             throw OpenError.readOnlyOpenFailed(path: url.path, message: message)
@@ -49,5 +107,28 @@ public enum SQLiteSupport {
         }
         sqlite3_busy_timeout(handle, 5000)
         return handle
+    }
+
+    /// Whether the connection can actually read. `PRAGMA user_version` yields a
+    /// row on every readable database (value 0 on an uninitialised one), so a
+    /// non-row step means the read genuinely failed (e.g. a WAL database with no
+    /// accessible `-shm`), NOT that the version is zero.
+    private static func canRead(_ handle: OpaquePointer) -> Bool {
+        var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
+        guard sqlite3_prepare_v2(handle, "PRAGMA user_version", -1, &statement, nil) == SQLITE_OK else {
+            return false
+        }
+        return sqlite3_step(statement) == SQLITE_ROW
+    }
+
+    /// Whether the database's `-wal` sidecar carries no pending frames (absent or
+    /// zero-length). When true, the committed state is wholly in the main file,
+    /// so an `immutable=1` read cannot miss data.
+    private static func walIsEmpty(for url: URL) -> Bool {
+        let walPath = url.path + "-wal"
+        guard FileManager.default.fileExists(atPath: walPath) else { return true }
+        let size = (try? FileManager.default.attributesOfItem(atPath: walPath)[.size]) as? Int
+        return (size ?? 0) == 0
     }
 }
