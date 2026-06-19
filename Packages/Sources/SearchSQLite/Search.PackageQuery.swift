@@ -48,6 +48,33 @@ extension Search {
             } catch {
                 throw PackageQueryError.openFailed(String(describing: error))
             }
+            // #1279: a version-skewed packages.db (e.g. an old bundle left in
+            // place after a binary upgrade) must fail loudly, not serve results
+            // from a schema this binary does not understand. The query path is
+            // read-only and cannot rebuild, so it throws an actionable mismatch.
+            // A user_version of 0 is the unstamped/fresh sentinel (the build
+            // path treats it as fresh), so it is not treated as a skew.
+            let version = Self.readUserVersion(database)
+            if version > 0, version != PackageIndex.schemaVersion {
+                disconnect()
+                throw PackageQueryError.schemaVersionMismatch(
+                    current: Int(version),
+                    expected: Int(PackageIndex.schemaVersion),
+                    dbPath: dbPath.path
+                )
+            }
+        }
+
+        /// Read `PRAGMA user_version` off an open handle. Returns `0` when the
+        /// DB is freshly created (SQLite's default) or the read fails.
+        private static func readUserVersion(_ database: OpaquePointer?) -> Int32 {
+            guard let database else { return 0 }
+            var statement: OpaquePointer?
+            defer { sqlite3_finalize(statement) }
+            guard sqlite3_prepare_v2(database, "PRAGMA user_version", -1, &statement, nil) == SQLITE_OK,
+                  sqlite3_step(statement) == SQLITE_ROW
+            else { return 0 }
+            return sqlite3_column_int(statement, 0)
         }
 
         public func disconnect() {
@@ -986,12 +1013,25 @@ extension Search {
         case openFailed(String)
         case databaseNotOpen
         case sqliteError(String)
+        /// A present packages.db whose on-disk schema version does not match
+        /// the version this binary reads. The query path is strictly read-only
+        /// (#1194) and cannot rebuild, so it must fail loudly with an actionable
+        /// remediation rather than serve results from a schema it does not
+        /// understand (#1279).
+        case schemaVersionMismatch(current: Int, expected: Int, dbPath: String)
 
         public var errorDescription: String? {
             switch self {
             case .openFailed(let msg): return "Could not open packages.db: \(msg)"
             case .databaseNotOpen: return "packages.db connection closed"
             case .sqliteError(let msg): return "SQLite error: \(msg)"
+            case let .schemaVersionMismatch(current, expected, dbPath):
+                if current > expected {
+                    return "packages.db schema mismatch at \(dbPath): on-disk version \(current) is newer than "
+                        + "this binary understands (\(expected)). Upgrade cupertino (e.g. `brew upgrade cupertino`)."
+                }
+                return "packages.db schema mismatch at \(dbPath): on-disk version \(current) is older than "
+                    + "this binary requires (\(expected)). Re-download the databases: `rm \(dbPath) && cupertino setup`."
             }
         }
     }

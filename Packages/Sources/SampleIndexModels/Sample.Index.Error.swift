@@ -20,6 +20,12 @@ extension Sample.Index {
         case zipExtractionFailed(String)
         case projectNotFound(String)
         case fileNotFound(String)
+        /// A present samples database whose on-disk schema version does not match
+        /// the version this binary reads. The read path is strictly read-only
+        /// (#1194) and cannot wipe-and-rebuild, so it must fail loudly with an
+        /// actionable remediation rather than serve results from a schema it does
+        /// not understand (#1279).
+        case schemaVersionMismatch(current: Int, expected: Int, dbPath: String)
 
         public var errorDescription: String? {
             switch self {
@@ -41,6 +47,13 @@ extension Sample.Index {
                 return "Project not found: \(id)"
             case let .fileNotFound(path):
                 return "File not found: \(path)"
+            case let .schemaVersionMismatch(current, expected, dbPath):
+                if current > expected {
+                    return "Sample database schema mismatch at \(dbPath): on-disk version \(current) is newer than "
+                        + "this binary understands (\(expected)). Upgrade cupertino (e.g. `brew upgrade cupertino`)."
+                }
+                return "Sample database schema mismatch at \(dbPath): on-disk version \(current) is older than "
+                    + "this binary requires (\(expected)). Re-download the databases: `rm \(dbPath) && cupertino setup`."
             }
         }
     }

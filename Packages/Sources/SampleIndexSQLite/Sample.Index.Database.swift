@@ -58,8 +58,11 @@ extension Sample.Index {
                 // Read path: open read-only and stop. No directory creation, no
                 // wipe-if-stale, no table creation, no schema stamp. A read
                 // connection must never mutate the DB (#1194); the DB is
-                // expected to already be at the current schema.
+                // expected to already be at the current schema; verify
+                // that and fail loudly on a skew rather than serve from a
+                // schema this binary does not understand (#1279).
                 try await openDatabase()
+                try await verifySchemaVersionForReadOnly()
                 isInitialized = true
                 return
             }
@@ -161,6 +164,58 @@ extension Sample.Index {
                 // explicitly so the user investigates the file (e.g.
                 // restore from backup, re-run save --samples) rather
                 // than silently producing wrong results.
+                throw Sample.Index.Error.sqliteError(
+                    "Sample.Index.Database refused to open \(dbPath.lastPathComponent): " +
+                        "samples_schema_version probe reported \(reason). The file may be " +
+                        "corrupted. Inspect with `sqlite3 \(dbPath.path) 'PRAGMA integrity_check'`, " +
+                        "or move it aside and re-run `cupertino save --source samples` to rebuild."
+                )
+            }
+        }
+
+        /// Read-only counterpart to `wipeIfStale`: the same version
+        /// detection, but it THROWS an actionable mismatch instead of
+        /// wiping, because a read / serve / list connection is strictly
+        /// read-only (#1194) and physically cannot rebuild. Without this,
+        /// a version-skewed samples DB (e.g. an old bundle left in place
+        /// after a binary upgrade) opened silently and served results
+        /// from a schema this binary does not understand (#1279). The
+        /// fire/suppress criteria match `wipeIfStale` exactly so the read
+        /// path and the write path agree on what "stale" means:
+        ///   - `projects` absent → not a samples DB (or a shared file
+        ///     seeded by another pipeline only); nothing to gate.
+        ///   - tracking table populated and version != ours → throw.
+        ///   - tracking table empty → cannot determine; do not throw.
+        ///   - tracking table absent → legacy PRAGMA path: throw only
+        ///     when the PRAGMA is non-zero AND differs from ours.
+        ///   - corrupt → throw (same message `wipeIfStale` would).
+        private func verifySchemaVersionForReadOnly() async throws {
+            guard FileManager.default.fileExists(atPath: dbPath.path),
+                  try await projectsTableExists()
+            else {
+                return
+            }
+            switch try await samplesSchemaVersionTablePresence() {
+            case let .populated(version):
+                if version != Self.schemaVersion {
+                    throw Sample.Index.Error.schemaVersionMismatch(
+                        current: Int(version),
+                        expected: Int(Self.schemaVersion),
+                        dbPath: dbPath.path
+                    )
+                }
+            case .empty:
+                return
+            case .absent:
+                let legacyPragma = try await readUserVersion()
+                if legacyPragma > 0, legacyPragma != Self.schemaVersion {
+                    throw Sample.Index.Error.schemaVersionMismatch(
+                        current: Int(legacyPragma),
+                        expected: Int(Self.schemaVersion),
+                        dbPath: dbPath.path
+                    )
+                }
+            case let .corrupt(reason):
                 throw Sample.Index.Error.sqliteError(
                     "Sample.Index.Database refused to open \(dbPath.lastPathComponent): " +
                         "samples_schema_version probe reported \(reason). The file may be " +
