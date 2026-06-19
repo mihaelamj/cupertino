@@ -151,7 +151,10 @@ let deps: [Package.Dependency] = [
     // v0.2.5 aligns the current corpus layout with release bundles: sample code
     // is opened through the sample reader, not as a source-search database.
     // v0.2.6 keeps the package corpus on the release `packages.db` filename.
-    .package(url: "https://github.com/mihaelamj/CupertinoDataEngine.git", from: "0.2.6"),
+    // v0.2.7 resolves relative DocC topic links in listChildren (#90); aligns this repo with
+    // cupertino-desktop, which already pins 0.2.7 (the server uses only the Corpus/Configuration/
+    // SchemaVersions composition APIs, unchanged in 0.2.7, so this is a consistency bump).
+    .package(url: "https://github.com/mihaelamj/CupertinoDataEngine.git", from: "0.2.7"),
 ]
 
 // -------------------------------------------------------------
