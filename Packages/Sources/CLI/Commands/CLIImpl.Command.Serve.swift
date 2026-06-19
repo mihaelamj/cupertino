@@ -316,7 +316,11 @@ extension CLIImpl.Command {
             // service-layer wrappers are constructed here at the
             // composition root and passed across the protocol seam so
             // SearchToolProvider doesn't have to construct them itself.
-            let docsService: (any Services.DocsSearcher)? = searchIndex.map(Services.DocsSearchService.init(database:))
+            // #1286: route source-scoped docs operations (specific-source
+            // search, list_documents, list_children) to per-source DBs too.
+            let docsService: (any Services.DocsSearcher)? = searchIndex.map {
+                Services.DocsSearchService(database: $0, docsIndexBySource: docsIndexBySource)
+            }
             let sampleService: (any Sample.Search.Searcher)? = sampleIndex.map(Sample.Search.Service.init(database:))
             let teaserService: (any Services.Teaser)? =
                 (searchIndex == nil && sampleIndex == nil)

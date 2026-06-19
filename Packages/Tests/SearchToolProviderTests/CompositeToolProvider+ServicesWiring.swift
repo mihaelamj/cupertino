@@ -26,7 +26,7 @@ public extension CompositeToolProvider {
         sampleDatabase: (any Sample.Index.Reader)?,
         searchIndexDisabledReason: String? = nil
     ) {
-        let docs = searchIndex.map(Services.DocsSearchService.init(database:))
+        let docs = searchIndex.map { Services.DocsSearchService(database: $0) }
         let sample = sampleDatabase.map(Sample.Search.Service.init(database:))
         let teaser: (any Services.Teaser)? =
             (searchIndex == nil && sampleDatabase == nil)

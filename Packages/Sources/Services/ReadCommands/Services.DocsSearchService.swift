@@ -15,20 +15,40 @@ import SharedConstants
 extension Services {
     public actor DocsSearchService: Services.SearchService {
         private let index: any Search.Database
+        /// #1286 — per-source docs index map (source-id → that source's
+        /// read-only database). The source-keyed operations (`search`,
+        /// `listDocuments`, `listChildren`) route to the matching per-source
+        /// DB; without this they all hit the single apple-docs primary
+        /// `index`, so a specific-source MCP call (`search --source hig`,
+        /// `list_documents source=swift-evolution`) returned empty on a
+        /// per-source-DB bundle (#1036). Falls back to `index` when a source
+        /// is absent from the map (legacy single-DB wiring / tests).
+        private let docsIndexBySource: [String: any Search.Database]
 
         /// Initialize with any `Search.Database` conformer. Production:
         /// pass a `Search.Index` from the SearchSQLite target; it conforms to
         /// `Search.Database`, so the actor flows through this protocol-
-        /// typed init unchanged. Tests pass a mock.
-        public init(database: any Search.Database) {
+        /// typed init unchanged. Tests pass a mock. `docsIndexBySource`
+        /// (#1286) routes source-scoped operations to per-source DBs; empty
+        /// → previous single-DB behaviour.
+        public init(database: any Search.Database, docsIndexBySource: [String: any Search.Database] = [:]) {
             index = database
+            self.docsIndexBySource = docsIndexBySource
+        }
+
+        /// Route a source-scoped operation to that source's per-source DB,
+        /// falling back to the primary `index` when the source is nil or not
+        /// in the map.
+        private func docsIndex(for source: String?) -> any Search.Database {
+            guard let source, let routed = docsIndexBySource[source] else { return index }
+            return routed
         }
 
         // MARK: - Services.SearchService Protocol
 
         public func search(_ query: Services.SearchQuery) async throws -> [Search.Result] {
             // Platform version filtering is now done at SQL level for better performance
-            try await index.search(
+            try await docsIndex(for: query.source).search(
                 query: query.text,
                 source: query.source,
                 framework: query.framework,
@@ -58,7 +78,7 @@ extension Services {
             offset: Int,
             limit: Int
         ) async throws -> Search.DocumentListPage {
-            guard let listing = index as? any Search.DocumentListing else {
+            guard let listing = docsIndex(for: source) as? any Search.DocumentListing else {
                 throw Search.Error.searchFailed("Document listing is not supported by this search database")
             }
             return try await listing.listDocuments(
@@ -73,7 +93,7 @@ extension Services {
             source: String,
             uri: String
         ) async throws -> Search.DocumentChildrenPage {
-            guard let listing = index as? any Search.DocumentChildrenListing else {
+            guard let listing = docsIndex(for: source) as? any Search.DocumentChildrenListing else {
                 throw Search.Error.searchFailed("Document children listing is not supported by this search database")
             }
             return try await listing.listChildren(source: source, uri: uri)

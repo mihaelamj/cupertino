@@ -115,3 +115,67 @@ struct Issue1286UnifiedSearchPerSourceFanoutTests {
         #expect(input.higResults.isEmpty)
     }
 }
+
+// MARK: - #1286 — specific-source (scoped) docs search routes to the per-source DB
+
+/// The specific-source MCP routes (`search --source hig`, `list_documents
+/// source=swift-evolution`, `list_children`) go through
+/// `Services.DocsSearchService`, which pre-#1286 always queried the single
+/// apple-docs primary index, so a scoped search for a non-apple-docs source
+/// returned 0 even though its DB is installed. `DocsSearchService` now routes
+/// source-scoped operations to the per-source index map. This pins that a
+/// `search` scoped to a non-primary source returns that source's rows, and
+/// that the legacy (empty-map) wiring returns none.
+@Suite("#1286 — scoped DocsSearchService search routes to the per-source DB")
+struct Issue1286ScopedDocsSearchRoutingTests {
+    private func makeIndex(source: String, uri: String, query: String) async throws -> Search.Index {
+        let dbPath = FileManager.default.temporaryDirectory
+            .appendingPathComponent("scoped-1286-\(source)-\(UUID().uuidString).db")
+        let index = try await Search.Index(
+            dbPath: dbPath, logger: Logging.NoopRecording(), indexers: [:], sourceLookup: .empty
+        )
+        try await index.indexDocument(Search.IndexDocumentParams(
+            uri: uri, source: source, framework: nil,
+            title: "\(query.capitalized) (\(source))",
+            content: "Doc about \(query) in \(source).",
+            filePath: "/tmp/\(source)", contentHash: "h-\(source)",
+            lastCrawled: Date(timeIntervalSince1970: 1700000000)
+        ))
+        return index
+    }
+
+    private func scopedQuery(_ text: String, source: String) -> Services.SearchQuery {
+        Services.SearchQuery(
+            text: text, source: source, framework: nil, language: nil, limit: 10,
+            includeArchive: false, minimumiOS: nil, minimumMacOS: nil, minimumTvOS: nil,
+            minimumWatchOS: nil, minimumVisionOS: nil, minimumSwift: nil
+        )
+    }
+
+    @Test("scoped search for a non-primary source returns its rows when the per-source DB is mapped")
+    func scopedSearchRoutesToPerSourceDB() async throws {
+        let appleDocs = try await makeIndex(source: Shared.Constants.SourcePrefix.appleDocs, uri: "apple-docs://uikit/uibutton", query: "buttons")
+        let hig = try await makeIndex(source: Shared.Constants.SourcePrefix.hig, uri: "hig://general/buttons", query: "buttons")
+        defer { Task { await appleDocs.disconnect(); await hig.disconnect() } }
+
+        let service = Services.DocsSearchService(
+            database: appleDocs,
+            docsIndexBySource: [
+                Shared.Constants.SourcePrefix.appleDocs: appleDocs,
+                Shared.Constants.SourcePrefix.hig: hig,
+            ]
+        )
+        let higResults = try await service.search(scopedQuery("buttons", source: Shared.Constants.SourcePrefix.hig))
+        #expect(!higResults.isEmpty, "scoped hig search returned nothing despite the hig DB being mapped (#1286)")
+    }
+
+    @Test("contrast: legacy single-index wiring returns nothing for a non-primary scoped source")
+    func legacyScopedSearchReturnsEmpty() async throws {
+        let appleDocs = try await makeIndex(source: Shared.Constants.SourcePrefix.appleDocs, uri: "apple-docs://uikit/uibutton", query: "buttons")
+        defer { Task { await appleDocs.disconnect() } }
+
+        let service = Services.DocsSearchService(database: appleDocs) // no per-source map
+        let higResults = try await service.search(scopedQuery("buttons", source: Shared.Constants.SourcePrefix.hig))
+        #expect(higResults.isEmpty)
+    }
+}
