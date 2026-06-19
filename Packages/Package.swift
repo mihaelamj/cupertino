@@ -1184,7 +1184,9 @@ let targets: [Target] = {
     // ---------- Diagnostics (#245: DoctorCommand probe lift) ----------
     let diagnosticsTarget = Target.target(
         name: "Diagnostics",
-        dependencies: []
+        // #1194: read schema versions through the robust read-only open (WAL `immutable=1`
+        // fallback) so a present-but-WAL-without-shm database is not misreported as version 0.
+        dependencies: ["SQLiteSupport"]
     )
     let diagnosticsTestsTarget = Target.testTarget(
         name: "DiagnosticsTests",

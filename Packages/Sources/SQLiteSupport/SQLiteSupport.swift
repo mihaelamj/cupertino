@@ -109,14 +109,17 @@ public enum SQLiteSupport {
         return handle
     }
 
-    /// Whether the connection can actually read. `PRAGMA user_version` yields a
-    /// row on every readable database (value 0 on an uninitialised one), so a
-    /// non-row step means the read genuinely failed (e.g. a WAL database with no
-    /// accessible `-shm`), NOT that the version is zero.
+    /// Whether the connection can actually read the database, not just its header. We probe with
+    /// `SELECT count(*) FROM sqlite_master`, which forces SQLite to read the schema b-tree: it
+    /// fails (non-row step) on a WAL database with no accessible `-shm` (the case the immutable
+    /// fallback exists for) AND on a database whose schema b-tree is corrupt. A header-only probe
+    /// (`PRAGMA user_version`) would pass on a corrupt or unreadable-table file because it only
+    /// reads the intact 100-byte header. An empty database still has an (empty) `sqlite_master`,
+    /// so this yields a row there, distinguishing genuinely-empty from unreadable.
     private static func canRead(_ handle: OpaquePointer) -> Bool {
         var statement: OpaquePointer?
         defer { sqlite3_finalize(statement) }
-        guard sqlite3_prepare_v2(handle, "PRAGMA user_version", -1, &statement, nil) == SQLITE_OK else {
+        guard sqlite3_prepare_v2(handle, "SELECT count(*) FROM sqlite_master", -1, &statement, nil) == SQLITE_OK else {
             return false
         }
         return sqlite3_step(statement) == SQLITE_ROW

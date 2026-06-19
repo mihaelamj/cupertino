@@ -1,5 +1,6 @@
 import Foundation
 import SQLite3
+import SQLiteSupport
 
 extension Diagnostics {
     /// Pure-data probes for cupertino's local databases and on-disk
@@ -38,8 +39,10 @@ extension Diagnostics {
         /// through `Search.Index` (whose init throws on incompatible
         /// versions). Returns nil for unreadable / unopenable files.
         public static func userVersion(at dbPath: URL) -> Int32? {
-            var db: OpaquePointer?
-            guard sqlite3_open_v2(dbPath.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+            // #1194: open through the robust read-only path (WAL `immutable=1` fallback) instead
+            // of a naive `sqlite3_open_v2(READONLY)`, so a present-but-WAL-without-shm database is
+            // read correctly rather than misreported as version 0 ("looks broken / rebuild now").
+            guard let db = try? SQLiteSupport.openReadOnly(at: dbPath) else {
                 return nil
             }
             defer { sqlite3_close(db) }
@@ -78,8 +81,9 @@ extension Diagnostics {
         /// which reflects the Sample.Index pipeline's actual schema
         /// version.
         public static func samplesSchemaVersion(at dbPath: URL) -> Int32? {
-            var db: OpaquePointer?
-            guard sqlite3_open_v2(dbPath.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+            // #1194: robust read-only open (WAL `immutable=1` fallback) so a present-but-
+            // WAL-without-shm samples DB is read correctly, not misreported as version 0.
+            guard let db = try? SQLiteSupport.openReadOnly(at: dbPath) else {
                 return nil
             }
             defer { sqlite3_close(db) }
