@@ -3,6 +3,7 @@ import LoggingModels
 @testable import MCPCore
 @testable import SampleIndex
 import SampleIndexSQLite
+import SearchModels
 import SharedConstants
 import Testing
 @testable import TestSupport
@@ -166,6 +167,82 @@ struct MCPIntegrationTests {
         #expect(toolsResult.tools.count >= 4, "Should have at least sample code tools")
         #expect(toolsResult.tools.contains { $0.name == "search" })
         #expect(toolsResult.tools.contains { $0.name == "list_samples" })
+        // #1277: the serve composition root always injects the source inventory, so a live
+        // server advertises list_sources.
+        #expect(toolsResult.tools.contains { $0.name == Shared.Constants.Search.toolListSources })
+        #else
+        // Skip on non-macOS platforms
+        #endif
+    }
+
+    @Test("Call list_sources over a live cupertino server returns the per-source inventory (#1277)")
+    func cupertinoServerListSources() async throws {
+        #if os(macOS)
+        let fixture = try CupertinoServerFixture()
+        defer { fixture.cleanup() }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: ".build/debug/cupertino")
+        process.arguments = ["serve"]
+
+        let stdinPipe = Pipe()
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        process.standardInput = stdinPipe
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
+
+        try process.run()
+        defer {
+            process.terminate()
+            process.waitUntilExit()
+        }
+
+        try await Task.sleep(for: .milliseconds(500))
+
+        guard process.isRunning else {
+            let stderr = String(data: stderrPipe.fileHandleForReading.availableData, encoding: .utf8) ?? ""
+            Issue.record("cupertino serve exited before requests could be sent. stderr:\n\(stderr)")
+            return
+        }
+
+        let protocolVersion = MCPProtocolVersionsSupported.sorted().first ?? MCPProtocolVersion
+        let initRequest = """
+        {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"\(protocolVersion)","capabilities":{},"clientInfo":{"name":"Test","version":"1.0.0"}}}\n
+        """
+        let callRequest = """
+        {"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_sources","arguments":{}}}\n
+        """
+        try stdinPipe.fileHandleForWriting.write(contentsOf: Data(initRequest.utf8))
+        try stdinPipe.fileHandleForWriting.write(contentsOf: Data(callRequest.utf8))
+
+        let buffer = try await readUntil(
+            stdout: stdoutPipe,
+            stderr: stderrPipe,
+            until: { $0.contains("\"id\":1") && $0.contains("\"id\":2") && $0.hasSuffix("\n") },
+            deadline: 30
+        )
+
+        let lines = buffer.split(separator: "\n", omittingEmptySubsequences: true)
+        let callLine = try #require(
+            lines.first { $0.contains("\"id\":2") },
+            "Should find the list_sources tools/call response"
+        )
+
+        let response = try JSONDecoder().decode(MCP.Core.Protocols.JSONRPCResponse.self, from: Data(String(callLine).utf8))
+        let resultData = try JSONEncoder().encode(response.result)
+        let callResult = try JSONDecoder().decode(MCP.Core.Protocols.CallToolResult.self, from: resultData)
+
+        guard case let .text(text) = callResult.content.first else {
+            Issue.record("Expected text content in the list_sources result")
+            return
+        }
+        let inventory = try JSONDecoder().decode(Search.SourceInventory.self, from: Data(text.text.utf8))
+        // The inventory is the registry-declared active set: non-empty, and the legacy unified
+        // search.db is never reported as an active source.
+        #expect(!inventory.sources.isEmpty, "list_sources should report the registry's per-source databases")
+        #expect(!inventory.sources.contains { $0.id == "search" }, "legacy search.db must not be an active source")
+        #expect(inventory.installed <= inventory.expected)
         #else
         // Skip on non-macOS platforms
         #endif
