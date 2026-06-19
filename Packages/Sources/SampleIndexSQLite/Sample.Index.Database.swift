@@ -383,6 +383,20 @@ extension Sample.Index {
             }
         }
 
+        #if DEBUG
+        /// Test-only (#1280): run `sql` on this reader's own connection and
+        /// return the SQLite result code, so the read/serve path's read-only
+        /// guarantee is asserted at the reader object level, not only on the
+        /// `SQLiteSupport` helper. Internal + `#if DEBUG`, so it is absent from
+        /// release binaries and the shipped public API. A regression that
+        /// opened this reader read-write (dropping `readOnly: true`) would make
+        /// a write SUCCEED (`SQLITE_OK`) here instead of `SQLITE_READONLY`.
+        func attemptWriteForReadOnlyAudit(_ sql: String) -> Int32 {
+            guard let database else { return SQLITE_MISUSE }
+            return sqlite3_exec(database, sql, nil, nil, nil)
+        }
+        #endif
+
         /// Inspect `PRAGMA synchronous` on the actor's own connection
         /// (0..3, matching SQLite's enum: 0=OFF, 1=NORMAL, 2=FULL,
         /// 3=EXTRA). Per-connection; not header-persistent. Test-facing.
