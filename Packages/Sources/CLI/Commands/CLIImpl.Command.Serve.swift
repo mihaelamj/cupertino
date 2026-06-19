@@ -282,6 +282,36 @@ extension CLIImpl.Command {
             // every query pre-PR-2 fell through.
             let packagesSearcher = await loadPackagesSearcher(packagesDBURL: packagesDBURL)
 
+            // #1286: open EVERY per-source docs DB (not just the apple-docs
+            // primary) so the MCP unified fan-out searches all of them, the
+            // way the CLI's `buildFetchers` does. Pre-#1286 the serve
+            // composition wired only the single apple-docs `searchIndex`, so
+            // the MCP / desktop search returned hig / apple-archive /
+            // swift-evolution / swift-org / swift-book as empty even though
+            // their per-source DBs are installed (the desktop searched 3 of 8
+            // sources). `dbURLs` is the registry-derived per-source docs DB
+            // map (keyed by source id); reuse the already-open `searchIndex`
+            // for apple-docs and open the rest read-only. A missing or
+            // schema-mismatched per-source DB is skipped (that source simply
+            // contributes nothing), matching the single-index degradation.
+            var docsIndexBySource: [String: any SearchModule.Database] = [:]
+            for (sourceID, url) in dbURLs {
+                if url == dbURL, let searchIndex {
+                    docsIndexBySource[sourceID] = searchIndex
+                    continue
+                }
+                guard FileManager.default.fileExists(atPath: url.path) else { continue }
+                if let perSourceIndex = try? await SearchModule.Index(
+                    dbPath: url,
+                    logger: Cupertino.Context.composition.logging.recording,
+                    indexers: [:],
+                    sourceLookup: .empty,
+                    readOnly: true
+                ) {
+                    docsIndexBySource[sourceID] = perSourceIndex
+                }
+            }
+
             // Register composite tool provider with both indexes. The
             // service-layer wrappers are constructed here at the
             // composition root and passed across the protocol seam so
@@ -298,7 +328,8 @@ extension CLIImpl.Command {
                     : Services.UnifiedSearchService(
                         searchIndex: searchIndex,
                         sampleDatabase: sampleIndex,
-                        packagesSearcher: packagesSearcher
+                        packagesSearcher: packagesSearcher,
+                        docsIndexBySource: docsIndexBySource
                     )
             // #582: pass the same `DocsResourceProvider` instance into the
             // tool provider so `read_document` falls back through the

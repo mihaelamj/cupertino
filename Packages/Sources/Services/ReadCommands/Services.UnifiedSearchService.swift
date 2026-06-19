@@ -11,6 +11,18 @@ import SharedConstants
 extension Services {
     public actor UnifiedSearchService {
         private let searchIndex: (any Search.Database)?
+        /// #1286 — per-source docs index map (source-id → that source's
+        /// read-only database). The unified fan-out previously routed EVERY
+        /// docs source through the single `searchIndex` (the apple-docs
+        /// primary DB, `apple-documentation.db`), so on a per-source-DB
+        /// bundle (#1036) only apple-docs returned rows: hig / apple-archive /
+        /// swift-evolution / swift-org / swift-book queries hit a DB without
+        /// their rows and came back empty. The MCP / desktop path therefore
+        /// searched 3 of 8 sources while the CLI fanned across all of them.
+        /// `searchSource` now routes each source to its own DB via this map,
+        /// falling back to `searchIndex` when a source is absent from the map
+        /// (legacy single-DB wiring + tests). Empty map → previous behaviour.
+        private let docsIndexBySource: [String: any Search.Database]
         private let sampleDatabase: (any Sample.Index.Reader)?
         /// `#789`-style architectural fix landed in v1.2.0 PR-2. Pre-fix,
         /// the `packages` async-let below routed through
@@ -33,11 +45,13 @@ extension Services {
         public init(
             searchIndex: (any Search.Database)?,
             sampleDatabase: (any Sample.Index.Reader)?,
-            packagesSearcher: (any Search.PackagesSearcher)? = nil
+            packagesSearcher: (any Search.PackagesSearcher)? = nil,
+            docsIndexBySource: [String: any Search.Database] = [:]
         ) {
             self.searchIndex = searchIndex
             self.sampleDatabase = sampleDatabase
             self.packagesSearcher = packagesSearcher
+            self.docsIndexBySource = docsIndexBySource
         }
 
         // MARK: - Unified Search
@@ -244,12 +258,17 @@ extension Services {
             minVisionOS: String? = nil,
             minSwift: String? = nil
         ) async -> SourceOutcome {
-            guard let searchIndex else {
+            // #1286: route to this source's own per-source DB; fall back to
+            // the single `searchIndex` only when the source isn't in the map
+            // (legacy single-DB wiring / tests). Without this every docs
+            // source queried the apple-docs primary DB and non-apple-docs
+            // sources returned empty on a per-source bundle.
+            guard let index = docsIndexBySource[source] ?? searchIndex else {
                 return SourceOutcome(sourceName: source, results: [], degradationReason: nil)
             }
 
             do {
-                let results = try await searchIndex.search(
+                let results = try await index.search(
                     query: query,
                     source: source,
                     framework: framework,
