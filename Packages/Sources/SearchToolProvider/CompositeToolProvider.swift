@@ -146,6 +146,21 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         return Shared.Core.ToolError.invalidArgument(paramName, message)
     }
 
+    /// #1283 — actionable error frame for the sample-code tools
+    /// (`list_samples`, `read_sample`, `read_sample_file`) and the
+    /// `source: samples` search path when the samples database is not
+    /// installed. Mirrors `searchIndexUnavailableError`: an AI agent or CLI
+    /// caller reading the frame sees both remediation paths (download a
+    /// prebuilt bundle, or build the source locally) rather than a dead-end
+    /// "not available" with no next step.
+    private func sampleDatabaseUnavailableError(_ paramName: String) -> Shared.Core.ToolError {
+        Shared.Core.ToolError.invalidArgument(
+            paramName,
+            "Sample code database not available. Run `cupertino setup` to download it, "
+                + "or `cupertino save --source samples` to build it."
+        )
+    }
+
     // The two-argument convenience init that constructed concrete
     // service actors from the index seams moved to the
     // SearchToolProviderTests target (`CompositeToolProvider+ServicesWiring.swift`).
@@ -983,7 +998,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         minVisionOS: String? = nil
     ) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let sampleService else {
-            throw Shared.Core.ToolError.invalidArgument("source", "Sample code database not available")
+            throw sampleDatabaseUnavailableError("source")
         }
 
         // #732 — pass the 5-field shape natively into `Sample.Search.Query`.
@@ -1504,7 +1519,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     private func handleListSamples(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let sampleDatabase else {
-            throw Shared.Core.ToolError.invalidArgument("database", "Sample code database not available")
+            throw sampleDatabaseUnavailableError("database")
         }
 
         let framework = args.optional(Shared.Constants.Search.schemaParamFramework)
@@ -1555,7 +1570,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     private func handleReadSample(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let sampleDatabase else {
-            throw Shared.Core.ToolError.invalidArgument("database", "Sample code database not available")
+            throw sampleDatabaseUnavailableError("database")
         }
 
         let projectId: String = try args.require(Shared.Constants.Search.schemaParamProjectId)
@@ -1613,7 +1628,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
 
     private func handleReadSampleFile(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let sampleDatabase else {
-            throw Shared.Core.ToolError.invalidArgument("database", "Sample code database not available")
+            throw sampleDatabaseUnavailableError("database")
         }
 
         let projectId: String = try args.require(Shared.Constants.Search.schemaParamProjectId)
