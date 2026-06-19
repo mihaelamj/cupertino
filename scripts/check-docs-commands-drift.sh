@@ -41,7 +41,7 @@ fi
 # subcommand list (see Packages/Sources/CLI/CupertinoMain.swift).
 COMMANDS=(
     setup fetch save serve search read
-    list-frameworks list-documents list-children list-samples
+    list-frameworks list-documents list-children list-sources list-samples
     read-sample read-sample-file
     doctor cleanup resolve-refs inheritance
     package-search   # hidden

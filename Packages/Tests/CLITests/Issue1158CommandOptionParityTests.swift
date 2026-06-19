@@ -40,6 +40,7 @@ struct Issue1158CommandOptionParityTests {
         CLIImpl.Command.ListFrameworks.self,
         CLIImpl.Command.ListDocuments.self,
         CLIImpl.Command.ListChildren.self,
+        CLIImpl.Command.ListSources.self,
         CLIImpl.Command.ListSamples.self,
         CLIImpl.Command.ReadSample.self,
         CLIImpl.Command.ReadSampleFile.self,

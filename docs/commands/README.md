@@ -21,6 +21,7 @@ CLI commands for the Cupertino documentation server.
 | [list-frameworks](list-frameworks/) | List available frameworks with document counts |
 | [list-documents](list-documents/) | List paged documents in an indexed framework |
 | [list-children](list-children/) | List direct children of a document or topic group |
+| [list-sources](list-sources/) | List the installed per-source databases and their schema versions |
 | [inheritance](inheritance/) | Walk class inheritance chains for Apple class-based APIs |
 | [list-samples](list-samples/) | List indexed Apple sample code projects |
 | [read-sample](read-sample/) | Read a sample project's README and metadata |

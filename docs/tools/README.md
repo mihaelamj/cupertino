@@ -14,6 +14,7 @@ For desktop/native clients, these MCP tools are the backend contract. UI layers 
 | [list_frameworks](list_frameworks/) | List available frameworks with document counts |
 | [list_documents](list_documents/) | List paged documents in a framework |
 | [list_children](list_children/) | List direct children of a document or topic group |
+| [list_sources](list_sources/) | List the installed per-source databases (presence + schema version); reports the canonical source set even when databases are missing, so clients can guide setup |
 | [read_document](read_document/) | Read a document by URI in JSON or Markdown format |
 
 ### Sample Code Tools (requires `cupertino save --source samples`)
