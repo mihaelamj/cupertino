@@ -24,20 +24,19 @@ extension Logging {
         public static let mcp = Category(rawValue: "mcp")
         public static let search = Category(rawValue: "search")
         public static let cli = Category(rawValue: "cli")
-        public static let transport = Category(rawValue: "transport")
         public static let evolution = Category(rawValue: "evolution")
         public static let samples = Category(rawValue: "samples")
         public static let packages = Category(rawValue: "packages")
         public static let archive = Category(rawValue: "archive")
         public static let hig = Category(rawValue: "hig")
 
-        /// The 10 production categories. Test stubs + LoggingModels'
+        /// The 9 production categories. Test stubs + LoggingModels'
         /// own canonical-cases test iterate this list; new sources can
         /// register categories outside the list and they route through
         /// `LiveRecording.mapCategory`'s dict-based dispatch via raw
         /// values.
         public static let allKnownCases: [Category] = [
-            .crawler, .mcp, .search, .cli, .transport,
+            .crawler, .mcp, .search, .cli,
             .evolution, .samples, .packages, .archive, .hig,
         ]
 

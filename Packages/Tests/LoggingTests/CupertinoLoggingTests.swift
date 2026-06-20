@@ -16,7 +16,11 @@ func loggerConfiguration() {
         let raw = category.rawValue == "packages" ? "package-downloader" : category.rawValue
         _ = Logging.Logger.osLogger(for: raw)
     }
-    #expect(Bool(true))
+    // #1163 item 3: pin the subsystem identifier. `Logging.Logger.subsystem`
+    // aliases `Shared.Constants.Logging.subsystem`, so this catches a change
+    // to the shared constant that would silently move every log record to a
+    // new subsystem and break operator `log show --predicate` playbooks.
+    #expect(Logging.Logger.subsystem == "com.cupertino.cli")
 }
 
 @Test("LiveRecording outputs messages without crashing (replaces ConsoleLogger smoke test)")

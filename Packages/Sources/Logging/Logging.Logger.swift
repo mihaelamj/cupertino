@@ -33,7 +33,7 @@ extension Logging {
         /// separable from the production binary's traffic).
         public static let osLoggers: [String: os.Logger] = {
             let categories = [
-                "crawler", "mcp", "search", "cli", "transport",
+                "crawler", "mcp", "search", "cli",
                 "evolution", "samples", "package-downloader", "archive", "hig",
             ]
             var dict: [String: os.Logger] = [:]
@@ -45,7 +45,7 @@ extension Logging {
 
         /// Look up the os.Logger for `category`. Unknown categories
         /// (a future source registering its own rawValue outside the
-        /// 10 shipped) fall through to the `.cli` bucket — the safe
+        /// 9 shipped) fall through to the `.cli` bucket — the safe
         /// default for "general CLI output" instead of crashing.
         ///
         /// Internal categories that don't have a direct
