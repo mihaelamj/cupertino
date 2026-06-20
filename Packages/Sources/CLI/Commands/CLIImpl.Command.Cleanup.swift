@@ -100,6 +100,25 @@ extension CLIImpl.Command {
                 Cupertino.Context.composition.logging.recording.output("")
             }
 
+            // #657: park any invalid `.zip` (HTML landing pages / partial
+            // CDN bodies saved as .zip) BEFORE the cleaner's extract pass,
+            // so an already-landed bad archive is removed from the corpus
+            // instead of crashing recompress and lingering. Shares the
+            // downloader's / doctor's `ZipMagic.isValid` check.
+            let quarantined = CLIImpl.quarantineInvalidSampleArchives(in: directory, dryRun: dryRun)
+            if !quarantined.isEmpty {
+                let recording = Cupertino.Context.composition.logging.recording
+                let verb = dryRun ? "Would quarantine" : "Quarantined"
+                recording.output("   🧪 \(verb) \(quarantined.count) invalid archive(s) (parked as .invalid):")
+                for archive in quarantined.prefix(5) {
+                    recording.output("      - \(archive.original.lastPathComponent)")
+                }
+                if quarantined.count > 5 {
+                    recording.output("      - … and \(quarantined.count - 5) more")
+                }
+                recording.output("")
+            }
+
             let cleaner = Sample.Cleanup.Cleaner(
                 sampleCodeDirectory: directory,
                 dryRun: dryRun,
