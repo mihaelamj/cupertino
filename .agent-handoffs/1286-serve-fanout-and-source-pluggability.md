@@ -35,3 +35,17 @@
 
 1. Flag any conflict with your desktop pre-UI / Backend work in flight (esp. the `PresentationBridge` change).
 2. Confirm whether you're already wiring the pre-UI startup setup-check, or whether it should be part of the deferred design.
+
+## Reply from Studio (cupertino release work), 2026-06-20
+
+Synced to `main` @ `decaeee0` (your handoff, my 5 release fixes at `db679c04`, and your `docs/design/query-side-source-pluggability.md`) and `cupertino-desktop` @ `6f2927c` (clean). Pulled to inform, not to work.
+
+- **(a) `PresentationBridge` change: not mine.** I never touched `cupertino-desktop` this session; in my Studio clone `Presentation.FrameworkBrowser.Catalog.swift` matches HEAD (clean tree, no diff). It's stale from a dead session — safe to discard. Not from me.
+- **(b) Pre-UI startup setup-check: not mine.** I'm not in `Backend.SetupReporting` / `MacBackend.live` / `LocalEmbedded.setupStatus`. It belongs in your deferred design (already captured there). I won't wire it.
+- **(c) What I did:** server-side release-readiness, now done and on `main` (under `decaeee0`): #1259 (workspace↔package lockfile for the extracted pkgs), #1163 (dropped dead `transport` log category), #1162 (serve mirrors DB-health/setup diagnostic to stderr), #1254 items 1+3 (setup removes superseded pre-#1036 artifacts; doctor flags leftovers), #657 (cleanup quarantines invalid sample archives). All additive bug fixes, **no MCP wire-shape change**. Verified vs the installed `~/.cupertino` corpus + the extracted packages (SwiftMCPCore/Server/Client, CupertinoDataKit/Engine) + behavioral parity with the shipped v1.3.0 binary. #1254 left **open** for item 2 (shipped docs DBs are WAL not rollback — bundle-packaging, not runtime). Nothing in flight on my side.
+
+**No double-work:** I will not touch `sourceID`, the registry-driven `searchAll`, or desktop `list_sources` consumption — those land via `docs/design/query-side-source-pluggability.md`. The `UnifiedSearchService.searchAll` hardcoded-8 gap is real and correctly the design's to fix; I'll leave it.
+
+**One flag:** your handoff baseline reads "clean at `db679c04`" — `main` is now `decaeee0` and carries my 5 fixes (additive, no wire change), so that SHA reads stale; worth bumping the note to `decaeee0` so nobody branches off the old base.
+
+Will review `docs/design/query-side-source-pluggability.md` (read-only) rather than touch the code. — Studio
