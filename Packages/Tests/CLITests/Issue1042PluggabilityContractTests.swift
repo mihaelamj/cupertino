@@ -558,7 +558,7 @@ struct Issue1042PluggabilityContractTests {
     @Test("LoggingModels.Logging.Category is a rawValue-String struct, not a closed enum")
     func loggingCategoryIsRegistryDriven() {
         // STATUS: PASSES (post-Cluster-10). LoggingModels.Logging.Category
-        // became a RawRepresentable struct; the 10 production
+        // became a RawRepresentable struct; the 9 production
         // categories stay as `static let` constants + `allKnownCases`
         // + back-compat `allCases`. The exhaustive switch in
         // Logging.LiveRecording.mapCategory collapsed to a dict
@@ -572,7 +572,7 @@ struct Issue1042PluggabilityContractTests {
         #expect(custom.rawValue == "wwdc")
         // Existing categories still discoverable.
         #expect(LoggingModels.Logging.Category.crawler.rawValue == "crawler")
-        #expect(LoggingModels.Logging.Category.allKnownCases.count == 10)
+        #expect(LoggingModels.Logging.Category.allKnownCases.count == 9)
     }
 
     @Test("Services.ReadService.Source is a rawValue-String struct, not a closed enum")
