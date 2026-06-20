@@ -12,8 +12,15 @@ import Testing
 struct Issue1277ListSourcesToolTests {
     private func makeInventory() -> Search.SourceInventory {
         Search.SourceInventory(sources: [
-            .init(id: "apple-documentation", displayName: "Apple Developer Documentation", filename: "apple-documentation.db", present: true, schemaVersion: 18),
-            .init(id: "packages", displayName: "Swift Packages", filename: "packages.db", present: false, schemaVersion: 0),
+            .init(
+                id: "apple-documentation",
+                sourceID: "apple-docs",
+                displayName: "Apple Developer Documentation",
+                filename: "apple-documentation.db",
+                present: true,
+                schemaVersion: 18
+            ),
+            .init(id: "packages", sourceID: "packages", displayName: "Swift Packages", filename: "packages.db", present: false, schemaVersion: 0),
         ])
     }
 
@@ -55,6 +62,8 @@ struct Issue1277ListSourcesToolTests {
         #expect(decoded.expected == 2)
         #expect(decoded.installed == 1)
         #expect(decoded.sources.map(\.id) == ["apple-documentation", "packages"])
+        // The routing sourceID round-trips through the MCP JSON (the pluggability enabler).
+        #expect(decoded.sources.map(\.sourceID) == ["apple-docs", "packages"])
         #expect(decoded.sources.first?.schemaVersion == 18)
     }
 }

@@ -20,6 +20,21 @@ struct SourceInventoryDerivationTests {
         #expect(inventory.sources.map(\.filename) == descriptors.map(\.filename))
     }
 
+    @Test("each row carries its routing sourceID (the descriptor→source enabler for #1223 pluggability)")
+    func rowsCarryRoutingSourceID() {
+        let inventory = CLIImpl.activeSourceInventory()
+        // Every row has a non-empty routing id.
+        #expect(inventory.sources.allSatisfy { !$0.sourceID.isEmpty })
+        // The apple-docs source's routing id is the SourcePrefix (`apple-docs`), distinct from
+        // its database/descriptor id (`apple-documentation`); this is what lets a consumer map
+        // a source without hardcoding a descriptor↔source table.
+        let appleDocs = inventory.sources.first { $0.id == Shared.Models.DatabaseDescriptor.appleDocumentation.id }
+        #expect(appleDocs?.sourceID == Shared.Constants.SourcePrefix.appleDocs)
+        // For most sources the two coincide (hig, packages, …); the field is always populated.
+        let hig = inventory.sources.first { $0.id == Shared.Models.DatabaseDescriptor.hig.id }
+        #expect(hig?.sourceID == Shared.Constants.SourcePrefix.hig)
+    }
+
     @Test("the legacy unified search.db is never an active source")
     func legacySearchIsExcluded() {
         let inventory = CLIImpl.activeSourceInventory()

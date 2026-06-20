@@ -15,7 +15,11 @@ extension CLIImpl {
     /// the Search.Index FTS track), matching how `doctor` reads it.
     static func activeSourceInventory(paths: Shared.Paths = .live()) -> Search.SourceInventory {
         let samplesID = Shared.Models.DatabaseDescriptor.appleSampleCode.id
-        let items = bundleRequiredDescriptors().map { descriptor -> Search.SourceInventoryItem in
+        // Iterate the registry's providers (not just their `destinationDB` descriptors) so each
+        // row carries its routing `sourceID` (`provider.definition.id`) alongside the descriptor
+        // id — the additive enabler that lets a consumer map a source without hardcoding.
+        let items = makeProductionSourceRegistry().allEnabled.map { provider -> Search.SourceInventoryItem in
+            let descriptor = provider.destinationDB
             let url = paths.baseDirectory.appendingPathComponent(descriptor.filename)
             let present = FileManager.default.fileExists(atPath: url.path)
             let version: Int32 = descriptor.id == samplesID
@@ -23,6 +27,7 @@ extension CLIImpl {
                 : (Diagnostics.Probes.userVersion(at: url) ?? 0)
             return Search.SourceInventoryItem(
                 id: descriptor.id,
+                sourceID: provider.definition.id,
                 displayName: descriptor.displayName,
                 filename: descriptor.filename,
                 present: present,

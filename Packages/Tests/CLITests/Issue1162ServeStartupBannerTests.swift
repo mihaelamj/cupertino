@@ -15,6 +15,7 @@ struct Issue1162ServeStartupBannerTests {
     private func item(_ id: String, present: Bool, schema: Int = 18) -> Search.SourceInventoryItem {
         Search.SourceInventoryItem(
             id: id,
+            sourceID: id,
             displayName: id.capitalized,
             filename: "\(id).db",
             present: present,

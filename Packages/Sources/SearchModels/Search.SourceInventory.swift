@@ -6,8 +6,18 @@ extension Search {
     /// tool so clients (cupertino-desktop#92/#98) can detect a missing or partial corpus and
     /// guide setup, instead of scanning the filesystem and hardcoding filenames.
     public struct SourceInventoryItem: Codable, Equatable, Sendable {
-        /// The source/database id (e.g. `apple-documentation`, `swift-evolution`).
+        /// The database/descriptor id (e.g. `apple-documentation`, `swift-evolution`); the
+        /// on-disk identity, matching the filename stem.
         public let id: String
+        /// The routing/source id used to scope queries (`source:` in `search`,
+        /// `list_documents`, `list_children`), e.g. `apple-docs` for the `apple-documentation`
+        /// database. This is the source's `SourceDefinition.id`; a consumer maps it to its own
+        /// source model without hardcoding a descriptor-id ↔ source-id table. Equals `id` for
+        /// every source except apple-docs (`apple-docs` vs `apple-documentation`) and sample
+        /// code (`samples` vs `apple-sample-code`). Additive field (since v1.3.x); older clients
+        /// ignore it. Foundational enabler for the deferred query-side pluggability work
+        /// (`docs/design/query-side-source-pluggability.md`).
+        public let sourceID: String
         /// Human-readable name (e.g. `Apple Developer Documentation`).
         public let displayName: String
         /// The on-disk database filename (e.g. `apple-documentation.db`).
@@ -17,8 +27,9 @@ extension Search {
         /// The schema version read from the database (`0` when absent or unreadable).
         public let schemaVersion: Int
 
-        public init(id: String, displayName: String, filename: String, present: Bool, schemaVersion: Int) {
+        public init(id: String, sourceID: String, displayName: String, filename: String, present: Bool, schemaVersion: Int) {
             self.id = id
+            self.sourceID = sourceID
             self.displayName = displayName
             self.filename = filename
             self.present = present
