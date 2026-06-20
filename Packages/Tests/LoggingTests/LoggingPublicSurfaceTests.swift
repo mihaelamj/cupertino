@@ -47,7 +47,7 @@ struct LoggingPublicSurfaceTests {
         _ = Logging.LiveRecording.self
     }
 
-    // MARK: All 10 logger categories
+    // MARK: All 9 logger categories
 
     @Test("All Logging.Logger.<category> os.Logger lookups are reachable")
     func allLoggerCategories() {
@@ -108,7 +108,7 @@ struct LoggingPublicSurfaceTests {
         let allRaws = Logging.Unified.Category.allKnownCases.map(\.rawValue)
         #expect(allRaws.sorted() == [
             "archive", "cli", "crawler", "evolution", "hig", "mcp",
-            "packages", "samples", "search", "transport",
+            "packages", "samples", "search",
         ])
     }
 

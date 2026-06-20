@@ -54,7 +54,7 @@ struct LoggingCategoryTests {
     func canonicalCases() {
         let values = Set(Logging.Category.allCases.map(\.rawValue))
         #expect(values == [
-            "crawler", "mcp", "search", "cli", "transport",
+            "crawler", "mcp", "search", "cli",
             "evolution", "samples", "packages", "archive", "hig",
         ])
     }
