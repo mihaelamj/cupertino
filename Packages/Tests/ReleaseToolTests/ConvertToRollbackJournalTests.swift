@@ -52,6 +52,50 @@ struct ConvertToRollbackJournalTests {
         #expect(!FileManager.default.fileExists(atPath: dbURL.path + "-shm"))
     }
 
+    /// End-to-end guard (#1254 item 2): every database the release ships must end
+    /// in rollback journal mode and open read-only with no `-shm`. This runs the
+    /// exact two release-prep steps `Release.Command.Database.run()` applies
+    /// (`checkpointTruncate` then `convertToRollbackJournal`) over the FULL
+    /// registry-derived bundle set (`bundledDescriptors()`), not a single DB — so
+    /// a source added to the registry is covered automatically, and a regression
+    /// that shipped any bundled DB in WAL mode (the #1254-item-2 failure: a
+    /// freshly-extracted WAL DB with no `-shm` fails every read-only open) is
+    /// caught here rather than in a shipped bundle. The conversion + the zip use
+    /// the same `present` list in `run()`, so "every converted DB is bundled" holds
+    /// by construction; this pins "every bundled DB converts cleanly".
+    @Test("every bundled DB (full registry set) ships rollback + opens read-only with no -shm")
+    func everyBundledDatabaseShipsRollback() throws {
+        let descriptors = Release.Command.Database.bundledDescriptors()
+        // The bundle is the canonical per-source set (8 today); the loop covers
+        // whatever the registry declares, so a new source is guarded automatically.
+        #expect(descriptors.count >= 8, "expected at least the canonical 8 per-source DBs, got \(descriptors.count)")
+
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rel-bundle-1254-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        for descriptor in descriptors {
+            let dbURL = dir.appendingPathComponent(descriptor.filename)
+            // Indexer shape: a WAL-mode DB (the close-time checkpoint may fold the
+            // WAL, so the prep's checkpoint is exercised either way).
+            try buildWALDatabase(at: dbURL)
+
+            // The exact release-prep sequence from Release.Command.Database.run().
+            _ = try Release.Publishing.checkpointTruncate(at: dbURL)
+            let mode = try Release.Publishing.convertToRollbackJournal(at: dbURL)
+
+            #expect(mode == "delete", "\(descriptor.filename) is not rollback after release prep")
+            #expect(try headerJournalBytes(at: dbURL) == (1, 1), "\(descriptor.filename) header is not rollback mode")
+            #expect(!FileManager.default.fileExists(atPath: dbURL.path + "-wal"), "\(descriptor.filename) still has a -wal sidecar")
+            #expect(!FileManager.default.fileExists(atPath: dbURL.path + "-shm"), "\(descriptor.filename) still has a -shm sidecar")
+            // The shipped artifact must be queryable through a plain read-only open
+            // (no -shm), and the read must not create one.
+            #expect(canQueryReadOnly(at: dbURL), "\(descriptor.filename) cannot be queried read-only with no -shm")
+            #expect(!FileManager.default.fileExists(atPath: dbURL.path + "-shm"), "\(descriptor.filename) read-only query created a -shm")
+        }
+    }
+
     // MARK: - Fixture helpers
 
     /// Build a WAL-mode DB with a little data and close it (the close-time
