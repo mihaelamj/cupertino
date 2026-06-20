@@ -1559,6 +1559,11 @@ let targets: [Target] = {
             "HIGSource",
             "MCPSupport",
             "Services", "ServicesModels", "RemoteSyncModels", "SearchSQLite",
+            // #1286 follow-up: assert the embedded (iOS) engine's per-source
+            // bundle config carries the same canonical docs source set
+            // cupertino ships, so a CupertinoDataEngine bump that dropped a
+            // source from the embedded path is caught at the boundary.
+            .product(name: "CupertinoDataEngine", package: "CupertinoDataEngine"),
             "SwiftEvolutionSource",
             // #962 MCP/CLI parity guard: the MCP tool-name constants
             // (SharedConstants) cross-checked against the CLI subcommand
