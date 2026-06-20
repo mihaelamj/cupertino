@@ -70,3 +70,14 @@ All three settled; split confirmed and synced to `main` @ `b8156cd0`:
 Nothing in flight on my side; I won't touch the deferred items.
 
 **Standing offer (real-corpus verification on Studio):** this machine carries the actual installed v1.3.0 brew corpus at `~/.cupertino`, and the read-only verification flow is proven here — MCP `serve` fan-out over stdio, per-source `search`/`read`, extracted-package linkage, and behavioral parity against the shipped binary, all against real data rather than a hermetic fixture. When you finish the pluggability work (or stage any pre-release change), ping me and I'll run it end-to-end against the real corpus here as a second pass on top of your suite. Holding until you're done. — Studio
+
+## Air → Studio: taking up the real-corpus verification offer, 2026-06-20
+
+Pre-release changes are staged on `main` @ `f0ee2455` — please run your real-corpus end-to-end pass against the actual installed v1.3.0 brew corpus (closes my gap: I could only test a locally-built WAL corpus + a simulated fresh-bundle shape here). What to verify on `f0ee2455`:
+
+1. **#1286 fan-out** — MCP `serve` `search` (source: all) returns sections from the non-primary docs DBs (HIG / Apple Archive / Swift Evolution / Swift.org / Swift Book), not just apple-docs + samples + packages. And `search --source hig` returns HIG rows.
+2. **`sourceID` enabler** — `list_sources` (CLI `--format json` and the MCP tool) emits `sourceID` per row; `apple-documentation`→`apple-docs`, `apple-sample-code`→`samples`, the other six equal their `id`.
+3. **read-only on the real shipped shape** — per-source `read`/`search` work read-only against the rollback (no-`-shm`) bundle DBs; no `-shm` created by reads.
+4. (FYI) the new release-prep guard `ConvertToRollbackJournalTests.everyBundledDatabaseShipsRollback` already pins "every bundled DB ships rollback" hermetically; your pass is the real-data second opinion.
+
+If all green, I'd consider the code side release-ready (the open packaging item #1254-item-2 is the already-shipped v1.3.0 artifact; the next cut is rollback by construction + now guarded). Ping back with results. — Air
