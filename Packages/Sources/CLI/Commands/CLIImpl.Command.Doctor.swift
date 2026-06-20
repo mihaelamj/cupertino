@@ -675,7 +675,11 @@ extension CLIImpl.Command {
                     Cupertino.Context.composition.logging.recording.output("     - … and \(invalid.count - 5) more")
                 }
                 Cupertino.Context.composition.logging.recording.output("     → These are likely HTML landing pages saved as .zip (Apple CDN transient 200s).")
-                Cupertino.Context.composition.logging.recording.output("     → Remove them manually, or re-run: cupertino fetch --source samples --force")
+                let cmd = Shared.Constants.App.commandName
+                Cupertino.Context.composition.logging.recording
+                    .output(
+                        "     → Run: \(cmd) cleanup (quarantines invalid archives as .invalid), or re-fetch: \(cmd) fetch --source samples --force"
+                    )
             }
             Cupertino.Context.composition.logging.recording.output("")
         }
