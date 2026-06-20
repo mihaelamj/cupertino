@@ -225,6 +225,11 @@ extension CLIImpl.Command {
             let searchIndex: SearchModule.Index? = searchLoadResult.index
             let searchIndexDisabledReason: String? = searchLoadResult.disabledReason
 
+            // #1277 / #1162: the registry-derived active-source inventory,
+            // computed once and reused both for the `list_sources` tool and
+            // the stderr startup health banner below.
+            let sourceInventory = CLIImpl.activeSourceInventory()
+
             // 2026-05-28 (Principle 7): the MCP `resources/{list,read}`
             // path is served PURELY from the per-source SQLite DBs, the
             // same read path the MCP search/read TOOLS use
@@ -382,7 +387,7 @@ extension CLIImpl.Command {
                 // #1277: the registry-derived active-source inventory (presence + schema version),
                 // so the `list_sources` tool can report which per-source databases are installed
                 // and clients can detect a missing/partial corpus and guide setup.
-                sourceInventory: CLIImpl.activeSourceInventory()
+                sourceInventory: sourceInventory
             )
             await server.registerToolProvider(toolProvider)
 
@@ -394,6 +399,21 @@ extension CLIImpl.Command {
             if sampleIndex != nil {
                 let message = "✅ Sample code search enabled (index found)"
                 Cupertino.Context.composition.logging.recording.info(message, category: .mcp)
+            }
+
+            // #1162: mirror the database-health summary + the actionable
+            // "run `cupertino setup`" diagnostic to STDERR. The same lines
+            // already go through `Recording` (os.log), but the console sink
+            // is disabled to keep stdout a clean JSON-RPC channel, so an
+            // operator watching stderr (their server-output panel) never
+            // sees why search returns nothing. stdout is the protocol
+            // channel, not stderr, so this cannot corrupt the stream.
+            for line in CLIImpl.serveDatabaseHealthBanner(
+                inventory: sourceInventory,
+                searchIndexDisabledReason: searchIndexDisabledReason
+            ) {
+                fputs(line + "\n", stderr)
+                Cupertino.Context.composition.logging.recording.info(line, category: .mcp)
             }
         }
 
