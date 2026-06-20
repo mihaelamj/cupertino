@@ -140,6 +140,18 @@ extension Distribution.SetupService {
             throw Distribution.SetupError.missingFile(placement.descriptor.filename)
         }
 
+        // #1254: the per-source bundle is now verified on disk, so the
+        // pre-#1036 artifacts it supersedes (the unified `search.db`, the
+        // old `samples.db`, the `search/` extraction dir, and their SQLite
+        // sidecars) are dead weight — on the reporting machine ~5 GB of it,
+        // with `doctor` already warning about disk pressure. Remove them
+        // now that the replacement is confirmed installed. Non-fatal: a
+        // removal failure is reported on stderr and setup still succeeds.
+        removeSupersededLegacyArtifacts(
+            in: request.baseDir,
+            currentPlacementFilenames: Set(placements.map(\.path.lastPathComponent))
+        )
+
         // Stamp version on success. Non-fatal; the file is an
         // optimization, not correctness — but #673 Phase B surfaces the
         // failure on stderr so a broken stamp (which makes
@@ -282,6 +294,101 @@ extension Distribution.SetupService {
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         let timestamp = formatter.string(from: now)
         return "backup-\(version)-\(timestamp)"
+    }
+
+    // MARK: - #1254 superseded pre-#1036 artifact cleanup
+
+    /// Pre-#1036 artifacts the current per-source bundle supersedes:
+    /// the unified `search.db` (replaced by the 8 per-source docs DBs),
+    /// the old `samples.db` (renamed `apple-sample-code.db` in #1037),
+    /// and the `search/` extraction directory left by intermediate
+    /// layouts. Declarative list so a future renamed/retired artifact is
+    /// a one-line append, not a scatter of `if` checks.
+    static let supersededLegacyArtifactNames = ["search.db", "samples.db", "search"]
+
+    /// The superseded pre-#1036 artifacts that actually exist under
+    /// `baseDir`, including the `-wal` / `-shm` SQLite sidecars of any
+    /// superseded `.db` file. Defensive: an artifact name that is also a
+    /// current per-source placement is never returned, so a live bundle
+    /// DB can never be flagged for removal. Pure (FileManager reads only),
+    /// so it is unit-testable against a temp directory and is shared by
+    /// `cupertino doctor`'s leftover-artifact report.
+    public static func supersededLegacyArtifacts(
+        in baseDir: URL,
+        currentPlacementFilenames: Set<String>
+    ) -> [URL] {
+        let fm = FileManager.default
+        var results: [URL] = []
+        for name in supersededLegacyArtifactNames where !currentPlacementFilenames.contains(name) {
+            let base = baseDir.appendingPathComponent(name)
+            if fm.fileExists(atPath: base.path) {
+                results.append(base)
+            }
+            if name.hasSuffix(".db") {
+                for sidecar in ["-wal", "-shm"] {
+                    let sidecarURL = baseDir.appendingPathComponent(name + sidecar)
+                    if fm.fileExists(atPath: sidecarURL.path) {
+                        results.append(sidecarURL)
+                    }
+                }
+            }
+        }
+        return results
+    }
+
+    /// Remove the superseded pre-#1036 artifacts and report each removal
+    /// (and the reclaimed total) on stderr. Non-fatal: a per-artifact
+    /// failure is reported and skipped; setup still succeeds.
+    private static func removeSupersededLegacyArtifacts(
+        in baseDir: URL,
+        currentPlacementFilenames: Set<String>
+    ) {
+        let artifacts = supersededLegacyArtifacts(
+            in: baseDir,
+            currentPlacementFilenames: currentPlacementFilenames
+        )
+        guard !artifacts.isEmpty else { return }
+
+        let fm = FileManager.default
+        var reclaimed: Int64 = 0
+        for url in artifacts {
+            let bytes = artifactSizeBytes(at: url)
+            do {
+                try fm.removeItem(at: url)
+                reclaimed += bytes
+            } catch {
+                let message = "⚠️  Could not remove superseded artifact " +
+                    "\(url.lastPathComponent): \(error)\n"
+                FileHandle.standardError.write(Data(message.utf8))
+            }
+        }
+
+        let mb = Double(reclaimed) / 1000000
+        let message = String(
+            format: "🧹 Removed %d superseded pre-#1036 artifact(s), reclaiming %.0f MB.\n",
+            artifacts.count,
+            mb
+        )
+        FileHandle.standardError.write(Data(message.utf8))
+    }
+
+    /// Best-effort on-disk size of a file or directory, used only for the
+    /// reclaimed-space report (never for a correctness decision).
+    private static func artifactSizeBytes(at url: URL) -> Int64 {
+        let fm = FileManager.default
+        var isDir: ObjCBool = false
+        guard fm.fileExists(atPath: url.path, isDirectory: &isDir) else { return 0 }
+        if !isDir.boolValue {
+            return (try? fm.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? 0
+        }
+        var total: Int64 = 0
+        if let enumerator = fm.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey]) {
+            for case let fileURL as URL in enumerator {
+                let size = (try? fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                total += Int64(size)
+            }
+        }
+        return total
     }
 
     // MARK: - Inner adapters bridging downloader/extractor Observer
