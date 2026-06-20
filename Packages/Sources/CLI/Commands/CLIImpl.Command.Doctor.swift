@@ -3,6 +3,7 @@ import Core
 import CorePackageIndexing
 import CoreProtocols
 import Diagnostics
+import Distribution
 import DistributionModels
 import Foundation
 import Indexer
@@ -211,6 +212,11 @@ extension CLIImpl.Command {
             // partway through. Always runs (independent of --save / etc.)
             // — disk pressure affects every cupertino operation.
             checkDiskSpace()
+            // #1254: flag pre-#1036 artifacts (the unified search.db, the old
+            // samples.db, the search/ dir) left beside the per-source DBs.
+            // Informational, non-gating: a fresh `setup` now removes them, but
+            // an install that ran before that fix still carries the dead weight.
+            checkLeftoverArtifacts()
 
             // ----- Save-only sections (maintainer-facing) -----------------
             // `--save` is intent-named: "I'm about to crawl / reindex; show
@@ -481,6 +487,32 @@ extension CLIImpl.Command {
         /// Pinned by `Issue673PhaseFDiskPreflightTests` on the probe +
         /// preflight sides; the doctor-side rendering is verified via
         /// the end-to-end binary check in PR #695's live verification.
+        /// #1254: report pre-#1036 artifacts (`search.db`, `samples.db`, the
+        /// `search/` dir, SQLite sidecars) left beside the per-source DBs by an
+        /// install that predates the auto-cleanup in `setup`. Informational and
+        /// non-gating: shares `Distribution.SetupService.supersededLegacyArtifacts`
+        /// with `setup`, so the "removable" set cannot drift from what `setup`
+        /// removes.
+        private func checkLeftoverArtifacts() {
+            let baseDir = Shared.Paths.live().baseDirectory
+            let currentPlacements = Set(CLIImpl.bundleRequiredDescriptors().map(\.filename))
+            let leftovers = Distribution.SetupService.supersededLegacyArtifacts(
+                in: baseDir,
+                currentPlacementFilenames: currentPlacements
+            )
+            guard !leftovers.isEmpty else { return }
+            let recording = Cupertino.Context.composition.logging.recording
+            recording.output("🧹 Leftover pre-#1036 artifacts (safe to remove)")
+            for url in leftovers {
+                recording.output("   • \(url.lastPathComponent)")
+            }
+            let cmd = Shared.Constants.App.commandName
+            recording.output(
+                "   Superseded by the per-source databases. Re-run `\(cmd) setup` to remove them, or delete them manually."
+            )
+            recording.output("")
+        }
+
         private func checkDiskSpace() {
             let target = Shared.Paths.live().baseDirectory
             Cupertino.Context.composition.logging.recording.output("💾 Disk space (#673 Phase F)")
