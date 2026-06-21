@@ -13,7 +13,7 @@ Cupertino is a CLI for human developers and an MCP server for AI agents. Both su
 
 ![Cupertino Demo](docs/images/cupertino.gif)
 
-> **Latest: v1.3.0** (2026-05-31): per-source database bundle, read-only databases. The Apple documentation slice carries **351,505 documents / 240,543 symbols across 420+ frameworks**, alongside the HIG, archive, Swift Evolution, Swift.org, Swift Book, package, and sample-code DBs. [Release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.3.0) · [CHANGELOG](CHANGELOG.md) · [Roadmap](#roadmap) · live dashboard at <https://cupertino.aleahim.com/>. Follow updates on X: [@cupertinomcp](https://x.com/cupertinomcp).
+> **Latest: v1.4.0** (2026-06-21): refreshed database bundle. A full re-crawl + clean rebuild grew the Apple documentation slice to **363,562 documents / 308,118 symbols across 417 frameworks**, now including post-WWDC26 iOS 27 content, alongside the HIG, archive, Swift Evolution, Swift.org, Swift Book, package, and sample-code DBs (8 per-source databases, read-only rollback mode). [Release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.4.0) · [CHANGELOG](CHANGELOG.md) · [Roadmap](#roadmap) · live dashboard at <https://cupertino.aleahim.com/>. Follow updates on X: [@cupertinomcp](https://x.com/cupertinomcp).
 
 > If Cupertino is useful to your work with Apple docs or AI agents, consider [sponsoring its development](https://github.com/sponsors/mihaelamj). Sponsorship helps keep releases, documentation, and the Apple/Linux tooling around it moving.
 
@@ -25,7 +25,7 @@ Cupertino is a local, structured documentation system for Apple platforms. It:
 - **Indexes** everything into fast, searchable SQLite FTS5 databases with field-weighted BM25 (BM25F) ranking and AST-extracted symbol columns
 - **Runs** as a terminal CLI for developers who want fast local `search`, `read`, `doctor`, and `setup` commands
 - **Serves** the same corpus to AI agents like Claude, ChatGPT, Codex, Cursor, and Copilot via the Model Context Protocol
-- **Provides** offline access to 351,505 Apple documentation pages / 240,543 Apple-doc symbols across 420+ frameworks, plus the HIG, archive, Swift Evolution, Swift.org, Swift Book, package, and sample-code slices (v1.3.0 bundle)
+- **Provides** offline access to 363,562 Apple documentation pages / 308,118 Apple-doc symbols across 417 frameworks, plus the HIG, archive, Swift Evolution, Swift.org, Swift Book, package, and sample-code slices (v1.4.0 bundle)
 
 Why build this:
 
@@ -37,7 +37,7 @@ Why build this:
 
 ## Installation
 
-Requires **macOS 15+ (Sequoia)** and ~4.2 GB free disk for the full v1.3.0 bundle (compressed download ~742 MB). Building from source additionally needs Swift 6.3+ and Xcode 26+ (use `xcrun swift build`, not bare `swift`).
+Requires **macOS 15+ (Sequoia)** and ~4.2 GB free disk for the full v1.4.0 bundle (compressed download ~876 MB). Building from source additionally needs Swift 6.3+ and Xcode 26+ (use `xcrun swift build`, not bare `swift`).
 
 **Homebrew (recommended):** installs the signed, notarized universal binary and lets you upgrade or uninstall it with `brew`:
 
@@ -132,17 +132,17 @@ Claude Desktop, OpenAI Codex, Cursor, VS Code (Copilot), GitHub Copilot for Xcod
 | Accelerate | 9,114 |
 | SwiftUI | 7,062 |
 | ... | ... |
-| **420+ frameworks** | **351,505** |
+| **417 frameworks** | **363,562** |
 
 ## Core features
 
 ### Multi-source documentation
 
-- **Apple Developer Documentation** (~351,505 indexed pages): JavaScript-aware rendering via WKWebView, HTML-to-Markdown conversion, smart change detection
+- **Apple Developer Documentation** (~363,562 indexed pages): JavaScript-aware rendering via WKWebView, HTML-to-Markdown conversion, smart change detection
 - **Swift Evolution** (~429 proposals) and **Swift.org** (~501 pages): GitHub- and site-based fetching in Markdown
 - **Swift package metadata**: `packages.db` ships 185 packages with full source, stars, licenses, deployment-target platforms, and authored `swift-tools-version`
 - **Apple Sample Code** (619 projects, 18,000+ indexed Swift files): fetched from Apple's CDN or the GitHub mirror, full-text searchable
-- **Apple Archive legacy guides** (~368 pages in v1.3.0): pre-2016 conceptual docs (Core Animation, Quartz 2D, Core Text); included in default fan-out with a lower rank weight, or searchable alone with `--source apple-archive`
+- **Apple Archive legacy guides** (~368 pages in v1.4.0): pre-2016 conceptual docs (Core Animation, Quartz 2D, Core Text); included in default fan-out with a lower rank weight, or searchable alone with `--source apple-archive`
 - **Human Interface Guidelines**: Apple's design guidelines across iOS, macOS, watchOS, visionOS, and tvOS
 
 ### Full-text search engines
@@ -199,7 +199,7 @@ flowchart LR
   Fetch["Fetch<br/>cupertino fetch --source apple-docs"]
   Raw["Raw corpus<br/>DocC render JSON, Markdown,<br/>sample archives, package sources"]
   Save["Save<br/>cupertino save --all"]
-  Bundle["v1.3.0 catalog bundle<br/>apple-documentation.db · hig.db · apple-archive.db<br/>swift-evolution.db · swift-org.db · swift-book.db<br/>apple-sample-code.db · packages.db"]
+  Bundle["v1.4.0 catalog bundle<br/>apple-documentation.db · hig.db · apple-archive.db<br/>swift-evolution.db · swift-org.db · swift-book.db<br/>apple-sample-code.db · packages.db"]
   Services["Read services<br/>search · read · list · semantic tools"]
   CLI["Terminal CLI<br/>human-readable text / JSON / markdown"]
   MCP["MCP server<br/>typed tool responses over stdio"]
@@ -330,13 +330,13 @@ flowchart TD
 
 | Operation | Time | Size |
 |---|---|---|
-| `cupertino setup` (download pre-built bundle) | ~30 s | ~742 MB download, ~4.2 GB on disk |
+| `cupertino setup` (download pre-built bundle) | ~30 s | ~876 MB download, ~4.2 GB on disk |
 | Build CLI | 10–15 s | 4.3 MB |
 | Search query | <100 ms | n/a |
 | Swift Evolution fetch | 2–5 min | 429 proposals |
 | Swift.org fetch | 5–10 min | 501 pages |
 | Build the full index from local JSON (`cupertino save --all`) | ~12 h | ~2.8 GB `apple-documentation.db` + per-source siblings |
-| Full crawl of Apple docs from source (`cupertino fetch`) | ~12 days | ~404,000 raw pages → 351,505 indexed |
+| Full crawl of Apple docs from source (`cupertino fetch`) | ~12 days | ~404,000 raw pages → 363,562 indexed |
 
 The full crawl is slow by design: with the 0.05 s default delay, ~404,000 pages cost ~5.6 hours in delay *alone*, and WKWebView rendering, parsing, and saving per page dominate the rest, pushing wall-clock to ~12 days at depth 21+. This is a one-time operation, and incremental updates skip unchanged pages. Almost everyone should run `cupertino setup` instead and get the same corpus in seconds.
 
@@ -381,7 +381,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full build, test, and release wor
 
 ## Project status
 
-**Released: v1.3.0** (2026-05-31): the per-source database bundle + read-only databases release. The unified `search.db` is split into 8 per-source databases shipped in rollback journal mode, so each opens read-only without an `-shm` sidecar and no query / read / serve connection can write or delete rows ([#1194](https://github.com/mihaelamj/cupertino/issues/1194)). `databaseVersion` is `1.3.0`; `cupertino setup` downloads `cupertino-databases-v1.3.0.zip` (742 MB) carrying 351,505 documents / 240,543 symbols in `apple-documentation.db` (2.8 GB, `user_version` 18), plus `packages.db` (1.09 GB, 185 packages), `apple-sample-code.db` (192 MB), and the HIG / archive / evolution / org / book databases.
+**Released: v1.4.0** (2026-06-21): a refreshed database bundle. A full re-crawl + clean rebuild grew the Apple documentation slice to 363,562 documents / 308,118 symbols (417 frameworks) and added post-WWDC26 iOS 27 content; the placeholder-stub rot is gone (every docs database now has a `docs_structured == docs_fts` population ratio of 1.000). The 8 per-source databases (introduced in v1.3.0) ship in rollback journal mode, so each opens read-only without an `-shm` sidecar and no query / read / serve connection can write or delete rows ([#1194](https://github.com/mihaelamj/cupertino/issues/1194)). `databaseVersion` is `1.4.0`; `cupertino setup` downloads `cupertino-databases-v1.4.0.zip` (876 MB) carrying 363,562 documents / 308,118 symbols in `apple-documentation.db` (2.7 GB, `user_version` 18), plus `packages.db` (1.2 GB, 185 packages), `apple-sample-code.db` (189 MB), and the HIG / archive / evolution / org / book databases.
 
 **Previously:** v1.2.1 (2026-05-23, maintenance + [Source Independence Day](https://github.com/mihaelamj/cupertino/issues/919)), v1.2.0 "ironclad" (2026-05-20, search-quality release: rank-1 accuracy on canonical-lookup queries 52% → 92%), v1.1.0 (2026-05-14), v1.0.2 (2026-05-11). Full history in [CHANGELOG.md](CHANGELOG.md).
 
