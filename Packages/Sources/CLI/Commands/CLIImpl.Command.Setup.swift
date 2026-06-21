@@ -27,6 +27,14 @@ extension CLIImpl.Command {
         @Flag(name: .long, help: "Skip the download and keep whatever databases are already installed")
         var keepExisting: Bool = false
 
+        /// #885: `--force` was removed from `setup` in v1.2.0 (setup now
+        /// overwrites by default). The flag is kept only as a hidden parse
+        /// target so `validate()` can replace the bare "Unknown option
+        /// '--force'" argument-parser error with an actionable migration hint.
+        /// Hidden, so it never appears in `--help`.
+        @Flag(name: .long, help: .hidden)
+        var force: Bool = false
+
         /// Closure-free observer that forwards every
         /// `Distribution.SetupService.Event` to the `SetupRenderer`'s
         /// `handle(_:)` dispatcher. Replaces the previous trailing-closure
@@ -36,6 +44,19 @@ extension CLIImpl.Command {
 
             func observe(event: Distribution.SetupService.Event) {
                 renderer.handle(event)
+            }
+        }
+
+        // #885: intercept the removed `--force` flag at parse time with an
+        // actionable migration hint instead of the generic "Unknown option"
+        // error. ArgumentParser runs `validate()` before `run()`, so this
+        // exits cleanly (usage error) without entering the download pipeline.
+        func validate() throws {
+            if force {
+                throw ValidationError(
+                    "--force was removed in v1.2.0. `cupertino setup` overwrites installed "
+                        + "databases by default; pass --keep-existing to preserve them instead."
+                )
             }
         }
 
