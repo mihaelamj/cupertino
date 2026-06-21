@@ -52,12 +52,6 @@ extension CLIImpl.Command {
             """
         )
 
-        @Option(name: .long, help: ArgumentHelp(Shared.Constants.HelpText.docsDir))
-        var docsDir: String = Shared.Paths.live().docsDirectory.path
-
-        @Option(name: .long, help: ArgumentHelp(Shared.Constants.HelpText.evolutionDir))
-        var evolutionDir: String = Shared.Paths.live().swiftEvolutionDirectory.path
-
         @Flag(
             name: .long,
             help: """
@@ -595,19 +589,20 @@ extension CLIImpl.Command {
         private func checkDocumentationDirectories() -> Bool {
             let paths = Shared.Paths.live()
             let registry = CLIImpl.makeProductionSourceRegistry()
-            let cliDocsURL = URL(fileURLWithPath: docsDir).expandingTildeInPath
-            let cliEvolutionURL = URL(fileURLWithPath: evolutionDir).expandingTildeInPath
 
             Cupertino.Context.composition.logging.recording.output("📂 Raw corpus directories (input for `cupertino save`)")
 
+            // Every source resolves its corpus directory uniformly from the
+            // registry default (#1209). Doctor is a health command, so the
+            // partial `--docs-dir` / `--evolution-dir` overrides (2 of 6
+            // sources) carried no real value and were a per-source `switch`
+            // that a new source would have had to extend. Any future override
+            // must be derived generically from the registry, not re-introduce
+            // a per-source case.
             let entries: [CorpusEntry] = registry.allEnabled.compactMap { provider in
                 guard provider.isSearchTier, let info = provider.fetchInfo else { return nil }
                 let dirKey = info.defaultOutputDirKey.rawValue
-                let url: URL = switch info.sourceID {
-                case Shared.Constants.SourcePrefix.appleDocs: cliDocsURL
-                case Shared.Constants.SourcePrefix.swiftEvolution: cliEvolutionURL
-                default: paths.directory(named: dirKey)
-                }
+                let url = paths.directory(named: dirKey)
                 return CorpusEntry(
                     label: info.displayName,
                     url: url,

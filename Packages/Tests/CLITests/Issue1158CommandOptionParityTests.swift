@@ -406,15 +406,14 @@ struct Issue1158CommandOptionParityTests {
 
     @Test("doctor: every option parses + binds")
     func doctorOptions() throws {
+        // #1209 removed the partial `--docs-dir` / `--evolution-dir` overrides
+        // from doctor; the corpus-directory check now resolves every source's
+        // directory uniformly from the registry default.
         let cmd = try CLIImpl.Command.Doctor.parse([
-            "--docs-dir", "/tmp/docs",
-            "--evolution-dir", "/tmp/evo",
             "--save",
             "--kind-coverage",
             "--freshness",
         ])
-        #expect(cmd.docsDir == "/tmp/docs")
-        #expect(cmd.evolutionDir == "/tmp/evo")
         #expect(cmd.save == true)
         #expect(cmd.kindCoverage == true)
         #expect(cmd.freshness == true)
