@@ -20,8 +20,23 @@ extension MCP.SharedTools {
         /// Apple documentation resource template
         public static let templateAppleDocs = "apple-docs://{framework}/{page}"
 
+        /// Apple archive documentation resource template
+        public static let templateAppleArchive = "apple-archive://{framework}/{page}"
+
         /// Swift Evolution resource template
         public static let templateSwiftEvolution = "swift-evolution://{proposalID}"
+
+        /// Human Interface Guidelines resource template
+        public static let templateHIG = "hig://{page}"
+
+        /// Swift.org resource template
+        public static let templateSwiftOrg = "swift-org://{page}"
+
+        /// Swift Book resource template
+        public static let templateSwiftBook = "swift-book://{page}"
+
+        /// Swift Packages resource template
+        public static let templatePackages = "packages://{owner}/{repo}/{path}"
 
         // MARK: Resource Descriptions
 
@@ -37,9 +52,39 @@ extension MCP.SharedTools {
         /// Apple documentation template description
         public static let appleDocsTemplateDescription = "Access Apple documentation by framework and page name"
 
+        /// Apple archive template name
+        public static let appleArchiveTemplateName = "Apple Archive Documentation Page"
+
+        /// Apple archive template description
+        public static let appleArchiveTemplateDescription = "Access Apple archive documentation by framework and page name"
+
         /// Swift Evolution template description
         public static let swiftEvolutionTemplateDescription =
             "Access Swift Evolution proposals by ID (e.g., SE-0001 or ST-0001)"
+
+        /// HIG template name
+        public static let higTemplateName = "HIG Page"
+
+        /// HIG template description
+        public static let higTemplateDescription = "Access Human Interface Guidelines by page name"
+
+        /// Swift.org template name
+        public static let swiftOrgTemplateName = "Swift.org Page"
+
+        /// Swift.org template description
+        public static let swiftOrgTemplateDescription = "Access Swift.org documentation by page name"
+
+        /// Swift Book template name
+        public static let swiftBookTemplateName = "Swift Book Page"
+
+        /// Swift Book template description
+        public static let swiftBookTemplateDescription = "Access Swift Programming Language Book by page name"
+
+        /// Swift Packages template name
+        public static let packagesTemplateName = "Swift Package Documentation Page"
+
+        /// Swift Packages template description
+        public static let packagesTemplateDescription = "Access Swift package documentation by owner, repository, and path"
 
         // MARK: MIME Types
 

@@ -1,5 +1,5 @@
 {
-  "originHash" : "8bdeb73795afab6e3f81179465e39d9f534c6511bfa814e59280f2d015535aae",
+  "originHash" : "b503f3d4ae4921827a518a4286f4bf69a6d10ed9a378a1151f3633332a46e903",
   "pins" : [
     {
       "identity" : "cupertinodataengine",
@@ -24,8 +24,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-argument-parser",
       "state" : {
-        "revision" : "cdd0ef3755280949551dc26dee5de9ddeda89f54",
-        "version" : "1.6.2"
+        "revision" : "6a52f3251125d74daf04fcbd5e6f08a75d074382",
+        "version" : "1.8.2"
       }
     },
     {
@@ -49,10 +49,10 @@
     {
       "identity" : "swiftmcpcore",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/mihaelamj/SwiftMCPCore.git",
+      "location" : "https://github.com/KartavyaDikshit/SwiftMCPCore.git",
       "state" : {
-        "revision" : "12e02eb7fd3c484f366c7389e5530c8185bf2b77",
-        "version" : "0.1.0"
+        "revision" : "86c0166a384a238f9f73a8395d33ea83cf00599e",
+        "version" : "0.1.1"
       }
     },
     {

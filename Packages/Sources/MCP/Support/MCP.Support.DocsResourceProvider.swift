@@ -201,18 +201,80 @@ extension MCP.Support {
             cursor _: String?
         ) async throws -> MCP.Core.Protocols.ListResourceTemplatesResult? {
             let templates = [
+                // 1. Apple Docs
                 MCP.Core.Protocols.ResourceTemplate(
                     uriTemplate: MCP.SharedTools.Copy.templateAppleDocs,
                     name: MCP.SharedTools.Copy.appleDocsTemplateName,
                     description: MCP.SharedTools.Copy.appleDocsTemplateDescription,
-                    mimeType: MCP.SharedTools.Copy.mimeTypeMarkdown
+                    mimeType: MCP.SharedTools.Copy.mimeTypeMarkdown,
+                    variables: [
+                        MCP.Core.Protocols.ResourceTemplateVariable(name: "framework", description: "The Apple framework name (e.g., SwiftUI)"),
+                        MCP.Core.Protocols.ResourceTemplateVariable(name: "page", description: "The documentation page name")
+                    ]
                 ),
+                // 2. Apple Archive
+                MCP.Core.Protocols.ResourceTemplate(
+                    uriTemplate: MCP.SharedTools.Copy.templateAppleArchive,
+                    name: MCP.SharedTools.Copy.appleArchiveTemplateName,
+                    description: MCP.SharedTools.Copy.appleArchiveTemplateDescription,
+                    mimeType: MCP.SharedTools.Copy.mimeTypeMarkdown,
+                    variables: [
+                        MCP.Core.Protocols.ResourceTemplateVariable(name: "framework", description: "The Apple framework name in the archive"),
+                        MCP.Core.Protocols.ResourceTemplateVariable(name: "page", description: "The documentation page name in the archive")
+                    ]
+                ),
+                // 3. Swift Evolution
                 MCP.Core.Protocols.ResourceTemplate(
                     uriTemplate: MCP.SharedTools.Copy.templateSwiftEvolution,
                     name: MCP.SharedTools.Copy.swiftEvolutionDescription,
                     description: MCP.SharedTools.Copy.swiftEvolutionTemplateDescription,
-                    mimeType: MCP.SharedTools.Copy.mimeTypeMarkdown
+                    mimeType: MCP.SharedTools.Copy.mimeTypeMarkdown,
+                    variables: [
+                        MCP.Core.Protocols.ResourceTemplateVariable(name: "proposalID", description: "The Swift Evolution proposal ID (e.g., SE-0001)")
+                    ]
                 ),
+                // 4. HIG
+                MCP.Core.Protocols.ResourceTemplate(
+                    uriTemplate: MCP.SharedTools.Copy.templateHIG,
+                    name: MCP.SharedTools.Copy.higTemplateName,
+                    description: MCP.SharedTools.Copy.higTemplateDescription,
+                    mimeType: MCP.SharedTools.Copy.mimeTypeMarkdown,
+                    variables: [
+                        MCP.Core.Protocols.ResourceTemplateVariable(name: "page", description: "The HIG page name")
+                    ]
+                ),
+                // 5. Swift.org
+                MCP.Core.Protocols.ResourceTemplate(
+                    uriTemplate: MCP.SharedTools.Copy.templateSwiftOrg,
+                    name: MCP.SharedTools.Copy.swiftOrgTemplateName,
+                    description: MCP.SharedTools.Copy.swiftOrgTemplateDescription,
+                    mimeType: MCP.SharedTools.Copy.mimeTypeMarkdown,
+                    variables: [
+                        MCP.Core.Protocols.ResourceTemplateVariable(name: "page", description: "The Swift.org documentation page name")
+                    ]
+                ),
+                // 6. Swift Book
+                MCP.Core.Protocols.ResourceTemplate(
+                    uriTemplate: MCP.SharedTools.Copy.templateSwiftBook,
+                    name: MCP.SharedTools.Copy.swiftBookTemplateName,
+                    description: MCP.SharedTools.Copy.swiftBookTemplateDescription,
+                    mimeType: MCP.SharedTools.Copy.mimeTypeMarkdown,
+                    variables: [
+                        MCP.Core.Protocols.ResourceTemplateVariable(name: "page", description: "The Swift Book page name")
+                    ]
+                ),
+                // 7. Packages
+                MCP.Core.Protocols.ResourceTemplate(
+                    uriTemplate: MCP.SharedTools.Copy.templatePackages,
+                    name: MCP.SharedTools.Copy.packagesTemplateName,
+                    description: MCP.SharedTools.Copy.packagesTemplateDescription,
+                    mimeType: MCP.SharedTools.Copy.mimeTypeMarkdown,
+                    variables: [
+                        MCP.Core.Protocols.ResourceTemplateVariable(name: "owner", description: "The package repository owner"),
+                        MCP.Core.Protocols.ResourceTemplateVariable(name: "repo", description: "The package repository name"),
+                        MCP.Core.Protocols.ResourceTemplateVariable(name: "path", description: "The documentation page path")
+                    ]
+                )
             ]
 
             return MCP.Core.Protocols.ListResourceTemplatesResult(resourceTemplates: templates)
