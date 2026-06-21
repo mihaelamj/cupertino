@@ -1,0 +1,17 @@
+# Code owners for cupertino's supply-chain and CI surface.
+#
+# Born from PR #1294 (2026-06-21): an external PR repointed a core dependency to a
+# contributor-owned fork by editing only the lockfile. With branch protection set to
+# "require review from Code Owners," any change to the files below now needs an explicit
+# maintainer approval before it can merge. See #1295 and check-dependency-integrity.sh.
+#
+# Patterns are gitignore-style; the last matching pattern wins.
+
+# Dependency manifest + lockfiles (the supply-chain surface).
+Package.swift                                            @mihaelamj
+Package.resolved                                         @mihaelamj
+
+# CI, the merge guards, and the supply-chain check itself.
+/.github/workflows/                                      @mihaelamj
+/.github/CODEOWNERS                                      @mihaelamj
+/scripts/check-dependency-integrity.sh                   @mihaelamj

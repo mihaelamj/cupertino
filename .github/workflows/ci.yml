@@ -142,6 +142,15 @@ jobs:
         timeout-minutes: 2
         run: ./scripts/check-import-contract-coverage.sh
 
+      # #1295 supply-chain guard (born from PR #1294). Pure text inspection of
+      # Package.swift + both Package.resolved files: no build, no network, no
+      # code execution, so it is safe to run on an untrusted external PR. Fails
+      # if any dependency points at a non-allowlisted owner (e.g. a fork) or if
+      # the two lockfiles disagree on a shared dependency's location.
+      - name: Run check-dependency-integrity.sh
+        timeout-minutes: 2
+        run: ./scripts/check-dependency-integrity.sh
+
       - name: Install yq (required by check-source-manifests.sh)
         run: |
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
