@@ -128,7 +128,10 @@ if [[ "$SKIP_SAVE" -eq 1 ]]; then
     [[ -f "$DB" ]] || bail "--skip-save needs $DB from a prior run; not found. Re-run without --skip-save once."
 else
     # Wipe stale save output from prior runs (assertions key off post-save DB state).
-    rm -f "$DB" "$DB"-shm "$DB"-wal "$CORPUS"/save-*.jsonl
+    # Also sweep a legacy unified search.db (+ sidecars) a pre-#1036 run may have
+    # left behind, so the fixture never accumulates an obsolete artifact.
+    rm -f "$DB" "$DB"-shm "$DB"-wal "$CORPUS"/save-*.jsonl \
+        "$CORPUS"/search.db "$CORPUS"/search.db-shm "$CORPUS"/search.db-wal
 
     echo "=== Running cupertino save (expect ~5-11 min) ==="
     echo "  Tail the save log in another tab:"
