@@ -78,11 +78,17 @@ jobs:
               --body-file /tmp/staleness-report.md
           else
             echo "Filing new tracking issue"
+            # No --label: this repo has no `documentation` label, and
+            # `gh issue create --label <missing>` hard-fails the whole
+            # create (that is what broke the 2026-06-21 run). The tracker
+            # is found on later runs by exact title match (above), not by
+            # label, so a label is purely cosmetic here; adding a new label
+            # for one tracker also fails github-discipline's 3-carrier
+            # threshold. Tag it by hand if a category is ever wanted.
             gh issue create \
               --repo "${{ github.repository }}" \
               --title "$TITLE" \
-              --body-file /tmp/staleness-report.md \
-              --label "documentation"
+              --body-file /tmp/staleness-report.md
           fi
 
       - name: Close tracking issue if clean
