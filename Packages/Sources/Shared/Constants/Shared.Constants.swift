@@ -254,7 +254,7 @@ extension Shared.Constants {
         public static let userAgent = "CupertinoCrawler/1.0"
 
         /// Current version
-        public static let version = "1.3.0"
+        public static let version = "1.4.0"
 
         /// Database version - separate from CLI version, only bump when schema/content changes.
         /// Controls the cupertino-docs release tag that `cupertino setup` downloads from.
@@ -292,7 +292,7 @@ extension Shared.Constants {
         /// pulls the per-source bundle; neither can download the other's
         /// incompatible DBs. Never republish per-source DBs under an older
         /// version number.
-        public static let databaseVersion = "1.3.0"
+        public static let databaseVersion = "1.4.0"
 
         /// Base URL for cupertino-docs release downloads. As of v1.0.0 the
         /// single `cupertino-databases-vX.zip` artifact bundles search.db,
