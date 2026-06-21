@@ -217,6 +217,25 @@ fetch_body() {
     fi
 }
 
+# The auto-generated staleness tracker issue (filed/updated by
+# .github/workflows/issue-body-staleness.yml) must NOT be scanned: its body IS
+# this report, so it always cites the phantom paths it is reporting and carries
+# no kind label. Scanning it keeps the scan perpetually non-zero, so the
+# workflow's "close when clean" step can never fire and the tracker can never
+# close (#1302). Keep this string in sync with TITLE in the workflow.
+TRACKER_TITLE="Issue body staleness tracker (auto-updated)"
+
+# Numbers of open issues whose title is the tracker marker (usually 0 or 1).
+# Empty in dry-run / explicit single-issue mode, so `--issue <n>` can still
+# inspect the tracker on demand.
+tracker_issue_numbers() {
+    if $DRY_RUN || [ -n "$SINGLE_ISSUE" ]; then
+        return 0
+    fi
+    gh issue list -R "$REPO" --state open --limit 200 --json number,title \
+        -q ".[] | select(.title == \"$TRACKER_TITLE\") | .number" 2>/dev/null
+}
+
 issue_state() {
     local n="$1"
     if $DRY_RUN; then
@@ -499,9 +518,11 @@ check_labels_global() {
 
     # 5d. Per-open-issue: missing kind label
     local issues_json
-    issues_json=$(gh issue list -R "$REPO" --state open --limit 200 --json number,labels 2>/dev/null)
+    issues_json=$(gh issue list -R "$REPO" --state open --limit 200 --json number,labels,title 2>/dev/null)
     local missing_kind
-    missing_kind=$(echo "$issues_json" | jq -r '.[] | select(([.labels[].name] | map(test("^(enhancement|bug|epic)$")) | any) | not) | .number')
+    # Exclude the auto-generated tracker: it is deliberately unlabeled (#1302).
+    missing_kind=$(echo "$issues_json" | jq -r --arg tracker "$TRACKER_TITLE" \
+        '.[] | select(.title != $tracker) | select(([.labels[].name] | map(test("^(enhancement|bug|epic)$")) | any) | not) | .number')
     while IFS= read -r n; do
         [ -z "$n" ] && continue
         report+="    - #${n} → missing kind label (no enhancement / bug / epic)."$'\n'
@@ -521,6 +542,7 @@ SCHEMA_REPORT=""
 LABEL_REPORT=""
 
 issues=$(fetch_open_issues)
+EXCLUDED_ISSUES=$(tracker_issue_numbers)
 total=$(echo "$issues" | wc -l | tr -d ' ')
 echo "Scanning $total open issues..." >&2
 
@@ -530,6 +552,8 @@ if [ "$CHECK" = "all" ] || [ "$CHECK" = "labels" ]; then
 fi
 
 for n in $issues; do
+    # Never body-scan the auto-generated tracker (#1302).
+    case " $EXCLUDED_ISSUES " in *" $n "*) continue ;; esac
     body=$(fetch_body "$n")
     [ -z "$body" ] && continue
 
