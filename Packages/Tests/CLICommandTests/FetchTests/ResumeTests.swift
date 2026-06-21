@@ -110,13 +110,55 @@ struct ResumeAndStartCleanTests {
 
         try Ingest.Session.clearSavedSession(at: tempDir, logger: Logging.NoopRecording())
 
-        // crawlState is gone; the other fields are intact (so we don't lose
-        // accumulated stats / page hashes — those are what change-detection
-        // uses to skip unchanged pages on the resumed run).
+        // crawlState is gone and the per-page record is emptied so the next
+        // run is a true clean crawl (2026-06-21: keeping `pages` let a
+        // changed-filename re-crawl inherit orphaned pages). Cumulative
+        // stats are left intact; the next crawl recomputes them.
         let after = try Shared.Models.CrawlMetadata.load(from: file)
         #expect(after.crawlState == nil)
-        #expect(after.stats.totalPages == 3, "stats must survive --start-clean")
-        #expect(after.stats.newPages == 3, "stats must survive --start-clean")
+        #expect(after.pages.isEmpty, "pages must be wiped for a clean re-crawl")
+        #expect(after.stats.totalPages == 3, "stats survive --start-clean")
+        #expect(after.stats.newPages == 3, "stats survive --start-clean")
+    }
+
+    @Test("--start-clean removes stale corpus files but preserves metadata.json")
+    func startCleanRemovesStaleCorpusFiles() throws {
+        let tempDir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        // A saved session plus corpus files in the layout a real crawl
+        // produces: per-framework subdirectories of .json/.md pages, and
+        // (for flat sources like swift-evolution) files at the top level.
+        let file = Self.metadataFile(in: tempDir)
+        try Self.writeFixtureMetadata(
+            at: file,
+            startURL: "http://127.0.0.1:1/seed",
+            outputDirectory: tempDir.path,
+            visited: ["http://127.0.0.1:1/a"],
+            queue: []
+        )
+        let frameworkDir = tempDir.appendingPathComponent("components")
+        try FileManager.default.createDirectory(at: frameworkDir, withIntermediateDirectories: true)
+        let stale = [
+            frameworkDir.appendingPathComponent("buttons.json"),
+            frameworkDir.appendingPathComponent("buttons.md"),
+            tempDir.appendingPathComponent("0001-old-format-proposal.md"),
+            tempDir.appendingPathComponent("atom.xml.json"),
+        ]
+        for f in stale {
+            try Data("stale".utf8).write(to: f)
+        }
+
+        try Ingest.Session.clearSavedSession(at: tempDir, logger: Logging.NoopRecording())
+
+        // Every corpus file is gone; only the session metadata survives.
+        for f in stale {
+            #expect(!FileManager.default.fileExists(atPath: f.path), "stale corpus file must be removed: \(f.lastPathComponent)")
+        }
+        #expect(FileManager.default.fileExists(atPath: file.path), "metadata.json must survive")
+        let after = try Shared.Models.CrawlMetadata.load(from: file)
+        #expect(after.crawlState == nil)
+        #expect(after.pages.isEmpty)
     }
 
     @Test("--start-clean leaves the file readable and re-runnable")

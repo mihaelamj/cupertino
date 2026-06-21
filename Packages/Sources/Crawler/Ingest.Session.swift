@@ -14,19 +14,63 @@ extension Ingest {
         /// Clear the saved crawl session at `outputDirectory`.
         /// `--start-clean` calls this before running the crawler.
         public static func clearSavedSession(at outputDirectory: URL, logger: any LoggingModels.Logging.Recording) throws {
+            // Remove stale corpus content files first, so a fresh crawl
+            // never inherits orphaned pages from a prior crawl whose
+            // filename convention changed. (2026-06-21: swift-evolution
+            // accumulated 429 old `NNNN-slug.md` files alongside 488 new
+            // `SE-NNNN.md` ones — --start-clean cleared the session but
+            // left the old files on disk, and `save` indexed the union.)
+            // Only the session metadata file is preserved.
+            let removedFiles = removeStaleCorpusFiles(under: outputDirectory, logger: logger)
+
             let metadataFile = outputDirectory.appendingPathComponent(Shared.Constants.FileName.metadata)
             guard FileManager.default.fileExists(atPath: metadataFile.path) else {
                 logger.info(
-                    "🧹 --start-clean: no saved session to clear at \(outputDirectory.path)"
+                    "🧹 --start-clean: no saved session to clear at \(outputDirectory.path) "
+                        + "(removed \(removedFiles) stale corpus file(s))"
                 )
                 return
             }
             var metadata = try Shared.Models.CrawlMetadata.load(from: metadataFile)
             metadata.crawlState = nil
+            metadata.pages = [:]
             try metadata.save(to: metadataFile)
             logger.info(
-                "🧹 --start-clean: cleared saved session at \(metadataFile.path)"
+                "🧹 --start-clean: cleared saved session at \(metadataFile.path) "
+                    + "and removed \(removedFiles) stale corpus file(s)"
             )
+        }
+
+        /// Remove every `.md` / `.json` corpus file under
+        /// `outputDirectory`, preserving only the session metadata file
+        /// (`metadata.json`). Best-effort: a file that can't be removed
+        /// is logged and skipped, never fatal. Directories are left in
+        /// place; the crawler recreates the ones it needs.
+        static func removeStaleCorpusFiles(under outputDirectory: URL, logger: any LoggingModels.Logging.Recording) -> Int {
+            let fileManager = FileManager.default
+            let metadataName = Shared.Constants.FileName.metadata
+            guard let enumerator = fileManager.enumerator(
+                at: outputDirectory,
+                includingPropertiesForKeys: [.isRegularFileKey],
+                options: [.skipsHiddenFiles]
+            ) else {
+                return 0
+            }
+            var removed = 0
+            for case let fileURL as URL in enumerator {
+                let ext = fileURL.pathExtension.lowercased()
+                guard ext == "md" || ext == "json" else { continue }
+                guard fileURL.lastPathComponent != metadataName else { continue }
+                do {
+                    try fileManager.removeItem(at: fileURL)
+                    removed += 1
+                } catch {
+                    logger.info(
+                        "🧹 --start-clean: could not remove \(fileURL.path): \(error)"
+                    )
+                }
+            }
+            return removed
         }
 
         /// Re-queue URLs that the crawler visited but never saved to the
