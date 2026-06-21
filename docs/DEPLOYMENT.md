@@ -213,6 +213,11 @@ This triggers GitHub Actions which:
 - Signs and notarizes the binary
 - Creates release with `cupertino-vX.Y.Z-macos-universal.tar.gz`
 
+> **Troubleshooting: Notarize step fails with `HTTP status code: 401. Invalid credentials`.** The `APPLE_ID_PASSWORD` GitHub Actions secret is an Apple **app-specific password**, which expires or gets revoked over time (this is separate from the code-signing certificate in `APPLE_CERTIFICATE_P12` / `APPLE_CERTIFICATE_PASSWORD`, so a 401 here means only the notary password is stale, not the cert). To recover without re-tagging:
+> 1. Generate a new app-specific password at <https://appleid.apple.com> (Sign-In and Security, App-Specific Passwords; any label, e.g. `CupertinoMCP`) for the Apple ID held in the `APPLE_ID` secret.
+> 2. Update the secret: `gh secret set APPLE_ID_PASSWORD --repo mihaelamj/cupertino` (paste the `xxxx-xxxx-xxxx-xxxx` value; never commit it to the repo).
+> 3. Re-run the failed build against the existing tag: `gh run rerun <run-id> --failed`. The tag and any already-published database bundle are untouched. The full set of Apple secrets the release uses: `APPLE_ID`, `APPLE_ID_PASSWORD`, `APPLE_TEAM_ID`, `APPLE_CERTIFICATE_P12`, `APPLE_CERTIFICATE_PASSWORD`.
+
 ### Step 5: Upload Databases
 
 ```bash

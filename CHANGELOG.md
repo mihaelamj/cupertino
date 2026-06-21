@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Documentation
+
+- **docs(deployment): notarization-credential troubleshooting runbook.** `docs/DEPLOYMENT.md` now documents the recovery for a release build failing the Notarize step with `HTTP status code: 401. Invalid credentials`: the `APPLE_ID_PASSWORD` secret is an Apple app-specific password that expires (separate from the code-signing certificate), so regenerate it at appleid.apple.com, update the secret with `gh secret set APPLE_ID_PASSWORD`, and re-run the failed build with `gh run rerun <id> --failed` (no re-tag needed). Born from the v1.4.0 release build, where the app-specific password had expired.
+
 ## v1.4.0 (2026-06-21)
 
 - **Database content refresh (databaseVersion + CLI version → 1.4.0).** A full re-crawl + clean rebuild of the per-source corpus, published as `cupertino-databases-v1.4.0.zip` (876.4 MB, 8 per-source DBs in rollback journal mode). `apple-documentation.db` grew from 351,505 to 363,562 documents and from 240,543 to 308,118 symbols (417 frameworks), now carrying post-WWDC26 iOS 27 content (v1.3.0 capped at iOS 26). The placeholder-stub rot the new `scripts/check-db-quality.sh` gate was built to catch is gone: every docs database now has a `docs_structured == docs_fts` population ratio of 1.000 with zero `Apple Developer Documentation` placeholder duplicates (the old v1.3.0 `hig.db` was 346/173; the v1.4.0 `hig.db` is a clean 177/177). The physical layout (8 per-source DBs, read-only rollback mode, schema v18 / packages v5) is unchanged from v1.3.0; this is a content + version bump, not a schema change. Bundle published to `mihaelamj/cupertino-docs`; the v1.3.0 release is untouched.
