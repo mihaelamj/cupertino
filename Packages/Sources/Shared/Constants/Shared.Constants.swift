@@ -1261,12 +1261,6 @@ extension Shared.Constants {
 
     /// Help text for CLI commands and options
     public enum HelpText {
-        /// Apple documentation directory help text
-        public static let docsDir = "Apple documentation directory"
-
-        /// Swift Evolution proposals directory help text
-        public static let evolutionDir = "Swift Evolution proposals directory"
-
         /// Search database path help text
         public static let dbURL = "Search database path"
 
