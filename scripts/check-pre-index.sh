@@ -6,11 +6,13 @@
 # production corpus. Catches the two silent-failure classes the post-#779 arc
 # left behind:
 #
-#   Gate 1 (cleanup): #789 removed the search.db `packages` +
+#   Gate 1 (cleanup): #789 removed the `packages` +
 #   `package_dependencies` tables and the SwiftPackagesStrategy that fed
-#   them. This gate verifies that removal stuck end-to-end: no residue
-#   tables in `sqlite_master`, no swift-packages emission in the save log,
-#   no orphan readers in source.
+#   them from the docs database. This gate verifies that removal stuck
+#   end-to-end against the per-source apple-documentation.db (#1036/#1037
+#   split the unified search.db into one DB per source; `--source apple-docs`
+#   now builds apple-documentation.db): no residue tables in `sqlite_master`,
+#   no swift-packages emission in the save log, no orphan readers in source.
 #
 #   Gate 2 (symbolgraph value-add): cupertino-symbolgraphs v0.1.1 +
 #   #759 iter-3 produce an `apple-constraints.json` catalog that
@@ -50,10 +52,10 @@
 
 set -euo pipefail
 
-# --skip-save reuses the existing search.db from a prior run instead of
-# re-running cupertino save. Useful when iterating on the gate logic and the
-# 11-min save cost is wasteful. Same DB, same log, same assertions; you just
-# need to have run the script once already to produce them.
+# --skip-save reuses the existing apple-documentation.db from a prior run
+# instead of re-running cupertino save. Useful when iterating on the gate logic
+# and the 11-min save cost is wasteful. Same DB, same log, same assertions; you
+# just need to have run the script once already to produce them.
 SKIP_SAVE=0
 ARGS=()
 for arg in "$@"; do
@@ -79,7 +81,11 @@ if [[ "$SKIP_SAVE" -eq 1 ]]; then
 else
     LOG=$(mktemp -t cupertino-pre-index)
 fi
-DB="$CORPUS/search.db"
+# The docs save writes its per-source DB to
+# `<base-dir>/<destinationDB.filename>`; `--source apple-docs` →
+# apple-documentation.db (#1036/#1037 per-source split; the unified search.db
+# no longer exists). Both gates below key off this DB.
+DB="$CORPUS/apple-documentation.db"
 
 bail() {
     printf '\n❌ %s\n' "$1" >&2
@@ -117,19 +123,19 @@ echo "  save log:  $LOG"
 echo
 
 if [[ "$SKIP_SAVE" -eq 1 ]]; then
-    echo "=== --skip-save: reusing existing save.db + log ==="
+    echo "=== --skip-save: reusing existing apple-documentation.db + log ==="
     echo "  save log: $LOG (from a prior run; assertions key off it)"
     [[ -f "$DB" ]] || bail "--skip-save needs $DB from a prior run; not found. Re-run without --skip-save once."
 else
     # Wipe stale save output from prior runs (assertions key off post-save DB state).
-    rm -f "$CORPUS"/search.db "$CORPUS"/search.db-shm "$CORPUS"/search.db-wal "$CORPUS"/save-*.jsonl
+    rm -f "$DB" "$DB"-shm "$DB"-wal "$CORPUS"/save-*.jsonl
 
     echo "=== Running cupertino save (expect ~5-11 min) ==="
     echo "  Tail the save log in another tab:"
     echo "    tail -f $LOG"
     echo
 
-    if ! "$BINARY" save --docs --docs-dir "$CORPUS/docs" --base-dir "$CORPUS" --yes > "$LOG" 2>&1; then
+    if ! "$BINARY" save --source apple-docs --docs-dir "$CORPUS/docs" --base-dir "$CORPUS" --yes > "$LOG" 2>&1; then
         bail "save itself failed; tail $LOG for the error"
     fi
 fi
@@ -141,7 +147,7 @@ echo "=== Gate 1: cleanup (no #789 packages-residue) ==="
 
 PKG_TABLES=$(sqlite3 "$DB" "SELECT name FROM sqlite_master WHERE type='table' AND (name LIKE 'packages%' OR name = 'package_dependencies');" | wc -l | tr -d ' ')
 if [[ "$PKG_TABLES" -ne 0 ]]; then
-    bail "search.db carries $PKG_TABLES packages-residue table(s); #789 migration didn't take. Run: sqlite3 $DB '.schema packages*'"
+    bail "apple-documentation.db carries $PKG_TABLES packages-residue table(s); #789 migration didn't take. Run: sqlite3 $DB '.schema packages*'"
 fi
 pass "no packages-residue tables in sqlite_master"
 
@@ -220,4 +226,4 @@ echo "=== ALL PRE-INDEX GATES PASSED ==="
 echo "Safe to kick off the real 11h+ save against the production corpus."
 echo
 echo "Save log: $LOG"
-echo "Mini-corpus search.db left in place at: $DB"
+echo "Mini-corpus apple-documentation.db left in place at: $DB"
