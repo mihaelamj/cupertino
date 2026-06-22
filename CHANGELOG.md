@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Changed
+
+- **feat(#50): `list_children` delegates to CupertinoDataEngine's topic-group parser (shared with the embedded apps).** The MCP `list_children` tool and the `cupertino list-children` CLI command now route through `CupertinoDataEngine` (bumped 0.2.7 -> 0.2.8), whose `listChildren` parses a document's `## Topics` section into its `###` topic groups (fragment URIs like `apple-docs://kernel#3616595`) and their member documents. The duplicate `SearchSQLite/Search.Index.DocumentChildren.swift` parser and the now-unused `Services.SearchService.listChildren` requirement are removed, so the server and the embedded apps (cupertino-desktop) share ONE implementation instead of two copies that can drift. The composition root injects the engine-backed `Search.DocumentChildrenListing` into `CompositeToolProvider`; behavior is unchanged for already-correct pages. Full suite green (3175 tests). Closes the server side of cupertino-desktop #50.
+
 ### Documentation
 
 - **docs(deployment): notarization-credential troubleshooting runbook.** `docs/DEPLOYMENT.md` now documents the recovery for a release build failing the Notarize step with `HTTP status code: 401. Invalid credentials`: the `APPLE_ID_PASSWORD` secret is an Apple app-specific password that expires (separate from the code-signing certificate), so regenerate it at appleid.apple.com, update the secret with `gh secret set APPLE_ID_PASSWORD`, and re-run the failed build with `gh run rerun <id> --failed` (no re-tag needed). Born from the v1.4.0 release build, where the app-specific password had expired.
