@@ -154,7 +154,9 @@ let deps: [Package.Dependency] = [
     // v0.2.7 resolves relative DocC topic links in listChildren (#90); aligns this repo with
     // cupertino-desktop, which already pins 0.2.7 (the server uses only the Corpus/Configuration/
     // SchemaVersions composition APIs, unchanged in 0.2.7, so this is a consistency bump).
-    .package(url: "https://github.com/mihaelamj/CupertinoDataEngine.git", from: "0.2.7"),
+    // v0.2.8 lists topic-group children for the documentation tree (#50): the MCP list_children
+    // tool now delegates to the engine so the server and the embedded apps share one parser.
+    .package(url: "https://github.com/mihaelamj/CupertinoDataEngine.git", from: "0.2.8"),
 ]
 
 // -------------------------------------------------------------

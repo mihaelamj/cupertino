@@ -1,6 +1,7 @@
 import ArgumentParser
 import Core
 import CoreProtocols
+import CupertinoComposition
 import Darwin
 import Foundation
 import Logging
@@ -277,6 +278,16 @@ extension CLIImpl.Command {
             )
             await server.registerResourceProvider(resourceProvider)
 
+            // #50: the documentation-tree children listing, backed by the embedded data engine
+            // over the current per-source corpus. The MCP `list_children` tool delegates to this
+            // so the server and the embedded apps share ONE topic-group parser. `try?` so a
+            // missing / schema-mismatched corpus simply disables children (the tool then reports
+            // it is unavailable), matching the search-index degradation.
+            let documentChildrenListing = try? await CupertinoComposition.makePerSourceDocumentChildrenListing(
+                corpusDirectory: paths.baseDirectory,
+                logger: Cupertino.Context.composition.logging.recording
+            )
+
             // Initialize sample code index if available
             let sampleIndex = await loadSampleIndex(sampleDBURL: sampleDBURL)
 
@@ -387,7 +398,9 @@ extension CLIImpl.Command {
                 // #1277: the registry-derived active-source inventory (presence + schema version),
                 // so the `list_sources` tool can report which per-source databases are installed
                 // and clients can detect a missing/partial corpus and guide setup.
-                sourceInventory: sourceInventory
+                sourceInventory: sourceInventory,
+                // #50: engine-backed documentation-tree children listing (shared with the apps).
+                documentChildrenListing: documentChildrenListing
             )
             await server.registerToolProvider(toolProvider)
 

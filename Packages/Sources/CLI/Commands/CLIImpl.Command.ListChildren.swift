@@ -1,5 +1,7 @@
 import ArgumentParser
+import CupertinoComposition
 import Foundation
+import SearchModels
 import Services
 import ServicesModels
 import SharedConstants
@@ -60,15 +62,17 @@ extension CLIImpl.Command {
                 throw ExitCode.failure
             }
 
-            let page = try await Services.ServiceContainer.withDocsService(
-                dbURL: dbURL,
-                searchDatabaseFactory: LiveSearchDatabaseFactory()
-            ) { service in
-                try await service.listChildren(
-                    source: provider.definition.id,
-                    uri: uri
-                )
-            }
+            // #50: the documentation tree is served by the embedded data engine's topic-group
+            // parser, the same implementation the MCP `list_children` tool delegates to, so the
+            // CLI and the server share one parser instead of a duplicate in this repo.
+            let listing = try await CupertinoComposition.makePerSourceDocumentChildrenListing(
+                corpusDirectory: paths.baseDirectory,
+                logger: Cupertino.Context.composition.logging.recording
+            )
+            let page = try await listing.listChildren(
+                source: provider.definition.id,
+                uri: uri
+            )
 
             let output = switch format {
             case .text:

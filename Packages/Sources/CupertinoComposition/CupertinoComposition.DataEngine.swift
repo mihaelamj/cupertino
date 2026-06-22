@@ -112,4 +112,17 @@ extension CupertinoComposition {
             logger: logger
         )
     }
+
+    /// The documentation-tree children listing (issue #50), backed by the embedded data engine
+    /// over the current per-source corpus. Returned as the `Search.DocumentChildrenListing`
+    /// protocol so callers (the MCP `list_children` tool) consume one shared parser without
+    /// naming the engine. The engine parses a document's `## Topics` section into topic groups
+    /// and their member documents; the server and the embedded apps now share this single
+    /// implementation instead of maintaining two copies.
+    public static func makePerSourceDocumentChildrenListing(
+        corpusDirectory: URL,
+        logger: any Logging.Recording
+    ) async throws -> any Search.DocumentChildrenListing {
+        try await makePerSourceReadOnlyDataEngine(corpusDirectory: corpusDirectory, logger: logger)
+    }
 }
