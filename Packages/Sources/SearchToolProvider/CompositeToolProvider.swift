@@ -26,6 +26,12 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     private let searchIndex: (any Search.Database)?
     private let sampleDatabase: (any Sample.Index.Reader)?
 
+    /// #50: the documentation-tree children listing, supplied by the composition root (the
+    /// embedded data engine over the current corpus). `handle_list_children` delegates to this so
+    /// the server and the embedded apps share ONE topic-group parser instead of two copies. When
+    /// nil the `list_children` tool reports the index does not support children listing.
+    private let documentChildrenListing: (any Search.DocumentChildrenListing)?
+
     /// `#789`-style architectural gap fix landed in v1.2.0 PR-2. Pre-fix,
     /// MCP `search source=packages` routed through
     /// `handleSearchDocs(source:"packages")` → `docsService.search` →
@@ -104,10 +110,12 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         searchIndexDisabledReason: String? = nil,
         searchToolSourceEnumValues: [String] = [],
         searchToolRoutesByID: [String: Search.SearchRoute] = [:],
-        sourceInventory: Search.SourceInventory? = nil
+        sourceInventory: Search.SourceInventory? = nil,
+        documentChildrenListing: (any Search.DocumentChildrenListing)? = nil
     ) {
         self.searchIndex = searchIndex
         self.sampleDatabase = sampleDatabase
+        self.documentChildrenListing = documentChildrenListing
         self.docsService = docsService
         self.sampleService = sampleService
         self.teaserService = teaserService
@@ -1400,10 +1408,13 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     // MARK: - List Children
 
     private func handleListChildren(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
-        guard let searchIndex else {
+        guard searchIndex != nil else {
             throw searchIndexUnavailableError("index")
         }
-        guard let listing = searchIndex as? any Search.DocumentChildrenListing else {
+        // #50: delegate to the engine-backed children listing the composition root injects, the
+        // single shared topic-group parser. (Previously this cast `searchIndex` to the listing
+        // protocol; the per-source SQLite reader no longer carries its own duplicate parser.)
+        guard let listing = documentChildrenListing else {
             throw Shared.Core.ToolError.invalidArgument(
                 "index",
                 "Documentation index does not support document children listing"

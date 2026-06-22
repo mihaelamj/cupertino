@@ -7,6 +7,17 @@ import Testing
 
 @Suite("#1210 list_children MCP tool")
 struct Issue1210ListChildrenToolTests {
+    /// The topic-group parsing now lives in (and is tested by) CupertinoDataEngine; the composition
+    /// root injects the engine as the `Search.DocumentChildrenListing`. These tests cover the MCP
+    /// tool layer only: that `list_children` is advertised, delegates to the injected listing, and
+    /// formats its page as JSON, plus the source-validation guard. A stub stands in for the engine.
+    private struct StubChildrenListing: Search.DocumentChildrenListing {
+        let page: Search.DocumentChildrenPage
+        func listChildren(source _: String, uri _: String) async throws -> Search.DocumentChildrenPage {
+            page
+        }
+    }
+
     @Test("tools/list advertises list_children")
     func listToolsAdvertisesListChildren() async throws {
         let (index, cleanup) = try await createTestSearchIndex()
@@ -19,48 +30,30 @@ struct Issue1210ListChildrenToolTests {
         #expect(result.tools.contains { $0.name == Shared.Constants.Search.toolListChildren })
     }
 
-    @Test("list_children returns a JSON child page")
+    @Test("list_children delegates to the injected listing and returns its page as JSON")
     func listChildrenReturnsJSONPage() async throws {
         let (index, cleanup) = try await createTestSearchIndex()
         defer { try? cleanup() }
         defer { Task { await index.disconnect() } }
 
-        try await index.indexDocument(Search.IndexDocumentParams(
-            uri: "apple-docs://swiftui",
+        let expected = Search.DocumentChildrenPage(
             source: Shared.Constants.SourcePrefix.appleDocs,
-            framework: "swiftui",
-            title: "SwiftUI",
-            content: "SwiftUI",
-            filePath: "/tmp/swiftui.json",
-            contentHash: "swiftui",
-            lastCrawled: Date(),
-            sourceType: "apple",
-            jsonData: jsonData(
-                title: "SwiftUI",
-                kind: "framework",
-                rawMarkdown: """
-                ## [Topics](/documentation/swiftui#topics)
+            parentURI: "apple-docs://swiftui#Essentials",
+            children: [
+                Search.DocumentChild(
+                    uri: "apple-docs://swiftui/view",
+                    title: "View",
+                    kind: "protocol",
+                    hasChildren: false
+                ),
+            ]
+        )
 
-                ### [Essentials](/documentation/swiftui#Essentials)
-
-                [View](/documentation/swiftui/view)Create custom views.
-                """
-            )
-        ))
-        try await index.indexDocument(Search.IndexDocumentParams(
-            uri: "apple-docs://swiftui/view",
-            source: Shared.Constants.SourcePrefix.appleDocs,
-            framework: "swiftui",
-            title: "View",
-            content: "A protocol for views.",
-            filePath: "/tmp/view.json",
-            contentHash: "view",
-            lastCrawled: Date(),
-            sourceType: "apple",
-            jsonData: jsonData(title: "View", kind: "protocol", rawMarkdown: "View")
-        ))
-
-        let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
+        let provider = CompositeToolProvider(
+            searchIndex: index,
+            sampleDatabase: nil,
+            documentChildrenListing: StubChildrenListing(page: expected)
+        )
         let result = try await provider.callTool(
             name: Shared.Constants.Search.toolListChildren,
             arguments: [
@@ -77,16 +70,7 @@ struct Issue1210ListChildrenToolTests {
             from: Data(text.text.utf8)
         )
 
-        #expect(page.source == Shared.Constants.SourcePrefix.appleDocs)
-        #expect(page.parentURI == "apple-docs://swiftui#Essentials")
-        #expect(page.children == [
-            Search.DocumentChild(
-                uri: "apple-docs://swiftui/view",
-                title: "View",
-                kind: "protocol",
-                hasChildren: false
-            ),
-        ])
+        #expect(page == expected)
     }
 
     @Test("list_children rejects non-apple-docs source until MCP has per-source DB wiring")
@@ -95,7 +79,17 @@ struct Issue1210ListChildrenToolTests {
         defer { try? cleanup() }
         defer { Task { await index.disconnect() } }
 
-        let provider = CompositeToolProvider(searchIndex: index, sampleDatabase: nil)
+        let provider = CompositeToolProvider(
+            searchIndex: index,
+            sampleDatabase: nil,
+            documentChildrenListing: StubChildrenListing(
+                page: Search.DocumentChildrenPage(
+                    source: Shared.Constants.SourcePrefix.appleDocs,
+                    parentURI: "apple-docs://swiftui",
+                    children: []
+                )
+            )
+        )
 
         await #expect {
             _ = try await provider.callTool(
@@ -112,18 +106,5 @@ struct Issue1210ListChildrenToolTests {
             return param == Shared.Constants.Search.schemaParamSource &&
                 message.contains("apple-docs")
         }
-    }
-
-    private func jsonData(
-        title: String,
-        kind: String,
-        rawMarkdown: String
-    ) throws -> String {
-        let data = try JSONSerialization.data(withJSONObject: [
-            "title": title,
-            "kind": kind,
-            "rawMarkdown": rawMarkdown,
-        ], options: [.sortedKeys])
-        return try #require(String(data: data, encoding: .utf8))
     }
 }

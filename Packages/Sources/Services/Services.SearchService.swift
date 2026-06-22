@@ -26,12 +26,6 @@ extension Services {
             limit: Int
         ) async throws -> Search.DocumentListPage
 
-        /// List direct children for a document or topic-group URI
-        func listChildren(
-            source: String,
-            uri: String
-        ) async throws -> Search.DocumentChildrenPage
-
         /// Get total document count
         func documentCount() async throws -> Int
 

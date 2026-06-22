@@ -24,7 +24,8 @@ public extension CompositeToolProvider {
     init(
         searchIndex: (any Search.Database)?,
         sampleDatabase: (any Sample.Index.Reader)?,
-        searchIndexDisabledReason: String? = nil
+        searchIndexDisabledReason: String? = nil,
+        documentChildrenListing: (any Search.DocumentChildrenListing)? = nil
     ) {
         let docs = searchIndex.map { Services.DocsSearchService(database: $0) }
         let sample = sampleDatabase.map(Sample.Search.Service.init(database:))
@@ -61,7 +62,8 @@ public extension CompositeToolProvider {
             unifiedService: unified,
             documentResourceProvider: nil,
             searchIndexDisabledReason: searchIndexDisabledReason,
-            searchToolRoutesByID: canonicalRoutesByID
+            searchToolRoutesByID: canonicalRoutesByID,
+            documentChildrenListing: documentChildrenListing
         )
     }
 }
