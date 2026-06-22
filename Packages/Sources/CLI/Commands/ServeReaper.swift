@@ -37,14 +37,30 @@ enum ServeReaper {
             // /Users/me/.cupertino-dev, --search-db /tmp/cupertino.db,
             // /Applications/My Tools/cupertino, …).
             guard let argv = argvOf(pid: entry.pid),
-                  argv.count >= 2,
-                  argv[1] == "serve"
+                  isReapableServe(argv: argv)
             else { continue }
             guard let entryPath = pathOf(pid: entry.pid),
                   entryPath == ownPath
             else { continue }
             reap(pid: entry.pid, elapsed: entry.elapsed)
         }
+    }
+
+    /// Whether a process with this kernel argv is a reap candidate: a sibling `serve`
+    /// that did NOT opt out with `--no-reap`. The path/own-PID checks stay in
+    /// `reapSiblings` (they need live syscalls); this is the pure argv decision so it is
+    /// unit-testable.
+    ///
+    /// `--no-reap` marks a long-lived embedded client (cupertino-desktop spawns
+    /// `serve --no-reap` and holds the connection for the app's lifetime; other MCP hosts
+    /// coexist the same way). The flag means "I neither reap others NOR am I reaped":
+    /// without this exemption a transient `serve` start (an MCP-host config reload, a CLI
+    /// probe) would SIGTERM/SIGKILL the long-lived server, dropping its stdio (EOF) and
+    /// surfacing in the client as a "connection closed" transport failure mid-session
+    /// (cupertino #280; cupertino-desktop's Mac reader losing `read_document` after a
+    /// sibling `serve` started). Reaping a `--no-reap` server is exactly what the flag forbids.
+    static func isReapableServe(argv: [String]) -> Bool {
+        argv.count >= 2 && argv[1] == "serve" && !argv.contains("--no-reap")
     }
 
     // MARK: - Reap mechanics
