@@ -65,7 +65,7 @@ extension CLIImpl.Command {
             // #50: the documentation tree is served by the embedded data engine's topic-group
             // parser, the same implementation the MCP `list_children` tool delegates to, so the
             // CLI and the server share one parser instead of a duplicate in this repo.
-            let listing = try await CupertinoComposition.makePerSourceDocumentChildrenListing(
+            let listing = try await CupertinoComposition.makePerSourceDocumentBrowsing(
                 corpusDirectory: paths.baseDirectory,
                 logger: Cupertino.Context.composition.logging.recording
             )

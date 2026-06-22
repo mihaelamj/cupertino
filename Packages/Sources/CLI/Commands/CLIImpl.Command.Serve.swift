@@ -283,7 +283,7 @@ extension CLIImpl.Command {
             // so the server and the embedded apps share ONE topic-group parser. `try?` so a
             // missing / schema-mismatched corpus simply disables children (the tool then reports
             // it is unavailable), matching the search-index degradation.
-            let documentChildrenListing = try? await CupertinoComposition.makePerSourceDocumentChildrenListing(
+            let documentBrowsing = try? await CupertinoComposition.makePerSourceDocumentBrowsing(
                 corpusDirectory: paths.baseDirectory,
                 logger: Cupertino.Context.composition.logging.recording
             )
@@ -399,8 +399,9 @@ extension CLIImpl.Command {
                 // so the `list_sources` tool can report which per-source databases are installed
                 // and clients can detect a missing/partial corpus and guide setup.
                 sourceInventory: sourceInventory,
-                // #50: engine-backed documentation-tree children listing (shared with the apps).
-                documentChildrenListing: documentChildrenListing
+                // #50 / pluggability: engine-backed documentation browser (list + children) for
+                // ALL sources, shared with the embedded apps.
+                documentBrowsing: documentBrowsing
             )
             await server.registerToolProvider(toolProvider)
 

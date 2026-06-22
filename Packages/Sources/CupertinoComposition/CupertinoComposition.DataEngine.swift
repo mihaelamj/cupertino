@@ -113,16 +113,17 @@ extension CupertinoComposition {
         )
     }
 
-    /// The documentation-tree children listing (issue #50), backed by the embedded data engine
-    /// over the current per-source corpus. Returned as the `Search.DocumentChildrenListing`
-    /// protocol so callers (the MCP `list_children` tool) consume one shared parser without
-    /// naming the engine. The engine parses a document's `## Topics` section into topic groups
-    /// and their member documents; the server and the embedded apps now share this single
-    /// implementation instead of maintaining two copies.
-    public static func makePerSourceDocumentChildrenListing(
+    /// The documentation browser (list documents + list topic-group children, issue #50 /
+    /// query-side source pluggability), backed by the embedded data engine over the current
+    /// per-source corpus. Returned as the `Search.DocumentBrowsing` protocol so callers (the MCP
+    /// `list_documents` / `list_children` tools and the matching CLI commands) consume one shared
+    /// implementation without naming the engine. The engine has a reader per source, so browsing
+    /// works for ALL sources (apple-docs, hig, apple-archive, swift-evolution, swift-org,
+    /// swift-book), not just apple-docs.
+    public static func makePerSourceDocumentBrowsing(
         corpusDirectory: URL,
         logger: any Logging.Recording
-    ) async throws -> any Search.DocumentChildrenListing {
+    ) async throws -> any Search.DocumentBrowsing {
         try await makePerSourceReadOnlyDataEngine(corpusDirectory: corpusDirectory, logger: logger)
     }
 }

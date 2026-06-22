@@ -30,7 +30,13 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     /// embedded data engine over the current corpus). `handle_list_children` delegates to this so
     /// the server and the embedded apps share ONE topic-group parser instead of two copies. When
     /// nil the `list_children` tool reports the index does not support children listing.
-    private let documentChildrenListing: (any Search.DocumentChildrenListing)?
+    /// #50 / query-side source pluggability: the engine-backed document browser the composition
+    /// root injects (CupertinoDataEngine over every per-source corpus). `list_documents` and
+    /// `list_children` route through it for ALL sources, not just apple-docs: the engine has a
+    /// reader per source, so the curated sources (swift-org, swift-evolution, swift-book, hig,
+    /// apple-archive) list their documents instead of being rejected. When nil the two tools
+    /// report the index does not support browsing.
+    private let documentBrowsing: (any Search.DocumentBrowsing)?
 
     /// `#789`-style architectural gap fix landed in v1.2.0 PR-2. Pre-fix,
     /// MCP `search source=packages` routed through
@@ -111,11 +117,11 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         searchToolSourceEnumValues: [String] = [],
         searchToolRoutesByID: [String: Search.SearchRoute] = [:],
         sourceInventory: Search.SourceInventory? = nil,
-        documentChildrenListing: (any Search.DocumentChildrenListing)? = nil
+        documentBrowsing: (any Search.DocumentBrowsing)? = nil
     ) {
         self.searchIndex = searchIndex
         self.sampleDatabase = sampleDatabase
-        self.documentChildrenListing = documentChildrenListing
+        self.documentBrowsing = documentBrowsing
         self.docsService = docsService
         self.sampleService = sampleService
         self.teaserService = teaserService
@@ -1366,10 +1372,12 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     // MARK: - List Documents
 
     private func handleListDocuments(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
-        guard let searchIndex else {
+        guard searchIndex != nil else {
             throw searchIndexUnavailableError("index")
         }
-        guard let listing = searchIndex as? any Search.DocumentListing else {
+        // Pluggability: route through the engine-backed browser (a reader per source) so
+        // list_documents serves ALL sources, not just apple-docs.
+        guard let listing = documentBrowsing else {
             throw Shared.Core.ToolError.invalidArgument(
                 "index",
                 "Documentation index does not support document listing"
@@ -1381,12 +1389,6 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamSource,
             default: Shared.Constants.SourcePrefix.appleDocs
         )
-        guard source == Shared.Constants.SourcePrefix.appleDocs else {
-            throw Shared.Core.ToolError.invalidArgument(
-                Shared.Constants.Search.schemaParamSource,
-                "list_documents currently supports only apple-docs"
-            )
-        }
 
         let offset = max(args.optional(Shared.Constants.Search.schemaParamOffset, default: 0), 0)
         let requestedLimit = args.optional(
@@ -1411,10 +1413,10 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         guard searchIndex != nil else {
             throw searchIndexUnavailableError("index")
         }
-        // #50: delegate to the engine-backed children listing the composition root injects, the
-        // single shared topic-group parser. (Previously this cast `searchIndex` to the listing
-        // protocol; the per-source SQLite reader no longer carries its own duplicate parser.)
-        guard let listing = documentChildrenListing else {
+        // #50 / pluggability: delegate to the engine-backed browser the composition root injects.
+        // It has a reader per source, so children listing works for ALL sources, not just
+        // apple-docs (the previous hardcoded guard is gone).
+        guard let listing = documentBrowsing else {
             throw Shared.Core.ToolError.invalidArgument(
                 "index",
                 "Documentation index does not support document children listing"
@@ -1426,12 +1428,6 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamSource,
             default: Shared.Constants.SourcePrefix.appleDocs
         )
-        guard source == Shared.Constants.SourcePrefix.appleDocs else {
-            throw Shared.Core.ToolError.invalidArgument(
-                Shared.Constants.Search.schemaParamSource,
-                "list_children currently supports only apple-docs"
-            )
-        }
 
         let page = try await listing.listChildren(source: source, uri: uri)
         let json = Services.Formatter.DocumentChildren.JSON().format(page)
