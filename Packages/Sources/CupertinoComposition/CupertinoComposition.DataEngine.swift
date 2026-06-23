@@ -126,4 +126,25 @@ extension CupertinoComposition {
     ) async throws -> any Search.DocumentBrowsing {
         try await makePerSourceReadOnlyDataEngine(corpusDirectory: corpusDirectory, logger: logger)
     }
+
+    /// Browsing surface for the unified `list` tool (#1311): the same engine, exposed both as the
+    /// shared `Search.DocumentBrowsing` (levels 2/3) AND as a per-source framework lister (level 1).
+    /// Built from ONE engine so the per-source DBs open once. The frameworks closure routes to the
+    /// per-source reader (`documentBrowser(id:).listFrameworks()`), so each source lists its OWN
+    /// frameworks rather than the global merged set the source-blind `list_frameworks` returned.
+    public struct PerSourceBrowsing: Sendable {
+        public let browsing: any Search.DocumentBrowsing
+        public let frameworks: @Sendable (String) async throws -> [String: Int]
+    }
+
+    public static func makePerSourceBrowsing(
+        corpusDirectory: URL,
+        logger: any Logging.Recording
+    ) async throws -> PerSourceBrowsing {
+        let engine = try await makePerSourceReadOnlyDataEngine(corpusDirectory: corpusDirectory, logger: logger)
+        return PerSourceBrowsing(
+            browsing: engine,
+            frameworks: { source in try await engine.documentBrowser(id: source).listFrameworks() }
+        )
+    }
 }

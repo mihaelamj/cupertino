@@ -100,6 +100,18 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     /// existing call sites and test doubles that do not wire it are unaffected.
     private let sourceInventory: Search.SourceInventory?
 
+    /// #1311: registry-derived source-id → declared `Search.SourceHierarchy`. The unified `list`
+    /// tool returns this for level 0 (`list(source)`) so a client can discover a source's shape
+    /// (depth, per-level kind, leaf content type) instead of assuming framework -> document.
+    /// Empty when the composition root does not wire it (the `list` tool then stays hidden).
+    private let sourceHierarchies: [String: Search.SourceHierarchy]
+
+    /// #1311: per-source framework enumeration for `list` level 1. The composition root supplies a
+    /// closure over the engine's per-source reader (`engine.documentBrowser(id: source)
+    /// .listFrameworks()`), so each source lists ITS OWN frameworks, fixing the source-blind
+    /// `list_frameworks` leftover. Nil when not wired.
+    private let sourceFrameworks: (@Sendable (String) async throws -> [String: Int])?
+
     /// Primary init used by the CLI composition root. Each cross-package
     /// surface arrives pre-wired as a protocol-typed value so this file
     /// doesn't have to import the Search / SampleIndex / Services
@@ -117,7 +129,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         searchToolSourceEnumValues: [String] = [],
         searchToolRoutesByID: [String: Search.SearchRoute] = [:],
         sourceInventory: Search.SourceInventory? = nil,
-        documentBrowsing: (any Search.DocumentBrowsing)? = nil
+        documentBrowsing: (any Search.DocumentBrowsing)? = nil,
+        sourceHierarchies: [String: Search.SourceHierarchy] = [:],
+        sourceFrameworks: (@Sendable (String) async throws -> [String: Int])? = nil
     ) {
         self.searchIndex = searchIndex
         self.sampleDatabase = sampleDatabase
@@ -132,6 +146,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         self.searchToolSourceEnumValues = searchToolSourceEnumValues
         self.searchToolRoutesByID = searchToolRoutesByID
         self.sourceInventory = sourceInventory
+        self.sourceHierarchies = sourceHierarchies
+        self.sourceFrameworks = sourceFrameworks
     }
 
     /// True when the server should advertise search.db-dependent tools.
@@ -494,6 +510,38 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             ))
         }
 
+        // #1311: unified, source-aware hierarchy navigation. Advertised only when the composition
+        // root wired the per-source hierarchies (engine-backed), so test doubles that do not wire
+        // it are unaffected. `list_frameworks` above remains as a thin alias for `list` level 1.
+        if !sourceHierarchies.isEmpty {
+            let listProperties: [String: MCP.Core.Protocols.AnyCodable] = [
+                Shared.Constants.Search.schemaParamSource: stringSchema(
+                    description: "Source to browse.",
+                    enumValues: sourceHierarchies.keys.sorted()
+                ),
+                Shared.Constants.Search.schemaParamLevel: intSchema(
+                    description: "1-based level to enumerate. Omit (or 0) to describe the source: depth, the kind at each level, and the leaf content type (markdown/image/pdf/code)."
+                ),
+                Shared.Constants.Search.schemaParamParent: stringSchema(
+                    description: "Parent node from the level above: a framework id at level 2, a node uri at level 3. Omit for level 1."
+                ),
+                Shared.Constants.Search.schemaParamOffset: intSchema(
+                    description: "Zero-based offset for paged levels (default 0)."
+                ),
+                Shared.Constants.Search.schemaParamLimit: intSchema(
+                    description: "Maximum items to return (default 100)."
+                ),
+            ]
+            allTools.append(MCP.Core.Protocols.Tool(
+                name: Shared.Constants.Search.toolList,
+                description: "Navigate a source's documentation hierarchy. `list(source)` (level 0/omitted) returns the source's shape: depth, the kind at each level, and the leaf content type. `list(source, level:1)` lists the top level; `list(source, level:N, parent:…)` lists the next level under a parent (a framework id at level 2, a node uri at level 3). Leaf nodes are read with read_document.",
+                inputSchema: objectSchema(
+                    properties: listProperties,
+                    required: [Shared.Constants.Search.schemaParamSource]
+                )
+            ))
+        }
+
         // #1277: the installed-source inventory. Independent of the search.db tools (it reports
         // which per-source databases exist even when none are open), so it is gated on its own
         // injected value rather than `searchToolsVisible`.
@@ -604,6 +652,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         switch name {
         case Shared.Constants.Search.toolSearch:
             return try await handleSearch(args: args)
+        case Shared.Constants.Search.toolList:
+            return try await handleList(args: args)
         case Shared.Constants.Search.toolListFrameworks:
             return try await handleListFrameworks()
         case Shared.Constants.Search.toolListDocuments:
@@ -1342,6 +1392,142 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             limit: input.limit,
             degradedSources: input.degradedSources + synthesised
         )
+    }
+
+    // MARK: - Unified list (#1311)
+
+    /// Level-0 (`list(source)`) payload: the source's self-described hierarchy.
+    private struct ListDescribeResult: Encodable {
+        let source: String
+        let kind: String // always "describe"
+        let depth: Int
+        let leafContentType: String
+        let levels: [Level]
+        struct Level: Encodable { let level: Int; let kind: String; let isLeaf: Bool }
+    }
+
+    /// One node at a level. `count` is the document count for level-1 framework rows; nil otherwise.
+    private struct ListItem: Encodable {
+        let id: String
+        let title: String
+        let kind: String
+        let hasChildren: Bool
+        let count: Int?
+    }
+
+    /// Level-N (`list(source, level:N, parent:…)`) payload: a paged window of nodes.
+    private struct ListPageResult: Encodable {
+        let source: String
+        let level: Int
+        let levelKind: String
+        let isLeafLevel: Bool
+        let parent: String?
+        let offset: Int
+        let limit: Int
+        let total: Int
+        let items: [ListItem]
+    }
+
+    private func listJSON(_ value: some Encodable) throws -> MCP.Core.Protocols.CallToolResult {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let json = String(decoding: try encoder.encode(value), as: UTF8.self)
+        return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: json))])
+    }
+
+    private func browsingUnavailableError() -> any Error {
+        Shared.Core.ToolError.invalidArgument("index", "Documentation index does not support document browsing")
+    }
+
+    /// The single, source-aware hierarchy navigator. Level 0 (or omitted) describes the source;
+    /// level 1 lists the top level (per-source frameworks); level 2 lists a framework's documents;
+    /// level >= 3 lists a node's children. Everything routes through the source's declared
+    /// `Search.SourceHierarchy` and the engine's per-source readers, so nothing is hardcoded.
+    private func handleList(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
+        let source = try args.require(Shared.Constants.Search.schemaParamSource)
+        guard let hierarchy = sourceHierarchies[source] else {
+            throw Shared.Core.ToolError.invalidArgument(
+                Shared.Constants.Search.schemaParamSource,
+                "Unknown source '\(source)'. Known: \(sourceHierarchies.keys.sorted().joined(separator: ", "))."
+            )
+        }
+
+        let level = args.optional(Shared.Constants.Search.schemaParamLevel, default: 0)
+
+        // Level 0 / omitted: describe the source's shape.
+        if level <= 0 {
+            return try listJSON(ListDescribeResult(
+                source: source,
+                kind: "describe",
+                depth: hierarchy.depth,
+                leafContentType: hierarchy.leafContentType.rawValue,
+                levels: hierarchy.levels.map { .init(level: $0.level, kind: $0.kind, isLeaf: $0.isLeaf) }
+            ))
+        }
+
+        guard level <= hierarchy.depth else {
+            throw Shared.Core.ToolError.invalidArgument(
+                Shared.Constants.Search.schemaParamLevel,
+                "Source '\(source)' has depth \(hierarchy.depth); level \(level) is out of range."
+            )
+        }
+
+        let levelSpec = hierarchy.levels.first { $0.level == level }
+        let levelKind = levelSpec?.kind ?? ""
+        let isLeafLevel = levelSpec?.isLeaf ?? (level >= hierarchy.depth)
+        let parent = args.optional(Shared.Constants.Search.schemaParamParent) ?? ""
+        let offset = max(args.optional(Shared.Constants.Search.schemaParamOffset, default: 0), 0)
+        let limit = min(
+            max(args.optional(Shared.Constants.Search.schemaParamLimit, default: Shared.Constants.Limit.defaultDocumentListLimit), 0),
+            Shared.Constants.Limit.maxDocumentListLimit
+        )
+
+        switch level {
+        case 1:
+            // Top level: this source's OWN frameworks (per-source, not the global merged list).
+            guard let sourceFrameworks else {
+                throw Shared.Core.ToolError.invalidArgument("index", "This server does not support per-source level-1 listing")
+            }
+            let all = try await sourceFrameworks(source)
+                .sorted { $0.key < $1.key }
+                .map { ListItem(id: $0.key, title: $0.key, kind: levelKind, hasChildren: !isLeafLevel, count: $0.value) }
+            let windowed = Array(all.dropFirst(offset).prefix(limit))
+            return try listJSON(ListPageResult(
+                source: source, level: 1, levelKind: levelKind, isLeafLevel: isLeafLevel,
+                parent: nil, offset: offset, limit: limit, total: all.count, items: windowed
+            ))
+
+        case 2:
+            // A framework's documents.
+            guard let documentBrowsing else { throw browsingUnavailableError() }
+            guard !parent.isEmpty else {
+                throw Shared.Core.ToolError.invalidArgument(Shared.Constants.Search.schemaParamParent, "level 2 requires `parent` (a level-1 id, e.g. a framework).")
+            }
+            let page = try await documentBrowsing.listDocuments(source: source, framework: parent, offset: offset, limit: limit)
+            let items = page.documents.map {
+                ListItem(id: $0.uri, title: $0.title, kind: $0.kind.isEmpty ? levelKind : $0.kind, hasChildren: !isLeafLevel, count: nil)
+            }
+            return try listJSON(ListPageResult(
+                source: source, level: 2, levelKind: levelKind, isLeafLevel: isLeafLevel,
+                parent: parent, offset: page.offset, limit: page.limit, total: page.total, items: items
+            ))
+
+        default:
+            // level >= 3: a node's children (the topic-group / outline tree).
+            guard let documentBrowsing else { throw browsingUnavailableError() }
+            guard !parent.isEmpty else {
+                throw Shared.Core.ToolError.invalidArgument(Shared.Constants.Search.schemaParamParent, "level \(level) requires `parent` (a node uri from the level above).")
+            }
+            let page = try await documentBrowsing.listChildren(source: source, uri: parent)
+            let all = page.children.map {
+                ListItem(id: $0.uri, title: $0.title, kind: $0.kind, hasChildren: $0.hasChildren, count: nil)
+            }
+            let windowed = Array(all.dropFirst(offset).prefix(limit))
+            return try listJSON(ListPageResult(
+                source: source, level: level, levelKind: levelKind, isLeafLevel: isLeafLevel,
+                parent: parent, offset: offset, limit: limit, total: all.count, items: windowed
+            ))
+        }
     }
 
     // MARK: - List Frameworks
