@@ -1,6 +1,7 @@
 import ArgumentParser
 import Core
 import CoreProtocols
+import CupertinoComposition
 import Darwin
 import Foundation
 import Logging
@@ -277,6 +278,20 @@ extension CLIImpl.Command {
             )
             await server.registerResourceProvider(resourceProvider)
 
+            // #50: the documentation-tree children listing, backed by the embedded data engine
+            // over the current per-source corpus. The MCP `list_children` tool delegates to this
+            // so the server and the embedded apps share ONE topic-group parser. `try?` so a
+            // missing / schema-mismatched corpus simply disables children (the tool then reports
+            // it is unavailable), matching the search-index degradation.
+            // #1311: one engine, exposed as both the shared document browser (list levels 2/3) and
+            // a per-source framework lister (list level 1), so the unified `list` tool navigates
+            // every source by level without a hardcoded framework set.
+            let perSourceBrowsing = try? await CupertinoComposition.makePerSourceBrowsing(
+                corpusDirectory: paths.baseDirectory,
+                logger: Cupertino.Context.composition.logging.recording
+            )
+            let documentBrowsing = perSourceBrowsing?.browsing
+
             // Initialize sample code index if available
             let sampleIndex = await loadSampleIndex(sampleDBURL: sampleDBURL)
 
@@ -372,6 +387,14 @@ extension CLIImpl.Command {
                 searchToolRoutesByID[provider.definition.id] = provider.searchRoute
             }
 
+            // #1311: registry-derived source-id -> declared Search.SourceHierarchy. Drives the
+            // unified `list` tool's level-0 describe and its per-level navigation. Each source
+            // declares its own shape (SourceProvider.hierarchy); nothing hardcoded here.
+            var sourceHierarchies: [String: SearchModels.Search.SourceHierarchy] = [:]
+            for provider in registry.allEnabled {
+                sourceHierarchies[provider.definition.id] = provider.hierarchy
+            }
+
             let toolProvider = CompositeToolProvider(
                 searchIndex: searchIndex,
                 sampleDatabase: sampleIndex,
@@ -387,7 +410,14 @@ extension CLIImpl.Command {
                 // #1277: the registry-derived active-source inventory (presence + schema version),
                 // so the `list_sources` tool can report which per-source databases are installed
                 // and clients can detect a missing/partial corpus and guide setup.
-                sourceInventory: sourceInventory
+                sourceInventory: sourceInventory,
+                // #50 / pluggability: engine-backed documentation browser (list + children) for
+                // ALL sources, shared with the embedded apps.
+                documentBrowsing: documentBrowsing,
+                // #1311: per-source hierarchies (level-0 describe) + per-source framework lister
+                // (level 1) for the unified, source-aware `list` tool.
+                sourceHierarchies: sourceHierarchies,
+                sourceFrameworks: perSourceBrowsing?.frameworks
             )
             await server.registerToolProvider(toolProvider)
 

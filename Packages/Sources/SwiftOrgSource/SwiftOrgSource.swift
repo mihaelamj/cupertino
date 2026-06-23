@@ -83,3 +83,8 @@ public struct SwiftOrgSource: Search.SourceProvider {
         Search.DocsReadStrategy(sourceID: definition.id)
     }
 }
+
+// Swift.org is a flat list of articles/blog posts; each is a readable markdown document.
+public extension SwiftOrgSource {
+    var hierarchy: Search.SourceHierarchy { .flat(kind: "article", leafContentType: .markdown) }
+}

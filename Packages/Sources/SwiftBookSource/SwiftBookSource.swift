@@ -110,3 +110,8 @@ public struct SwiftBookSource: Search.SourceProvider {
         Search.DocsReadStrategy(sourceID: definition.id)
     }
 }
+
+// The Swift Programming Language book is a flat list of pages; each is a readable markdown document.
+public extension SwiftBookSource {
+    var hierarchy: Search.SourceHierarchy { .flat(kind: "page", leafContentType: .markdown) }
+}

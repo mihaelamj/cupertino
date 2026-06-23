@@ -73,6 +73,31 @@ struct ServeReaperTests {
         #expect(entries.isEmpty)
     }
 
+    // MARK: - isReapableServe (the argv reap-candidacy decision)
+
+    @Test("a plain `serve` sibling is reapable")
+    func plainServeIsReapable() {
+        #expect(ServeReaper.isReapableServe(argv: ["/usr/local/bin/cupertino", "serve"]))
+        #expect(ServeReaper.isReapableServe(argv: ["cupertino", "serve", "--base-dir", "/x"]))
+    }
+
+    @Test("a `serve --no-reap` sibling is NOT reapable (it opted out of being reaped)")
+    func noReapServeIsExempt() {
+        // The cupertino-desktop case: a long-lived embedded client holds
+        // `serve --no-reap` for the app's lifetime. A transient sibling `serve`
+        // start must not kill it (cupertino #280 / the Mac reader's
+        // "connection closed" on read_document after a sibling started).
+        #expect(!ServeReaper.isReapableServe(argv: ["/usr/local/bin/cupertino", "serve", "--no-reap"]))
+        #expect(!ServeReaper.isReapableServe(argv: ["cupertino", "serve", "--no-reap", "--base-dir", "/x"]))
+    }
+
+    @Test("a non-serve sibling is not reapable")
+    func nonServeNotReapable() {
+        #expect(!ServeReaper.isReapableServe(argv: ["cupertino", "save"]))
+        #expect(!ServeReaper.isReapableServe(argv: ["cupertino"]))
+        #expect(!ServeReaper.isReapableServe(argv: []))
+    }
+
     // MARK: - parseProcargs2 (kernel argv buffer)
 
     @Test("parses a typical KERN_PROCARGS2 buffer")

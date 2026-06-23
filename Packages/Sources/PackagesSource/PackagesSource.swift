@@ -135,3 +135,16 @@ private struct PackagesViewSourceIndexer: Search.SourceIndexer {
     let sourceID = Shared.Constants.SourcePrefix.packages
     let displayName = "Swift Packages"
 }
+
+// Swift packages: a package lists its source files; each file is readable as code.
+public extension PackagesSource {
+    var hierarchy: Search.SourceHierarchy {
+        Search.SourceHierarchy(
+            levels: [
+                .init(level: 1, kind: "package", isLeaf: false),
+                .init(level: 2, kind: "file", isLeaf: true),
+            ],
+            leafContentType: .code
+        )
+    }
+}

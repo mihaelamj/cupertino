@@ -112,4 +112,39 @@ extension CupertinoComposition {
             logger: logger
         )
     }
+
+    /// The documentation browser (list documents + list topic-group children, issue #50 /
+    /// query-side source pluggability), backed by the embedded data engine over the current
+    /// per-source corpus. Returned as the `Search.DocumentBrowsing` protocol so callers (the MCP
+    /// `list_documents` / `list_children` tools and the matching CLI commands) consume one shared
+    /// implementation without naming the engine. The engine has a reader per source, so browsing
+    /// works for ALL sources (apple-docs, hig, apple-archive, swift-evolution, swift-org,
+    /// swift-book), not just apple-docs.
+    public static func makePerSourceDocumentBrowsing(
+        corpusDirectory: URL,
+        logger: any Logging.Recording
+    ) async throws -> any Search.DocumentBrowsing {
+        try await makePerSourceReadOnlyDataEngine(corpusDirectory: corpusDirectory, logger: logger)
+    }
+
+    /// Browsing surface for the unified `list` tool (#1311): the same engine, exposed both as the
+    /// shared `Search.DocumentBrowsing` (levels 2/3) AND as a per-source framework lister (level 1).
+    /// Built from ONE engine so the per-source DBs open once. The frameworks closure routes to the
+    /// per-source reader (`documentBrowser(id:).listFrameworks()`), so each source lists its OWN
+    /// frameworks rather than the global merged set the source-blind `list_frameworks` returned.
+    public struct PerSourceBrowsing: Sendable {
+        public let browsing: any Search.DocumentBrowsing
+        public let frameworks: @Sendable (String) async throws -> [String: Int]
+    }
+
+    public static func makePerSourceBrowsing(
+        corpusDirectory: URL,
+        logger: any Logging.Recording
+    ) async throws -> PerSourceBrowsing {
+        let engine = try await makePerSourceReadOnlyDataEngine(corpusDirectory: corpusDirectory, logger: logger)
+        return PerSourceBrowsing(
+            browsing: engine,
+            frameworks: { source in try await engine.documentBrowser(id: source).listFrameworks() }
+        )
+    }
 }

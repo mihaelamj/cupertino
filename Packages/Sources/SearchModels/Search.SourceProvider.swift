@@ -269,6 +269,18 @@ extension Search {
         /// run "in the past"; `corpusDirectoryAlias` runs "right now,
         /// in parallel".
         var corpusDirectoryAlias: String? { get }
+
+        /// This source's self-described browse hierarchy: depth, the kind at each level, which
+        /// level is the leaf, and the leaf's content type. Drives the unified `list` tool so
+        /// navigation hardcodes nothing per source (`list(source)` returns this; `list(source,
+        /// level:N, parent:…)` walks it). Replaces the source-blind `list_frameworks` leftover
+        /// from the source-independence work.
+        ///
+        /// Declared as a protocol requirement (not extension-only) for the same reason as
+        /// `resourceListMode`: a per-source override must win when called through
+        /// `any Search.SourceProvider`. The default extension returns a single markdown leaf,
+        /// so adding this property is additive for external conformers.
+        var hierarchy: Search.SourceHierarchy { get }
     }
 
     /// Which dispatcher runner a source uses for `cupertino search` /
@@ -357,6 +369,13 @@ extension Search.SourceProvider {
     /// source's on-disk corpus directory override.
     public var corpusDirectoryAlias: String? {
         nil
+    }
+
+    /// Default hierarchy: framework -> markdown document. Matches the historical
+    /// `list_frameworks` + `list_documents` shape so unconverted sources keep working; sources
+    /// with a different shape (flat proposals, deeper trees, code/image/pdf leaves) override.
+    public var hierarchy: Search.SourceHierarchy {
+        .framework(leafKind: "document", leafContentType: .markdown)
     }
 
     /// Default: no per-source enrichment passes. Sources with
