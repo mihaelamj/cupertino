@@ -122,3 +122,16 @@ public struct SampleCodeSource: Search.SourceProvider {
         false
     }
 }
+
+// Sample code: a project lists its source files; each file is readable as code.
+public extension SampleCodeSource {
+    var hierarchy: Search.SourceHierarchy {
+        Search.SourceHierarchy(
+            levels: [
+                .init(level: 1, kind: "project", isLeaf: false),
+                .init(level: 2, kind: "file", isLeaf: true),
+            ],
+            leafContentType: .code
+        )
+    }
+}

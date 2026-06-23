@@ -101,3 +101,18 @@ public struct AppleDocsSource: Search.SourceProvider {
         .frameworkRoots
     }
 }
+
+// apple-docs: framework -> page -> topic group. Pages are readable markdown; pages with a
+// `## Topics` section expose a deeper topic-group level (driven by hasChildren at read time).
+public extension AppleDocsSource {
+    var hierarchy: Search.SourceHierarchy {
+        Search.SourceHierarchy(
+            levels: [
+                .init(level: 1, kind: "framework", isLeaf: false),
+                .init(level: 2, kind: "page", isLeaf: false),
+                .init(level: 3, kind: "topic", isLeaf: true),
+            ],
+            leafContentType: .markdown
+        )
+    }
+}

@@ -56,3 +56,8 @@ public struct SwiftEvolutionSource: Search.SourceProvider {
         Search.DocsReadStrategy(sourceID: definition.id)
     }
 }
+
+// Swift Evolution is a flat list of proposals; each proposal is a readable markdown document.
+public extension SwiftEvolutionSource {
+    var hierarchy: Search.SourceHierarchy { .flat(kind: "proposal", leafContentType: .markdown) }
+}
