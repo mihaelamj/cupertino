@@ -156,7 +156,10 @@ let deps: [Package.Dependency] = [
     // SchemaVersions composition APIs, unchanged in 0.2.7, so this is a consistency bump).
     // v0.2.8 lists topic-group children for the documentation tree (#50): the MCP list_children
     // tool now delegates to the engine so the server and the embedded apps share one parser.
-    .package(url: "https://github.com/mihaelamj/CupertinoDataEngine.git", from: "0.2.10"),
+    // Feature-branch pin: this branch consumes the engine's new CatalogBrowser API (browsable
+    // samples + packages) which is not in a tagged release yet. Revert to a version pin
+    // (`from: "0.2.11"`) once the engine branch is tagged and merged.
+    .package(url: "https://github.com/mihaelamj/CupertinoDataEngine.git", branch: "feat/catalog-browsing-samples-packages"),
 ]
 
 // -------------------------------------------------------------
