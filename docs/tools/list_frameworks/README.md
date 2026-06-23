@@ -1,23 +1,32 @@
 # list_frameworks
 
-List all available frameworks in the documentation index with document counts.
+List frameworks with document counts. Alias for [`list(source, level: 1)`](../list/); kept for
+existing clients.
 
 ## Synopsis
 
 ```json
 {
   "name": "list_frameworks",
-  "arguments": {}
+  "arguments": { "source": "apple-archive" }
 }
 ```
 
 ## Description
 
-Returns a list of all frameworks that have been indexed, along with the number of documents in each framework. Useful for discovering what documentation is available and for filtering `search` queries.
+Returns the frameworks for a source, with the number of documents in each. Useful for discovering
+what documentation is available and for filtering `search` queries.
+
+Source-aware (#1311): pass `source` to list THAT source's own frameworks (for example
+`apple-archive` lists its 14 archive frameworks, not apple-docs'). With no `source`, it falls back
+to the global merged list across every indexed source (the historical behaviour), so callers that
+never passed a source are unchanged. For new clients, prefer [`list`](../list/).
 
 ## Parameters
 
-None.
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `source` | No | Source whose frameworks to list. Omit for the global merged list (legacy behaviour). |
 
 ## Response
 

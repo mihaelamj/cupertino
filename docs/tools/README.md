@@ -11,9 +11,10 @@ For desktop/native clients, these MCP tools are the backend contract. UI layers 
 | Tool | Description |
 |------|-------------|
 | [search](search/) | Unified full-text search across every indexed source (apple-docs, samples, HIG, apple-archive, swift-evolution, swift-org, swift-book, packages). Use the `source` parameter to scope to one source. Replaces the pre-#239 per-source `search_docs` / `search_hig` / `search_samples` tools, which were collapsed into this one. See the [search command docs](../commands/search/) for the same fan-out behavior on the CLI side. |
-| [list_frameworks](list_frameworks/) | List available frameworks with document counts |
-| [list_documents](list_documents/) | List paged documents in a framework |
-| [list_children](list_children/) | List direct children of a document or topic group |
+| [list](list/) | Source-aware hierarchy navigation. `list(source)` describes the source's shape (depth, per-level kind, leaf content type); `list(source, level:N, parent:…)` walks it. The canonical browse tool; the three `list_*` tools below are kept as aliases. |
+| [list_frameworks](list_frameworks/) | List a source's frameworks with document counts. Alias for `list(source, level:1)`. |
+| [list_documents](list_documents/) | List paged documents in a framework. Alias for `list(source, level:2, parent:<framework>)`. |
+| [list_children](list_children/) | List direct children of a document or topic group. Alias for `list(source, level:3, parent:<uri>)`. |
 | [list_sources](list_sources/) | List the installed per-source databases (presence + schema version); reports the canonical source set even when databases are missing, so clients can guide setup |
 | [read_document](read_document/) | Read a document by URI in JSON or Markdown format |
 

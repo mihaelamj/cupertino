@@ -87,9 +87,15 @@ Returns the full `StructuredDocumentationPage` as JSON:
     {"name": "macOS", "version": "10.15+"}
   ],
   "seeAlso": [...],
-  "rawMarkdown": "# View\n\nA type that represents..."
+  "rawMarkdown": "# View\n\nA type that represents...",
+  "contentType": "markdown"
 }
 ```
+
+`contentType` (#1312) is the leaf content type declared by the URI's source, one of `markdown`,
+`image`, `pdf`, or `code`, so a client knows how to render the payload. It matches the
+`leafContentType` reported by [`list(source)`](../list/). Added only to the JSON format; the
+markdown format is unchanged.
 
 #### JSON Fields
 

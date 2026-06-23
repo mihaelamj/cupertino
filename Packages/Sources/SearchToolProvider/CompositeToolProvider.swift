@@ -474,12 +474,18 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             ))
         }
 
-        // List frameworks tool
+        // List frameworks tool (alias for `list` level 1; kept for existing clients).
         if searchToolsVisible {
+            let listFrameworksProperties: [String: MCP.Core.Protocols.AnyCodable] = [
+                Shared.Constants.Search.schemaParamSource: stringSchema(
+                    description: "Source whose frameworks to list. Omit for the global merged list (legacy behaviour). Alias for `list(source, level:1)`.",
+                    enumValues: sourceHierarchies.keys.sorted()
+                ),
+            ]
             allTools.append(MCP.Core.Protocols.Tool(
                 name: Shared.Constants.Search.toolListFrameworks,
                 description: MCP.SharedTools.Copy.toolListFrameworksDescription,
-                inputSchema: objectSchema(properties: [:])
+                inputSchema: objectSchema(properties: sourceHierarchies.isEmpty ? [:] : listFrameworksProperties)
             ))
 
             allTools.append(MCP.Core.Protocols.Tool(
@@ -655,7 +661,7 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         case Shared.Constants.Search.toolList:
             return try await handleList(args: args)
         case Shared.Constants.Search.toolListFrameworks:
-            return try await handleListFrameworks()
+            return try await handleListFrameworks(args: args)
         case Shared.Constants.Search.toolListDocuments:
             return try await handleListDocuments(args: args)
         case Shared.Constants.Search.toolListChildren:
@@ -1530,14 +1536,25 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         }
     }
 
-    // MARK: - List Frameworks
+    // MARK: - List Frameworks (alias for `list` level 1)
 
-    private func handleListFrameworks() async throws -> MCP.Core.Protocols.CallToolResult {
+    /// Back-compat alias for `list(source, level:1)`. Kept because existing MCP clients call
+    /// `list_frameworks` directly. Now source-aware (#1311): when a `source` is given and the
+    /// per-source lister is wired, it lists THAT source's frameworks (fixing the source-blind
+    /// leftover); with no `source` it falls back to the global merged list as before, so callers
+    /// that never passed a source keep their behaviour and output shape (markdown).
+    private func handleListFrameworks(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
             throw searchIndexUnavailableError("index")
         }
 
-        let frameworks = try await searchIndex.listFrameworks()
+        let requestedSource = args.optional(Shared.Constants.Search.schemaParamSource)
+        let frameworks: [String: Int]
+        if let requestedSource, !requestedSource.isEmpty, let sourceFrameworks {
+            frameworks = try await sourceFrameworks(requestedSource)
+        } else {
+            frameworks = try await searchIndex.listFrameworks()
+        }
         let totalDocs = try await searchIndex.documentCount()
 
         // #1045 Gap 2 wiring: registry-derived source-id list.
@@ -1661,7 +1678,8 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             ? .markdown : .json
 
         if let documentContent = try await searchIndex.getDocumentContent(uri: uri, format: format) {
-            return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: documentContent))])
+            let tagged = format == .json ? taggedWithContentType(documentContent, uri: uri) : documentContent
+            return MCP.Core.Protocols.CallToolResult(content: [.text(MCP.Core.Protocols.TextContent(text: tagged))])
         }
 
         // #582: search-index direct lookup missed. Fall back through the
@@ -1688,6 +1706,24 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             Shared.Constants.Search.schemaParamURI,
             "Document not found: \(uri)"
         )
+    }
+
+    /// #1312: tag a JSON `read_document` payload with the leaf `contentType` (markdown/image/pdf/
+    /// code) declared by the URI's source, so a client knows how to render it. Additive: an existing
+    /// consumer that ignores the field is unaffected; the markdown format is never touched. Derived
+    /// from the source's `Search.SourceHierarchy.leafContentType`, falling back to markdown when the
+    /// source is unknown or hierarchies were not wired.
+    private func taggedWithContentType(_ json: String, uri: String) -> String {
+        guard let scheme = uri.range(of: "://").map({ String(uri[uri.startIndex ..< $0.lowerBound]) }) else { return json }
+        let leaf = sourceHierarchies[scheme]?.leafContentType ?? .markdown
+        guard let data = json.data(using: .utf8),
+              var object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        else { return json }
+        object["contentType"] = leaf.rawValue
+        guard let out = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys, .prettyPrinted]),
+              let string = String(data: out, encoding: .utf8)
+        else { return json }
+        return string
     }
 
     // MARK: - Read Document — URI normalisation (#587)
