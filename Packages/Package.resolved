@@ -1,13 +1,13 @@
 {
-  "originHash" : "95739b62ca0adfb2410158c0a5f3c43312c7cebfd5d25fca23828e1b4dcdff15",
+  "originHash" : "1a9706b603bb88be10bec20360faa909596a3373eea00dbae20a34c492aad1b2",
   "pins" : [
     {
       "identity" : "cupertinodataengine",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/mihaelamj/CupertinoDataEngine.git",
       "state" : {
-        "revision" : "785dcf6e0fdbaf908abd7de890308fd9f75b7fc6",
-        "version" : "0.2.8"
+        "revision" : "14a0f93e210512205471fb5283f7278e89417116",
+        "version" : "0.2.9"
       }
     },
     {

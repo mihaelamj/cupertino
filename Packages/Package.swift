@@ -156,7 +156,7 @@ let deps: [Package.Dependency] = [
     // SchemaVersions composition APIs, unchanged in 0.2.7, so this is a consistency bump).
     // v0.2.8 lists topic-group children for the documentation tree (#50): the MCP list_children
     // tool now delegates to the engine so the server and the embedded apps share one parser.
-    .package(url: "https://github.com/mihaelamj/CupertinoDataEngine.git", from: "0.2.8"),
+    .package(url: "https://github.com/mihaelamj/CupertinoDataEngine.git", from: "0.2.9"),
 ]
 
 // -------------------------------------------------------------
