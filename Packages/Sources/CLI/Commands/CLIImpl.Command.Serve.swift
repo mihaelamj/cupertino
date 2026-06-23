@@ -417,7 +417,11 @@ extension CLIImpl.Command {
                 // #1311: per-source hierarchies (level-0 describe) + per-source framework lister
                 // (level 1) for the unified, source-aware `list` tool.
                 sourceHierarchies: sourceHierarchies,
-                sourceFrameworks: perSourceBrowsing?.frameworks
+                sourceFrameworks: perSourceBrowsing?.frameworks,
+                // Catalog sources (samples, packages): entries + file tree through the `list` tool.
+                catalogSources: perSourceBrowsing?.catalogSources ?? [],
+                catalogEntries: perSourceBrowsing?.catalogEntries,
+                catalogChildren: perSourceBrowsing?.catalogChildren
             )
             await server.registerToolProvider(toolProvider)
 

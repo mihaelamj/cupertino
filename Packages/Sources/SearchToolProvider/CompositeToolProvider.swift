@@ -112,6 +112,18 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     /// `list_frameworks` leftover. Nil when not wired.
     private let sourceFrameworks: (@Sendable (String) async throws -> [String: Int])?
 
+    /// The sources the `list` tool browses as CATALOGS (samples, packages): their corpus is a set of
+    /// entries each holding a file tree, not a documentation graph, so level 1 enumerates entries and
+    /// levels 2..N walk a file tree (any depth) rather than the framework -> document -> topic model.
+    /// Empty when not wired.
+    private let catalogSources: Set<String>
+
+    /// Catalog level 1: one window of a catalog source's entries (every project / every package).
+    private let catalogEntries: (@Sendable (_ source: String, _ offset: Int, _ limit: Int) async throws -> Search.CatalogEntryPage)?
+
+    /// Catalog levels 2..N: the immediate children of a node (an entry root or a folder beneath it).
+    private let catalogChildren: (@Sendable (_ source: String, _ parentURI: String) async throws -> [Search.CatalogNode])?
+
     /// Primary init used by the CLI composition root. Each cross-package
     /// surface arrives pre-wired as a protocol-typed value so this file
     /// doesn't have to import the Search / SampleIndex / Services
@@ -131,7 +143,10 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         sourceInventory: Search.SourceInventory? = nil,
         documentBrowsing: (any Search.DocumentBrowsing)? = nil,
         sourceHierarchies: [String: Search.SourceHierarchy] = [:],
-        sourceFrameworks: (@Sendable (String) async throws -> [String: Int])? = nil
+        sourceFrameworks: (@Sendable (String) async throws -> [String: Int])? = nil,
+        catalogSources: Set<String> = [],
+        catalogEntries: (@Sendable (_ source: String, _ offset: Int, _ limit: Int) async throws -> Search.CatalogEntryPage)? = nil,
+        catalogChildren: (@Sendable (_ source: String, _ parentURI: String) async throws -> [Search.CatalogNode])? = nil
     ) {
         self.searchIndex = searchIndex
         self.sampleDatabase = sampleDatabase
@@ -148,6 +163,9 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
         self.sourceInventory = sourceInventory
         self.sourceHierarchies = sourceHierarchies
         self.sourceFrameworks = sourceFrameworks
+        self.catalogSources = catalogSources
+        self.catalogEntries = catalogEntries
+        self.catalogChildren = catalogChildren
     }
 
     /// True when the server should advertise search.db-dependent tools.
@@ -1471,6 +1489,12 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
             ))
         }
 
+        // Catalog sources (samples, packages): entries + a file tree, not framework -> doc -> topic.
+        // Their tree is arbitrary depth, so they skip the fixed-depth guard and walk by node URI.
+        if catalogSources.contains(source) {
+            return try await handleCatalogList(source: source, hierarchy: hierarchy, level: level, args: args)
+        }
+
         guard level <= hierarchy.depth else {
             throw Shared.Core.ToolError.invalidArgument(
                 Shared.Constants.Search.schemaParamLevel,
@@ -1543,6 +1567,56 @@ public actor CompositeToolProvider: MCP.Core.ToolProvider {
     /// per-source lister is wired, it lists THAT source's frameworks (fixing the source-blind
     /// leftover); with no `source` it falls back to the global merged list as before, so callers
     /// that never passed a source keep their behaviour and output shape (markdown).
+    /// `list` for a catalog source (samples, packages): level 1 enumerates entries (every project /
+    /// every package, paged across the whole corpus), and levels 2..N walk one entry's file tree by
+    /// node URI. At level 2 `parent` is a bare entry id (`sample-nav`); deeper it is a node URI
+    /// (`samples://sample-nav/Sources`). Directories report `hasChildren`; files are leaves. The
+    /// tree is arbitrary depth, so there is no fixed-depth ceiling.
+    private func handleCatalogList(
+        source: String,
+        hierarchy: Search.SourceHierarchy,
+        level: Int,
+        args: MCP.SharedTools.ArgumentExtractor
+    ) async throws -> MCP.Core.Protocols.CallToolResult {
+        guard let catalogEntries, let catalogChildren else { throw browsingUnavailableError() }
+        let offset = max(args.optional(Shared.Constants.Search.schemaParamOffset, default: 0), 0)
+        let limit = min(
+            max(args.optional(Shared.Constants.Search.schemaParamLimit, default: Shared.Constants.Limit.defaultDocumentListLimit), 0),
+            Shared.Constants.Limit.maxDocumentListLimit
+        )
+        let parent = args.optional(Shared.Constants.Search.schemaParamParent) ?? ""
+        let entryKind = hierarchy.levels.first { $0.level == 1 }?.kind ?? "entry"
+
+        if level == 1 {
+            let page = try await catalogEntries(source, offset, limit)
+            let items = page.entries.map {
+                ListItem(id: $0.id, title: $0.title, kind: entryKind, hasChildren: true, count: $0.fileCount)
+            }
+            return try listJSON(ListPageResult(
+                source: source, level: 1, levelKind: entryKind, isLeafLevel: false,
+                parent: nil, offset: page.offset, limit: page.limit, total: page.total, items: items
+            ))
+        }
+
+        guard !parent.isEmpty else {
+            throw Shared.Core.ToolError.invalidArgument(
+                Shared.Constants.Search.schemaParamParent,
+                "level \(level) requires `parent` (a level-1 entry id, or a node uri from the level above)."
+            )
+        }
+        // Level 2's parent is a bare entry id; deeper levels pass a full node URI.
+        let parentURI = parent.contains("://") ? parent : "\(source)://\(parent)"
+        let all = try await catalogChildren(source, parentURI).map {
+            ListItem(id: $0.uri, title: $0.name, kind: $0.isDirectory ? "directory" : "file", hasChildren: $0.isDirectory, count: nil)
+        }
+        let windowed = Array(all.dropFirst(offset).prefix(limit))
+        let levelKind = hierarchy.levels.first { $0.level == level }?.kind ?? "node"
+        return try listJSON(ListPageResult(
+            source: source, level: level, levelKind: levelKind, isLeafLevel: false,
+            parent: parent, offset: offset, limit: limit, total: all.count, items: windowed
+        ))
+    }
+
     private func handleListFrameworks(args: MCP.SharedTools.ArgumentExtractor) async throws -> MCP.Core.Protocols.CallToolResult {
         guard let searchIndex else {
             throw searchIndexUnavailableError("index")
