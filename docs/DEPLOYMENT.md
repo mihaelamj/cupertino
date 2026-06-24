@@ -1,7 +1,7 @@
 # Cupertino Deployment Guide
 
-**Last tagged release:** v1.3.0 on 2026-05-31. (v1.4.0 in prep: the v1.4.0 database bundle is published; the binary tag is the final step.)
-**Last updated:** 2026-06-21.
+**Last tagged release:** v1.4.1 on 2026-06-24. (v1.4.0 in prep: the v1.4.0 database bundle is published; the binary tag is the final step.)
+**Last updated:** 2026-06-24.
 
 `main` and `develop` carry the v1.4.0 release line: a refreshed database bundle (full re-crawl + clean rebuild, `apple-documentation.db` grown to 363,562 docs / 308,118 symbols with iOS 27 content, placeholder-stub rot removed) on the v1.3.0 per-source layout (eight per-source DBs in rollback journal mode, read-only on every query / read / serve path). The v1.4.0 database bundle is published to `mihaelamj/cupertino-docs`; the binary tag is the final release step described below. The release process below describes how each tagged release is shipped.
 

@@ -13,7 +13,7 @@ Cupertino is a CLI for human developers and an MCP server for AI agents. Both su
 
 ![Cupertino Demo](docs/images/cupertino.gif)
 
-> **Latest: v1.4.0** (2026-06-21): refreshed database bundle. A full re-crawl + clean rebuild grew the Apple documentation slice to **363,562 documents / 308,118 symbols across 417 frameworks**, now including post-WWDC26 iOS 27 content, alongside the HIG, archive, Swift Evolution, Swift.org, Swift Book, package, and sample-code DBs (8 per-source databases, read-only rollback mode). [Release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.4.0) · [CHANGELOG](CHANGELOG.md) · [Roadmap](#roadmap) · live dashboard at <https://cupertino.aleahim.com/>. Follow updates on X: [@cupertinomcp](https://x.com/cupertinomcp).
+> **Latest: v1.4.1** (2026-06-24): refreshed database bundle. A full re-crawl + clean rebuild grew the Apple documentation slice to **363,562 documents / 308,118 symbols across 417 frameworks**, now including post-WWDC26 iOS 27 content, alongside the HIG, archive, Swift Evolution, Swift.org, Swift Book, package, and sample-code DBs (8 per-source databases, read-only rollback mode). [Release notes](https://github.com/mihaelamj/cupertino/releases/tag/v1.4.1) · [CHANGELOG](CHANGELOG.md) · [Roadmap](#roadmap) · live dashboard at <https://cupertino.aleahim.com/>. Follow updates on X: [@cupertinomcp](https://x.com/cupertinomcp).
 
 > If Cupertino is useful to your work with Apple docs or AI agents, consider [sponsoring its development](https://github.com/sponsors/mihaelamj). Sponsorship helps keep releases, documentation, and the Apple/Linux tooling around it moving.
 
