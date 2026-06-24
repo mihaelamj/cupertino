@@ -16,7 +16,9 @@ extension Diagnostics {
         /// unreadable / unopenable files. #1281 routed the remaining count /
         /// histogram / freshness probes through here, so all seven read-only
         /// opens in this type share one open path with no per-probe weakness.
-        private static func openReadOnlyProbe(at dbPath: URL) -> OpaquePointer? {
+        // Module-internal (not file-private) so the integrity probe in
+        // `Diagnostics.Probes.QuickCheck.swift` shares this one open path.
+        static func openReadOnlyProbe(at dbPath: URL) -> OpaquePointer? {
             try? SQLiteSupport.openReadOnly(at: dbPath)
         }
 

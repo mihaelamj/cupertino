@@ -167,6 +167,21 @@ for db in "${DBS[@]}"; do
         fi
     done
 
+    # 4. FTS index is actually queryable, not just row-counted.
+    #    Checks 1-3 read `COUNT(*) FROM docs_fts`, which touches the FTS5
+    #    content rows but never exercises the index b-tree. A corrupt or
+    #    unbuilt FTS index can count fine yet throw on the first real
+    #    MATCH — the failure a user hits at search time, which this gate
+    #    (pre-MATCH) sailed straight past (the #1276 class). Run one real
+    #    MATCH and fail if SQLite reports any error; a zero-hit result is
+    #    fine — we only care that the query runs, not that 'swift' matches.
+    if [[ "$fts" -gt 0 ]]; then
+        match_err="$(sqlite3 "$db" "SELECT COUNT(*) FROM docs_fts WHERE docs_fts MATCH 'swift';" 2>&1 >/dev/null || true)"
+        if [[ -n "$match_err" ]]; then
+            db_fail=1; reasons+=("FTS MATCH query failed (corrupt/unbuilt index): $match_err")
+        fi
+    fi
+
     if [[ "$db_fail" -eq 0 ]]; then
         printf "  %-24s PASS  (structured=%s fts=%s)\n" "$name" "$structured" "$fts"
     else

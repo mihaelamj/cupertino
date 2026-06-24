@@ -152,7 +152,6 @@ extension CLIImpl.Command {
                     request,
                     events: SetupEventObserver(renderer: renderer)
                 )
-                renderer.printFinalSummary(outcome: outcome)
 
                 // Step 6c-iii: per-source DB split migration hook.
                 // After the bundle download + extract completes, check
@@ -162,7 +161,7 @@ extension CLIImpl.Command {
                 // `alreadyMigrated` and skip cleanly.
                 try await Self.runPerSourceDBSplitMigrationIfNeeded(
                     baseDirectory: baseURL,
-                    logger: Cupertino.Context.composition.logging.recording
+                    logger: recording
                 )
 
                 // #1037 part 4: legacy samples.db filename migration.
@@ -176,11 +175,92 @@ extension CLIImpl.Command {
                 // gone (already-migrated steady state).
                 Self.migrateLegacySamplesDatabaseIfNeeded(
                     baseDirectory: baseURL,
-                    logger: Cupertino.Context.composition.logging.recording
+                    logger: recording
                 )
+
+                // #1276: integrity gate BEFORE declaring success. The
+                // SetupService verifies each bundled DB *exists*, but
+                // existence is not readability — a truncated extract (disk
+                // filled mid-unzip) or a copy on a failing / cloud-evicted
+                // volume opens fine and answers shallow queries, then throws
+                // "disk I/O error" on the first real query at serve time.
+                // That is exactly discussion #1276, where setup printed
+                // "✅ Setup complete!" over an unreadable apple-documentation.db.
+                // Skip when --keep-existing short-circuited the download
+                // (we did not write anything this run).
+                if !outcome.skippedDownload {
+                    try Self.verifyExtractedDatabases(outcome: outcome, recording: recording)
+                }
+
+                renderer.printFinalSummary(outcome: outcome)
             } catch {
                 Cupertino.Context.composition.logging.recording.error("❌ Setup failed: \(error)")
                 throw ExitCode.failure
+            }
+        }
+
+        // MARK: - #1276 post-extract integrity gate
+
+        /// Probe every just-extracted database with `PRAGMA quick_check`
+        /// and refuse to report success if any one is unreadable or
+        /// structurally corrupt. `Distribution.SetupService` already
+        /// verifies each bundled file *exists*; this closes the gap
+        /// between "the file is on disk" and "serve can actually read it",
+        /// the failure mode behind discussion #1276.
+        ///
+        /// Throws `SetupIntegrityError` (rendered by the caller's `catch`)
+        /// when one or more databases fail, so setup exits non-zero with an
+        /// actionable message instead of leaving the user with a server
+        /// that throws on the first query.
+        static func verifyExtractedDatabases(
+            outcome: Distribution.SetupService.Outcome,
+            recording: any LoggingModels.Logging.Recording
+        ) throws {
+            recording.info("🔎 Verifying database integrity...")
+
+            var failures: [String] = []
+            for placement in outcome.databases {
+                switch Diagnostics.Probes.quickCheck(at: placement.path) {
+                case .ok:
+                    continue
+                case let .unreadable(message):
+                    failures.append("\(placement.descriptor.filename): \(message)")
+                case let .problems(problems):
+                    let detail = problems.prefix(3).joined(separator: "; ")
+                    failures.append("\(placement.descriptor.filename): \(detail)")
+                }
+            }
+
+            guard failures.isEmpty else {
+                recording.error("❌ Database integrity check failed:")
+                for failure in failures {
+                    recording.error("   • \(failure)")
+                }
+                recording.error(
+                    "   The downloaded databases did not extract into a readable state. "
+                        + "\"disk I/O error\" means your storage could not read the file back; "
+                        + "\"malformed\" means the copy is truncated or corrupt."
+                )
+                recording.error(
+                    "   → Re-run `cupertino setup`. If it persists, make sure the base directory "
+                        + "is on a local volume (not iCloud/Dropbox/an external drive) with enough "
+                        + "free space, then retry."
+                )
+                throw SetupIntegrityError(failures: failures)
+            }
+
+            recording.info("   ✓ All \(outcome.databases.count) databases verified")
+        }
+
+        /// One or more just-extracted databases failed the post-extract
+        /// `PRAGMA quick_check` (#1276). The detailed, actionable lines are
+        /// already rendered by `verifyExtractedDatabases`; this carries a
+        /// concise summary for the top-level `catch`.
+        struct SetupIntegrityError: Error, CustomStringConvertible {
+            let failures: [String]
+
+            var description: String {
+                "database integrity check failed for: " + failures.joined(separator: ", ")
             }
         }
 
