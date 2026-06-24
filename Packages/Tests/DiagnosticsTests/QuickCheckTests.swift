@@ -61,6 +61,42 @@ struct QuickCheckTests {
 
         let result = Diagnostics.Probes.quickCheck(at: dbURL)
         #expect(result != .ok, "quick_check must flag a truncated database, got \(result)")
+        // Whichever way it is flagged, the carried message must be non-empty:
+        // verifyExtractedDatabases renders it verbatim into the user-facing
+        // "filename: <message>" failure line, so a blank message would print a
+        // bare "filename: " at the CLI.
+        switch result {
+        case .ok:
+            break
+        case let .unreadable(message):
+            #expect(!message.isEmpty)
+        case let .problems(rows):
+            #expect(!rows.isEmpty)
+        }
+    }
+
+    @Test("a corrupt-but-openable database is reported .problems")
+    func corruptButOpenableIsProblems() throws {
+        let dbURL = try makePopulatedDB()
+        defer { try? FileManager.default.removeItem(at: dbURL.deletingLastPathComponent()) }
+
+        // Corrupt cell content deep inside a data page (well past page 1, which
+        // holds sqlite_master) while leaving the page structure parseable: the
+        // file still OPENS read-only and quick_check runs to completion, but
+        // reports logical inconsistencies — the "corrupt but openable" shape the
+        // .problems case exists to distinguish from .unreadable. Truncation, by
+        // contrast, fails at prepare and surfaces as .unreadable.
+        let handle = try FileHandle(forWritingTo: dbURL)
+        try handle.seek(toOffset: 8200)
+        handle.write(Data(repeating: 0xff, count: 512))
+        try handle.close()
+
+        let result = Diagnostics.Probes.quickCheck(at: dbURL)
+        guard case let .problems(rows) = result else {
+            Issue.record("expected .problems for a corrupt-but-openable DB, got \(result)")
+            return
+        }
+        #expect(!rows.isEmpty)
     }
 
     @Test("a missing file is reported .unreadable")

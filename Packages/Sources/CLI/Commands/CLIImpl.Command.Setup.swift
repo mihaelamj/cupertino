@@ -187,10 +187,15 @@ extension CLIImpl.Command {
                 // That is exactly discussion #1276, where setup printed
                 // "✅ Setup complete!" over an unreadable apple-documentation.db.
                 // Skip when --keep-existing short-circuited the download
-                // (we did not write anything this run).
-                if !outcome.skippedDownload {
-                    try Self.verifyExtractedDatabases(outcome: outcome, recording: recording)
-                }
+                // (we did not write anything this run). The guard lives in
+                // `verifyDatabasesIfWritten` so the skip contract is unit-
+                // testable without driving the whole download pipeline.
+                //
+                // ORDER INVARIANT: this verification MUST stay above
+                // `printFinalSummary` — the whole point of #1276 is to not
+                // print "✅ Setup complete!" over a database that just failed
+                // the gate. Do not move the summary back above this call.
+                try Self.verifyDatabasesIfWritten(outcome: outcome, recording: recording)
 
                 renderer.printFinalSummary(outcome: outcome)
             } catch {
@@ -200,6 +205,20 @@ extension CLIImpl.Command {
         }
 
         // MARK: - #1276 post-extract integrity gate
+
+        /// Run the post-extract integrity gate unless `--keep-existing`
+        /// short-circuited the download (in which case nothing was written
+        /// this run, so there is nothing new to verify). Factored out of
+        /// the `run()` call site so the skip contract — "never gate on a
+        /// database we did not write this run" — is unit-testable without
+        /// driving the download pipeline.
+        static func verifyDatabasesIfWritten(
+            outcome: Distribution.SetupService.Outcome,
+            recording: any LoggingModels.Logging.Recording
+        ) throws {
+            guard !outcome.skippedDownload else { return }
+            try verifyExtractedDatabases(outcome: outcome, recording: recording)
+        }
 
         /// Probe every just-extracted database with `PRAGMA quick_check`
         /// and refuse to report success if any one is unreadable or
